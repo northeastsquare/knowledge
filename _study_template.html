@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{论文中文名}} · 精读</title>
+<meta name="description" content="{{一句话总结}}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f1f4f6;
+    --surface:#fbfcfd;
+    --surface-2:#eaf0f4;
+    --ink:#16222e;
+    --ink-2:#51626f;
+    --ink-3:#83919c;
+    --accent:#0e6e8a;
+    --accent-strong:#0a4c60;
+    --signal:#c4572a;
+    --line:#d8e1e7;
+    --line-strong:#c3d0d9;
+    --grid-line:rgba(22,34,46,.05);
+    --shadow:0 1px 2px rgba(22,34,46,.04),0 14px 34px rgba(22,34,46,.07);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+      --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+      --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+      --line:#1e2d3a; --line-strong:#2b3d4b;
+      --grid-line:rgba(231,238,244,.045);
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+    --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+    --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+    --line:#1e2d3a; --line-strong:#2b3d4b;
+    --grid-line:rgba(231,238,244,.045);
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Sans",-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+    line-height:1.78; font-size:16px; -webkit-font-smoothing:antialiased;
+  }
+  .grid{
+    position:fixed; inset:0; z-index:-1; pointer-events:none;
+    background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);
+    background-size:28px 28px;
+  }
+  .wrap{max-width:860px; margin:0 auto; padding:0 24px 96px;}
+
+  .masthead{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px 24px 0; max-width:860px; margin:0 auto;
+  }
+  .back{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:13px; color:var(--accent); text-decoration:none; letter-spacing:.03em;
+  }
+  .back:hover{text-decoration:underline;}
+  .masthead .ref{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12.5px; color:var(--ink-3); letter-spacing:.04em;
+  }
+
+  .hero{padding:52px 0 34px; border-bottom:1px solid var(--line-strong);}
+  .eyebrow{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent);
+    margin-bottom:16px;
+  }
+  .hero h1{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:clamp(28px,4.6vw,42px); font-weight:700; line-height:1.2;
+    margin:0 0 16px; color:var(--ink); text-wrap:balance;
+  }
+  .hero .summary{
+    font-size:17px; color:var(--ink-2); max-width:640px; margin:0 0 22px;
+  }
+  .meta{
+    border:1px solid var(--line); border-radius:12px; background:var(--surface);
+    padding:14px 18px; font-size:13.5px; display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px 24px;
+    box-shadow:var(--shadow);
+  }
+  .meta .m{display:flex; flex-direction:column; gap:1px;}
+  .meta .m .k{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:11px;
+    color:var(--ink-3); letter-spacing:.08em; text-transform:uppercase;
+  }
+  .meta .m .v{color:var(--ink); font-weight:500;}
+
+  section{margin-top:40px;}
+  h2{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:21px; font-weight:600; margin:0 0 14px; color:var(--ink);
+    display:flex; align-items:center; gap:12px;
+  }
+  h2::before{
+    content:""; width:10px; height:10px; flex:none;
+    background:var(--accent); border-radius:2px; transform:rotate(45deg);
+  }
+  p{margin:0 0 12px;}
+  strong{font-weight:700;}
+  .hl{color:var(--accent); font-weight:600;}
+  a{color:var(--accent);}
+
+  ul,ol{margin:0 0 14px; padding-left:22px;}
+  li{margin-bottom:7px;}
+  li::marker{color:var(--accent);}
+
+  blockquote{
+    margin:16px 0; padding:14px 18px; border-left:3px solid var(--accent);
+    background:var(--surface-2); border-radius:0 10px 10px 0; color:var(--ink);
+  }
+  blockquote p{margin:0;}
+
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    padding:20px 22px; box-shadow:var(--shadow); margin:14px 0;
+  }
+  .card h3{font-size:16px; font-weight:700; margin:0 0 10px;}
+
+  table{width:100%; border-collapse:collapse; font-size:14px; margin:12px 0;}
+  th,td{padding:9px 12px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12.5px;
+    color:var(--accent-strong); background:var(--surface-2); letter-spacing:.03em; font-weight:600;
+  }
+  tr:last-child td{border-bottom:none;}
+  .tbl-wrap{overflow-x:auto;}
+
+  code{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:13.5px;
+    background:var(--surface-2); border:1px solid var(--line); border-radius:5px; padding:1px 6px;
+  }
+  pre{overflow-x:auto; background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:16px; font-size:13px; line-height:1.6;}
+  pre code{border:none; background:none; padding:0;}
+
+  .diagram{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px; margin:16px 0; box-shadow:var(--shadow); overflow-x:auto;}
+  .diagram svg{max-width:100%; height:auto; display:block;}
+
+  footer{
+    margin-top:56px; padding-top:20px; border-top:1px solid var(--line-strong);
+    display:flex; justify-content:space-between; gap:12px; font-size:13px; color:var(--ink-3);
+  }
+  footer a{color:var(--accent); text-decoration:none;}
+  footer a:hover{text-decoration:underline;}
+</style>
+</head>
+<body>
+<div class="grid" aria-hidden="true"></div>
+
+<header class="masthead">
+  <a class="back" href="index.html">← 返回知识库</a>
+  <span class="ref">{{arXiv编号}}</span>
+</header>
+
+<div class="wrap">
+
+  <section class="hero">
+    <div class="eyebrow">精读笔记 · {{分类}}</div>
+    <h1>{{论文中文名}}</h1>
+    <p class="summary">{{一句话总结}}</p>
+    <div class="meta">
+      <div class="m"><span class="k">论文</span><span class="v">{{英文论文名}}</span></div>
+      <div class="m"><span class="k">机构</span><span class="v">{{机构}}</span></div>
+      <div class="m"><span class="k">arXiv</span><span class="v">{{arXiv编号}}</span></div>
+      <div class="m"><span class="k">主题</span><span class="v">{{主题标签}}</span></div>
+    </div>
+  </section>
+
+  <!-- 以下每节：替换占位内容为真实内容，可加 ul/ol/table/blockquote/mermaid 图；保留 h2 标题与整体结构不变 -->
+  <section>
+    <h2>它解决的问题</h2>
+    <p>{{解决的问题}}</p>
+  </section>
+
+  <section>
+    <h2>方法主线</h2>
+    <p>{{方法主线，写成 3~5 步}}</p>
+  </section>
+
+  <section>
+    <h2>输入、输出与数据流</h2>
+    <p>{{输入输出数据流，可用表格或 mermaid 流程图}}</p>
+  </section>
+
+  <section>
+    <h2>训练或运行方式</h2>
+    <p>{{训练/运行方式}}</p>
+  </section>
+
+  <section>
+    <h2>关键结果</h2>
+    <p>{{关键结果，用表格列出量化结论}}</p>
+  </section>
+
+  <section>
+    <h2>我真正学到的内容</h2>
+    <p>{{可脱离原文复用的结论}}</p>
+  </section>
+
+  <section>
+    <h2>可复用设计</h2>
+    <p>{{可复用的设计/方法}}</p>
+  </section>
+
+  <section>
+    <h2>疑问与风险</h2>
+    <p>{{疑问与局限}}</p>
+  </section>
+
+  <section>
+    <h2>后续动作</h2>
+    <p>{{需要补的概念、读的代码、做的实验}}</p>
+  </section>
+
+  <footer>
+    <span>精读笔记 · {{论文中文名}}</span>
+    <a href="index.html">返回知识库 →</a>
+  </footer>
+</div>
+<script src="nav.js"></script>
+</body>
+</html>

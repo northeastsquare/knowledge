@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>为什么要取 log？——策略梯度的那一行魔术</title>
+<meta name="description" content="可交互推导：策略梯度里的 log 从哪来、为什么非它不可。点开每个符号看含义，亲手点掉消失的物理项。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;500;700&family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --void:#05060f;
+    --void-2:#0a0b1a;
+    --hot:#ff2d9b;
+    --cyan:#00e5ff;
+    --lime:#b8ff3c;
+    --violet:#a855ff;
+    --amber:#ffb300;
+    --fog:#8b93b8;
+    --snow:#eef1ff;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--void); color:var(--snow);
+    font-family:"Space Grotesk","Noto Sans SC",-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+    line-height:1.85; font-size:16.5px; overflow-x:hidden;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ---------- 背景：缓慢游动的极光团 ---------- */
+  .aurora{position:fixed; inset:-20%; z-index:0; pointer-events:none; filter:blur(90px); opacity:.55;}
+  .blob{position:absolute; border-radius:50%; mix-blend-mode:screen; animation:drift 26s ease-in-out infinite alternate;}
+  .b1{width:52vw; height:52vw; left:-8%; top:-6%;  background:radial-gradient(circle,var(--hot),transparent 62%);}
+  .b2{width:46vw; height:46vw; right:-6%; top:18%; background:radial-gradient(circle,var(--cyan),transparent 62%); animation-delay:-8s;}
+  .b3{width:44vw; height:44vw; left:22%; bottom:-12%; background:radial-gradient(circle,var(--violet),transparent 62%); animation-delay:-16s;}
+  @keyframes drift{
+    0%{transform:translate(0,0) scale(1);}
+    50%{transform:translate(6vw,-4vh) scale(1.16);}
+    100%{transform:translate(-5vw,5vh) scale(.92);}
+  }
+  .scan{position:fixed; inset:0; z-index:1; pointer-events:none; opacity:.16;
+    background:repeating-linear-gradient(0deg,rgba(255,255,255,.07) 0 1px,transparent 1px 3px);}
+  .wrap{position:relative; z-index:2; max-width:920px; margin:0 auto; padding:0 22px 140px;}
+  /* ---------- 开场 ---------- */
+  .hero{padding:104px 0 56px; text-align:center;}
+  .kicker{font-family:"JetBrains Mono",monospace; font-size:12px; letter-spacing:.38em; text-transform:uppercase;
+    color:var(--cyan); margin-bottom:26px;}
+  .hero h1{font-size:clamp(34px,7vw,74px); font-weight:900; line-height:1.04; margin:0 0 22px; letter-spacing:-.02em;}
+  .hero h1 .g{
+    background:linear-gradient(96deg,var(--hot),var(--amber) 38%,var(--lime) 62%,var(--cyan));
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+    background-size:260% auto; animation:slide 9s linear infinite;}
+  @keyframes slide{to{background-position:260% center;}}
+  .hero .sub{color:var(--fog); font-size:17.5px; max-width:640px; margin:0 auto;}
+  .hero .hint{margin-top:34px; font-family:"JetBrains Mono",monospace; font-size:12.5px; color:var(--violet);
+    border:1px dashed rgba(168,85,255,.5); border-radius:999px; padding:9px 18px; display:inline-block;}
+
+  /* ---------- 幕 ---------- */
+  .act{position:relative; margin-top:104px;}
+  .act-no{font-family:"JetBrains Mono",monospace; font-size:clamp(66px,15vw,140px); font-weight:700; line-height:.8;
+    color:transparent; -webkit-text-stroke:1.5px rgba(255,255,255,.14); letter-spacing:-.04em;
+    position:absolute; top:-46px; left:-10px; z-index:-1; user-select:none;}
+  .act h2{font-size:clamp(23px,4.2vw,34px); font-weight:700; margin:0 0 8px; letter-spacing:-.01em;}
+  .act .tag{font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.2em; text-transform:uppercase;
+    color:var(--amber); margin-bottom:12px;}
+  .act p{color:#c3c9e8; margin:0 0 16px;}
+  .act p.big{font-size:18.5px; color:var(--snow);}
+  strong{color:#fff; font-weight:700;}
+  em{color:var(--lime); font-style:normal; font-weight:500;}
+
+  /* ---------- 公式台 ---------- */
+  .stage{position:relative; margin:26px 0; padding:30px 26px; border-radius:18px;
+    background:linear-gradient(150deg,rgba(255,255,255,.055),rgba(255,255,255,.015));
+    border:1px solid rgba(255,255,255,.12); backdrop-filter:blur(7px);
+    box-shadow:0 22px 60px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.1);}
+  .stage.good{border-color:rgba(184,255,60,.45); box-shadow:0 0 44px rgba(184,255,60,.16),0 22px 60px rgba(0,0,0,.55);}
+  .stage.bad{border-color:rgba(255,45,155,.45);  box-shadow:0 0 44px rgba(255,45,155,.16),0 22px 60px rgba(0,0,0,.55);}
+  .stage .badge{position:absolute; top:-11px; left:22px; font-family:"JetBrains Mono",monospace; font-size:11px;
+    letter-spacing:.14em; text-transform:uppercase; padding:3px 11px; border-radius:999px; background:var(--void-2);
+    border:1px solid rgba(255,255,255,.18); color:var(--fog);}
+  .stage.good .badge{color:var(--lime); border-color:rgba(184,255,60,.5);}
+  .stage.bad .badge{color:var(--hot); border-color:rgba(255,45,155,.5);}
+  .fx{font-family:"JetBrains Mono",monospace; font-size:clamp(15px,2.9vw,21px); line-height:2.15;
+    text-align:center; overflow-x:auto; white-space:nowrap; padding:4px 0;}
+  .fx.sm{font-size:clamp(13px,2.3vw,16.5px); line-height:2;}
+  .cap{text-align:center; color:var(--fog); font-size:13.5px; margin-top:10px; font-family:"JetBrains Mono",monospace;}
+
+  /* ---------- 可点符号 ---------- */
+  .sym{position:relative; cursor:help; color:var(--cyan); border-bottom:1px dashed rgba(0,229,255,.5);
+    transition:color .15s, text-shadow .15s;}
+  .sym:hover,.sym.lit{color:var(--lime); text-shadow:0 0 14px rgba(184,255,60,.6); border-bottom-color:var(--lime);}
+  .sym::after{
+    content:attr(data-t); position:absolute; left:50%; bottom:135%; transform:translateX(-50%) translateY(6px);
+    background:#10122a; color:var(--snow); border:1px solid rgba(0,229,255,.4); border-radius:10px;
+    padding:8px 13px; font-family:"Space Grotesk","Noto Sans SC",sans-serif; font-size:13.5px; line-height:1.6;
+    white-space:normal; width:max-content; max-width:268px; text-align:left; letter-spacing:0;
+    opacity:0; pointer-events:none; transition:opacity .16s, transform .16s; z-index:60;
+    box-shadow:0 14px 34px rgba(0,0,0,.6);}
+  .sym:hover::after,.sym.lit::after{opacity:1; transform:translateX(-50%) translateY(0);}
+
+  /* 高亮色 */
+  .hot{color:var(--hot);}  .cy{color:var(--cyan);}  .lm{color:var(--lime);}
+  .vi{color:var(--violet);} .am{color:var(--amber);} .dim{color:#5c6489;}
+
+  /* ---------- 死路：故障效果 ---------- */
+  .dead{animation:jitter 4.6s steps(1) infinite;}
+  @keyframes jitter{
+    0%,92%,100%{transform:translate(0,0); filter:none;}
+    93%{transform:translate(-2px,1px); filter:hue-rotate(40deg);}
+    95%{transform:translate(3px,-1px);}
+    97%{transform:translate(-1px,0);}
+  }
+  .strike{position:relative; color:#7a2448;}
+  .strike::before{content:""; position:absolute; left:-4%; right:-4%; top:52%; height:2px;
+    background:var(--hot); box-shadow:0 0 12px var(--hot);}
+
+  /* ---------- 卡片组 ---------- */
+  .duo{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:22px 0;}
+  .card{padding:20px 20px; border-radius:16px; border:1px solid rgba(255,255,255,.12);
+    background:rgba(255,255,255,.035);}
+  .card.no{border-color:rgba(255,45,155,.4); background:rgba(255,45,155,.07);}
+  .card.yes{border-color:rgba(184,255,60,.4); background:rgba(184,255,60,.06);}
+  .card .h{font-family:"JetBrains Mono",monospace; font-size:12px; letter-spacing:.16em; text-transform:uppercase;
+    margin-bottom:9px; color:var(--fog);}
+  .card.no .h{color:var(--hot);} .card.yes .h{color:var(--lime);}
+  .card .b{font-size:14.5px; color:#c3c9e8; line-height:1.72;}
+  @media(max-width:700px){ .duo{grid-template-columns:1fr;} }
+
+  /* ---------- 类比 ---------- */
+  .analogy{margin:26px 0; padding:22px 24px; border-radius:16px; border-left:3px solid var(--amber);
+    background:linear-gradient(90deg,rgba(255,179,0,.1),transparent 72%);}
+  .analogy .t{font-family:"JetBrains Mono",monospace; font-size:11.5px; letter-spacing:.2em;
+    text-transform:uppercase; color:var(--amber); margin-bottom:8px;}
+  .analogy p{margin:0; color:#d6dbf5; font-size:15.5px;}
+
+  /* ---------- 按钮 ---------- */
+  .btn{display:inline-flex; align-items:center; gap:9px; cursor:pointer; margin:6px 8px 6px 0;
+    font-family:"JetBrains Mono",monospace; font-size:13px; letter-spacing:.04em; color:var(--void);
+    background:linear-gradient(94deg,var(--lime),var(--cyan)); border:none; border-radius:999px;
+    padding:11px 21px; font-weight:700; transition:transform .14s, box-shadow .14s, filter .14s;
+    box-shadow:0 8px 26px rgba(0,229,255,.24);}
+  .btn:hover{transform:translateY(-2px); box-shadow:0 12px 34px rgba(184,255,60,.34);}
+  .btn:active{transform:translateY(0);}
+  .btn.ghost{background:transparent; color:var(--cyan); border:1px solid rgba(0,229,255,.45); box-shadow:none;}
+  .btn.ghost:hover{background:rgba(0,229,255,.1); box-shadow:none;}
+  .btn-row{text-align:center; margin-top:6px;}
+
+  /* ---------- 消失动画 ---------- */
+  .vanish{display:inline-block; transition:opacity .7s ease, transform .7s ease, filter .7s ease;}
+  .vanish.gone{opacity:.14; transform:translateY(-16px) scale(.82) rotate(-5deg); filter:blur(3px) grayscale(1);}
+  .keep{display:inline-block; transition:color .5s ease, text-shadow .5s ease;}
+  .keep.hi{color:var(--lime); text-shadow:0 0 18px rgba(184,255,60,.75);}
+  .zero{opacity:0; transition:opacity .5s ease .5s; color:var(--hot); font-size:.78em;}
+  .zero.show{opacity:1;}
+
+  /* ---------- 折叠：具体数字 ---------- */
+  .fold{margin:22px 0; border:1px solid rgba(255,255,255,.13); border-radius:14px; overflow:hidden;
+    background:rgba(255,255,255,.028);}
+  .fold summary{cursor:pointer; padding:15px 20px; font-family:"JetBrains Mono",monospace; font-size:13px;
+    color:var(--cyan); letter-spacing:.05em; list-style:none;}
+  .fold summary::-webkit-details-marker{display:none;}
+  .fold summary::before{content:"▸ "; color:var(--violet);}
+  .fold[open] summary::before{content:"▾ ";}
+  .fold summary:hover{background:rgba(0,229,255,.07);}
+  .fold .in{padding:4px 20px 20px;}
+  table{width:100%; border-collapse:collapse; font-family:"JetBrains Mono",monospace; font-size:13.5px; margin:10px 0;}
+  th,td{padding:9px 11px; text-align:right; border-bottom:1px solid rgba(255,255,255,.1);}
+  th:first-child,td:first-child{text-align:left;}
+  th{color:var(--fog); font-size:11.5px; letter-spacing:.1em; text-transform:uppercase; font-weight:500;}
+  tr.tot td{border-bottom:none; color:var(--lime); font-weight:700;}
+
+  /* ---------- 结尾对照 ---------- */
+  .final{margin-top:34px; padding:30px 26px; border-radius:20px; text-align:center;
+    background:linear-gradient(150deg,rgba(184,255,60,.1),rgba(0,229,255,.06));
+    border:1px solid rgba(184,255,60,.3);}
+  .final .l1{font-family:"JetBrains Mono",monospace; font-size:clamp(13px,2.5vw,17px); line-height:2.4;}
+  .punch{margin-top:26px; font-size:clamp(19px,3.6vw,27px); font-weight:700; line-height:1.5;}
+  .punch .g{background:linear-gradient(94deg,var(--lime),var(--cyan));
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;}
+
+  footer{margin-top:96px; padding-top:26px; border-top:1px solid rgba(255,255,255,.1);
+    display:flex; justify-content:space-between; gap:14px; flex-wrap:wrap;
+    font-family:"JetBrains Mono",monospace; font-size:12.5px; color:var(--fog);}
+  footer a{color:var(--cyan); text-decoration:none;}
+  footer a:hover{color:var(--lime);}
+
+  /* 滚动淡入 */
+  .rise{opacity:0; transform:translateY(26px); transition:opacity .7s ease, transform .7s ease;}
+  .rise.in{opacity:1; transform:none;}
+  @media (prefers-reduced-motion:reduce){
+    .blob,.hero h1 .g,.dead{animation:none;}
+    .rise{opacity:1; transform:none;}
+  }
+</style>
+</head>
+<body>
+<div class="aurora" aria-hidden="true"><span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span></div>
+<div class="scan" aria-hidden="true"></div>
+<div class="wrap">
+<header class="hero">
+  <div class="kicker">Policy Gradient · 一行魔术</div>
+  <h1>为什么<span class="g">要取 log</span>？</h1>
+  <p class="sub">不是因为 log 好看，也不是为了数值稳定。<br>
+     是因为不取 log，这个公式<strong>根本算不出来</strong>。</p>
+  <div class="hint">↓ 带虚线的符号，鼠标放上去看它是什么</div>
+</header>
+
+<section class="act rise">
+  <div class="act-no">01</div>
+  <div class="tag">Act I · 我们到底想要什么</div>
+  <h2>目标：让"好轨迹"的概率变大</h2>
+  <p class="big">机器人跑一遍任务，产生一条轨迹。有的轨迹成功、有的失败。
+     我们想要的东西朴素到不像数学：<em>让成功的轨迹更容易被跑出来</em>。</p>
+  <p>把它写成式子，就是"所有可能轨迹的回报，按它们出现的概率加权平均"——</p>
+
+  <div class="stage">
+    <span class="badge">目标函数</span>
+    <div class="fx">
+      <span class="sym" data-t="J = 我们要最大化的东西：平均能拿到多少回报。θ 是策略网络的参数。">J(θ)</span>
+      =
+      <span class="sym" data-t="对所有可能的轨迹求和（连续情况是积分）。轨迹多到天文数字，这个求和是写着好看、算不出来的。">Σ<sub>τ</sub></span>
+      <span class="sym hot" data-t="P_θ(τ)：在当前策略参数 θ 下，跑出轨迹 τ 的概率。改 θ 就是改这个概率分布。">P<sub>θ</sub>(τ)</span>
+      ·
+      <span class="sym am" data-t="R(τ)：这条轨迹的总回报。它由环境给，跟 θ 没有半点关系——θ 只决定你多大概率碰到它。">R(τ)</span>
+    </div>
+    <div class="cap">τ = 一条完整轨迹 s₀,a₀,s₁,a₁,…</div>
+  </div>
+
+  <div class="analogy">
+    <div class="t">换成人话</div>
+    <p>你有一台会自己抓东西的机器。你不能直接告诉它"手往左 3 厘米"——
+       你只能调它脑子里的旋钮 <span class="cy">θ</span>，然后看它跑出来的一堆轨迹里，好的占了多少。
+       <strong>J(θ) 就是这个"好的占多少"的分数。</strong></p>
+  </div>
+
+  <p>要让分数变大，方向很清楚：<em>求梯度，然后往梯度方向走一步</em>。
+     于是我们对 θ 求导。麻烦就是从这一步开始的。</p>
+</section>
+
+<section class="act rise">
+  <div class="act-no">02</div>
+  <div class="tag">Act II · 死路</div>
+  <h2>硬求导，撞墙</h2>
+  <p>R(τ) 里没有 θ，所以导数只落在概率上。看起来毫无压力：</p>
+
+  <div class="stage bad dead">
+    <span class="badge">看着没问题，其实是死的</span>
+    <div class="fx">
+      <span class="cy">∇<sub>θ</sub></span>J(θ) =
+      <span class="dim">Σ<sub>τ</sub></span>
+      <span class="hot">∇<sub>θ</sub>P<sub>θ</sub>(τ)</span>
+      · <span class="am">R(τ)</span>
+    </div>
+    <div class="cap hot">↑ 这一行，永远算不出来</div>
+  </div>
+
+  <p class="big">为什么算不出来？因为<strong>轨迹有天文数字条</strong>，Σ<sub>τ</sub> 你不可能真的加完。
+     唯一的活路是<em>采样</em>：跑 32 条轨迹，拿平均值当估计。</p>
+  <p>而采样有一个铁规矩——<span class="cy">你只能对"期望"做采样</span>。
+     要写成期望 E<sub>τ~P</sub>[ f(τ) ]，式子里必须有一个<strong>货真价实的概率分布</strong>当权重。
+     那我们手上这个 <span class="hot">∇P<sub>θ</sub>(τ)</span> 是概率分布吗？</p>
+
+  <div class="duo">
+    <div class="card no">
+      <div class="h">✗ 它可以是负的</div>
+      <div class="b">概率的<em>变化量</em>有正有负。概率不能是负数，
+        所以你没法"按 ∇P 的比例去抽样"——负的权重要怎么抽？</div>
+    </div>
+    <div class="card no">
+      <div class="h">✗ 它加起来不是 1</div>
+      <div class="b">Σ<sub>τ</sub> P = 1 恒成立，两边求导 ⇒ <span class="hot">Σ<sub>τ</sub> ∇P = 0</span>。
+        总和是 0，不是 1。根本不是分布。</div>
+    </div>
+    <div class="card no">
+      <div class="h">✗ 没有任何采样器能产出它</div>
+      <div class="b">你的机器人只会按 <span class="cy">P<sub>θ</sub></span> 跑轨迹。
+        世界上没有一台设备能"按 ∇P<sub>θ</sub> 跑一条轨迹"给你看。</div>
+    </div>
+    <div class="card no">
+      <div class="h">✗ 就算硬算也要先知道 P</div>
+      <div class="b">P<sub>θ</sub>(τ) 里含着环境的转移概率——那是环境的内部秘密，你拿不到。</div>
+    </div>
+  </div>
+
+  <div class="stage bad">
+    <span class="badge">卡点一句话</span>
+    <div class="fx sm">
+      <span class="lm">E<sub>τ~P<sub>θ</sub></sub>[ … ]</span>
+      <span class="dim">← 能采样</span>
+      &nbsp;&nbsp;&nbsp;
+      <span class="strike">E<sub>τ~∇P<sub>θ</sub></sub>[ … ]</span>
+      <span class="dim">← 不存在</span>
+    </div>
+  </div>
+
+  <div class="analogy">
+    <div class="t">换成人话</div>
+    <p>你想知道"全国人民的平均身高怎么随年份变"。你能做的是<strong>随机抓一批人来量</strong>。
+       但公式却要求你"按人口变化率抓人"——某些地区人口在减少，变化率是负的。
+       <span class="hot">你怎么抓出负数个人？</span>抓不出来，实验就做不了。</p>
+  </div>
+
+  <p class="big">所以问题变得非常具体：
+     <em>能不能把式子改写成"按 P<sub>θ</sub> 采样"的形式，同时不改变它的值？</em></p>
+</section>
+
+<section class="act rise">
+  <div class="act-no">03</div>
+  <div class="tag">Act III · 突破</div>
+  <h2>把 P 硬塞回去</h2>
+  <p>既然缺一个 <span class="cy">P<sub>θ</sub></span> 当采样权重，那就<strong>无中生有造一个</strong>——
+     乘一个 P 再除一个 P，值不变，这是合法的废话：</p>
+
+  <div class="stage">
+    <span class="badge">第一步 · 乘一除一</span>
+    <div class="fx">
+      <span class="hot">∇P<sub>θ</sub>(τ)</span> =
+      <span class="lm">P<sub>θ</sub>(τ)</span>
+      ·
+      <span class="cy">∇P<sub>θ</sub>(τ) / P<sub>θ</sub>(τ)</span>
+    </div>
+    <div class="cap">左边那个 P 就是我们要的"采样权重"，右边那坨是"每条轨迹贡献多少"</div>
+  </div>
+
+  <p>到这里其实<em>已经成功了</em>——采样问题解决了。log 甚至还没出场。
+     那 log 是从哪冒出来的？纯粹因为<span class="cy">右边那一坨正好等于 ∇log P</span>：</p>
+
+  <div class="stage good">
+    <span class="badge">第二步 · 认出这个形状</span>
+    <div class="fx">
+      <span class="sym cy" data-t="链式法则：log 的导数是 1/x，再乘上 x 自己的导数。方向读：右→左 是发现，左→右 是定义。">
+        ∇log P<sub>θ</sub>(τ)</span>
+      =
+      <span class="lm">∇P<sub>θ</sub>(τ) / P<sub>θ</sub>(τ)</span>
+    </div>
+    <div class="cap lm">这就是全部的魔术。log 不是被"选"进来的，是被<strong>认出来</strong>的。</div>
+  </div>
+
+  <p class="big">换句话说：<em>我们不是想取 log，我们是被迫造出了 ∇P/P 这个形状，
+     而它恰好就是 log 的导数。</em>数学家给这一步起了个名字，叫
+     <span class="vi">log-derivative trick</span>（对数导数技巧），也叫 score function。</p>
+
+  <div class="stage good">
+    <span class="badge">合起来 · 活了</span>
+    <div class="fx">
+      ∇J(θ) = <span class="dim">Σ<sub>τ</sub></span>
+      <span class="lm">P<sub>θ</sub>(τ)</span> ·
+      <span class="cy">∇log P<sub>θ</sub>(τ)</span> ·
+      <span class="am">R(τ)</span>
+    </div>
+    <div class="fx">
+      <span class="dim">⇓&nbsp; Σ P(τ)·f(τ) 就是期望的定义</span>
+    </div>
+    <div class="fx">
+      ∇J(θ) =
+      <span class="sym lm" data-t="E 下标 τ~P_θ：按当前策略真的去跑轨迹，跑出来的样本上取平均。这一步现在可以用 32 条轨迹估计了。">
+        E<sub>τ~P<sub>θ</sub></sub></span>[
+      <span class="cy">∇log P<sub>θ</sub>(τ)</span> ·
+      <span class="am">R(τ)</span> ]
+    </div>
+    <div class="cap lm">↑ 可以采样了。跑 N 条轨迹，每条算 ∇log P × R，平均，就是梯度。</div>
+  </div>
+
+  <div class="analogy">
+    <div class="t">回到身高那个类比</div>
+    <p>原来要求你"按人口变化率抓人"，抓不出来。
+       现在改成：<strong>照常随机抓人</strong>（按 P 采样），
+       但每个人身上挂一个权重叫"你所在地区的人口相对变化率"（∇P/P）。
+       <span class="lm">同一个答案，但这回实验做得出来了。</span></p>
+  </div>
+</section>
+
+<section class="act rise">
+  <div class="act-no">04</div>
+  <div class="tag">Act IV · 白送的赠品</div>
+  <h2>log 顺手帮我们干掉了物理学</h2>
+  <p>上面那个式子里还剩一个 <span class="cy">∇log P<sub>θ</sub>(τ)</span>，
+     而 P<sub>θ</sub>(τ) 是整条轨迹的概率，它是一长串<strong>乘积</strong>：</p>
+
+  <div class="stage">
+    <span class="badge">轨迹概率 · 乘积形式</span>
+    <div class="fx sm">
+      <span class="hot">P<sub>θ</sub>(τ)</span> =
+      <span class="sym vi" data-t="p(s₀)：初始状态的分布。机器人开机时物体摆在哪——环境决定，跟 θ 无关。">p(s<sub>0</sub>)</span>
+      ·
+      <span class="sym dim" data-t="Π 表示把每一步的概率连乘起来，t 从 0 到 T。">Π<sub>t</sub></span>
+      <span class="sym lm" data-t="π_θ(aₜ|sₜ)：策略本身。看到状态 sₜ 时，选动作 aₜ 的概率。这是唯一含 θ 的部分。">π<sub>θ</sub>(a<sub>t</sub>|s<sub>t</sub>)</span>
+      ·
+      <span class="sym vi" data-t="p(sₜ₊₁|sₜ,aₜ)：环境的转移概率——你推了物体一下，它会滚到哪。这是真实物理，你既不知道也改不了。">p(s<sub>t+1</sub>|s<sub>t</sub>,a<sub>t</sub>)</span>
+    </div>
+    <div class="cap"><span class="vi">紫色 = 环境的事</span> &nbsp;·&nbsp; <span class="lm">绿色 = 你的事</span></div>
+  </div>
+
+  <p class="big">乘积很讨厌：<em>要求导，就得对每一项用乘法法则，一层层套下去</em>。
+     但 log 有个人人都会的性质——<span class="cy">log(乘积) = Σ log</span>。乘积当场变加法：</p>
+
+  <div class="stage good" id="cancelStage">
+    <span class="badge">点一下按钮，看谁会消失</span>
+    <div class="fx sm">
+      <span class="cy">∇log P<sub>θ</sub>(τ)</span> =
+      <span class="vanish vi" data-z="1">∇log p(s<sub>0</sub>)</span>
+      +
+      <span class="keep">Σ<sub>t</sub> ∇log π<sub>θ</sub>(a<sub>t</sub>|s<sub>t</sub>)</span>
+      +
+      <span class="vanish vi" data-z="1">Σ<sub>t</sub> ∇log p(s<sub>t+1</sub>|s<sub>t</sub>,a<sub>t</sub>)</span>
+    </div>
+    <div class="fx sm">
+      <span class="zero">↑ 这两项里没有 θ，对 θ 求导 = 0</span>
+    </div>
+    <div class="btn-row">
+      <button class="btn" id="zapBtn" type="button">✕ 对 θ 求导，消掉不含 θ 的项</button>
+      <button class="btn ghost" id="resetBtn" type="button">↺ 复原</button>
+    </div>
+  </div>
+
+  <p>初始状态怎么分布、物体被推之后往哪滚——<strong>这些都不是 θ 说了算的</strong>，
+     所以它们对 θ 的导数干干净净等于 0。剩下的只有策略自己：</p>
+
+  <div class="stage good">
+    <span class="badge">最终形态</span>
+    <div class="fx">
+      ∇J(θ) = E[ <span class="lm">Σ<sub>t</sub> ∇log π<sub>θ</sub>(a<sub>t</sub>|s<sub>t</sub>)</span> ·
+      <span class="sym am" data-t="A(s,a)：优势函数。这个动作比该状态下的平均水平好多少。它是 R(τ) 经过各种方差削减手段之后的替身——RLinf 里 15 种算法的分歧，基本都在这一项上。">A(s,a)</span> ]
+    </div>
+    <div class="cap lm">这就是你在 RLinf-RL原理对比 那页看到的第一行公式</div>
+  </div>
+
+  <div class="analogy">
+    <div class="t">这件事的份量</div>
+    <p>因为物理项被消掉了，<strong>你不需要知道世界怎么运转，也能算出梯度</strong>。
+       这就是 <span class="lm">model-free RL</span> 能存在的原因。
+       一个 log，把"必须先建一个物理模型"这个天坑直接填平了。</p>
+  </div>
+</section>
+
+<section class="act rise">
+  <div class="act-no">05</div>
+  <div class="tag">Act V · 那个 1/π 在偷偷干活</div>
+  <h2>log 自带一台"公平秤"</h2>
+  <p>∇log π = <span class="cy">∇π / π</span>。分母那个 <strong>1/π</strong> 不是装饰，它在解决一个很实际的偏心问题。</p>
+  <p class="big">想一想：某个动作你本来就<em>经常</em>做（π 大），它在 32 条采样里出现 20 次；
+     另一个动作你<em>很少</em>做（π 小），只出现 1 次。
+     如果按出现次数累加，<span class="hot">常做的动作光靠"刷脸次数多"就把梯度占满了</span>——
+     哪怕它其实一般。</p>
+  <p>而 1/π 恰好把"出现次数多"这件事<strong>除掉</strong>：出现得越频繁，每次的权重就越小，
+     乘起来正好抵消。<em>最后决定一个动作被推多用力的，只剩 A——它到底好不好。</em></p>
+
+  <details class="fold">
+    <summary>掀开看具体数字：为什么正好抵消</summary>
+    <div class="in">
+      <p style="font-size:14.5px;color:#c3c9e8;margin:6px 0 4px;">
+        假设某状态下三个动作，采样 100 次。每个动作的总贡献 ≈ 出现次数 × (1/π) × A：</p>
+      <table>
+        <tr><th>动作</th><th>π</th><th>约出现</th><th>1/π</th><th>次数×(1/π)</th><th>A</th><th>总贡献</th></tr>
+        <tr><td>常做的 a₁</td><td>0.80</td><td>80</td><td>1.25</td><td>100</td><td>+0.1</td><td>+10</td></tr>
+        <tr><td>偶尔的 a₂</td><td>0.15</td><td>15</td><td>6.67</td><td>100</td><td>+0.9</td><td>+90</td></tr>
+        <tr><td>罕见的 a₃</td><td>0.05</td><td>5</td><td>20.0</td><td>100</td><td>−0.5</td><td>−50</td></tr>
+        <tr class="tot"><td colspan="4">每个动作的"发言权"都被拉平成 100</td><td>100</td><td></td><td>↑ 只看 A</td></tr>
+      </table>
+      <p style="font-size:14.5px;color:#c3c9e8;margin:8px 0 0;">
+        a₂ 只出现 15 次，但因为 A 高，拿到了最大的推力（+90）。
+        a₁ 出现 80 次却只拿到 +10，<span class="lm">没能靠刷次数赢</span>。这就是 1/π 的作用。</p>
+    </div>
+  </details>
+
+  <div class="duo">
+    <div class="card yes">
+      <div class="h">顺带一个好处</div>
+      <div class="b">乘积 → 求和之后，<strong>连乘的数值下溢也没了</strong>。
+        几百步的概率相乘会小到浮点数表示不出来，取 log 变成加法，稳稳的。
+        这是副作用，不是动机——别把它当成"为什么取 log"的答案。</div>
+    </div>
+    <div class="card yes">
+      <div class="h">为什么代码里是 −A·logπ</div>
+      <div class="b">框架做的是<em>最小化</em> loss，而我们要<em>最大化</em> J，所以取个负号。
+        你在 RLinf 的 loss 里看到 <span class="cy">−A · log π</span>，就是这一行。</div>
+    </div>
+  </div>
+</section>
+
+<section class="act rise">
+  <div class="act-no">06</div>
+  <div class="tag">收尾 · 一句话记住</div>
+  <h2>RL 就是"带权重的模仿学习"</h2>
+  <p>把这个梯度和你熟悉的行为克隆放在一起看，两件事会突然变成同一件事：</p>
+
+  <div class="final">
+    <div class="l1">
+      <span class="dim">模仿学习（BC）</span>&nbsp;&nbsp;
+      L = − log π<sub>θ</sub>(<span class="cy">a<sub>专家</sub></span> | s)
+      <br>
+      <span class="dim">强化学习（PG）</span>&nbsp;&nbsp;
+      L = − <span class="am">A(s,a)</span> · log π<sub>θ</sub>(<span class="lm">a<sub>自己采样的</sub></span> | s)
+    </div>
+    <div class="punch">
+      <span class="g">唯一的区别，是前面多乘了一个 A。</span><br>
+      <span style="font-size:.7em;color:#c3c9e8;font-weight:400;">
+        BC 说"照着这个学"；RL 说"照着这个学，学多用力由 A 定，A 是负的就反着学"。</span>
+    </div>
+  </div>
+
+  <div class="stage" style="margin-top:34px;">
+    <span class="badge">所以，为什么取 log</span>
+    <div class="fx sm" style="text-align:left;white-space:normal;line-height:2.1;">
+      <span class="lm">①</span> 不取 log，式子里没有能采样的概率分布 → <span class="hot">算不出来</span><br>
+      <span class="lm">②</span> ∇P/P 这个必须造出来的形状，<strong>恰好就是</strong> ∇log P<br>
+      <span class="lm">③</span> 白送：乘积变求和，环境的物理项梯度为 0 → <span class="cy">model-free</span><br>
+      <span class="lm">④</span> 白送：1/π 抵消采样频率 → 只按 A 的好坏分配推力
+    </div>
+  </div>
+</section>
+
+<footer>
+  <span>为什么要取 log · 策略梯度的一行魔术</span>
+  <span>回到 <a href="RLinf-RL原理对比.html">RLinf RL 原理视角对比</a> ·
+        <a href="index.html">知识库首页</a></span>
+</footer>
+
+<script>
+(function(){
+  /* 点掉不含 θ 的项 */
+  var zap = document.getElementById('zapBtn'),
+      rst = document.getElementById('resetBtn'),
+      st  = document.getElementById('cancelStage');
+  if (zap && st) {
+    var vs = st.querySelectorAll('.vanish'),
+        kp = st.querySelectorAll('.keep'),
+        zr = st.querySelector('.zero');
+    zap.addEventListener('click', function(){
+      for (var i=0;i<vs.length;i++) vs[i].classList.add('gone');
+      for (var j=0;j<kp.length;j++) kp[j].classList.add('hi');
+      if (zr) zr.classList.add('show');
+    });
+    if (rst) rst.addEventListener('click', function(){
+      for (var i=0;i<vs.length;i++) vs[i].classList.remove('gone');
+      for (var j=0;j<kp.length;j++) kp[j].classList.remove('hi');
+      if (zr) zr.classList.remove('show');
+    });
+  }
+
+  /* 触屏也能看符号释义：点一下切换 */
+  var syms = document.querySelectorAll('.sym');
+  for (var i=0;i<syms.length;i++) {
+    syms[i].setAttribute('tabindex','0');
+    syms[i].addEventListener('click', function(e){
+      var on = this.classList.contains('lit');
+      for (var k=0;k<syms.length;k++) syms[k].classList.remove('lit');
+      if (!on) this.classList.add('lit');
+      e.stopPropagation();
+    });
+  }
+  document.addEventListener('click', function(){
+    for (var k=0;k<syms.length;k++) syms[k].classList.remove('lit');
+  });
+
+  /* 滚动淡入 */
+  var rise = document.querySelectorAll('.rise');
+  if ('IntersectionObserver' in window) {
+    var io = new IntersectionObserver(function(es){
+      es.forEach(function(en){ if (en.isIntersecting){ en.target.classList.add('in'); io.unobserve(en.target); } });
+    }, { threshold:.08, rootMargin:'0px 0px -8% 0px' });
+    for (var r=0;r<rise.length;r++) io.observe(rise[r]);
+  } else {
+    for (var r2=0;r2<rise.length;r2++) rise[r2].classList.add('in');
+  }
+})();
+</script>
+</div>
+<script src="nav.js"></script>
+</body>
+</html>

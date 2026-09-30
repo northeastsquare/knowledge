@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>主干 A 与主干 B —— 两台机器的拆机手册</title>
+<meta name="description" content="把 RLinf 原理页里的两条理论主干彻底拆开：策略梯度是一台「调概率」的机器，Bellman 是一台「标价目表」的机器。含三个可动手的小实验。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Long+Cang&family=Noto+Sans+SC:wght@400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#e6ddc6;
+    --card:#fbf7ea;
+    --card-2:#f2ecd9;
+    --ink:#15130d;
+    --ink-2:#4d4739;
+    --ink-3:#847c68;
+    --red:#c02a1c;
+    --blue:#1d4e89;
+    --yellow:#f5c400;
+    --green:#2c6b40;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"Noto Sans SC",-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+    font-size:16.5px; line-height:1.85; -webkit-font-smoothing:antialiased;
+    background-image:
+      radial-gradient(rgba(21,19,13,.13) 1px, transparent 1.2px),
+      radial-gradient(rgba(21,19,13,.055) 1px, transparent 1.2px);
+    background-size:22px 22px, 22px 22px;
+    background-position:0 0, 11px 11px;
+  }
+  .wrap{max-width:1000px; margin:0 auto; padding:0 20px 130px;}
+
+  /* ---------- 通用零件 ---------- */
+  .mono{font-family:"Space Mono",ui-monospace,Consolas,monospace;}
+  .hand{font-family:"Long Cang","Noto Sans SC",cursive; font-size:1.42em; line-height:1.5; color:var(--red);}
+  .sheet{
+    background:var(--card); border:3px solid var(--ink);
+    box-shadow:9px 9px 0 var(--ink); padding:26px 26px 30px; margin:0 0 42px; position:relative;
+  }
+  .sheet.tilt{transform:rotate(-.35deg);}
+  .sheet.tilt2{transform:rotate(.28deg);}
+  .tape{
+    height:16px; border:2px solid var(--ink); margin:0 0 -3px;
+    background:repeating-linear-gradient(45deg,var(--yellow) 0 11px,var(--ink) 11px 22px);
+  }
+  .plate{
+    display:inline-block; background:var(--ink); color:var(--card);
+    font-family:"Space Mono",monospace; font-size:12px; font-weight:700;
+    letter-spacing:.22em; text-transform:uppercase; padding:5px 12px;
+    margin:0 0 14px; transform:rotate(-.8deg);
+  }
+  h1,h2,h3{margin:0; letter-spacing:-.01em;}
+  h2{font-size:clamp(21px,3.6vw,29px); font-weight:900; line-height:1.25; margin:0 0 6px;}
+  h3{font-size:17.5px; font-weight:700; margin:26px 0 8px;}
+  p{margin:0 0 14px;}
+  strong{font-weight:900;}
+  em{font-style:normal; font-weight:700; background:linear-gradient(transparent 62%,rgba(245,196,0,.65) 62%);}
+  a{color:var(--blue); text-decoration:none; border-bottom:2px solid rgba(29,78,137,.35); font-weight:700;}
+  a:hover{background:rgba(29,78,137,.1);}
+  code{font-family:"Space Mono",monospace; font-size:.9em; background:var(--card-2); border:1px solid rgba(21,19,13,.22); padding:0 5px; border-radius:3px;}
+  .lead{font-size:17.5px; color:var(--ink-2);}
+  .sub{color:var(--ink-3); font-size:14.5px;}
+  /* ---------- 封面 ---------- */
+  .cover{padding:56px 0 10px; position:relative;}
+  .cover .barcode{
+    font-family:"Space Mono",monospace; font-size:11px; letter-spacing:.3em;
+    color:var(--ink-3); border-top:2px solid var(--ink); border-bottom:2px solid var(--ink);
+    padding:4px 0; display:inline-block; margin-bottom:22px;
+  }
+  .cover h1{font-size:clamp(32px,7vw,66px); font-weight:900; line-height:1.02; margin:0 0 8px;}
+  .cover h1 .sm{display:block; font-size:.42em; font-weight:700; letter-spacing:.06em; color:var(--ink-2); margin-bottom:10px;}
+  .cover .slug{max-width:620px; font-size:17.5px; color:var(--ink-2); margin:18px 0 0;}
+  .stamp{
+    position:absolute; right:6px; top:44px; transform:rotate(-13deg);
+    border:3px double var(--red); color:var(--red); padding:8px 14px 6px;
+    font-family:"Space Mono",monospace; font-size:12.5px; font-weight:700; line-height:1.35;
+    letter-spacing:.1em; text-align:center; opacity:.82;
+  }
+  .stamp b{display:block; font-size:16px; letter-spacing:.16em;}
+  @media(max-width:700px){ .stamp{position:static; display:inline-block; margin-top:20px; right:auto; top:auto;} }
+
+  /* ---------- 公式台 ---------- */
+  .fml{
+    font-family:"Space Mono",monospace; font-size:14.5px; line-height:2.05;
+    background:var(--card-2); border:2.5px solid var(--ink); border-left:9px solid var(--ink);
+    padding:14px 16px; margin:16px 0; overflow-x:auto; white-space:pre; font-variant-numeric:tabular-nums;
+  }
+  .fml .c{color:var(--ink-3);}
+  .fml .r{color:var(--red); font-weight:700;}
+  .fml .b{color:var(--blue); font-weight:700;}
+  .fml .g{color:var(--green); font-weight:700;}
+  .fml .box{border:2px solid var(--red); padding:1px 5px;}
+  .big{font-size:clamp(15px,2.9vw,20px); text-align:center; white-space:nowrap;}
+
+  /* ---------- 批注 ---------- */
+  .note{
+    border-left:4px solid var(--red); background:rgba(192,42,28,.06);
+    padding:10px 14px; margin:16px 0;
+  }
+  .note .hand{display:block;}
+  .aside{
+    border:2px dashed var(--ink-3); padding:12px 15px; margin:18px 0;
+    font-size:15px; color:var(--ink-2); background:rgba(255,255,255,.4);
+  }
+  .aside b{color:var(--ink);}
+  /* ---------- 两台机器：并排铭牌 ---------- */
+  .rail{display:grid; grid-template-columns:1fr 1fr; gap:0; margin:26px 0 8px; border:3px solid var(--ink); background:var(--card);}
+  .rail > div{padding:18px 18px 20px;}
+  .rail .A{border-right:3px solid var(--ink); background:rgba(29,78,137,.07);}
+  .rail .B{background:rgba(192,42,28,.06);}
+  .rail h4{margin:0 0 6px; font-size:16.5px; font-weight:900;}
+  .rail .A h4{color:var(--blue);} .rail .B h4{color:var(--red);}
+  .rail .tagline{font-family:"Space Mono",monospace; font-size:11.5px; letter-spacing:.16em; text-transform:uppercase; color:var(--ink-3); margin-bottom:10px;}
+  .rail ul{margin:10px 0 0; padding-left:19px; font-size:14.5px; color:var(--ink-2);}
+  .rail li{margin-bottom:6px;}
+  @media(max-width:700px){ .rail{grid-template-columns:1fr;} .rail .A{border-right:none; border-bottom:3px solid var(--ink);} }
+
+  /* ---------- 流程图（纯 CSS 方块） ---------- */
+  .flow{display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin:18px 0 6px; font-size:13.5px;}
+  .node{
+    border:2.5px solid var(--ink); background:var(--card-2); padding:8px 12px;
+    font-family:"Space Mono",monospace; font-size:12.5px; box-shadow:3px 3px 0 var(--ink); white-space:nowrap;
+  }
+  .node.hi{background:var(--yellow);}
+  .node.dark{background:var(--ink); color:var(--card); box-shadow:3px 3px 0 var(--ink-3);}
+  .arrow{font-family:"Space Mono",monospace; font-weight:700; color:var(--ink-3);}
+
+  /* ---------- 实验台 ---------- */
+  .lab{border:3px solid var(--ink); background:var(--card-2); margin:24px 0; box-shadow:6px 6px 0 var(--ink);}
+  .lab-head{
+    background:var(--ink); color:var(--card); padding:8px 14px;
+    font-family:"Space Mono",monospace; font-size:12px; letter-spacing:.18em; text-transform:uppercase;
+    display:flex; justify-content:space-between; gap:10px; align-items:center;
+  }
+  .lab-body{padding:16px 16px 20px;}
+  button{
+    font-family:"Space Mono",monospace; font-size:13px; font-weight:700; letter-spacing:.06em;
+    background:var(--yellow); color:var(--ink); border:2.5px solid var(--ink);
+    padding:8px 15px; cursor:pointer; box-shadow:4px 4px 0 var(--ink); transition:transform .06s, box-shadow .06s;
+  }
+  button:hover{background:#ffd633;}
+  button:active{transform:translate(4px,4px); box-shadow:0 0 0 var(--ink);}
+  button.ghost{background:var(--card); }
+  .ctrl{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-top:14px;}
+  .readout{font-family:"Space Mono",monospace; font-size:13px; color:var(--ink-2); font-variant-numeric:tabular-nums;}
+  .readout b{color:var(--red); font-size:15px;}
+
+  /* 柱状图 */
+  .bars{display:flex; align-items:flex-end; gap:12px; height:170px; padding:0 4px; border-bottom:3px solid var(--ink); position:relative;}
+  .bars .zero{position:absolute; left:0; right:0; bottom:85px; border-top:2px dashed var(--ink-3);}
+  .bcol{flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; position:relative;}
+  .bfill{width:100%; border:2.5px solid var(--ink); background:var(--card); transition:height .25s ease, background .25s;}
+  .bcol.max .bfill{background:var(--red);}
+  .bval{font-family:"Space Mono",monospace; font-size:12px; font-variant-numeric:tabular-nums; margin-bottom:3px;}
+  .blab{font-family:"Space Mono",monospace; font-size:11.5px; color:var(--ink-3); margin-top:6px;}
+  /* 走廊格子（Bellman 传播） */
+  .corridor{display:flex; gap:0; margin:6px 0 4px; border:3px solid var(--ink); overflow-x:auto;}
+  .cell{
+    flex:1; min-width:82px; border-right:3px solid var(--ink); padding:10px 6px;
+    text-align:center; background:var(--card); transition:background .3s;
+  }
+  .cell:last-child{border-right:none;}
+  .cell.goal{background:rgba(44,107,64,.16);}
+  .cell.justmoved{background:var(--yellow);}
+  .cell .cn{font-family:"Space Mono",monospace; font-size:11.5px; color:var(--ink-3); letter-spacing:.08em;}
+  .cell .cv{font-family:"Space Mono",monospace; font-size:19px; font-weight:700; font-variant-numeric:tabular-nums;}
+  .cell .cr{font-size:11.5px; color:var(--green); font-weight:700;}
+
+  /* 滑块（baseline 实验） */
+  input[type=range]{width:100%; accent-color:var(--red); height:26px;}
+  .slrow{display:grid; grid-template-columns:78px 1fr; gap:10px; align-items:center; margin-top:12px;}
+  .push{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-top:14px;}
+  .pcard{border:2.5px solid var(--ink); background:var(--card); padding:10px 11px; box-shadow:3px 3px 0 var(--ink);}
+  .pcard .pn{font-family:"Space Mono",monospace; font-size:11.5px; color:var(--ink-3);}
+  .pcard .pr{font-family:"Space Mono",monospace; font-size:13px; margin:2px 0 6px;}
+  .pcard .pa{font-family:"Space Mono",monospace; font-size:15px; font-weight:700;}
+  .pcard .pd{font-size:13px; font-weight:700; margin-top:4px;}
+  .up{color:var(--green);} .down{color:var(--red);} .flat{color:var(--ink-3);}
+  .pbar{height:10px; border:2px solid var(--ink); margin-top:7px; background:var(--card-2); position:relative; overflow:hidden;}
+  .pbar i{position:absolute; top:0; bottom:0; left:50%; background:var(--green); transition:width .18s, left .18s, background .18s;}
+
+  /* ---------- 表格 ---------- */
+  .tbl-wrap{overflow-x:auto; border:3px solid var(--ink); box-shadow:6px 6px 0 var(--ink); background:var(--card);}
+  table{width:100%; border-collapse:collapse; font-size:14px; min-width:640px;}
+  th,td{padding:10px 12px; text-align:left; border-bottom:2px solid rgba(21,19,13,.18); vertical-align:top;}
+  th{background:var(--ink); color:var(--card); font-family:"Space Mono",monospace; font-size:11.5px; letter-spacing:.1em; text-transform:uppercase;}
+  td:first-child{font-family:"Space Mono",monospace; font-size:12.5px; color:var(--ink-3); white-space:nowrap;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:nth-child(even){background:rgba(21,19,13,.035);}
+  .cA{color:var(--blue); font-weight:700;} .cB{color:var(--red); font-weight:700;}
+
+  /* ---------- 清单 ---------- */
+  .check{list-style:none; margin:0; padding:0;}
+  .check li{padding:11px 0 11px 34px; border-top:2px solid rgba(21,19,13,.15); position:relative; font-size:15px;}
+  .check li:first-child{border-top:none;}
+  .check li::before{
+    content:"□"; position:absolute; left:2px; top:9px;
+    font-family:"Space Mono",monospace; font-size:19px; color:var(--red);
+  }
+  footer{
+    border-top:3px solid var(--ink); margin-top:46px; padding-top:16px;
+    display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;
+    font-family:"Space Mono",monospace; font-size:12.5px; color:var(--ink-3);
+  }
+  @media(max-width:700px){
+    .push{grid-template-columns:1fr;}
+    .sheet{padding:20px 16px 24px; box-shadow:6px 6px 0 var(--ink);}
+    .bars{height:150px;}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ==================== 封面 ==================== -->
+  <section class="cover">
+    <div class="barcode">|| |||| | ||| |||| || &nbsp;RLINF / TEARDOWN / 002</div>
+    <div class="stamp">拆机手册<b>A vs B</b>内部资料</div>
+    <h1><span class="sm">原理页里那两条「主干」，到底是什么</span>两台机器<br>拆开看</h1>
+    <p class="slug">原理对比页开头说：<em>所有 on-policy 方法来自策略梯度定理，所有 off-policy / 离线方法来自 Bellman 方程</em>。这句话是整张图的分水岭，但它把两台构造完全不同的机器压缩成了一行字。这一页把它们拆开摆在台面上 —— 每台机器解决什么问题、靠什么零件转动、哪里必然会坏。</p>
+  </section>
+
+  <!-- ==================== 0. 同一个问题 ==================== -->
+  <div class="tape"></div>
+  <section class="sheet tilt">
+    <span class="plate">§0 · 拆之前：它们在抢同一份工作</span>
+    <h2>两台机器的输入输出完全一样</h2>
+    <p class="lead">不管哪条主干，最终交付的产品都只有一个：<em>一个策略 π —— 看到状态 s，输出该做什么动作 a</em>，使长期回报最大。区别在于「怎么造出这个 π」。</p>
+
+    <div class="flow">
+      <span class="node">状态 s<br><span class="sub">图像+关节角</span></span>
+      <span class="arrow">──→</span>
+      <span class="node dark">策略 π</span>
+      <span class="arrow">──→</span>
+      <span class="node">动作 a</span>
+      <span class="arrow">──→</span>
+      <span class="node">奖励 r + 新状态 s'</span>
+      <span class="arrow">↺</span>
+    </div>
+    <p class="sub" style="margin-top:12px">这个循环转到底，拿到的总回报是 R = r₀ + γr₁ + γ²r₂ + …（γ&lt;1，越远的奖励折价越多）。两条主干都想把 R 的期望做大。</p>
+
+    <div class="rail">
+      <div class="A">
+        <div class="tagline">Trunk A</div>
+        <h4>造法一：直接拧概率</h4>
+        <p style="margin:0 0 4px">不评价世界，只<strong>盯住自己的输出分布</strong>。哪个动作事后看还不错，就把它的概率往上拧一点；哪个差，往下拧。</p>
+        <p class="hand">我不知道世界值多少钱，<br>我只知道这次干得比平均好，那就多干。</p>
+        <ul>
+          <li>零件：一个可微的 π_θ</li>
+          <li>核心问题：<strong>拧多大力</strong>（= 优势 A 怎么估）</li>
+          <li>产物：PPO / GRPO / DAPO / Reinforce++</li>
+        </ul>
+      </div>
+      <div class="B">
+        <div class="tagline">Trunk B</div>
+        <h4>造法二：先标一张价目表</h4>
+        <p style="margin:0 0 4px">不碰概率，先<strong>给每个「状态+动作」标价</strong>：在 s 做 a，往后总共能赚多少。表标好了，策略就是查表挑最贵的。</p>
+        <p class="hand">策略是价目表的副产品，<br>我真正在学的是那张表。</p>
+        <ul>
+          <li>零件：一个 Q(s,a) 估值网络（critic）</li>
+          <li>核心问题：<strong>表会虚高</strong>（= 那个 max 的祸）</li>
+          <li>产物：SAC / CrossQ / RLPD / DSRL / IQL</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+  <!-- ==================== 1. 主干 A ==================== -->
+  <div class="tape"></div>
+  <section class="sheet tilt2">
+    <span class="plate">§1 · 主干 A · 策略梯度定理</span>
+    <h2>一台「拧概率」的机器</h2>
+    <p class="lead">目标写出来很朴素：<code>J(θ) = E[总回报]</code>，想让它变大，就沿梯度 ∇J(θ) 走。麻烦在于——<em>回报是「采样」出来的，而采样这一步没法直接求导</em>。策略梯度定理就是绕过这一步的那个结论：</p>
+
+    <div class="fml big">∇J(θ) = E[ <span class="b">∇log π_θ(a|s)</span> · <span class="r">A(s,a)</span> ]</div>
+
+    <p>整台机器只有两个零件，而且分工极其干净：</p>
+
+    <div class="rail">
+      <div class="A">
+        <div class="tagline">零件 1 · 方向盘</div>
+        <h4>∇log π_θ(a|s)</h4>
+        <p style="margin:0">「要让这个动作 a 的概率变大，参数该往哪边挪」——这是一个纯数学问题，<strong>自动微分白给</strong>，不需要任何设计。它只管<em>方向</em>，不管该不该走。</p>
+      </div>
+      <div class="B">
+        <div class="tagline">零件 2 · 油门/刹车</div>
+        <h4>A(s,a) · 优势</h4>
+        <p style="margin:0">一个标量。<strong>正</strong>就顺着方向盘踩油门（概率调高），<strong>负</strong>就反向踩（概率调低），<strong>绝对值</strong>是踩多深。它是<em>唯一需要猜的东西</em>，所有算法的差别都在这。</p>
+      </div>
+    </div>
+
+    <div class="note">
+      <span class="hand">看懂这一行，主干 A 就通了：</span>
+      <p style="margin:6px 0 0">梯度 = <b>方向（送来的）</b> × <b>力度（要自己估的）</b>。所以 PPO / GRPO / DAPO / Reinforce++ 这些名字，<strong>全都不是不同的理论，只是同一台机器上换了「力度表」的不同型号</strong>。</p>
+    </div>
+
+    <h3>力度为什么不能直接用「总回报 R」？</h3>
+    <p>最原始的想法（REINFORCE）就是拿 R 当力度。问题用三个数就能看出来。假设某状态下三个动作，跑完拿到的回报分别是 10、11、12：</p>
+    <div class="fml">用 R 当力度:   a₁ ← +10 踩油门    a₂ ← +11 踩油门    a₃ ← +12 踩油门
+              <span class="c">三个动作的概率<span class="r">全都被推高</span> —— 可它们的概率加起来必须是 1！</span>
+              <span class="c">最后只靠 10/11/12 的细微差别分出胜负，学得极慢、抖得极凶。</span>
+
+减掉平均 11:   a₁ ← <span class="r">−1 刹车</span>       a₂ ←  0 不动       a₃ ← <span class="g">+1 油门</span>
+              <span class="c">「比平均好多少」才是有效信号。这就是<span class="b">优势 A</span>，减掉的那个数叫 baseline。</span></div>
+    <p>关键性质：<strong>减 baseline 不改变梯度的期望（无偏），只减小方差</strong>。所以它是纯白赚的。整条主干 A 的全部工程量，就是「baseline / 优势用什么算」：</p>
+    <div class="fml">PPO        → 养一个 critic 学 V(s)，用 GAE 算 A        <span class="c">准，但要多一个几十亿参数的网络</span>
+GRPO       → 同一状态采一组，用<span class="b">组内均值</span>当 baseline    <span class="c">省掉 critic，但要求能重复采样</span>
+Reinforce++→ 回报里再减掉 KL 累积，然后全局归一化      <span class="c">不裁剪，方差更大</span>
+OPD        → 直接用 <span class="b">teacher 的 logprob 之差</span>当 A         <span class="c">连奖励都不要了</span>
+STEAM      → 从演示的<span class="b">时间顺序</span>自监督出 A               <span class="c">连奖励都不存在</span></div>
+
+    <!-- 实验 1 -->
+    <div class="lab">
+      <div class="lab-head"><span>实验 1 · baseline 怎么把「全都推高」掰成「有升有降」</span><span class="mono">拖动 →</span></div>
+      <div class="lab-body">
+        <p style="margin:0 0 4px; font-size:14.5px">三个动作，回报固定为 10 / 11 / 12。拖动 baseline，看每个动作被<strong>推</strong>还是被<strong>拉</strong>：</p>
+        <div class="slrow">
+          <span class="readout">b = <b id="bval">0.0</b></span>
+          <input type="range" id="bslide" min="0" max="15" step="0.5" value="0">
+        </div>
+        <div class="push" id="pushrow"></div>
+        <p class="readout" id="bmsg" style="margin-top:14px"></p>
+      </div>
+    </div>
+
+    <h3>这台机器有两个死穴</h3>
+    <div class="aside">
+      <p style="margin:0 0 8px"><b>死穴 1 · 数据用一次就废（on-policy）。</b>那个期望 E[·] 是<strong>在当前策略 π_θ 下</strong>取的。策略一更新，旧数据就来自「另一个策略」，统计上不再算数。所以每批 rollout 只能训一两步就得扔——样本效率的天花板就在这里。裁剪（PPO）、KL 惩罚都是在回答同一个问题：<em>在数据还没完全作废之前，最多能走多远</em>。</p>
+      <p style="margin:0"><b>死穴 2 · 必须能算出 log π。</b>高斯策略白给。但流匹配 / 扩散策略是「噪声→动作」的确定性 ODE，<strong>log π 根本写不出来</strong>。主干 A 直接卡死——这就是原理页里家族 ③（SAC-Flow / DSRL / πRL）存在的全部理由。</p>
+    </div>
+  </section>
+  <!-- ==================== 2. 主干 B ==================== -->
+  <div class="tape"></div>
+  <section class="sheet tilt">
+    <span class="plate">§2 · 主干 B · Bellman 方程</span>
+    <h2>一台「标价目表」的机器</h2>
+    <p class="lead">这台机器<em>完全不走梯度上升</em>。它先学一张价目表 Q(s,a)：在状态 s 下做动作 a，往后一共能赚多少。表准了，策略就免费了——<strong>查表，挑最贵的那个动作</strong>。</p>
+
+    <div class="flow">
+      <span class="node">经验 (s,a,r,s')</span>
+      <span class="arrow">──→</span>
+      <span class="node hi">拟合价目表 Q</span>
+      <span class="arrow">──→</span>
+      <span class="node dark">π = argmax Q</span>
+    </div>
+
+    <h3>价目表必须自己跟自己对得上</h3>
+    <p>怎么学这张表？不需要跑完整条轨迹。因为一张<strong>正确</strong>的价目表必然满足一条自洽条件——今天的价，等于今天的钱加上明天最好的价（打个折）：</p>
+    <div class="fml big">Q(s,a) = r + γ · <span class="r">max</span><sub>a'</sub> Q(s', a')</div>
+    <p>于是训练方式变成：<em>把右边算出来当「标准答案」，让左边去拟合它</em>。反复迭代直到不动为止（不动点迭代）。这个「用自己算出的答案训练自己」的把戏叫 <strong>bootstrapping</strong>，是主干 B 的心脏。</p>
+
+    <!-- 实验 2 -->
+    <div class="lab">
+      <div class="lab-head"><span>实验 2 · 价值是怎么一格一格「渗」回来的</span><span class="mono">bootstrapping</span></div>
+      <div class="lab-body">
+        <p style="margin:0 0 10px; font-size:14.5px">五格走廊，只有走到最右边才给 +1 奖励，γ=0.9。全表从 0 开始，每点一次做一轮 Bellman 更新：</p>
+        <div class="corridor" id="corr"></div>
+        <div class="ctrl">
+          <button id="citer">迭代一轮 ▸</button>
+          <button class="ghost" id="creset">复位</button>
+          <span class="readout">已迭代 <b id="cn">0</b> 轮</span>
+        </div>
+        <p class="readout" id="cmsg" style="margin-top:12px">奖励只在最右边。第一轮只有它的邻居学到东西。</p>
+      </div>
+    </div>
+    <div class="note">
+      <span class="hand">这个动画解释了一件事：</span>
+      <p style="margin:6px 0 0">信息是<strong>每轮只往回传一格</strong>的。所以主干 B 的「收敛慢」不是玄学，而是结构性的。也正因如此，CrossQ 才会说 <em>target 网络虽然稳，但它人为延迟了价值传播，是样本效率的隐形税</em>——它拖慢的就是这个渗透过程。</p>
+    </div>
+
+    <h3>回报：数据可以永久复用</h3>
+    <p>看那条自洽式子的右边：<code>r + γ max Q(s',a')</code>。它只用到 <strong>(s, a, r, s')</strong> —— <em>完全不在乎这条经验是谁采的</em>。</p>
+    <div class="fml">主干 A: E[...] 必须在<span class="b">当前 π</span>下取  →  换了策略，旧数据作废   <span class="c">on-policy</span>
+主干 B: 自洽条件<span class="r">与采集者无关</span>       →  旧数据永远有效，塞进 replay buffer 反复用  <span class="c">off-policy</span></div>
+    <p>这就是样本效率差一个量级的来源，也是真机实验几乎只能走主干 B 的原因：<strong>你没有一亿次试错的预算</strong>。顺带还能直接吃别人采的数据（离线数据集、人类演示）。</p>
+
+    <h3>代价：那个 max 是万恶之源</h3>
+    <p>表是<strong>估</strong>出来的，必然带噪声。而 <code>max</code> 干的事情是——<em>在一堆带噪的数字里挑最大的那个</em>。它不是在挑最好的动作，它是在<strong>挑运气最好的误差</strong>。</p>
+
+    <!-- 实验 3 -->
+    <div class="lab">
+      <div class="lab-head"><span>实验 3 · max 如何无中生有地造出乐观</span><span class="mono">overestimation</span></div>
+      <div class="lab-body">
+        <p style="margin:0 0 10px; font-size:14.5px">四个动作的<strong>真实</strong>价值都是 <code>0</code>。网络每次估的时候各自带一点随机噪声。<code>max</code> 会挑中红色那根：</p>
+        <div class="bars" id="bars"><div class="zero"></div></div>
+        <div class="ctrl">
+          <button id="resample">重新估一次 ⟳</button>
+          <button class="ghost" id="run50">连续 50 次 ⏩</button>
+          <button class="ghost" id="breset">清空统计</button>
+        </div>
+        <p class="readout" style="margin-top:12px">
+          采样 <b id="n_s">0</b> 次 ·
+          四个数的平均 ≈ <b id="m_all">0.00</b>（真值 0，没毛病）·
+          <span style="color:var(--red)">max 的平均 ≈ <b id="m_max">0.00</b></span>（真值也该是 0！）
+        </p>
+        <p class="readout" id="bias_msg" style="margin-top:6px"></p>
+      </div>
+    </div>
+
+    <div class="aside">
+      <p style="margin:0 0 8px"><b>这个偏差不会自己抵消，它会复利。</b>虚高的 Q(s',a') 被当成「标准答案」写回 Q(s,a)，下一轮又被 max 挑中、再虚高一层。误差沿着 Bellman 迭代<strong>系统性放大</strong>，最后价值爆炸、策略去追一个根本不存在的高分动作。</p>
+      <p style="margin:0">纯离线时更惨：max 会去问「数据里从没出现过的动作」值多少，而网络对这些动作的输出<strong>纯属幻觉，且幻觉一定偏高</strong>（不高就不会被 max 选中）。没有环境交互能来打假。</p>
+    </div>
+
+    <h3>于是有了一整排「反乐观」补丁</h3>
+    <div class="fml">SAC    → 双 Q <span class="r">取小</span>            <span class="c">故意制造负偏差，对冲正偏差</span>
+SAC    → target 网络缓慢跟随    <span class="c">切断「自己的误差立刻喂给自己」的回路</span>
+SAC    → 加熵项把 max 变「软」   <span class="c">最优策略从尖峰变成玻尔兹曼分布</span>
+RLPD   → critic 上加 LayerNorm  <span class="c">限制网络在没见过的动作上输出任意大的值</span>
+STEAM  → 集成取 <span class="r">worst-of-N</span>        <span class="c">和双 Q 取小是同一个思想</span>
+IQL    → <span class="r">干脆不取 max</span>            <span class="c">用期望回归逼近高分位，全程不问 OOD 动作</span></div>
+    <p class="sub">原理页里那句「家族 ② 和 ⑤ 的所有花招，本质都是在跟这个 max 搏斗」，说的就是上面这六行。</p>
+  </section>
+  <!-- ==================== 3. 对照 ==================== -->
+  <div class="tape"></div>
+  <section class="sheet tilt2">
+    <span class="plate">§3 · 并排对照</span>
+    <h2>分水岭在哪一刀切下去</h2>
+    <p class="lead">同一列上下对读，就能看出两台机器为什么长成完全不同的样子。</p>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>对比项</th><th class="cA">主干 A · 策略梯度</th><th class="cB">主干 B · Bellman</th></tr></thead>
+        <tbody>
+          <tr><td>学的是什么</td><td>直接学策略 π_θ 的参数</td><td>学价值表 Q，策略是副产品</td></tr>
+          <tr><td>数学工具</td><td>梯度上升（往上爬）</td><td>不动点迭代（反复自洽）</td></tr>
+          <tr><td>核心公式</td><td>∇J = E[∇log π · A]</td><td>Q = r + γ max Q'</td></tr>
+          <tr><td>要自己设计的</td><td><strong>优势 A 怎么估</strong></td><td><strong>怎么防 max 虚高</strong></td></tr>
+          <tr><td>数据能否复用</td><td>不能。策略一变旧数据作废</td><td><strong>能，永久复用</strong>（replay buffer）</td></tr>
+          <tr><td>样本效率</td><td>低（靠仿真器堆数量）</td><td>高一个量级（真机可行）</td></tr>
+          <tr><td>要不要 critic</td><td>PPO 要；GRPO 用组内均值省掉</td><td>必须要，critic 就是主体</td></tr>
+          <tr><td>要不要 log π</td><td><strong>必须</strong>（扩散策略直接卡死）</td><td>需要（最大熵版本里的 −α log π）</td></tr>
+          <tr><td>探索从哪来</td><td>策略自身的随机性</td><td>熵项显式奖励探索</td></tr>
+          <tr><td>典型坏法</td><td>方差大、熵坍缩、步子迈太大崩掉</td><td>价值高估 → 价值爆炸</td></tr>
+          <tr><td>代表算法</td><td>PPO · GRPO · DAPO · Reinforce++ · πRL</td><td>SAC · CrossQ · RLPD · DSRL · IQL</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>原理页那五个家族，各自在补哪个洞</h3>
+    <div class="fml">① on-policy          主干 A  →  补「<span class="b">A 怎么估 + 能走多远</span>」        PPO/GRPO/DAPO/R++
+② off-policy 最大熵   主干 B  →  补「<span class="r">max 会虚高</span>」                SAC/CrossQ/RLPD
+③ 流 / 噪声空间       A 和 B  →  补「<span class="g">log π 算不出来</span>」           SAC-Flow/DSRL/πRL
+④ 表示与蒸馏         主干 A  →  换掉「<span class="b">A 的来源</span>」本身            RLT / OPD
+⑤ 离线              主干 B  →  补「<span class="r">没有环境能来打假</span>」          IQL/RECAP/STEAM</div>
+    <p>换句话说：<em>家族 ① 和 ④ 是主干 A 的后代，② 和 ⑤ 是主干 B 的后代，③ 是为了让扩散策略能接上这两条主干而造的转接头</em>。原理页 15 行表格，就是这五个分支的展开。</p>
+  </section>
+
+  <!-- ==================== 4. 速认 ==================== -->
+  <div class="tape"></div>
+  <section class="sheet tilt">
+    <span class="plate">§4 · 现场速认</span>
+    <h2>看到一个新算法，三秒判断它姓 A 还是姓 B</h2>
+    <ul class="check">
+      <li>论文里出现 <code>clip</code>、<code>KL</code>、<code>ratio r = π_new/π_old</code> → <span class="cA">主干 A</span>。它正在操心「步子别迈太大」。</li>
+      <li>出现 <code>replay buffer</code>、<code>target network</code>、<code>双 Q 取小</code>、<code>UTD</code> → <span class="cB">主干 B</span>。它正在操心「表别虚高」。</li>
+      <li>出现 <code>GAE</code>、<code>baseline</code>、<code>组内归一化</code> → <span class="cA">主干 A</span>，而且在改力度表。</li>
+      <li>出现 <code>α log π</code>（熵项）→ <span class="cB">主干 B</span> 的最大熵分支，顺带把探索内建进目标。</li>
+      <li>号称「不需要 critic」→ 几乎一定是 <span class="cA">主干 A</span>，并且用了某种便宜 baseline 顶替 V(s)。</li>
+      <li>号称「能用离线数据 / 真机样本效率高」→ <span class="cB">主干 B</span>，接着去找它防高估的那一招。</li>
+      <li>主角是扩散 / 流匹配策略 → 先去看它<strong>怎么处理 log π</strong>（构造出来？还是换空间绕开？），再判断它挂在哪条主干上。</li>
+    </ul>
+
+    <div class="note" style="margin-top:22px">
+      <span class="hand">整页压成三句话：</span>
+      <p style="margin:6px 0 0"><strong>主干 A</strong> 是拧概率的机器，方向白给，全部难点在「这次该拧多大力」——代价是数据用一次就废。<br>
+      <strong>主干 B</strong> 是标价目表的机器，表一准策略就白给，数据能永久复用——代价是表里那个 max 会自己把自己吹起来。<br>
+      你在 RLinf 里看到的 15 个算法，没有第三条路，全是这两台机器换零件。</p>
+    </div>
+  </section>
+
+  <footer>
+    <span>TEARDOWN 002 · 主干 A / 主干 B</span>
+    <span><a href="RLinf-RL原理对比.html">← 回到原理视角对比</a> &nbsp;·&nbsp; <a href="为什么取log.html">为什么要取 log →</a></span>
+  </footer>
+</div>
+<script>
+/* ========== 实验 1 · baseline 把「全推高」掰成「有升有降」 ========== */
+(function(){
+  var R = [10, 11, 12], NAMES = ['a₁', 'a₂', 'a₃'];
+  var row = document.getElementById('pushrow');
+  var slide = document.getElementById('bslide');
+  var out = document.getElementById('bval');
+  var msg = document.getElementById('bmsg');
+
+  row.innerHTML = R.map(function(r, i){
+    return '<div class="pcard">' +
+      '<div class="pn">动作 ' + NAMES[i] + '</div>' +
+      '<div class="pr">回报 R = ' + r + '</div>' +
+      '<div class="pa">A = <span id="pa' + i + '">—</span></div>' +
+      '<div class="pd" id="pd' + i + '">—</div>' +
+      '<div class="pbar"><i id="pi' + i + '"></i></div>' +
+    '</div>';
+  }).join('');
+
+  function render(){
+    var b = parseFloat(slide.value);
+    out.textContent = b.toFixed(1);
+    var nUp = 0, nDown = 0;
+    R.forEach(function(r, i){
+      var a = r - b;
+      var cls = a > 0.001 ? 'up' : (a < -0.001 ? 'down' : 'flat');
+      if (a > 0.001) nUp++; else if (a < -0.001) nDown++;
+      document.getElementById('pa' + i).textContent = (a > 0 ? '+' : '') + a.toFixed(1);
+      document.getElementById('pa' + i).className = cls;
+      document.getElementById('pd' + i).textContent =
+        a > 0.001 ? '↑ 概率调高' : (a < -0.001 ? '↓ 概率调低' : '· 不动');
+      document.getElementById('pd' + i).className = 'pd ' + cls;
+      var w = Math.min(50, Math.abs(a) / 15 * 50);
+      var bar = document.getElementById('pi' + i);
+      bar.style.width = w + '%';
+      bar.style.left = (a >= 0 ? 50 : 50 - w) + '%';
+      bar.style.background = a >= 0 ? 'var(--green)' : 'var(--red)';
+    });
+    msg.innerHTML = nDown === 0
+      ? '⚠ 三个动作<b>全被推高</b> —— 但概率之和必须是 1，等于在互相抢。只能靠 10/11/12 的细微差别分胜负：方差大、学得慢。'
+      : (Math.abs(b - 11) < 0.26
+        ? '✓ b = 11 正好是组内均值。信号干净地分成「一个升、一个降、一个不动」—— <b>GRPO 用的就是这个 baseline</b>。'
+        : '✓ 有升有降了。baseline 取在回报中间地带，信号才有区分度（取哪个值都不改变梯度期望，只影响方差）。');
+  }
+  slide.addEventListener('input', render);
+  render();
+})();
+</script>
+<script>
+/* ========== 实验 2 · Bellman 价值一格一格往回渗 ========== */
+(function(){
+  var GAMMA = 0.9, N = 5;
+  var REW = [0, 0, 0, 1, 0];          /* 从 s4 迈进 s5 时给 +1 */
+  var V = [0, 0, 0, 0, 0];            /* s5 是终止态，V 恒为 0 */
+  var iter = 0, lastChanged = -1;
+  var corr = document.getElementById('corr');
+  var cn = document.getElementById('cn');
+  var msg = document.getElementById('cmsg');
+
+  function render(){
+    corr.innerHTML = V.map(function(v, i){
+      var isGoal = (i === N - 1);
+      var cls = 'cell' + (isGoal ? ' goal' : '') + (i === lastChanged ? ' justmoved' : '');
+      return '<div class="' + cls + '">' +
+        '<div class="cn">s' + (i + 1) + (isGoal ? ' 终点' : '') + '</div>' +
+        '<div class="cv">' + v.toFixed(3) + '</div>' +
+        '<div class="cr">' + (REW[i] ? 'r = +1 →' : '&nbsp;') + '</div>' +
+      '</div>';
+    }).join('');
+    cn.textContent = iter;
+  }
+
+  function step(){
+    var old = V.slice(), changed = -1;
+    for (var i = 0; i < N - 1; i++){        /* 终止态不更新 */
+      V[i] = REW[i] + GAMMA * old[i + 1];
+      if (Math.abs(V[i] - old[i]) > 1e-9) changed = i;
+    }
+    lastChanged = changed;
+    iter++;
+    render();
+    msg.innerHTML = changed < 0
+      ? '✓ 表不再变化，收敛了。这就是「不动点」—— 主干 B 要的就是这个自洽状态。'
+      : '第 ' + iter + ' 轮：<b>只有 s' + (changed + 1) + ' 学到了东西</b>（= 0.9 × 它右边那格的旧值）。信息每轮只往回传一格。';
+  }
+
+  document.getElementById('citer').addEventListener('click', step);
+  document.getElementById('creset').addEventListener('click', function(){
+    V = [0, 0, 0, 0, 0]; iter = 0; lastChanged = -1; render();
+    msg.innerHTML = '已复位。奖励只在最右边，第一轮只有它的邻居学到东西。';
+  });
+  render();
+})();
+</script>
+<script>
+/* ========== 实验 3 · max 把噪声变成乐观偏差 ========== */
+(function(){
+  var K = 4, SCALE = 30, ZERO = 85, CAP = 2.75;
+  var box = document.getElementById('bars');
+  var vals = [0, 0, 0, 0];
+  var sumAll = 0, cntAll = 0, sumMax = 0, cntMax = 0;
+
+  /* 底部动作名单独一行，避免和负值柱子打架 */
+  var labels = document.createElement('div');
+  labels.style.cssText = 'display:flex;gap:12px;padding:0 4px;margin-top:6px;';
+  labels.innerHTML = ['a₁','a₂','a₃','a₄'].map(function(n){
+    return '<span class="blab" style="flex:1;text-align:center;margin:0">' + n + '</span>';
+  }).join('');
+  box.parentNode.insertBefore(labels, box.nextSibling);
+
+  function gauss(){
+    var u = 1 - Math.random(), v = Math.random();
+    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
+  }
+
+  function render(){
+    var mx = Math.max.apply(null, vals);
+    var html = '<div class="zero"></div>';
+    vals.forEach(function(v, i){
+      var c = Math.max(-CAP, Math.min(CAP, v));
+      var h = Math.abs(c) * SCALE;
+      var bottom = c >= 0 ? ZERO : ZERO - h;
+      var labBottom = c >= 0 ? (ZERO + h + 3) : (ZERO - h - 21);
+      html += '<div class="bcol' + (v === mx ? ' max' : '') + '" style="position:relative">' +
+        '<span class="bval" style="position:absolute;left:0;right:0;text-align:center;margin:0;bottom:' + labBottom + 'px">' +
+          (v >= 0 ? '+' : '') + v.toFixed(2) + '</span>' +
+        '<div class="bfill" style="position:absolute;left:0;right:0;bottom:' + bottom + 'px;height:' + h + 'px"></div>' +
+      '</div>';
+    });
+    box.innerHTML = html;
+
+    document.getElementById('n_s').textContent = cntMax;
+    document.getElementById('m_all').textContent =
+      cntAll ? (sumAll / cntAll >= 0 ? '+' : '') + (sumAll / cntAll).toFixed(2) : '0.00';
+    document.getElementById('m_max').textContent =
+      cntMax ? (sumMax / cntMax >= 0 ? '+' : '') + (sumMax / cntMax).toFixed(2) : '0.00';
+
+    var msg = document.getElementById('bias_msg');
+    if (cntMax >= 8){
+      msg.innerHTML = '↑ 平均值老实地趴在 0 附近，<b>max 的平均却稳定停在 +1 左右</b>。'
+        + '真值全是 0，这 +1 是<b>纯粹凭空造出来的乐观</b> —— 它来自 E[max] &gt; max[E]（Jensen 不等式的方向）。'
+        + '把它当成标准答案写回价目表，下一轮再被 max 挑一遍，偏差就开始复利。';
+    } else {
+      msg.innerHTML = '多点几次，看红色柱子（被 max 选中的那个）<b>几乎从不是负数</b>。';
+    }
+  }
+
+  function sample(){
+    vals = [];
+    var mx = -Infinity;
+    for (var i = 0; i < K; i++){
+      var v = gauss();
+      vals.push(v); sumAll += v; cntAll++;
+      if (v > mx) mx = v;
+    }
+    sumMax += mx; cntMax++;
+  }
+
+  document.getElementById('resample').addEventListener('click', function(){ sample(); render(); });
+  document.getElementById('run50').addEventListener('click', function(){
+    for (var i = 0; i < 50; i++) sample();
+    render();
+  });
+  document.getElementById('breset').addEventListener('click', function(){
+    sumAll = cntAll = sumMax = cntMax = 0; vals = [0, 0, 0, 0]; render();
+  });
+  sample(); render();
+})();
+</script>
+<script src="nav.js"></script>
+</body>
+</html>
+

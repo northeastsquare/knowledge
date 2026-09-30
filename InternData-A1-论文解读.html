@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>InternData-A1：高保真合成数据预训练通用策略 · 精读</title>
+<meta name="description" content="首个证明纯合成数据可媲美最强真实数据集的 VLA 预训练（630k 轨迹 / 7433 小时）">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f1f4f6;
+    --surface:#fbfcfd;
+    --surface-2:#eaf0f4;
+    --ink:#16222e;
+    --ink-2:#51626f;
+    --ink-3:#83919c;
+    --accent:#0e6e8a;
+    --accent-strong:#0a4c60;
+    --signal:#c4572a;
+    --line:#d8e1e7;
+    --line-strong:#c3d0d9;
+    --grid-line:rgba(22,34,46,.05);
+    --shadow:0 1px 2px rgba(22,34,46,.04),0 14px 34px rgba(22,34,46,.07);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+      --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+      --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+      --line:#1e2d3a; --line-strong:#2b3d4b;
+      --grid-line:rgba(231,238,244,.045);
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+    --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+    --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+    --line:#1e2d3a; --line-strong:#2b3d4b;
+    --grid-line:rgba(231,238,244,.045);
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Sans",-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+    line-height:1.78; font-size:16px; -webkit-font-smoothing:antialiased;
+  }
+  .grid{
+    position:fixed; inset:0; z-index:-1; pointer-events:none;
+    background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);
+    background-size:28px 28px;
+  }
+  .wrap{max-width:860px; margin:0 auto; padding:0 24px 96px;}
+
+  .masthead{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px 24px 0; max-width:860px; margin:0 auto;
+  }
+  .back{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:13px; color:var(--accent); text-decoration:none; letter-spacing:.03em;
+  }
+  .back:hover{text-decoration:underline;}
+  .masthead .ref{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12.5px; color:var(--ink-3); letter-spacing:.04em;
+  }
+
+  .hero{padding:52px 0 34px; border-bottom:1px solid var(--line-strong);}
+  .eyebrow{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent);
+    margin-bottom:16px;
+  }
+  .hero h1{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:clamp(28px,4.6vw,42px); font-weight:700; line-height:1.2;
+    margin:0 0 16px; color:var(--ink); text-wrap:balance;
+  }
+  .hero .summary{
+    font-size:17px; color:var(--ink-2); max-width:640px; margin:0 0 22px;
+  }
+  .meta{
+    border:1px solid var(--line); border-radius:12px; background:var(--surface);
+    padding:14px 18px; font-size:13.5px; display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px 24px;
+    box-shadow:var(--shadow);
+  }
+  .meta .m{display:flex; flex-direction:column; gap:1px;}
+  .meta .m .k{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:11px;
+    color:var(--ink-3); letter-spacing:.08em; text-transform:uppercase;
+  }
+  .meta .m .v{color:var(--ink); font-weight:500;}
+
+  section{margin-top:40px;}
+  h2{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:21px; font-weight:600; margin:0 0 14px; color:var(--ink);
+    display:flex; align-items:center; gap:12px;
+  }
+  h2::before{
+    content:""; width:10px; height:10px; flex:none;
+    background:var(--accent); border-radius:2px; transform:rotate(45deg);
+  }
+  p{margin:0 0 12px;}
+  strong{font-weight:700;}
+  .hl{color:var(--accent); font-weight:600;}
+  a{color:var(--accent);}
+
+  ul,ol{margin:0 0 14px; padding-left:22px;}
+  li{margin-bottom:7px;}
+  li::marker{color:var(--accent);}
+
+  blockquote{
+    margin:16px 0; padding:14px 18px; border-left:3px solid var(--accent);
+    background:var(--surface-2); border-radius:0 10px 10px 0; color:var(--ink);
+  }
+  blockquote p{margin:0;}
+
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    padding:20px 22px; box-shadow:var(--shadow); margin:14px 0;
+  }
+  .card h3{font-size:16px; font-weight:700; margin:0 0 10px;}
+
+  table{width:100%; border-collapse:collapse; font-size:14px; margin:12px 0;}
+  th,td{padding:9px 12px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12.5px;
+    color:var(--accent-strong); background:var(--surface-2); letter-spacing:.03em; font-weight:600;
+  }
+  tr:last-child td{border-bottom:none;}
+  .tbl-wrap{overflow-x:auto;}
+
+  code{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:13.5px;
+    background:var(--surface-2); border:1px solid var(--line); border-radius:5px; padding:1px 6px;
+  }
+  pre{overflow-x:auto; background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:16px; font-size:13px; line-height:1.6;}
+  pre code{border:none; background:none; padding:0;}
+
+  .diagram{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px; margin:16px 0; box-shadow:var(--shadow); overflow-x:auto;}
+  .diagram svg{max-width:100%; height:auto; display:block;}
+
+  footer{
+    margin-top:56px; padding-top:20px; border-top:1px solid var(--line-strong);
+    display:flex; justify-content:space-between; gap:12px; font-size:13px; color:var(--ink-3);
+  }
+  footer a{color:var(--accent); text-decoration:none;}
+  footer a:hover{text-decoration:underline;}
+</style>
+</head>
+<body>
+<div class="grid" aria-hidden="true"></div>
+
+<header class="masthead">
+  <a class="back" href="index.html">← 返回知识库</a>
+  <span class="ref">arXiv:2511.16651v1</span>
+</header>
+
+<div class="wrap">
+
+  <section class="hero">
+    <div class="eyebrow">精读笔记 · 数据</div>
+    <h1>InternData-A1：高保真合成数据预训练通用策略</h1>
+    <p class="summary">首个证明「纯合成数据」可以媲美最强真实数据集（π 数据集）的 VLA 预训练：630k 轨迹 / 7,433 小时 / 4 构型 / 18 技能 / 70 任务 / 227 场景，并在多个挑战性任务上实现零样本 sim-to-real。</p>
+    <div class="meta">
+      <div class="m"><span class="k">论文</span><span class="v">InternData-A1: Pioneering High-Fidelity Synthetic Data for Pre-training Generalist Policy</span></div>
+      <div class="m"><span class="k">机构</span><span class="v">上海人工智能实验室 · 北京大学</span></div>
+      <div class="m"><span class="k">arXiv</span><span class="v">arXiv:2511.16651v1</span></div>
+      <div class="m"><span class="k">主题</span><span class="v">合成数据 · 预训练</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>它解决的问题</h2>
+    <p>VLA（视觉-语言-动作）模型的泛化能力，主要来自预训练数据的<strong>规模、多样性与来源</strong>。真实机器人数据效果好，但采集成本极高——遥操作需要熟练操作员、专用硬件和大量人力，大规模、多样化的真实数据集对多数研究组来说「不可负担」，整个社区也因此缺乏系统研究「预训练到底需要什么数据」的能力。</p>
+    <p>仿真本是一条互补路径：资产库丰富、场景可控、生成可自动化。但已有的合成数据集普遍有四个硬伤：</p>
+    <ul>
+      <li><strong>技能面窄</strong>：以 pick-and-place（抓取-放置）为主，覆盖不了折叠、倒液体、关节操作等日常技能；</li>
+      <li><strong>物体单一</strong>：几乎只针对刚体，关节物体、衣物、流体缺席；</li>
+      <li><strong>仍需人工</strong>：遥操作或人工标注的负担不小；</li>
+      <li><strong>缺乏验证</strong>：很少有工作真正证明合成数据能撑起大规模 VLA 预训练。</li>
+    </ul>
+    <blockquote>
+      <p>本文要回答的核心问题：<strong>高保真合成数据，只要在构型、场景、技能与物理真实性上「堆够规模」，能否追平最强真实数据集的预训练效果？</strong>答案是——能，而且首次被严格验证。</p>
+    </blockquote>
+  </section>
+
+  <section>
+    <h2>方法主线</h2>
+    <p>核心是一个「<span class="hl">高度自主、完全解耦、可组合</span>」的仿真数据流水线，再用与 π0 完全相同的架构去验证数据本身的价值。分五步：</p>
+    <ol>
+      <li><strong>建资产库与环境</strong>：统一管理 4 种机器人构型、227 个室内场景、3,185 个刚体、321 个关节物体、20 件衣物与流体，全部带功能标注（关节轴、抓取位姿、物理参数）。</li>
+      <li><strong>技能组合成任务</strong>：把折叠、倒液体、旋转、堆叠等 18 个原子技能做成模块化脚本，每个技能是「状态 → waypoint」的自动映射；像搭积木一样串行/并行组合出 70 个任务（含 18 个至少 3 步的长程任务）。</li>
+      <li><strong>域随机化</strong>：扰动相机位姿（±5° 旋转、±5cm 平移）、用 174 张光照环境图、同类物体替换、抓取点与接触区域随机采样。</li>
+      <li><strong>轨迹生成与存储</strong>：CuRobo 运动规划器把 waypoint 插值成稠密关节动作，经物理仿真校验后<strong>只渲染成功轨迹</strong>，统一存成 LeRobot 格式。</li>
+      <li><strong>预训练验证</strong>：用与 π0 相同的架构（Paligemma + flow-matching 动作专家），仅用合成数据预训练，再与官方 π0、开源数据集逐一对比。</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>输入、输出与数据流</h2>
+    <div class="diagram">
+      <pre class="mermaid">
+flowchart LR
+  A["任务描述模板<br/>+ 技能配置 YAML"] --> B["环境构建<br/>机器人 · 场景 · 物体"]
+  B --> C["技能组合<br/>18 原子技能 → 70 任务"]
+  C --> D["域随机化<br/>相机 · 光照 · 物体 · 接触区域"]
+  D --> E["轨迹生成<br/>CuRobo 插值 · 物理校验 · 渲染"]
+  E --> F["LeRobot 数据<br/>RGB · 相机参数 · 本体状态 · 动作"]
+  F --> G["VLA 预训练<br/>Paligemma + Flow 动作专家"]
+  G --> H["评估<br/>49 仿真 · 9 真实 · sim-to-real"]
+      </pre>
+    </div>
+    <div class="card">
+      <h3>输入 / 输出对照</h3>
+      <div class="tbl-wrap">
+      <table>
+        <tr><th>环节</th><th>输入</th><th>输出</th></tr>
+        <tr><td>环境构建</td><td>任务描述模板、资产库（构型/场景/物体）</td><td>配置好的 USD 环境（带抓取位姿、关节轴、物理参数标注）</td></tr>
+        <tr><td>技能组合</td><td>技能配置（选技能、指定左右臂、串行/并行）</td><td>waypoint 序列（末端执行器 6D 位姿）</td></tr>
+        <tr><td>域随机化</td><td>随机化范围配置</td><td>多样化的视觉与轨迹变体</td></tr>
+        <tr><td>轨迹生成</td><td>waypoint + 物理引擎（Isaac Sim）</td><td>稠密关节动作轨迹（仅成功轨迹）</td></tr>
+        <tr><td>存储</td><td>成功轨迹 + 元数据</td><td>LeRobot 格式：多视角 RGB、相机参数、本体状态、动作标签、语言指令、物体元数据</td></tr>
+      </table>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>训练或运行方式</h2>
+    <p>论文<strong>不改模型、只换数据</strong>：直接采用 π0 的架构——视觉语言模型 Paligemma（约 3B）+ 基于 flow matching 的动作专家，从 Paligemma 权重 + 随机初始化的动作专家开始预训练（与官方 π0 用闭源 π 数据集的 700k 步对齐，本文训 680k 步）。</p>
+    <div class="tbl-wrap">
+    <table>
+      <tr><th>阶段</th><th>步数</th><th>算力</th><th>Batch</th><th>学习率</th><th>调度</th></tr>
+      <tr><td>预训练（仅 InternData-A1）</td><td>680k</td><td>32×A100</td><td>512</td><td>5e-5</td><td>Constant</td></tr>
+      <tr><td>微调（常规 / sim-to-real）</td><td>30k</td><td>8×GPU</td><td>128</td><td>2.5e-5</td><td>Cosine Decay</td></tr>
+      <tr><td>微调（灵巧任务）</td><td>100k</td><td>8×GPU</td><td>128</td><td>2.5e-5</td><td>Cosine Decay</td></tr>
+    </table>
+    </div>
+    <p>评估口径：仿真在 RoboTwin 2.0 的 49 个双臂任务上，分 Easy（整洁）/ Hard（杂乱）两档、每任务 100 次试验（共 19,600 次 rollout）；真实世界 9 个任务（5 常规 + 4 灵巧）覆盖 3 种机器人，每任务 15 组设置 × 2 次 = 30 次 rollout 取平均成功率。</p>
+    <blockquote>
+      <p>数据生产成本：<strong>8 块 RTX 4090 每天产 209.7 小时</strong>机器人数据，单集成本低于 <strong>0.003 美元</strong>，几乎无需人工调参。</p>
+    </blockquote>
+  </section>
+
+  <section>
+    <h2>关键结果</h2>
+    <p>一句话：<span class="hl">纯合成数据预训练的 π0，在仿真上反超官方 π0，在真实世界与之打平，并显著优于所有开源数据集。</span></p>
+
+    <div class="card">
+      <h3>49 个仿真任务（RoboTwin 2.0，平均成功率）</h3>
+      <div class="tbl-wrap">
+      <table>
+        <tr><th>模型</th><th>Easy</th><th>Hard</th><th>备注</th></tr>
+        <tr><td>π0（Scratch，无预训练）</td><td>23.5%</td><td>2.5%</td><td>仅 Paligemma 初始化</td></tr>
+        <tr><td>π0（官方，π 数据集）</td><td>55.0%</td><td>20.0%</td><td>最强真实数据集</td></tr>
+        <tr><td>π0（InternData-A1）</td><td><strong>60.0%</strong></td><td><strong>26.5%</strong></td><td>较官方 +5.0 / +6.5 个点</td></tr>
+      </table>
+      </div>
+      <p style="font-size:13.5px;color:var(--ink-2);">相对无预训练的 scratch 基线，InternData-A1 提升 36.5%（Easy）/ 24.0%（Hard）。</p>
+    </div>
+
+    <div class="card">
+      <h3>对比开源数据集（500k 迭代预训练后）</h3>
+      <div class="tbl-wrap">
+      <table>
+        <tr><th>数据集</th><th>域</th><th>49 仿真 Easy / Hard</th><th>真实 Sort Rubbish</th><th>真实 Pass Bottle</th></tr>
+        <tr><td>OXE</td><td>真实</td><td>32.5% / 11.0%</td><td>40.0%</td><td>36.7%</td></tr>
+        <tr><td>Agibot World</td><td>真实</td><td>52.5% / 12.0%</td><td>53.3%</td><td>56.7%</td></tr>
+        <tr><td>RoboCasa</td><td>仿真</td><td>50.0% / 11.0%</td><td>23.3%</td><td>13.3%</td></tr>
+        <tr><td>InternData-A1</td><td>仿真</td><td><strong>60.0% / 26.5%</strong></td><td><strong>90.0%</strong></td><td><strong>60.0%</strong></td></tr>
+      </table>
+      </div>
+      <p style="font-size:13.5px;color:var(--ink-2);">真实任务上比 RoboCasa 平均高出约 57.7 个百分点，作者归因于逼真渲染与数据量。</p>
+    </div>
+
+    <div class="card">
+      <h3>真实世界：9 个任务（5 常规 + 4 灵巧）</h3>
+      <ul>
+        <li><strong>常规任务</strong>（Genie-1 / ARX Lift-2）：InternData-A1 平均比官方 π0 高 <strong>6.2 个点</strong>，分布内与分布外任务均领先。</li>
+        <li><strong>灵巧任务</strong>（折叠衣物、分拣零件、拧瓶盖、拉链袋，均在全新构型 ARX AC One 上）：性能与官方 π0 <strong>打平</strong>。</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>零样本 sim-to-real</h3>
+      <ul>
+        <li>70 个任务中有 <strong>10 个</strong>实现直接 sim-to-real，平均成功率 <strong>超过 50%</strong>（无需任何真实数据）。</li>
+        <li>4 个代表性任务：<strong>≤1,600 条仿真数据 ≈ 200 条真实数据</strong>，sim/real 等效比收窄到 8:1 以内、部分接近 1:1；基础技能（Sort Rubbish、Wipe Stain）200 条仿真即可追平 200 条真实，复杂任务（Flip Package、Instructional Pick）需约 1,600 条。</li>
+        <li>6 个附加任务（各 500 条仿真）：Make Sandwich 50%、Pack 50%、Close Box 63%、Close Microwave 87%、Sweep 60%、Handover 57%。</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>数据组分消融（0.5 epoch，Easy / Hard）</h3>
+      <div class="tbl-wrap">
+      <table>
+        <tr><th>配置</th><th>Easy / Hard</th><th>组分占比</th></tr>
+        <tr><td>Full（全量）</td><td><strong>58.0% / 25.0%</strong></td><td>100%</td></tr>
+        <tr><td>去掉 PnP</td><td>57.0% / 22.5%</td><td>PnP 占 30.61%</td></tr>
+        <tr><td>去掉 Art</td><td>55.5% / 19.5%</td><td>Art 占 11.67%</td></tr>
+        <tr><td>去掉 Base</td><td>52.5% / 20.5%</td><td>Base 占 35.95%</td></tr>
+        <tr><td>去掉 Long</td><td>54.0% / 19.0%</td><td>Long 占 21.77%</td></tr>
+      </table>
+      </div>
+      <p style="font-size:13.5px;color:var(--ink-2);">任何组分移除都掉点；去掉 Base/Long 的跌幅比去掉 PnP 更大，说明「多技能组合」比「抓放堆量」更值钱。</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>我真正学到的内容</h2>
+    <ul>
+      <li><strong>合成数据的瓶颈不是「能不能模拟」，而是「轨迹多样性」</strong>：pick-and-place 堆量（30.61%）不如多技能组合（Base 35.95% + Long 21.77%）有价值——纯抓放数据喂不出好 VLA。</li>
+      <li><strong>小规模的 articulation 比大规模 PnP 更「值钱」</strong>：关节操作只占 11.67%，但去掉它掉点比去掉 PnP 还多，因为关节几何多样、动作空间更扭曲、更丰富。</li>
+      <li><strong>sim-to-real 的钥匙 = 逼真渲染 + 大量域随机化</strong>：相机视角与关节动作空间对齐，比背景/纹理/桌面布局的对齐更重要；零样本迁移不需要场景完美复刻。</li>
+      <li><strong>工程优化是「规模化」的隐性前提</strong>：planner（CPU 串行）/ renderer（GPU 并行）解耦 + 只渲染成功轨迹，带来 2–3× 吞吐，否则 630k 轨迹根本产不出来。</li>
+      <li><strong>「同架构、只换数据」是对照数据价值的干净姿势</strong>：官方 π0 checkpoint 闭源，作者就自己按相同步数重训一个对照模型，把变量压到只剩「数据」。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>可复用设计</h2>
+    <ul>
+      <li><strong>四阶段解耦流水线</strong>：环境构建 / 技能组合 / 域随机化 / 轨迹生成，各阶段独立、可分别替换或扩缩。</li>
+      <li><strong>waypoint 统一表示</strong>：技能只输出末端 6D 位姿序列，把「技能逻辑」与「运动执行」彻底解耦——换对象、换场景、换构型零成本。</li>
+      <li><strong>技能 = 自动「状态 → waypoint」映射</strong>：每个技能是模块化脚本策略，靠 YAML 配置组合（指定左右臂、串行/并行、任务级约束），无需为新任务写新代码。</li>
+      <li><strong>渲染侧优化</strong>：只渲染物理校验通过的成功轨迹；Stack Render 批量渲染 + Balancer（负载）/ Supervisor（监控）保障集群稳定，端到端 2–3× 提速。</li>
+      <li><strong>域随机化清单</strong>：相机 ±5°/±5cm、光照图库、同类物体替换、抓取点 top-40 高置信度采样、关节/衣物接触区域邻域采样。</li>
+      <li><strong>输出标准 LeRobot 格式</strong>：直接对接现有 VLA 训练生态，还可用配置项额外存深度图、接地标注、包围盒。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>疑问与风险</h2>
+    <ul>
+      <li><strong>物理仿真器天花板</strong>：系鞋带、穿针这类高灵巧任务目前做不了（作者自认），数据多样性仍有上限。</li>
+      <li><strong>sim-to-real 并非完全零成本</strong>：复杂任务仍需约 1,600 条仿真数据，且以「相机视角 + 关节动作空间对齐」为前提。</li>
+      <li><strong>只验证了一个架构</strong>：结论建立在 Paligemma + flow-matching 动作专家（π0）上，对其它 VLA 架构（扩散头、transformer 头等）的通用性未知。</li>
+      <li><strong>资产多样性受限于第三方库</strong>：物体来自 OmniObject3D / Objaverse，场景来自 GRUtopia，数据「保真度上限」部分由这些资产决定。</li>
+      <li><strong>「最小人工」≠ 零人工</strong>：仍需手工调整空间范围、抓取过滤规则、<code>place_z_offset</code> 等参数，管线是「高度自主」而非「全自动」。</li>
+      <li><strong>论文内部口径小出入</strong>：正文写 Easy/Hard 提升 6%/5%，但表 2 与数字实为 +5.0（Easy）/+6.5（Hard），引用时以表格数值为准。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>后续动作</h2>
+    <ul>
+      <li>读 π0 / OpenVLA 的 LeRobot 数据加载与预训练代码，摸清 VLA 的标准数据接口，为接数据做准备。</li>
+      <li>了解 flow-matching 动作专家与 CuRobo 运动规划器的原理，理解「waypoint → 稠密关节动作」这一步。</li>
+      <li>小型复现：搭一条「环境 → 技能 → 随机化 → 生成 → LeRobot」最小流水线，先做 pick-and-place，再逐步扩技能验证。</li>
+      <li>自己验证「轨迹多样性 &gt; 数据量」假说（作者明确留作 future work，且只做了 0.5 epoch 的消融）。</li>
+      <li>跟踪 InternData-A1 数据集与生成流水线的开源发布（论文承诺 open-source）。</li>
+    </ul>
+  </section>
+
+  <footer>
+    <span>精读笔记 · InternData-A1：高保真合成数据预训练通用策略</span>
+    <a href="index.html">返回知识库 →</a>
+  </footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10.9.1/dist/mermaid.min.js"></script>
+<script>
+  (function () {
+    var dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    mermaid.initialize({ startOnLoad: true, theme: dark ? 'dark' : 'neutral', flowchart: { useMaxWidth: true, htmlLabels: true } });
+  })();
+</script>
+<script src="nav.js"></script>
+</body>
+</html>

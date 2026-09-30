@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Qwen-VLA：统一任务、环境与机器人构型的视觉-语言-动作建模 · 精读</title>
+<meta name="description" content="统一任务、环境与机器人构型的 VLA，实现跨形态泛化">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f1f4f6;
+    --surface:#fbfcfd;
+    --surface-2:#eaf0f4;
+    --ink:#16222e;
+    --ink-2:#51626f;
+    --ink-3:#83919c;
+    --accent:#0e6e8a;
+    --accent-strong:#0a4c60;
+    --signal:#c4572a;
+    --line:#d8e1e7;
+    --line-strong:#c3d0d9;
+    --grid-line:rgba(22,34,46,.05);
+    --shadow:0 1px 2px rgba(22,34,46,.04),0 14px 34px rgba(22,34,46,.07);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+      --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+      --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+      --line:#1e2d3a; --line-strong:#2b3d4b;
+      --grid-line:rgba(231,238,244,.045);
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+    --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+    --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+    --line:#1e2d3a; --line-strong:#2b3d4b;
+    --grid-line:rgba(231,238,244,.045);
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Sans",-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+    line-height:1.78; font-size:16px; -webkit-font-smoothing:antialiased;
+  }
+  .grid{
+    position:fixed; inset:0; z-index:-1; pointer-events:none;
+    background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);
+    background-size:28px 28px;
+  }
+  .wrap{max-width:860px; margin:0 auto; padding:0 24px 96px;}
+
+  .masthead{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px 24px 0; max-width:860px; margin:0 auto;
+  }
+  .back{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:13px; color:var(--accent); text-decoration:none; letter-spacing:.03em;
+  }
+  .back:hover{text-decoration:underline;}
+  .masthead .ref{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12.5px; color:var(--ink-3); letter-spacing:.04em;
+  }
+
+  .hero{padding:52px 0 34px; border-bottom:1px solid var(--line-strong);}
+  .eyebrow{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent);
+    margin-bottom:16px;
+  }
+  .hero h1{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:clamp(28px,4.6vw,42px); font-weight:700; line-height:1.2;
+    margin:0 0 16px; color:var(--ink); text-wrap:balance;
+  }
+  .hero .summary{
+    font-size:17px; color:var(--ink-2); max-width:640px; margin:0 0 22px;
+  }
+  .meta{
+    border:1px solid var(--line); border-radius:12px; background:var(--surface);
+    padding:14px 18px; font-size:13.5px; display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px 24px;
+    box-shadow:var(--shadow);
+  }
+  .meta .m{display:flex; flex-direction:column; gap:1px;}
+  .meta .m .k{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:11px;
+    color:var(--ink-3); letter-spacing:.08em; text-transform:uppercase;
+  }
+  .meta .m .v{color:var(--ink); font-weight:500;}
+
+  section{margin-top:40px;}
+  h2{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:21px; font-weight:600; margin:0 0 14px; color:var(--ink);
+    display:flex; align-items:center; gap:12px;
+  }
+  h2::before{
+    content:""; width:10px; height:10px; flex:none;
+    background:var(--accent); border-radius:2px; transform:rotate(45deg);
+  }
+  p{margin:0 0 12px;}
+  strong{font-weight:700;}
+  .hl{color:var(--accent); font-weight:600;}
+  a{color:var(--accent);}
+
+  ul,ol{margin:0 0 14px; padding-left:22px;}
+  li{margin-bottom:7px;}
+  li::marker{color:var(--accent);}
+
+  blockquote{
+    margin:16px 0; padding:14px 18px; border-left:3px solid var(--accent);
+    background:var(--surface-2); border-radius:0 10px 10px 0; color:var(--ink);
+  }
+  blockquote p{margin:0;}
+
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    padding:20px 22px; box-shadow:var(--shadow); margin:14px 0;
+  }
+  .card h3{font-size:16px; font-weight:700; margin:0 0 10px;}
+
+  table{width:100%; border-collapse:collapse; font-size:14px; margin:12px 0;}
+  th,td{padding:9px 12px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12.5px;
+    color:var(--accent-strong); background:var(--surface-2); letter-spacing:.03em; font-weight:600;
+  }
+  tr:last-child td{border-bottom:none;}
+  .tbl-wrap{overflow-x:auto;}
+
+  code{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:13.5px;
+    background:var(--surface-2); border:1px solid var(--line); border-radius:5px; padding:1px 6px;
+  }
+  pre{overflow-x:auto; background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:16px; font-size:13px; line-height:1.6;}
+  pre code{border:none; background:none; padding:0;}
+
+  .diagram{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px; margin:16px 0; box-shadow:var(--shadow); overflow-x:auto;}
+  .diagram svg{max-width:100%; height:auto; display:block;}
+
+  footer{
+    margin-top:56px; padding-top:20px; border-top:1px solid var(--line-strong);
+    display:flex; justify-content:space-between; gap:12px; font-size:13px; color:var(--ink-3);
+  }
+  footer a{color:var(--accent); text-decoration:none;}
+  footer a:hover{text-decoration:underline;}
+</style>
+</head>
+<body>
+<div class="grid" aria-hidden="true"></div>
+
+<header class="masthead">
+  <a class="back" href="index.html">← 返回知识库</a>
+  <span class="ref">arXiv:2605.30280v2</span>
+</header>
+
+<div class="wrap">
+
+  <section class="hero">
+    <div class="eyebrow">精读笔记 · VLA</div>
+    <h1>Qwen-VLA：统一任务、环境与机器人构型的视觉-语言-动作建模</h1>
+    <p class="summary">统一任务、环境与机器人构型的 VLA，实现跨形态泛化。</p>
+    <div class="meta">
+      <div class="m"><span class="k">论文</span><span class="v">Qwen-VLA: Unifying Vision-Language-Action Modeling across Tasks, Environments, and Robot Embodiments</span></div>
+      <div class="m"><span class="k">机构</span><span class="v">Qwen（阿里巴巴）</span></div>
+      <div class="m"><span class="k">arXiv</span><span class="v">2605.30280v2</span></div>
+      <div class="m"><span class="k">主题</span><span class="v">VLA · 多构型泛化</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>它解决的问题</h2>
+    <p>具身智能长期被切成一个个<strong>专用模型</strong>：操作模型只管桌面或灵巧手，导航模型只围绕室内 waypoint/动作预测，每个模型都绑死一种任务族、一种机器人构型、一种评测设定。结果是能力碎片化，跨任务、跨环境、跨构型几乎不迁移，也<strong>没法像通用视觉-语言预训练那样规模化具身学习</strong>。</p>
+    <p>这些任务表面差异极大：</p>
+    <ul>
+      <li><strong>操作</strong>要预测末端位姿 / 关节角 / 夹爪开合 / 灵巧手构型；</li>
+      <li><strong>导航</strong>要预测 waypoint 或离散移动决策；</li>
+      <li><strong>人类自我中心视频</strong>给的是手腕 + 手部轨迹，而非机器人控制信号。</li>
+    </ul>
+    <p>它们在观测格式、控制频率、预测视野、动作维度、评测协议上全都不同。但作者指出它们<strong>共享同一种计算结构</strong>：智能体都要「以视觉观测 + 语言指令 + 构型约束为条件，预测与任务在物理和语义上对齐的未来动作/轨迹」。</p>
+    <blockquote>
+      <p>一句话：把「操作、导航、轨迹预测」看成同一个「动作-轨迹条件预测」问题的不同形态，用一个 VLA 统一建模。</p>
+    </blockquote>
+  </section>
+
+  <section>
+    <h2>方法主线</h2>
+    <p>五步把异构具身任务收进一个模型：</p>
+    <ol>
+      <li><strong>统一问题形式化</strong>：所有任务写成 <code>p(y<sub>t:t+H-1</sub> | o<sub>t</sub>, x, e, z)</code>——给定视觉 <code>o<sub>t</sub></code>、指令 <code>x</code>、构型描述 <code>e</code>、任务 id <code>z</code>，预测未来 <code>H</code> 步动作/轨迹序列。</li>
+      <li><strong>双模块架构</strong>：<span class="hl">Qwen3.5-4B</span> 原生多模态骨干（ViT 空间合并 + 混合注意力）负责理解与推理；外挂一个 <span class="hl">DiT 流匹配动作专家</span>（约 1.15B 参数）负责细粒度连续动作生成。</li>
+      <li><strong>构型感知提示（embodiment-aware prompt）</strong>：每个样本前拼一段文本，描述「机器人平台、臂型、控制频率、预测视野」。这是模型获知控制语义的<strong>唯一接口</strong>，换机器人只换文本，不动架构。</li>
+      <li><strong>统一动作/轨迹表征</strong>：用 <code>H×K</code> 张量 + 二值掩码把不同控制模式（末端/关节/夹爪/灵巧手/导航 waypoint）塞进同一套 DiT，各数据集保留原生控制约定。</li>
+      <li><strong>四阶段渐进训练</strong>：<code>T2A</code>（纯文本训动作解码器）→ <code>CPT</code>（解冻双模块、视觉接地）→ <code>SFT</code>（双分支对齐）→ <code>RL</code>（PPO+GAE 直接优化闭环成功率）。</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>输入、输出与数据流</h2>
+    <p>整体是一个条件预测模型：输入 <code>(o<sub>t</sub>, x, e, z)</code>，输出未来 <code>H</code> 步的动作/轨迹张量。分环节看：</p>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>环节</th><th>输入</th><th>处理</th><th>输出</th></tr>
+        <tr><td><strong>视觉编码</strong></td><td>图像/视频帧 <code>o<sub>t</sub></code>（单帧、多帧或历史窗口）</td><td>ViT 空间合并，视觉 token 直接插入文本 token 流</td><td>视觉 token</td></tr>
+        <tr><td><strong>多模态编码</strong></td><td>视觉 token + 指令 <code>x</code> + 构型提示 <code>e</code></td><td>Qwen3.5-4B 混合注意力（门控线性 + 分组查询 softmax）</td><td>VLM hidden states</td></tr>
+        <tr><td><strong>动作解码</strong></td><td>VLM hidden states ⊕ 噪声动作块 + 时间步 τ</td><td>DiT 16 块：联合 self-attention + AdaLN + 多段 RoPE，流匹配去噪</td><td>速度场 / 去噪方向</td></tr>
+        <tr><td><strong>输出</strong></td><td>去噪后的动作/轨迹张量 <code>Y∈R<sup>H×K</sup></code></td><td>掩码 <code>M</code> 标记有效通道，零填充位不参与梯度</td><td>干净动作块（H 步）</td></tr>
+        <tr><td><strong>执行/RL</strong></td><td>动作块下发机器人（推理时几步 Euler 积分）</td><td>环境返回稀疏二值成功奖励（仅 RL 阶段）</td><td>奖励信号反馈</td></tr>
+      </table>
+    </div>
+
+    <div class="diagram">
+      <svg viewBox="0 0 940 460" xmlns="http://www.w3.org/2000/svg" style="font-family:'IBM Plex Sans','Microsoft YaHei','PingFang SC',sans-serif">
+        <defs>
+          <marker id="arrA" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L8,3 L0,6 Z" style="fill:var(--accent)"/>
+          </marker>
+          <marker id="arrG" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+            <path d="M0,0 L8,3 L0,6 Z" style="fill:var(--line-strong)"/>
+          </marker>
+        </defs>
+
+        <!-- 输入 -->
+        <rect x="12" y="64" width="190" height="280" rx="14" style="fill:var(--surface);stroke:var(--line-strong);stroke-width:1.5"/>
+        <text x="107" y="92" text-anchor="middle" font-size="14" font-weight="700" style="fill:var(--ink)">输入（每个时间步 t）</text>
+        <line x1="32" y1="106" x2="182" y2="106" style="stroke:var(--line)"/>
+        <text x="32" y="132" font-size="12" style="fill:var(--ink-2)">视觉观测 o_t</text>
+        <text x="32" y="152" font-size="11" style="fill:var(--ink-3)">单帧 / 多帧 / 视频 / 历史窗口</text>
+        <text x="32" y="182" font-size="12" style="fill:var(--ink-2)">语言指令 x</text>
+        <text x="32" y="212" font-size="12" style="fill:var(--ink-2)">构型提示 e</text>
+        <text x="32" y="232" font-size="11" style="fill:var(--ink-3)">平台 / 臂型 / 控制频率 / 视野</text>
+        <text x="32" y="262" font-size="12" style="fill:var(--ink-2)">任务 id z（可选）</text>
+        <text x="32" y="300" font-size="11" style="fill:var(--accent)">→ 目标：p(y_t:t+H-1)</text>
+        <text x="32" y="318" font-size="11" style="fill:var(--ink-3)">预测未来 H 步动作/轨迹</text>
+
+        <!-- VLM -->
+        <rect x="252" y="110" width="200" height="170" rx="14" style="fill:var(--surface);stroke:var(--accent);stroke-width:1.5"/>
+        <text x="352" y="140" text-anchor="middle" font-size="14" font-weight="700" style="fill:var(--ink)">Qwen3.5-4B VLM 骨干</text>
+        <text x="352" y="160" text-anchor="middle" font-size="11" style="fill:var(--ink-2)">视觉 token 插入文本流</text>
+        <text x="352" y="180" text-anchor="middle" font-size="11" style="fill:var(--ink-2)">门控线性 + 分组查询 softmax</text>
+        <text x="352" y="200" text-anchor="middle" font-size="11" style="fill:var(--ink-2)">多视图 <code style="font-size:10.5px">&lt;|tag|&gt;</code> 边界标记</text>
+        <rect x="282" y="222" width="140" height="28" rx="8" style="fill:var(--surface-2);stroke:var(--line)"/>
+        <text x="352" y="240" text-anchor="middle" font-size="11.5" font-weight="700" style="fill:var(--accent)">hidden states</text>
+
+        <!-- DiT -->
+        <rect x="502" y="110" width="200" height="170" rx="14" style="fill:var(--surface);stroke:var(--accent);stroke-width:1.5"/>
+        <text x="602" y="140" text-anchor="middle" font-size="14" font-weight="700" style="fill:var(--ink)">DiT 动作专家</text>
+        <text x="602" y="160" text-anchor="middle" font-size="11" style="fill:var(--ink-2)">16 块 · 约 1.15B 参数</text>
+        <text x="602" y="180" text-anchor="middle" font-size="11" style="fill:var(--ink-2)">hidden states ⊕ 噪声动作块 + τ</text>
+        <text x="602" y="200" text-anchor="middle" font-size="11" style="fill:var(--ink-2)">联合 self-attn + AdaLN + 多段 RoPE</text>
+        <rect x="532" y="222" width="140" height="28" rx="8" style="fill:var(--surface-2);stroke:var(--line)"/>
+        <text x="602" y="240" text-anchor="middle" font-size="11.5" font-weight="700" style="fill:var(--accent)">流匹配去噪（几步 Euler）</text>
+
+        <!-- 输出 -->
+        <rect x="752" y="110" width="176" height="170" rx="14" style="fill:var(--surface);stroke:var(--accent);stroke-width:1.5"/>
+        <text x="840" y="140" text-anchor="middle" font-size="14" font-weight="700" style="fill:var(--ink)">输出：动作/轨迹块</text>
+        <text x="840" y="168" text-anchor="middle" font-size="11.5" style="fill:var(--ink-2)">Y ∈ R^(H×K) 统一张量</text>
+        <text x="840" y="188" text-anchor="middle" font-size="11.5" style="fill:var(--ink-2)">掩码 M 标记有效通道</text>
+        <text x="840" y="208" text-anchor="middle" font-size="11.5" style="fill:var(--ink-2)">末端/关节/夹爪/waypoint</text>
+        <rect x="782" y="226" width="116" height="28" rx="8" style="fill:var(--surface-2);stroke:var(--line)"/>
+        <text x="840" y="244" text-anchor="middle" font-size="11.5" font-weight="700" style="fill:var(--accent)">下发机器人执行</text>
+
+        <!-- 箭头 -->
+        <line x1="202" y1="195" x2="250" y2="195" style="stroke:var(--accent);stroke-width:2" marker-end="url(#arrA)"/>
+        <line x1="452" y1="195" x2="500" y2="195" style="stroke:var(--accent);stroke-width:2" marker-end="url(#arrA)"/>
+        <line x1="702" y1="195" x2="750" y2="195" style="stroke:var(--accent);stroke-width:2" marker-end="url(#arrA)"/>
+
+        <!-- 环境 / RL 反馈 -->
+        <rect x="502" y="348" width="200" height="72" rx="14" style="fill:var(--surface-2);stroke:var(--line-strong);stroke-width:1.5"/>
+        <text x="602" y="376" text-anchor="middle" font-size="13" font-weight="700" style="fill:var(--ink)">环境 · 稀疏二值奖励</text>
+        <text x="602" y="398" text-anchor="middle" font-size="11" style="fill:var(--ink-2)">R=1 成功 / R=0 失败（仅 RL 阶段）</text>
+        <path d="M 840 280 C 840 330, 706 330, 706 352" fill="none" style="stroke:var(--line-strong);stroke-width:1.6;stroke-dasharray:6 5" marker-end="url(#arrG)"/>
+        <path d="M 600 348 C 600 320, 602 284, 602 282" fill="none" style="stroke:var(--line-strong);stroke-width:1.6;stroke-dasharray:6 5" marker-end="url(#arrG)"/>
+      </svg>
+    </div>
+  </section>
+
+  <section>
+    <h2>训练或运行方式</h2>
+    <p>在预训练好的 Qwen3.5 VLM 之上，作者用<strong>四阶段渐进训练</strong>，动机是「压缩—解压」视角：语言指令只占几个 token，对应动作却可能上百个高维关节值，衔接这个维度差是一个结构化「解压」问题。</p>
+    <ul>
+      <li><strong>Stage I · T2A（text-to-action DiT 预训练）</strong>：冻结 VLM，只训 DiT，输入仅文本 + 构型提示，<span class="hl">刻意不给图像</span>。让解码器先学会「语言→动作」解压、建立结构化动作先验，避免一开始就为无视觉无关的解码器学习浪费算力。</li>
+      <li><strong>Stage II · CPT（续训）</strong>：解冻两个模块，在异构混合数据（真实 + 仿真 + 导航 + 人类自我中心 + 视觉语言）上联合训练，把动作先验接地到视觉观测。</li>
+      <li><strong>Stage III · SFT（监督微调）</strong>：从 CPT 分两条支路——① 多任务 SFT（VQA + 空间接地 + 操作 + 导航，构型/任务均衡采样）；② 真机遥操作 SFT（ALOHA），验证跨域先验能否迁移到物理硬件。</li>
+      <li><strong>Stage IV · RL（强化学习）</strong>：从 SFT 出发，PPO + GAE，稀疏二值成功奖励，<span class="hl">只在 SimplerEnv 单个仿真环境</span>采样，产出最终模型 <code>Qwen-VLA-Instruct</code>。</li>
+    </ul>
+    <p>训练目标 = 流匹配动作损失 + 视觉语言下一 token 损失加权（<code>L = α<sub>act</sub>L<sub>act</sub> + α<sub>vl</sub>L<sub>vl</sub></code>），每个 mini-batch 按固定比例混合所有任务族。RL 阶段关键细节：</p>
+    <ul>
+      <li>动作块 <code>H=16</code>；128 个并行环境；每次迭代 8×128 步 → 8192 个 transition chunk；rollout 温度 τ=1.0，评测降到 0.6。</li>
+      <li>价值头直接挂在 VLM 骨干上（mean-pool + 线性），<strong>对 VLM hidden states 做 stop-gradient</strong>，价值头用独立学习率 1e-4（约为 actor 的 20 倍），快速收敛而策略更新保守。</li>
+      <li>流匹配的 log-prob：把确定性概率流 ODE 转成 SDE（每个 Euler 步注入受控噪声），使每步转移成为显式高斯，可解析算重要性比，无需数值积分。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>关键结果</h2>
+    <p>一个通用模型在仿真、真机、导航、动态与静态 OOD 上全面压过多数专用基线：</p>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>基准</th><th>指标</th><th>Qwen-VLA-Instruct</th><th>对比说明</th></tr>
+        <tr><td>LIBERO（单臂桌面）</td><td>成功率</td><td><strong>97.9%</strong></td><td>与最强专家持平；Base 已 90.8%</td></tr>
+        <tr><td>RoboCasa-GR1（双臂人形厨房）</td><td>成功率</td><td><strong>56.7%</strong></td><td>超 π0.5（37.0%）、GR00T N1.6（49.9%）、Being-H0.5（53.3%）</td></tr>
+        <tr><td>Simpler-WidowX（真机到仿真）</td><td>成功率</td><td><strong>73.7%</strong></td><td>超 StarVLA-OFT（64.6%）</td></tr>
+        <tr><td>RoboTwin 2.0（双臂）</td><td>Easy / Hard</td><td><strong>86.1% / 87.2%</strong></td><td>超此前最佳 ABot-M0（86.0% / 85.0%）</td></tr>
+        <tr><td>VLN-CE 导航</td><td>R2R OSR / RxR SR</td><td><strong>69.0 / 59.6</strong></td><td>R2R OSR 超 StreamVLN 4.8 分；RxR 全面领先</td></tr>
+        <tr><td>ALOHA 真机（域内）</td><td>平均成功率</td><td><strong>83.6%</strong></td><td>vs 无预训练 48.5%、π0.5 71.6%、GR00T N1.6 28.6%</td></tr>
+        <tr><td>ALOHA 真机（OOD）</td><td>平均成功率</td><td><strong>76.9%</strong></td><td>超 π0.5 达 35.4pp、超无预训练 40.7pp</td></tr>
+        <tr><td>DOMINO 动态操作（零样本）</td><td>SR / MS</td><td><strong>26.6% / 39.5</strong></td><td>超专门微调的 PUMA 9.4pp SR；仅用当前帧</td></tr>
+        <tr><td>SimplerEnv-OOD 静态</td><td>平均成功率</td><td><strong>32.0%</strong></td><td>vs π0.5 的 12.6%</td></tr>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>训练阶段的累积收益（Table 11）</h3>
+      <div class="tbl-wrap">
+        <table>
+          <tr><th>阶段</th><th>Simpler</th><th>RoboCasa</th><th>RoboTwin-E</th><th>RoboTwin-H</th><th>LIBERO</th><th>DOMINO SR / MS</th></tr>
+          <tr><td>CPT（Base）</td><td>64.3</td><td>40.4</td><td>64.3</td><td>66.4</td><td>90.8</td><td>21.1 / 37.4</td></tr>
+          <tr><td>+ SFT</td><td>70.8</td><td>56.0</td><td>86.3</td><td>87.1</td><td>97.8</td><td>—</td></tr>
+          <tr><td>+ RL（Instruct）</td><td>73.7</td><td>56.7</td><td>86.1</td><td>87.2</td><td>97.9</td><td>26.6 / 39.5</td></tr>
+        </table>
+      </div>
+      <p style="margin:0;font-size:13.5px;color:var(--ink-2)">RL 的增益不局限于训练环境（Simpler +2.9pp）：RoboCasa +0.7、RoboTwin-Hard +0.1、LIBERO +0.1、SimplerEnv-OOD +0.4、DOMINO SR 25.7→26.6，均未回退——说明仿真里的任务成功优化有轻微正向迁移、且不灾难性遗忘。</p>
+    </div>
+
+    <div class="card">
+      <h3>关键消融结论</h3>
+      <ul>
+        <li><strong>T2A 数据配比</strong>：20% 合成 + 80% 真实最优（71.1%），比不做 T2A（60.9%）高 +10.2pp；纯合成 64.1%、纯真实 51.0%。</li>
+        <li><strong>全序列 &gt; 分块预测</strong>（+4.9pp @10% 合成）；T2A 阶段<strong>给图像反而掉 2.9pp</strong>（会走视觉捷径，稀释语言-动作映射）。</li>
+        <li><strong>时间步分布</strong>：T2A 用 Sigmoid-Normal（向中间噪声层倾斜）+ SFT 用 Beta 最佳（71.1%）；反过来 Beta@T2A 掉 5.7pp。</li>
+        <li><strong>T2A 时长</strong>：2000 步封顶（71.1%），40000 步过拟合掉到 60.4%。</li>
+        <li><strong>VL 共训</strong>：在 RoboCasa +4.9pp、RoboTwin +4.6pp——视觉语言数据不打架，还在细粒度识别/组合指令解析上明显增益。</li>
+        <li><strong>动作空间投影</strong>：Multi-MLP / 拼接 / Zero-Padding 三方案差距 &lt;1.2%，<strong>Zero-Padding 最省参数</strong>，被选为默认。</li>
+        <li><strong>显式本体状态</strong>（关节角）收益甚微（Easy +0.7pp、Hard +1.3pp），故默认只用视觉 + 语言。</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2>我真正学到的内容</h2>
+    <ul>
+      <li><strong>异构具身任务可归约为同一问题</strong>：操作、导航、轨迹预测、人类自我中心动作，都是「以视觉 + 语言 + 构型为条件预测未来动作/轨迹」，统一形式化本身就是最大贡献。</li>
+      <li><strong>「压缩—解压」训练视角</strong>：语言指令是任务意图的紧凑编码，动作轨迹是高频高维信号；先用 T2A 学「语言→动作解压器」，再接地视觉，训练既稳又省——这是把随机初始化解码器与强预训练骨干"不对称冷启动"问题化解掉的关键。</li>
+      <li><strong>构型提示是零成本的多构型接口</strong>：换机器人 = 换一段文本，不改架构、不加输出头；RL 微调也能零样本迁移到域外构型。</li>
+      <li><strong>视觉语言数据与动作数据共训不冲突</strong>，还在难任务上补语义——「通用 VL 理解」不是负担，是具身泛化的底座。</li>
+      <li><strong>显式本体状态没那么重要</strong>：多视角视觉 + 相对位移动作已经隐含了机器人当前构型，加关节角输入收益微弱。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>可复用设计</h2>
+    <ul>
+      <li><strong>embodiment-aware prompt 模板</strong>：固定句式 <code>The robot is {tag} with {arms}... The control frequency is {FPS} Hz. Please predict the next {chunk} control actions...</code>，把平台/臂型/频率/视野写进提示，作为唯一平台接口。</li>
+      <li><strong>Zero-Padding + 二值掩码统一动作空间</strong>：<code>H×K</code> 张量，短动作右补零，掩码挡住零填充位不参与梯度；一套 DiT 处理所有控制模式，参数最少且不掉点。</li>
+      <li><strong>分位数归一化</strong>：每数据集每维度取 1st/99th 百分位线性映射到 <code>[-1,1]</code>，跨构型去尺度、保留相对运动结构。</li>
+      <li><strong>两阶段细粒度动作描述</strong>：粗看视频提动作序列 → 稠密采样帧再精修（接触点/空间关系/轨迹），加人工校正，产出稠密语言监督。</li>
+      <li><strong>PPO 接入流匹配的 log-prob 技巧</strong>：ODE→SDE 注入受控噪声，使转移成为显式高斯、可解析求重要性比；价值头 stop-gradient + 独立更大学习率。</li>
+      <li><strong>T2A 时间步分布策略</strong>：无视觉条件时用 Sigmoid-Normal 向中间噪声层倾斜，有骨干条件后用 Beta。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>疑问与风险</h2>
+    <ul>
+      <li><strong>数据规模仍是硬约束</strong>：具身动作数据远小于、也远不如视觉语言数据多样，长尾物体/环境/构型与接触密集交互的鲁棒性存疑（作者自己也承认）。</li>
+      <li><strong>联合训练有优化 trade-off</strong>：动作导向训练会<strong>轻微回退</strong>部分纯视觉语言与导航评测——多目标之间如何更好地平衡/课程化仍是开放问题。</li>
+      <li><strong>评测偏短视距、benchmark 驱动</strong>：长时、易失败、需持续恢复的真实部署尚未验证。</li>
+      <li><strong>真机 OOD 内部不均衡</strong>：ALOHA OOD 里 Position 泛化只有 53.8%（Background/Instruction 却 80.8%/84.6%），「空间位置」仍是相对短板。</li>
+      <li><strong>RL 只在单一仿真环境采样</strong>：其 OOD 泛化依赖「任务成功语义与渲染无关」的假设，这一机制的边界未充分论证。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>后续动作</h2>
+    <ul>
+      <li>读代码 <code>github.com/QwenLM/Qwen-VLA</code>，重点看 DiT 动作专家、embodiment prompt 与掩码/Zero-Padding 实现。</li>
+      <li>补概念：流匹配（flow matching）的概率流 ODE→SDE 化求 log-prob 的推导；DiT 的 AdaLN 与多段 RoPE。</li>
+      <li>读 <code>ROBOINF</code> 数据引擎博客，理解合成 VLA 数据的生成管道（场景 → 任务 → 成功轨迹 + 域随机化）。</li>
+      <li>在自己 VLA 上做最小改动实验：加 embodiment prompt + 掩码统一动作空间，看能否零成本支持第二个构型。</li>
+      <li>复现 T2A：先文本后视觉的预训练能否带来可测量的稳定性/样本效率提升。</li>
+    </ul>
+  </section>
+
+  <footer>
+    <span>精读笔记 · Qwen-VLA：统一任务、环境与机器人构型的视觉-语言-动作建模</span>
+    <a href="index.html">返回知识库 →</a>
+  </footer>
+</div>
+<script src="nav.js"></script>
+</body>
+</html>

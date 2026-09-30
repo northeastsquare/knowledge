@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Realtime-VLA FLASH：扩散 VLA 的投机推理框架 · 精读</title>
+<meta name="description" content="用投机推理加速扩散 VLA，实现实时闭环控制">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f1f4f6;
+    --surface:#fbfcfd;
+    --surface-2:#eaf0f4;
+    --ink:#16222e;
+    --ink-2:#51626f;
+    --ink-3:#83919c;
+    --accent:#0e6e8a;
+    --accent-strong:#0a4c60;
+    --signal:#c4572a;
+    --line:#d8e1e7;
+    --line-strong:#c3d0d9;
+    --grid-line:rgba(22,34,46,.05);
+    --shadow:0 1px 2px rgba(22,34,46,.04),0 14px 34px rgba(22,34,46,.07);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+      --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+      --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+      --line:#1e2d3a; --line-strong:#2b3d4b;
+      --grid-line:rgba(231,238,244,.045);
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+    --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+    --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+    --line:#1e2d3a; --line-strong:#2b3d4b;
+    --grid-line:rgba(231,238,244,.045);
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Sans",-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+    line-height:1.78; font-size:16px; -webkit-font-smoothing:antialiased;
+  }
+  .grid{
+    position:fixed; inset:0; z-index:-1; pointer-events:none;
+    background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);
+    background-size:28px 28px;
+  }
+  .wrap{max-width:860px; margin:0 auto; padding:0 24px 96px;}
+
+  .masthead{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px 24px 0; max-width:860px; margin:0 auto;
+  }
+  .back{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:13px; color:var(--accent); text-decoration:none; letter-spacing:.03em;
+  }
+  .back:hover{text-decoration:underline;}
+  .masthead .ref{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12.5px; color:var(--ink-3); letter-spacing:.04em;
+  }
+
+  .hero{padding:52px 0 34px; border-bottom:1px solid var(--line-strong);}
+  .eyebrow{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent);
+    margin-bottom:16px;
+  }
+  .hero h1{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:clamp(28px,4.6vw,42px); font-weight:700; line-height:1.2;
+    margin:0 0 16px; color:var(--ink); text-wrap:balance;
+  }
+  .hero .summary{
+    font-size:17px; color:var(--ink-2); max-width:640px; margin:0 0 22px;
+  }
+  .meta{
+    border:1px solid var(--line); border-radius:12px; background:var(--surface);
+    padding:14px 18px; font-size:13.5px; display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px 24px;
+    box-shadow:var(--shadow);
+  }
+  .meta .m{display:flex; flex-direction:column; gap:1px;}
+  .meta .m .k{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:11px;
+    color:var(--ink-3); letter-spacing:.08em; text-transform:uppercase;
+  }
+  .meta .m .v{color:var(--ink); font-weight:500;}
+
+  section{margin-top:40px;}
+  h2{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:21px; font-weight:600; margin:0 0 14px; color:var(--ink);
+    display:flex; align-items:center; gap:12px;
+  }
+  h2::before{
+    content:""; width:10px; height:10px; flex:none;
+    background:var(--accent); border-radius:2px; transform:rotate(45deg);
+  }
+  p{margin:0 0 12px;}
+  strong{font-weight:700;}
+  .hl{color:var(--accent); font-weight:600;}
+  a{color:var(--accent);}
+
+  ul,ol{margin:0 0 14px; padding-left:22px;}
+  li{margin-bottom:7px;}
+  li::marker{color:var(--accent);}
+
+  blockquote{
+    margin:16px 0; padding:14px 18px; border-left:3px solid var(--accent);
+    background:var(--surface-2); border-radius:0 10px 10px 0; color:var(--ink);
+  }
+  blockquote p{margin:0;}
+
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    padding:20px 22px; box-shadow:var(--shadow); margin:14px 0;
+  }
+  .card h3{font-size:16px; font-weight:700; margin:0 0 10px;}
+
+  table{width:100%; border-collapse:collapse; font-size:14px; margin:12px 0;}
+  th,td{padding:9px 12px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12.5px;
+    color:var(--accent-strong); background:var(--surface-2); letter-spacing:.03em; font-weight:600;
+  }
+  tr:last-child td{border-bottom:none;}
+  .tbl-wrap{overflow-x:auto;}
+
+  code{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:13.5px;
+    background:var(--surface-2); border:1px solid var(--line); border-radius:5px; padding:1px 6px;
+  }
+  pre{overflow-x:auto; background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:16px; font-size:13px; line-height:1.6;}
+  pre code{border:none; background:none; padding:0;}
+
+  .diagram{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px; margin:16px 0; box-shadow:var(--shadow); overflow-x:auto;}
+  .diagram svg{max-width:100%; height:auto; display:block;}
+
+  footer{
+    margin-top:56px; padding-top:20px; border-top:1px solid var(--line-strong);
+    display:flex; justify-content:space-between; gap:12px; font-size:13px; color:var(--ink-3);
+  }
+  footer a{color:var(--accent); text-decoration:none;}
+  footer a:hover{text-decoration:underline;}
+</style>
+</head>
+<body>
+<div class="grid" aria-hidden="true"></div>
+
+<header class="masthead">
+  <a class="back" href="index.html">← 返回知识库</a>
+  <span class="ref">arXiv:2605.13778v1</span>
+</header>
+
+<div class="wrap">
+
+  <section class="hero">
+    <div class="eyebrow">精读笔记 · 推理加速</div>
+    <h1>Realtime-VLA FLASH：扩散 VLA 的投机推理框架</h1>
+    <p class="summary">用投机推理加速扩散 VLA，实现实时闭环控制</p>
+    <div class="meta">
+      <div class="m"><span class="k">论文</span><span class="v">Realtime-VLA FLASH: Speculative Inference Framework for Diffusion-based VLAs</span></div>
+      <div class="m"><span class="k">机构</span><span class="v">中科院计算所 · Dexmal</span></div>
+      <div class="m"><span class="k">arXiv</span><span class="v">2605.13778v1</span></div>
+      <div class="m"><span class="k">主题</span><span class="v">VLA · 推理加速</span></div>
+    </div>
+  </section>
+
+  <!-- 以下每节：替换占位内容为真实内容，可加 ul/ol/table/blockquote/mermaid 图；保留 h2 标题与整体结构不变 -->
+  <section>
+    <h2>它解决的问题</h2>
+    <p>扩散式视觉-语言-动作模型（dVLA，代表是 π0）能捕捉<strong>多模态的动作分布</strong>，在复杂操作任务上表现很强，但要在真实机器人上实时部署，<span class="hl">全量推理的高延迟是硬约束</span>。</p>
+    <ul>
+      <li>机器人控制频率远高于模型推理频率，现有系统只能靠<strong>开环动作分块（open-loop action chunking）</strong>来桥接这个速度差：一次预测未来一整段动作，先执行几步，等执行到一半才触发下一次重规划（replanning）。</li>
+      <li>问题在于：虽然重规划频率被降低了，<strong>每一轮重规划仍然要跑同样昂贵的全量推理管线</strong>（图像编码 → VLM prefill → 多步动作去噪）。端到端推理延迟依旧是最主要的瓶颈，直接限制了 dVLA 用在需要快速反应的、延迟敏感的任务上。</li>
+    </ul>
+    <p>作者想借用的工具是<span class="hl">投机推理（Speculative Inference）</span>——它在 LLM 和自回归 VLA 上已经被证明有效：让一个轻量草稿模型先提出候选，主模型并行验证，从而省掉昂贵的主模型生成。但这套东西在 dVLA 上<span class="hl">没法直接搬</span>：</p>
+    <div class="card">
+      <h3>投机推理的三要素在 dVLA 上全部失效</h3>
+      <table>
+        <tr><th>要素</th><th>自回归模型（LLM / AR-VLA）</th><th>dVLA（π0 类）</th></tr>
+        <tr><td>草稿提出</td><td>离散 token 级概率天然支持</td><td>动作是连续空间里<strong>多步迭代去噪</strong>生成的，什么叫"有意义的草稿"不清楚</td></tr>
+        <tr><td>并行验证</td><td>token 概率逐位核对</td><td>去噪本身是<strong>串行</strong>的，天然抗拒并行</td></tr>
+        <tr><td>接受准则</td><td>有显式似然可比较</td><td>连续动作<strong>没有显式似然</strong>，拿不出自然的接受判据</td></tr>
+      </table>
+      <p style="margin-top:10px;">三者里最要命的是<strong>验证（verification）</strong>：找不到一种便宜的方法来检验一段草拟的连续动作块，投机推理就会退化成"把完整串行去噪再跑一遍"，等于没有加速。</p>
+    </div>
+    <blockquote><p>一句话概括：dVLA 推理太慢，而投机推理三要素在连续去噪的设定下没有现成答案，本文要解决的核心就是"如何在连续动作域里做便宜又可靠的验证"。</p></blockquote>
+  </section>
+
+  <section>
+    <h2>方法主线</h2>
+    <p>作者先用<span class="hl">roofline 剖析</span>找瓶颈，再据此设计一条"闪电路径（Flash Path）"替代大部分全量推理，一共五步。</p>
+    <ol>
+      <li><strong>延迟剖析定位闲置算力</strong>：在 RTX 4090D 上把 π0 全量推理拆成三段——图像编码 11.3 ms、VLM prefill 26.7 ms、动作去噪 20.0 ms（合计 58.0 ms）。roofline 分析显示图像编码与 prefill 是<strong>算力受限</strong>（应消除冗余计算 → 复用 KV Cache），而动作去噪是<strong>访存受限</strong>（每步反复读 cache 又无法跨步并行 → 算力闲置，适合改做并行验证）。</li>
+      <li><strong>双路径运行时</strong>：保留原始全量路径（Full Path）作兜底，新增一条轻量闪电路径（Flash Path）。绝大多数重规划轮走 flash path，只有验证失败或进入精细调节阶段才回落到 full path 校正轨迹。</li>
+      <li><strong>轻量草稿模型出候选</strong>：flash path 仍编码当前图像，但<strong>跳过 VLM prefill</strong>，把视觉特征喂给一个只有约 110M 参数的草稿模型（单个 Gemma block + 线性动作头，对比 VLM 约 2.7B），一次性并行预测整段候选动作块。</li>
+      <li><strong>多步并行验证</strong>：利用 flow matching 的线性插值路径——把草稿终点与高斯噪声插值出中间去噪状态，在<strong>选定的几个去噪时刻并行</strong>调用主模型的 Action Expert 重构终点，逐动作比较距离，返回<strong>最长一致前缀</strong>作为可执行动作。</li>
+      <li><strong>相位感知回退</strong>：用夹爪开合（gripper switch）作为"即将进入精细调节阶段"的启发式信号，主动回退全量路径；再加<strong>周期性全量刷新（PF）</strong>纠正长期漂移。两者叠加才是最优的成功率-延迟权衡。</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>输入、输出与数据流</h2>
+    <div class="card">
+      <h3>模型输入 / 输出</h3>
+      <ul>
+        <li><strong>输入</strong>：多模态观测 <code>o_t = [I_t¹, …, I_tⁿ, ℓ_t, q_t]</code>——多视角图像、语言指令、机器人状态（joint state）。</li>
+        <li><strong>输出</strong>：未来动作块 <code>A_t = [a_t, a_{t+1}, …, a_{t+H-1}]</code>，<code>H=50</code> 步；每步动作含语义不同的通道——末端位姿 <code>p_t</code>、旋转 <code>r_t</code>、二值夹爪控制 <code>g_t</code>。</li>
+        <li><strong>执行方式</strong>：只执行动作块前缀，每执行 <strong>12 步</strong>后基于新观测重规划一次。</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>一轮推理的数据流（对比两路径）</h3>
+      <div class="tbl-wrap">
+        <table>
+          <tr><th>阶段</th><th>Full Path（全量）</th><th>Flash Path（投机）</th></tr>
+          <tr><td><strong>图像编码</strong></td><td>11.3 ms（Torch）/ 4.7 ms（Triton）</td><td>11.0 ms / 4.7 ms（仍需编码当前帧）</td></tr>
+          <tr><td><strong>VLM prefill</strong></td><td>26.7 ms / 22.4 ms，构建视觉 KV Cache</td><td><strong>跳过</strong>——复用最近一次全量轮的 KV Cache</td></tr>
+          <tr><td><strong>动作生成</strong></td><td>动作去噪 20.0 ms / 12.6 ms（约 10 步串行去噪）</td><td>草稿模型 3.5 ms / 0.9 ms + 并行验证 3.4 ms / 2.2 ms</td></tr>
+          <tr><td><strong>单轮合计</strong></td><td>58.0 ms / 39.7 ms</td><td><strong>17.9 ms / 7.8 ms</strong></td></tr>
+        </table>
+      </div>
+      <p style="margin-top:10px;">数据流主链：当前图像 → 图像编码 →（flash path：草稿模型出候选动作块 → 主模型 Action Expert 在复用 KV Cache 上并行验证 → 输出最长一致前缀执行）｜（验证失败 / 夹爪切换 / 周期到点 → 回落到 full path 刷新上下文并重生成动作）。</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>训练或运行方式</h2>
+    <div class="card">
+      <h3>草稿模型训练（离线、一次性的额外开销）</h3>
+      <ul>
+        <li><strong>目标</strong>：对<strong>冻结的全量路径策略输出</strong>做监督回归，损失为加权 Smooth L1 / Huber（δ=1.0）。</li>
+        <li><strong>前缀加权</strong>：采样前缀最多 16 步，前缀权重 0.9、尾部权重 0.1——早期可执行动作权重更高，最终执行多长前缀仍由验证与回退决定。</li>
+        <li><strong>超参</strong>：AdamW，学习率 2×10⁻³，weight decay 0.01，batch 64，100 epochs，FP32；每套 LIBERO suite 训一个草稿模型，约 4×RTX 4090D、6 小时。</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>在线运行</h3>
+      <ul>
+        <li>动作块 <code>H=50</code>，每执行 <strong>12 步</strong>重规划；验证阈值 <code>δ=0.15</code>，验证时刻数 <code>K=2</code>。</li>
+        <li>草稿模型在推理时不做完整去噪，而是<strong>并行预测整块</strong>（H 个学习到的 action query slot 同时解码）。</li>
+        <li>所有在线实验在单张 RTX 4090D 上跑；真机用同步推理循环，不做异步推理或延迟隐藏。</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>真机适配</h3>
+      <p>传送带分拣（toy dog + hairbrush 两类，每类 200 条演示）：先对预训练 π0 用 LoRA 微调 20k 步；草稿模型的观测来自真实演示，但<strong>回归目标是微调后主模型生成的教师动作块</strong>，而非直接克隆原始演示动作。约 8×H20，微调 12 小时 + 草稿训练 2 小时。</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>关键结果</h2>
+    <div class="card">
+      <h3>LIBERO 仿真（四个 suite，每任务 50 次试验）</h3>
+      <div class="tbl-wrap">
+        <table>
+          <tr><th>方法</th><th>Spatial</th><th>Object</th><th>Goal</th><th>10</th><th>平均 SR</th><th>Lat (ms)</th><th>/Act (ms)</th><th>SR 变化</th><th>加速比</th></tr>
+          <tr><td>Torch-π0</td><td>96.8</td><td>98.8</td><td>95.8</td><td>85.2</td><td>94.1</td><td>58.0</td><td>5.0</td><td>—</td><td>1.00×</td></tr>
+          <tr><td>Triton-π0</td><td>96.4</td><td>98.8</td><td>95.0</td><td>86.6</td><td>94.2</td><td>39.7</td><td>3.5</td><td>+0.1</td><td>1.46×</td></tr>
+          <tr><td>FLASH-π0</td><td>96.4</td><td>99.2</td><td>94.6</td><td>83.4</td><td>93.4</td><td>34.9</td><td>3.0</td><td>-0.7</td><td>1.66×</td></tr>
+          <tr><td><strong>FLASH+Triton-π0</strong></td><td>96.8</td><td>99.2</td><td>94.4</td><td>84.6</td><td><strong>93.8</strong></td><td><strong>19.1</strong></td><td><strong>1.9</strong></td><td>-0.3</td><td><strong>3.04×</strong></td></tr>
+        </table>
+      </div>
+      <p>一句话：FLASH+Triton-π0 把任务级平均推理延迟从 58.0 ms 压到 <span class="hl">19.1 ms（3.04× 加速）</span>，每动作延迟从 5.0 ms 降到 1.9 ms（吞吐 2.63×），平均成功率只掉 <strong>0.3 个百分点</strong>（93.8 vs 94.1）。Table 2 显示约 <strong>66.8%</strong> 的重规划轮由 flash path 处理，被接受前缀覆盖约 69.7% 的重规划窗口。</p>
+    </div>
+    <div class="card">
+      <h3>真机传送带分拣（成功率 %，每条件 10 次；演示在 6 m/min 采集）</h3>
+      <div class="tbl-wrap">
+        <table>
+          <tr><th>方法</th><th>中速 10 m/min<br>(狗 / 刷)</th><th>高速 13 m/min<br>(狗 / 刷)</th><th>超高速 15 m/min<br>(狗 / 刷)</th></tr>
+          <tr><td>JAX-π0</td><td>20.0 / 50.0</td><td>0.0 / 0.0</td><td>0.0 / 0.0</td></tr>
+          <tr><td>Triton-π0</td><td>80.0 / 40.0</td><td>30.0 / 10.0</td><td>0.0 / 0.0</td></tr>
+          <tr><td><strong>FLASH+Triton-π0</strong></td><td>80.0 / 90.0</td><td>50.0 / 30.0</td><td><strong>20.0 / 10.0</strong></td></tr>
+        </table>
+      </div>
+      <p>带速越高，推理延迟的影响被放得越大：JAX-π0 在 8 m/min 时对 toy dog 还有 80% 成功率，一进中速就骤降；到超高速只有 FLASH+Triton-π0 仍有非零成功率（<span class="hl">唯一能在 15 m/min 抓取的方案</span>）。慢基线的失败大多来自"动作块过期"——夹爪落在物体后面或闭合太晚。</p>
+    </div>
+    <div class="card">
+      <h3>消融（LIBERO-10，最敏感 suite；最终选 +FB &amp; PF=2）</h3>
+      <div class="tbl-wrap">
+        <table>
+          <tr><th>配置</th><th>SR (%)</th><th>Lat (ms)</th></tr>
+          <tr><td>仅 Flash path（基线）</td><td>58.4</td><td>13.3</td></tr>
+          <tr><td>+ 周期刷新 PF=2 / 3 / 4</td><td>80.6 / 82.0 / 75.4</td><td>21.0 / 18.6 / 17.2</td></tr>
+          <tr><td>+ 相位回退 FB（仅）</td><td>66.8</td><td>17.7</td></tr>
+          <tr><td><strong>+ FB &amp; PF=2（最终）</strong></td><td><strong>84.6</strong></td><td>24.1</td></tr>
+          <tr><td>+ FB &amp; PF=3 / 4</td><td>81.6 / 78.4</td><td>21.9 / 20.2</td></tr>
+        </table>
+      </div>
+      <p>关键洞察：<strong>只用 flash path 会把成功率打到 58.4</strong>（投机误差在精细阶段累积成失败）；周期刷新和相位回退各自都能救回一部分，两者叠加（PF=2）拿到最好的成功-延迟权衡。</p>
+    </div>
+  </section>
+
+  <section>
+    <h2>我真正学到的内容</h2>
+    <ul>
+      <li><strong>投机推理在连续动作域的真正门槛是验证，而 flow matching 恰好免费送了一个验证器</strong>。因为 flow matching 训练时就在高斯噪声与目标动作之间的<strong>线性路径</strong>上学习速度场，给定草稿终点就能插值出中间状态、在几个时刻并行问 Action Expert"你会不会从这里走到这个终点"，从而绕开完整串行去噪。这是全文最关键的一步借力。</li>
+      <li><strong>延迟剖析决定设计，而非先想方案再找理由</strong>：roofline 把三段分别标成算力受限 / 访存受限，于是结论直接指向"prefill 该复用 KV Cache、去噪该并行验证"——优化点是从硬件特征反推出来的。</li>
+      <li><strong>投机加速不是全域都安全</strong>：平滑运动时观测变化慢、小误差可容忍；但夹爪开合这类精细调节阶段误差会放大成失败。所以"什么时候该信任草稿"和"草稿能不能被接受"是两回事，需要单独的相位感知机制。</li>
+      <li><strong>把二元接受改成"返回最长一致前缀"更实用</strong>：比 yes/no 更细粒度，能执行多少就执行多少，还让回退的交接更平滑。</li>
+      <li><strong>几乎零成本的阶段信号</strong>：夹爪通道在 LIBERO 里是 ±1 的离散开合，标准化后仍然在 0 附近分开，所以"过零检测"就能识别抓取/释放事件——不需要额外模型或标注。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>可复用设计</h2>
+    <ul>
+      <li><strong>草稿模型与主模型架构对齐</strong>：直接复用 VLM 的一个 Gemma block + 线性动作头，保持同样的动作块表示——既便宜（110M vs 2.7B），又让验证阶段能直接复用主模型 Action Expert，甚至部分复用 Triton kernel。</li>
+      <li><strong>H 个可学习 action query slot</strong>：把"定长动作块写在哪"显式化，用 blockwise 注意力掩码让 slot 同时看到视觉-语言前缀和状态 token，一个前向 pass 并行产出整块动作。</li>
+      <li><strong>前缀加权的回归目标</strong>：早期可执行动作权重高，但"最终执行多长"仍留给验证与回退判定——训练目标和推理目标各司其职。</li>
+      <li><strong>"周期刷新 + 相位回退"的组合拳</strong>：PF 负责长期漂移的粗校正，FB 负责精度关键阶段的针对性校正，单独用都不够，叠加才是最优权衡。</li>
+      <li><strong>保守前缀规则 <code>L = min_k L(k)</code></strong>：多个验证时刻取最保守的可执行长度，宁可少执行也不冒险。</li>
+      <li><strong>真机草稿回归教师输出而非原始演示</strong>：草稿模型学的对象是微调后主模型的动作块，而不是人类演示——保证草稿与主策略同分布。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>疑问与风险</h2>
+    <ul>
+      <li><strong>验证只是"局部一致性启发式"，不是正确性保证</strong>（附录 B 明确承认）：接受一个草稿前缀，不代表它与全量路径产生相同轨迹。端点误差受四因素约束——接受阈值、Action Expert 的局部重建误差、复用 KV Cache 的条件失配、以及"草稿诱导插值路径 vs 训练用目标路径"的路径失配。</li>
+      <li><strong>阈值与验证时刻是手工启发式</strong>：<code>δ=0.15</code>、<code>K=2</code> 是拍出来的，作者自己也把"轨迹自适应的验证阈值"列为未来方向。</li>
+      <li><strong>相位信号依赖夹爪通道</strong>：用 gripper switch 当阶段信号很优雅，但对没有明显开合语义的末端执行器（如吸盘、灵巧手）未必成立。</li>
+      <li><strong>额外训练成本</strong>：每套任务/suite 要单独训一个草稿模型（约 6 小时），相比纯 kernel 优化（Triton）或蒸馏到少步生成的方法，多了一份离线开销和部署复杂度。</li>
+      <li><strong>真机证据面窄</strong>：只有传送带分拣一类任务、两类物体、每条件 10 次试验，结论的泛化性还有待更多真实任务验证。</li>
+      <li><strong>附录表格呈现有瑕疵</strong>：Table 2 里 Object / Goal / 10 三行的对齐看起来错位（Acc / FR 数字与 suite 行对不齐），不影响正文结论，但读附录数据时要小心。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>后续动作</h2>
+    <ul>
+      <li><strong>补背景</strong>：读 π0 原论文（arXiv:2410.24164）吃透 flow matching VLA 的 Action Expert 与 KV Cache 机制；读 Realtime-VLA 系列（Triton 版 2510.26742、v2 2603.26360）理解 kernel 级优化到底做了什么。</li>
+      <li><strong>读代码 / 复现</strong>：复现 Table 6 的组件级延迟分解，亲自验证"去噪访存受限、prefill 算力受限"的 roofline 结论在自己硬件上是否成立；对比 flash path 并行验证的真实墙钟收益。</li>
+      <li><strong>动手实验</strong>：把投机推理与 real-time chunking（RTC）结合——现有 RTC 假设固定推理延迟，而 FLASH 引入了可变接受前缀长度，需要能处理变延迟策略更新的轨迹优化。</li>
+      <li><strong>追方向</strong>：关注边缘部署（VLA-Perf 2602.18397 指出边缘设备更偏访存受限、功耗/散热更紧），FLASH 减少重复全量推理的思路在边缘可能收益更大。</li>
+    </ul>
+  </section>
+
+  <footer>
+    <span>精读笔记 · Realtime-VLA FLASH：扩散 VLA 的投机推理框架</span>
+    <a href="index.html">返回知识库 →</a>
+  </footer>
+</div>
+<script src="nav.js"></script>
+</body>
+</html>

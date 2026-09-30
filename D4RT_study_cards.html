@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>D4RT 论文精读卡片</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Noto+Sans+SC:wght@300;400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#080b11;
+    --panel:#0e131c;
+    --panel-2:#121927;
+    --line:#1e2838;
+    --ink:#e7edf5;
+    --ink-dim:#94a3b8;
+    --ink-faint:#5a6b82;
+    --c1:#ff5d3b; --c2:#f7b733; --c3:#39d98a; --c4:#3b9dff; --c5:#9b5cff;
+    --spectral:linear-gradient(100deg,var(--c1),var(--c2) 28%,var(--c3) 52%,var(--c4) 74%,var(--c5));
+    --mono:'JetBrains Mono',ui-monospace,monospace;
+    --sans:'Noto Sans SC',-apple-system,sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html,body{background:transparent}
+  body{
+    font-family:var(--sans);color:var(--ink);line-height:1.7;
+    background:
+      radial-gradient(900px 500px at 12% -8%,rgba(255,93,59,.10),transparent 60%),
+      radial-gradient(900px 600px at 92% 6%,rgba(59,157,255,.10),transparent 60%),
+      var(--bg);
+    background-attachment:fixed;
+    min-height:100vh;
+    padding:28px 16px 64px;
+  }
+  /* faint spatial grid texture */
+  body::before{
+    content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.5;
+    background-image:
+      linear-gradient(rgba(123,150,200,.04) 1px,transparent 1px),
+      linear-gradient(90deg,rgba(123,150,200,.04) 1px,transparent 1px);
+    background-size:46px 46px;
+    -webkit-mask-image:radial-gradient(120% 80% at 50% 0%,#000,transparent 75%);
+            mask-image:radial-gradient(120% 80% at 50% 0%,#000,transparent 75%);
+  }
+  .wrap{max-width:880px;margin:0 auto;position:relative;z-index:1}
+
+  /* ---------- header ---------- */
+  header{margin-bottom:26px}
+  .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.32em;color:var(--ink-faint);text-transform:uppercase;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .badge{
+    font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;
+    padding:3px 9px;border-radius:999px;color:#0a0d12;
+    background:var(--spectral);text-transform:uppercase;
+  }
+  h1{
+    font-family:var(--mono);font-weight:800;letter-spacing:-.01em;line-height:1.02;
+    font-size:clamp(40px,9vw,76px);margin:10px 0 6px;
+    background:var(--spectral);-webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .subtitle{font-size:14px;color:var(--ink-dim);max-width:60ch}
+  .subtitle b{color:var(--ink);font-weight:500}
+  .meta-row{margin-top:14px;display:flex;gap:18px;flex-wrap:wrap;font-family:var(--mono);font-size:11px;color:var(--ink-faint)}
+  .meta-row span b{color:var(--c4);font-weight:700}
+
+  /* ---------- toolbar ---------- */
+  .toolbar{
+    position:sticky;top:8px;z-index:5;margin:22px 0 18px;
+    background:rgba(14,19,28,.82);backdrop-filter:blur(12px);
+    border:1px solid var(--line);border-radius:16px;padding:12px 12px;
+  }
+  .tb-top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+  .modes{display:inline-flex;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:3px}
+  .modes button{
+    font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.04em;
+    color:var(--ink-dim);background:none;border:none;cursor:pointer;
+    padding:7px 14px;border-radius:7px;transition:.18s;
+  }
+  .modes button.on{color:#0a0d12;background:var(--spectral)}
+  .progress{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:12px;color:var(--ink-dim)}
+  .pbar{width:120px;height:6px;border-radius:999px;background:var(--panel-2);overflow:hidden;border:1px solid var(--line)}
+  .pfill{height:100%;width:0;background:var(--spectral);transition:width .35s ease}
+  .chips{display:flex;gap:7px;flex-wrap:wrap;margin-top:11px}
+  .chip{
+    font-family:var(--mono);font-size:11px;letter-spacing:.02em;cursor:pointer;
+    color:var(--ink-dim);background:var(--panel-2);border:1px solid var(--line);
+    padding:5px 11px;border-radius:999px;transition:.16s;white-space:nowrap;
+  }
+  .chip:hover{color:var(--ink);border-color:#2c3a50}
+  .chip.on{color:#0a0d12;background:var(--ink);border-color:var(--ink);font-weight:600}
+  .chip .n{opacity:.55;margin-left:5px}
+
+  /* ---------- flashcard ---------- */
+  #cardView{margin-top:8px}
+  .stage{perspective:2200px;margin-bottom:18px}
+  .card{
+    position:relative;width:100%;min-height:340px;cursor:pointer;
+    transform-style:preserve-3d;transition:transform .6s cubic-bezier(.4,.05,.2,1);
+  }
+  .card.flipped{transform:rotateY(180deg)}
+  .face{
+    position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden;
+    border:1px solid var(--line);border-radius:20px;padding:30px 30px 64px;
+    display:flex;flex-direction:column;overflow:hidden;
+    background:linear-gradient(180deg,var(--panel),#0b1016);
+  }
+  .face::before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:var(--spectral);opacity:.9}
+  .back{transform:rotateY(180deg);background:linear-gradient(180deg,#0d141f,#0a0f16)}
+  .face-tag{font-family:var(--mono);font-size:10px;letter-spacing:.26em;text-transform:uppercase;color:var(--ink-faint);display:flex;justify-content:space-between;align-items:center}
+  .sec-name{color:var(--c4)}
+  .qmark,.amark{font-family:var(--mono);font-weight:800;font-size:13px;letter-spacing:.1em}
+  .qmark{color:var(--c1)} .amark{color:var(--c3)}
+  .face .body{flex:1;display:flex;align-items:center;margin-top:18px}
+  .q-text{font-size:clamp(19px,3.6vw,25px);font-weight:500;line-height:1.55;color:var(--ink)}
+  .a-text{font-size:clamp(14.5px,2.6vw,16.5px);line-height:1.78;color:#d4dded;overflow-y:auto;max-height:230px;padding-right:6px}
+  .a-text::-webkit-scrollbar{width:6px}
+  .a-text::-webkit-scrollbar-thumb{background:#243248;border-radius:99px}
+  .hint{position:absolute;left:30px;bottom:22px;font-family:var(--mono);font-size:11px;color:var(--ink-faint);letter-spacing:.04em;display:flex;align-items:center;gap:7px}
+  .hint .dot{width:5px;height:5px;border-radius:50%;background:var(--c2);animation:pulse 1.8s infinite}
+  @keyframes pulse{0%,100%{opacity:.35}50%{opacity:1}}
+  .var{font-family:var(--mono);font-size:.9em;color:var(--c2);background:rgba(247,183,51,.09);padding:0 4px;border-radius:4px}
+  .key{color:var(--c3);font-weight:700}
+  .neg{color:var(--c1);font-weight:600}
+
+  /* mastered toggle on back */
+  .master-btn{
+    position:absolute;right:26px;bottom:20px;font-family:var(--mono);font-size:11.5px;font-weight:600;
+    letter-spacing:.04em;border:1px solid var(--line);background:var(--panel-2);color:var(--ink-dim);
+    padding:7px 13px;border-radius:9px;cursor:pointer;transition:.16s;z-index:3;
+  }
+  .master-btn:hover{border-color:#2c3a50;color:var(--ink)}
+  .master-btn.done{background:rgba(57,217,138,.14);border-color:rgba(57,217,138,.4);color:var(--c3)}
+
+  /* nav */
+  .nav{display:flex;align-items:center;justify-content:space-between;gap:14px}
+  .nav-btn{
+    font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:.04em;cursor:pointer;
+    background:var(--panel);border:1px solid var(--line);color:var(--ink);
+    padding:11px 18px;border-radius:11px;transition:.16s;
+  }
+  .nav-btn:hover:not(:disabled){border-color:#34465f;transform:translateY(-1px)}
+  .nav-btn:disabled{opacity:.32;cursor:not-allowed}
+  .counter{font-family:var(--mono);font-size:13px;color:var(--ink-dim);text-align:center}
+  .counter b{color:var(--ink);font-size:18px}
+  .extra{display:flex;gap:8px;justify-content:center;margin-top:14px}
+  .mini{font-family:var(--mono);font-size:11px;color:var(--ink-faint);background:none;border:1px solid var(--line);padding:6px 12px;border-radius:8px;cursor:pointer;transition:.16s}
+  .mini:hover{color:var(--ink);border-color:#2c3a50}
+
+  /* ---------- list mode ---------- */
+  #listView{margin-top:8px;display:none}
+  .sec-block{margin-bottom:34px}
+  .sec-head{display:flex;align-items:baseline;gap:12px;margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+  .sec-idx{font-family:var(--mono);font-weight:800;font-size:13px;background:var(--spectral);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .sec-title{font-family:var(--mono);font-size:15px;font-weight:700;letter-spacing:.02em;color:var(--ink)}
+  .sec-count{font-family:var(--mono);font-size:11px;color:var(--ink-faint);margin-left:auto}
+  .qa{border:1px solid var(--line);border-radius:14px;padding:18px 20px;margin-bottom:12px;background:linear-gradient(180deg,var(--panel),#0b1016)}
+  .qa .q{font-size:16px;font-weight:500;color:var(--ink);display:flex;gap:10px;line-height:1.55}
+  .qa .q .mk{font-family:var(--mono);font-weight:800;color:var(--c1);flex-shrink:0}
+  .qa .a{font-size:14.5px;line-height:1.8;color:#c9d4e2;margin-top:12px;padding-top:13px;border-top:1px dashed var(--line);display:flex;gap:10px}
+  .qa .a .mk{font-family:var(--mono);font-weight:800;color:var(--c3);flex-shrink:0}
+
+  footer{margin-top:40px;text-align:center;font-family:var(--mono);font-size:11px;color:var(--ink-faint);letter-spacing:.04em;line-height:1.9}
+  footer a{color:var(--c4);text-decoration:none}
+  @media(max-width:560px){
+    .face{padding:24px 22px 60px} .hint{left:22px}
+    .master-btn{right:20px} .pbar{width:84px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="kicker">
+      <span>CVPR 2026 · 精读卡片</span>
+      <span class="badge">Best Paper</span>
+    </div>
+    <h1>D4RT</h1>
+    <p class="subtitle"><b>Efficiently Reconstructing Dynamic Scenes One D4RT at a Time</b> — 用统一的可查询解码接口，从单段视频里联合恢复深度、时空对应与相机参数的前馈式 4D 重建模型。</p>
+    <div class="meta-row">
+      <span>Google DeepMind · UCL · Oxford</span>
+      <span>arXiv <b>2512.08924</b></span>
+      <span>编码器 <b>1B</b> / 解码器 <b>144M</b></span>
+      <span>位姿 <b>200+ FPS</b></span>
+    </div>
+  </header>
+
+  <div class="toolbar">
+    <div class="tb-top">
+      <div class="modes">
+        <button id="mFlash" class="on" onclick="setMode('flash')">卡片模式</button>
+        <button id="mList" onclick="setMode('list')">列表模式</button>
+      </div>
+      <div class="progress">
+        <span>已掌握 <b id="masteredN">0</b>/<span id="totalN">0</span></span>
+        <div class="pbar"><div class="pfill" id="pfill"></div></div>
+      </div>
+    </div>
+    <div class="chips" id="chips"></div>
+  </div>
+
+  <!-- FLASHCARD MODE -->
+  <div id="cardView">
+    <div class="stage">
+      <div class="card" id="card" onclick="flip(event)">
+        <div class="face front">
+          <div class="face-tag"><span class="qmark">Q</span><span class="sec-name" id="fSec"></span></div>
+          <div class="body"><div class="q-text" id="fQ"></div></div>
+          <div class="hint"><span class="dot"></span>点击翻面 · 空格键</div>
+        </div>
+        <div class="face back">
+          <div class="face-tag"><span class="amark">A</span><span class="sec-name" id="bSec"></span></div>
+          <div class="body"><div class="a-text" id="fA"></div></div>
+          <button class="master-btn" id="masterBtn" onclick="toggleMaster(event)">标记已掌握</button>
+        </div>
+      </div>
+    </div>
+    <div class="nav">
+      <button class="nav-btn" id="prevBtn" onclick="go(-1)">← 上一张</button>
+      <div class="counter"><b id="curN">1</b> / <span id="cardTotal">31</span></div>
+      <button class="nav-btn" id="nextBtn" onclick="go(1)">下一张 →</button>
+    </div>
+    <div class="extra">
+      <button class="mini" onclick="shuffle()">⤮ 打乱顺序</button>
+      <button class="mini" onclick="resetMaster()">↺ 重置掌握</button>
+      <button class="mini" id="hideMastered" onclick="toggleHide()">隐藏已掌握</button>
+    </div>
+  </div>
+
+  <!-- LIST MODE -->
+  <div id="listView"></div>
+
+  <footer>
+    内容整理自 D4RT 论文全文（正文 + 消融 + 附录）· 仅供学习<br>
+    项目主页 <a href="https://d4rt-paper.github.io/" target="_blank">d4rt-paper.github.io</a> · 暂无开源代码
+  </footer>
+</div>
+
+<script>
+const DATA = [
+  { sec:"核心思想", items:[
+    { q:"一句话概括 D4RT 的核心创新是什么？",
+      a:"把“4D 重建”从『为每个任务设计专门解码器 + 对整段视频做稠密逐帧解码』，重构成『一个统一的、可对任意时空点<span class=key>独立查询</span>的轻量解码接口』。查询 <span class='var'>q=(u,v,t_src,t_tgt,t_cam)</span> → 输出 3D 位置 <span class='var'>P</span>；仅靠改变查询取值，就用同一套接口统一覆盖深度图、点云、3D 轨迹、相机内外参等所有任务。" },
+    { q:"D4RT 把传统 3D 重建的“提问方式”换成了什么？为什么这个转变重要？",
+      a:"传统重建问的是『everything, everywhere, all at once』——一次性把所有地方的几何全求出来。D4RT 改成 <span class=key>按需查询</span>(on-demand querying)：想知道哪个点在哪个时刻的 3D 位置，就只问那一个。重要性在于：动态世界里『全部一次算出』既昂贵又僵硬，大多数计算还是浪费的；按需查询让计算量随你真正需要的点数<span class=key>线性增长</span>，并天然同时支持稀疏和稠密两种用法。" },
+    { q:"论文点名批评了 MegaSaM、VGGT、SpatialTrackerV2 三类方法，各自的核心毛病是什么？",
+      a:"<b>MegaSaM</b>：靠一堆现成模型分别估 monodepth / metric depth / 运动分割，再用昂贵的 <span class=neg>test-time optimization</span> 拼到一起。<br><b>VGGT</b>：虽是前馈，但每个任务(深度、位姿、点云)用<span class=neg>各自独立的 decoder head</span>。这两者都无法为场景的<span class=neg>动态部分</span>建立对应关系。<br><b>SpatialTrackerV2</b>：能处理动态，但不是单阶段统一架构，依赖代价高的<span class=neg>迭代优化</span>，推理慢。" },
+  ]},
+  { sec:"查询机制·核心", items:[
+    { q:"写出 D4RT 查询 q 的五个分量，并区分哪些是“源(source)”、哪些是“目标(target)”。",
+      a:"<span class='var'>q = (u, v, t_src, t_tgt, t_cam)</span>。<br>• <b>源参数</b> <span class='var'>(u, v, t_src)</span>：源帧 <span class='var'>t_src</span> 上某个归一化 2D 点 <span class='var'>(u,v)∈[0,1]²</span>。<br>• <b>目标参数</b> <span class='var'>(t_tgt, t_cam)</span>：<span class='var'>t_tgt</span> 是目标时刻(这个点处于哪个时间状态)，<span class='var'>t_cam</span> 是参考相机坐标系(用哪一帧的相机视角来表达这个 3D 位置)。<br>解码输出 <span class='var'>P = D(q, F) ∈ R³</span>。" },
+    { q:"为什么 t_tgt 和 t_cam 要拆成两个独立索引？这带来什么能力？",
+      a:"因为『这个点在什么时刻的状态』和『从谁的视角看它』是两件不同的事。论文强调 the indices need not coincide——把它们解耦就实现了<span class=key>空间与时间的完全解耦</span>：你可以问『这个点在第 10 帧的位置，但用第 1 帧的相机坐标系表达』。这正是跨参考系追踪、把动态物体统一到一个世界坐标系里的基础。" },
+    { q:"D4RT 为什么坚持让每个 query 相互独立、彼此不做 attention？强行让它们互相 attention 会怎样？",
+      a:"独立解码有三大好处：① 训练时只需解码少量 query 就能提供监督信号(省算力)；② 推理时 query 可在所有帧上自由选取、不必相互关联，从而<span class=key>避免 out-of-distribution 效应</span>；③ 天然可并行、推理极快。论文明确说：早期实验里一旦在 query 之间开 self-attention，性能就<span class=neg>大幅下降</span>——所以独立是刻意的设计决定。" },
+    { q:"“Global Scene Representation F” 是什么？解码阶段它是固定还是变化的？",
+      a:"<span class='var'>F = E(V) ∈ R^(N×C)</span>，是编码器把整段视频压缩成的潜在场景表征，承载了全场景信息、跨帧的稠密对应、以及时间流动对场景的影响。一旦算出，<span class=key>F 在解码阶段全程固定不变</span>；解码器只是反复对这个固定的 F 做 cross-attention 来回答不同的 query。" },
+  ]},
+  { sec:"任务↔查询映射", items:[
+    { q:"用查询参数说明：怎么得到一个点的 point track？怎么得到 depth map？",
+      a:"<b>Point track</b>：固定 <span class='var'>(u,v)</span> 和 <span class='var'>t_src</span>，让 <span class='var'>t_tgt = t_cam</span> 一起从 1 扫到 T，得到该点在整段视频里的 3D 轨迹。<br><b>Depth map</b>：对某帧所有像素查询，令 <span class='var'>t_src = t_tgt = t_cam</span>(源、目标、相机同一帧)，只取输出 <span class='var'>P</span> 的 <span class=key>Z 分量</span>即为深度。" },
+    { q:"做 point cloud 重建时，D4RT 相比“先估每帧深度再用外参拼接”的传统流程省掉了什么？",
+      a:"D4RT 直接把所有像素的 3D 位置预测到一个<span class=key>共享参考系 t_cam</span> 里。于是省掉了『用(可能含噪的)显式相机估计把不同帧像素变换到统一坐标系』这一步——坐标变换误差和噪声外参带来的累积误差被整体绕开。" },
+  ]},
+  { sec:"相机参数求解", items:[
+    { q:"D4RT 并不直接回归相机外参，它是怎么“算”出两帧之间相对位姿的？",
+      a:"在两帧 i、j 上各采一组 <span class='var'>(h,w)</span> 网格点，构造 <span class='var'>q_i,k=(u_k,v_k,i,i,i)</span> 和 <span class='var'>q_j,k=(u_k,v_k,i,i,j)</span>。这两组解码出的 3D 点描述的是『同一批 3D 点在不同参考系下的坐标』。问题于是退化为求两组点云间的<span class=key>刚体变换</span>——用 <span class=key>Umeyama 算法</span>(一次 3×3 SVD 分解)高效求解。" },
+    { q:"内参(焦距)怎么从解码出的 3D 点反推？为什么要取中位数？",
+      a:"假设针孔模型、主点在 (0.5, 0.5)，对网格点解码出 <span class='var'>P=(px,py,pz)</span> 后，用 <span class='var'>fx = pz(u−0.5)/px</span>、<span class='var'>fy = pz(v−0.5)/py</span> 反推焦距。对 k 个估计<span class=key>取中位数</span>是为鲁棒性(抵抗个别离群点)。需要畸变(如鱼眼)时，在初始估计之上加一个非线性 refinement 步骤即可。" },
+  ]},
+  { sec:"架构细节", items:[
+    { q:"编码器和解码器分别是什么结构、各多大？",
+      a:"<b>编码器</b>：ViT，交替使用 local(逐帧) 与 global 自注意力层(借鉴 VGGT)，最大用 <span class='var'>ViT-g</span>、40 层、时空 patch <span class='var'>2×16×16</span>，约 <span class=key>1B</span> 参数。<br><b>解码器</b>：一个小的 cross-attention transformer，8 层，约 <span class=key>144M</span> 参数。<br>整体『重编码、轻解码』——解码器远小于编码器，这正是大规模并行查询可行的前提。" },
+    { q:"query token 是怎么构造的？里面那个“局部 9×9 RGB patch”起什么作用？",
+      a:"query token = <span class='var'>(u,v)</span> 的 Fourier 特征 + <span class='var'>t_src/t_tgt/t_cam</span> 的可学习离散时间嵌入 + 以 <span class='var'>(u,v)</span> 为中心的 <span class=key>9×9 像素局部 RGB patch</span> 嵌入。patch 作用很大：① 帮 query 与编码后的时空特征建立更可靠的对应；② 提供低层纹理线索把物体从背景里分割出来，得到更锐利的边界、更精细的深度。比 DPT 那种编解码 skip 连接的做法更简单。" },
+    { q:"为什么要把视频 resize 成正方形再 tokenize？长宽比信息丢了怎么办？",
+      a:"resize 成固定正方形是为了支持<span class=key>任意长宽比</span>的输入。原始长宽比并没丢——它被单独嵌入成一个 token，和主视频 token 一起喂进 transformer。" },
+  ]},
+  { sec:"训练与损失", items:[
+    { q:"主监督是 L1 loss，但它对 3D 点做了两步预处理，是哪两步、各为什么？",
+      a:"① 用各自的 <span class=key>mean depth 归一化</span>预测与真值点集(做尺度对齐)；② 再过一个 <span class='var'>sign(x)·log(1+|x|)</span> 变换，目的是<span class=key>压制远处点(大数值)对 loss 的过度影响</span>，避免少数远点主导训练。" },
+    { q:"除了 3D 位置，decoder 还输出哪些辅助预测(共 13 维)？消融显示哪个辅助 loss 对相机位姿最关键？",
+      a:"13 维 = 3D XYZ(3) + 2D UV(2) + visibility(1) + 点运动 disp(3) + 法向 normal(3) + confidence(1)。<br>消融(Table 8)：<span class=key>2D position、normal</span> 主要提升深度；<span class=key>confidence</span> 对相机位姿最关键(去掉它 ATE 暴涨 <span class=neg>+0.126</span>)；displacement 全面有小幅提升。" },
+    { q:"confidence 在 loss 里以什么形式出现？背后的直觉是什么？",
+      a:"以 <span class='var'>−log(c)</span> 的置信度惩罚项出现，同时 <span class='var'>c</span> 还用来给 3D 点误差加权。直觉：模型可以对没把握的点降低 <span class='var'>c</span> 来减小该点误差权重，但要为『声称没把握』付出 <span class='var'>−log(c)</span> 的代价——从而学会<span class=key>校准</span>自己的不确定性。" },
+  ]},
+  { sec:"稠密追踪算法", items:[
+    { q:"要追踪视频里所有像素的 track，朴素做法复杂度是多少？为什么大多是浪费？",
+      a:"朴素做法是 <span class='var'>O(T²HW)</span> 次 query。浪费在于：很多像素本就是同一条轨迹在不同帧上的投影，重复地为它们发起新 track 去追是冗余的。" },
+    { q:"Algorithm 1 用什么数据结构、靠什么思想加速？能快多少？",
+      a:"用一个<span class=key>占据网格</span> occupancy grid <span class='var'>G∈{0,1}^(T×H×W)</span>。思想是利用<span class=key>时空冗余</span>：只从『未访问』像素发起新 track，每条贯穿全视频的 track 把它可见经过的所有时空像素标记为已访问。依视频运动复杂度带来 <span class=key>5–15× 加速</span>。之所以可行，正是因为 D4RT 的 decoder 既稀疏又轻量。" },
+  ]},
+  { sec:"对比与定位", items:[
+    { q:"Table 2 里，D4RT 相比所有 baseline 独有的能力组合是什么？",
+      a:"D4RT 是唯一<span class=key>同时具备全部六项</span>的：3D 重建、动态对应(dynamic correspondence)、灵活参考系(flexible ref. frames)、稀疏解码(sparse decoding)、全局上下文(global context)、单一解码器(single decoder)。其余方法(MegaSaM / DUSt3R / VGGT / π³ / St4RTrack / STv2)都至少缺好几项——尤其『动态对应 + 单一解码器 + 灵活参考系』很难同时拿到。" },
+    { q:"为什么说 St4RTrack、DPM 这类方法“无法做整体视频处理”？",
+      a:"因为它们沿用了 <span class=key>DUSt3R 的成对(pairwise)范式</span>——一次只处理一对帧 / 把第一帧当固定参考，导致无法在一个统一的全局表征里整体处理整段视频，跨帧一致性与遮挡补全都因此受限。" },
+  ]},
+  { sec:"关键数字", items:[
+    { q:"D4RT 的训练规模有哪些值得记的数字？(参数 / 数据 / 算力 / 时长)",
+      a:"编码器约 <span class=key>1B</span>、解码器约 <span class=key>144M</span> 参数；训练数据是十来个公开+内部数据集的混合(BlendedMVS、Co3Dv2、Dynamic Replica、Kubric、ScanNet/++、Tartanair、Waymo Open 等)；输入 <span class=key>48 帧、256×256</span>，每步解码 <span class=key>2048 个随机 query</span>；<span class=key>500k 步</span>、AdamW、<span class=key>64 块 TPU</span>、local batch size 1、约 <span class=key>2 天</span>训完。" },
+    { q:"速度上 D4RT 到底快多少？给两个有代表性的数字。",
+      a:"① 位姿估计 <span class=key>200+ FPS</span>(A100)，比 VGGT 快约 <span class=key>9×</span>、比 MegaSaM 快约 <span class=key>100×</span>，且精度更高(Fig 3)。② 3D tracking 吞吐(Table 3)比 DELTA / STv2 快 <span class=key>18–300×</span>。直观例子：一分钟视频在单块 TPU 上约 <span class=key>5 秒</span>处理完，老 SOTA 要约 10 分钟。" },
+    { q:"在 Sintel 点云重建上 D4RT 的 L1 大概多少？说明了什么？",
+      a:"D4RT 约 <span class=key>0.768</span>，而 π³ 1.139、STv2 1.375、MegaSaM 1.531、VGGT 1.582、MapAnything 1.718——领先一大截。Sintel 是<span class=key>高度动态</span>的数据集，这个差距正好印证 D4RT 在动态场景上的优势。" },
+  ]},
+  { sec:"消融与工程要点", items:[
+    { q:"三个对性能影响“大”的设计 / 初始化是什么？",
+      a:"① 用 <span class=key>VideoMAE 预训练权重</span>初始化编码器(随机初始化 AbsRel-S 0.738→0.302、ATE 0.334→0.091，差距巨大)；② <span class=key>局部 RGB patch</span>(去掉后深度和位姿都明显变差)；③ <span class=key>编码器规模</span> ViT-B→ViT-g 持续涨点。一句话：预训练 + 局部 patch + 大编码器，三者都关键。" },
+    { q:"局部 RGB patch 的最佳尺寸是多少？D4RT 凭什么能做到亚像素精度、又不增加算力？",
+      a:"最佳 <span class=key>9×9</span>(9–12 之间，Fig 10)。亚像素精度来自一个架构特性：<span class=key>全局编码与逐点解码解耦</span>，而 query 的 <span class='var'>(u,v)</span> 定义在连续的 <span class='var'>[0,1]²</span> 空间里，所以解码可在任意分辨率上探测，与 F 的分辨率无关。Appendix C 的 Config 4 进一步从原始高分辨率源帧取 RGB patch 解码，能恢复发丝级细节，而整体计算与显存开销不变。" },
+    { q:"训练 query 是纯随机均匀采样吗？有什么针对性技巧？",
+      a:"不完全随机。约 <span class=key>30% 的 (u,v) query 采在深度不连续或运动边界附近</span>(用 Sobel 滤波在深度图上预算)，让模型聚焦最难区域；时间索引 <span class='var'>t_src/t_tgt/t_cam</span> 基本均匀随机，但以 <span class=key>0.4 的概率强制 t_tgt = t_cam</span>，以提升下游任务表现。" },
+  ]},
+];
+
+// flatten
+let CARDS=[];
+DATA.forEach((s,si)=>s.items.forEach(it=>CARDS.push({...it,sec:s.sec,secIdx:si})));
+let order=[...CARDS.keys()];
+let pos=0, mode='flash', activeSec='all', hideMastered=false;
+const mastered=new Set();
+
+const el=id=>document.getElementById(id);
+
+function buildChips(){
+  const counts={}; CARDS.forEach(c=>counts[c.sec]=(counts[c.sec]||0)+1);
+  let html=`<div class="chip ${activeSec==='all'?'on':''}" onclick="filterSec('all')">全部<span class="n">${CARDS.length}</span></div>`;
+  DATA.forEach(s=>{html+=`<div class="chip ${activeSec===s.sec?'on':''}" onclick="filterSec('${s.sec}')">${s.sec}<span class="n">${counts[s.sec]}</span></div>`;});
+  el('chips').innerHTML=html;
+}
+function activeOrder(){
+  let o=order.filter(i=>activeSec==='all'||CARDS[i].sec===activeSec);
+  if(hideMastered) o=o.filter(i=>!mastered.has(i));
+  return o;
+}
+function filterSec(s){activeSec=s;pos=0;buildChips();render();}
+function setMode(m){
+  mode=m;
+  el('mFlash').classList.toggle('on',m==='flash');
+  el('mList').classList.toggle('on',m==='list');
+  el('cardView').style.display=m==='flash'?'block':'none';
+  el('listView').style.display=m==='list'?'block':'none';
+  render();
+}
+function flip(e){if(e&&e.target.closest('.master-btn'))return;el('card').classList.toggle('flipped');}
+function go(d){
+  const o=activeOrder();if(!o.length)return;
+  el('card').classList.remove('flipped');
+  setTimeout(()=>{pos=(pos+d+o.length)%o.length;render();},el('card').classList.contains('flipped')?180:0);
+  pos=(pos+d+o.length)%o.length;render();
+}
+function shuffle(){for(let i=order.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[order[i],order[j]]=[order[j],order[i]];}pos=0;el('card').classList.remove('flipped');render();}
+function toggleMaster(e){
+  e.stopPropagation();
+  const o=activeOrder();if(!o.length)return;
+  const idx=o[pos];
+  mastered.has(idx)?mastered.delete(idx):mastered.add(idx);
+  render();
+}
+function resetMaster(){mastered.clear();render();}
+function toggleHide(){hideMastered=!hideMastered;pos=0;el('hideMastered').textContent=hideMastered?'显示已掌握':'隐藏已掌握';render();}
+
+function render(){
+  el('totalN').textContent=CARDS.length;
+  el('masteredN').textContent=mastered.size;
+  el('pfill').style.width=(mastered.size/CARDS.length*100)+'%';
+
+  if(mode==='flash'){
+    const o=activeOrder();
+    el('cardTotal').textContent=o.length;
+    if(!o.length){
+      el('fSec').textContent='—';el('bSec').textContent='—';
+      el('fQ').textContent='本组卡片已全部掌握 🎉';el('fA').textContent='切换分组，或点击「显示已掌握」继续复习。';
+      el('curN').textContent='0';el('prevBtn').disabled=true;el('nextBtn').disabled=true;return;
+    }
+    if(pos>=o.length)pos=0;
+    const c=CARDS[o[pos]];
+    el('fSec').textContent=c.sec;el('bSec').textContent=c.sec;
+    el('fQ').innerHTML=c.q;el('fA').innerHTML=c.a;
+    el('curN').textContent=pos+1;
+    el('prevBtn').disabled=o.length<2;el('nextBtn').disabled=o.length<2;
+    const mb=el('masterBtn'),done=mastered.has(o[pos]);
+    mb.classList.toggle('done',done);mb.textContent=done?'✓ 已掌握':'标记已掌握';
+  } else {
+    let html='';
+    DATA.forEach((s,si)=>{
+      if(activeSec!=='all'&&activeSec!==s.sec)return;
+      html+=`<div class="sec-block"><div class="sec-head"><span class="sec-idx">${String(si+1).padStart(2,'0')}</span><span class="sec-title">${s.sec}</span><span class="sec-count">${s.items.length} 题</span></div>`;
+      s.items.forEach(it=>{
+        html+=`<div class="qa"><div class="q"><span class="mk">Q</span><span>${it.q}</span></div><div class="a"><span class="mk">A</span><span>${it.a}</span></div></div>`;
+      });
+      html+='</div>';
+    });
+    el('listView').innerHTML=html;
+  }
+}
+
+document.addEventListener('keydown',e=>{
+  if(mode!=='flash')return;
+  if(e.code==='Space'){e.preventDefault();flip();}
+  else if(e.code==='ArrowRight')go(1);
+  else if(e.code==='ArrowLeft')go(-1);
+});
+
+buildChips();render();
+</script>
+<script src="nav.js"></script>
+</body>
+</html>

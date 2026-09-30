@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>机器人学习知识库</title>
+<meta name="description" content="VLA、强化学习、3D 视觉与数据论文的个人精读网页档案。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f1f4f6;
+    --surface:#fbfcfd;
+    --surface-2:#eaf0f4;
+    --ink:#16222e;
+    --ink-2:#51626f;
+    --ink-3:#83919c;
+    --accent:#0e6e8a;
+    --accent-strong:#0a4c60;
+    --signal:#c4572a;
+    --line:#d8e1e7;
+    --line-strong:#c3d0d9;
+    --grid-line:rgba(22,34,46,.05);
+    --shadow:0 1px 2px rgba(22,34,46,.04),0 14px 34px rgba(22,34,46,.07);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#0b141c;
+      --surface:#111c26;
+      --surface-2:#15212c;
+      --ink:#e7eef4;
+      --ink-2:#9db0bd;
+      --ink-3:#6c8090;
+      --accent:#3fb0d0;
+      --accent-strong:#8fd3e6;
+      --signal:#e08a5a;
+      --line:#1e2d3a;
+      --line-strong:#2b3d4b;
+      --grid-line:rgba(231,238,244,.045);
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0b141c;
+    --surface:#111c26;
+    --surface-2:#15212c;
+    --ink:#e7eef4;
+    --ink-2:#9db0bd;
+    --ink-3:#6c8090;
+    --accent:#3fb0d0;
+    --accent-strong:#8fd3e6;
+    --signal:#e08a5a;
+    --line:#1e2d3a;
+    --line-strong:#2b3d4b;
+    --grid-line:rgba(231,238,244,.045);
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:"IBM Plex Sans",-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+    line-height:1.7;
+    font-size:16px;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+  .grid{
+    position:fixed; inset:0; z-index:-1; pointer-events:none;
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size:28px 28px;
+  }
+
+  .wrap{max-width:920px; margin:0 auto; padding:0 24px 96px;}
+
+  /* ---------- masthead ---------- */
+  .masthead{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px 24px 0; max-width:920px; margin:0 auto;
+  }
+  .brand{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12px; letter-spacing:.16em; text-transform:uppercase;
+    color:var(--ink-2);
+  }
+  .brand b{color:var(--accent); font-weight:600;}
+  .toggle{
+    display:inline-flex; align-items:center; gap:7px;
+    background:var(--surface); color:var(--ink-2);
+    border:1px solid var(--line-strong); border-radius:999px;
+    padding:6px 12px; cursor:pointer; font-size:12.5px;
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    letter-spacing:.04em; transition:border-color .15s ease, color .15s ease;
+  }
+  .toggle:hover{border-color:var(--accent); color:var(--ink);}
+  .toggle svg{width:14px; height:14px; flex:none;}
+  .toggle .moon{display:none;}
+  .toggle.dark .sun{display:none;}
+  .toggle.dark .moon{display:block;}
+
+  /* ---------- hero ---------- */
+  .hero{
+    position:relative;
+    padding:64px 0 40px;
+    border-bottom:1px solid var(--line-strong);
+  }
+  .eyebrow{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12px; letter-spacing:.18em; text-transform:uppercase;
+    color:var(--accent); margin-bottom:18px;
+  }
+  .hero h1{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:clamp(34px,5.6vw,56px);
+    font-weight:700; letter-spacing:.01em; line-height:1.14;
+    margin:0 0 16px; color:var(--ink);
+    text-wrap:balance;
+  }
+  .hero .sub{
+    font-size:17px; color:var(--ink-2); max-width:620px; margin:0;
+  }
+  .stats{
+    display:flex; flex-wrap:wrap; gap:34px; margin-top:30px;
+  }
+  .stat{display:flex; flex-direction:column; gap:2px;}
+  .stat .n{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:22px; font-weight:600; color:var(--ink);
+    font-variant-numeric:tabular-nums;
+  }
+  .stat .l{font-size:12.5px; color:var(--ink-3); letter-spacing:.02em;}
+  .sheet{
+    position:absolute; right:0; top:30px;
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:11px; letter-spacing:.08em; color:var(--ink-3);
+    text-align:right;
+  }
+  .sheet::before{
+    content:""; display:inline-block; width:8px; height:8px;
+    border:1px solid var(--accent); border-radius:50%;
+    margin-right:7px; vertical-align:1px;
+  }
+
+  /* ---------- index ---------- */
+  .index{margin-top:48px;}
+  .cat{margin-bottom:46px;}
+  .cat-head{
+    display:flex; align-items:baseline; gap:14px;
+    padding-bottom:10px; margin-bottom:2px;
+    border-bottom:1px solid var(--line-strong);
+  }
+  .cat-head .no{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:13px; font-weight:600; color:var(--accent);
+    letter-spacing:.06em;
+  }
+  .cat-head h2{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:22px; font-weight:600; margin:0; color:var(--ink);
+  }
+  .cat-head .cnt{
+    margin-left:auto;
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12px; color:var(--ink-3); letter-spacing:.05em;
+  }
+
+  .entry{
+    display:grid;
+    grid-template-columns:118px 1fr auto;
+    gap:12px 24px;
+    align-items:start;
+    padding:18px 18px 18px 20px;
+    color:inherit; text-decoration:none;
+    border-top:1px solid var(--line);
+    position:relative;
+    border-radius:6px;
+    transition:background .16s ease;
+  }
+  .entry:last-of-type{border-bottom:1px solid var(--line);}
+  .entry:hover{background:var(--surface);}
+  .entry::before{
+    content:""; position:absolute; left:0; top:16px; bottom:16px; width:3px;
+    border-radius:2px; background:var(--accent); opacity:0; transition:opacity .16s ease;
+  }
+  .entry:hover::before{opacity:1;}
+  .entry .ref{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12.5px; color:var(--ink-3); letter-spacing:.03em;
+    padding-top:5px; font-variant-numeric:tabular-nums;
+  }
+  .entry .body{display:flex; flex-direction:column; gap:4px;}
+  .entry .title{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:19px; font-weight:600; color:var(--ink); line-height:1.35;
+  }
+  .entry .title .fmt{
+    font-family:"IBM Plex Sans",-apple-system,"Microsoft YaHei",sans-serif;
+    font-size:11px; font-weight:600; color:var(--accent);
+    border:1px solid var(--line-strong); border-radius:4px;
+    padding:1px 6px; margin-left:8px; vertical-align:2px; letter-spacing:.02em;
+  }
+  .entry .thesis{font-size:14px; color:var(--ink-2); line-height:1.55;}
+  .entry .tags{
+    display:flex; flex-wrap:wrap; gap:6px; justify-content:flex-end;
+    padding-top:5px;
+  }
+  .tag{
+    font-family:"IBM Plex Sans",-apple-system,"Microsoft YaHei",sans-serif;
+    font-size:12px; color:var(--ink-2);
+    background:var(--surface-2); border:1px solid var(--line);
+    border-radius:999px; padding:2px 10px; letter-spacing:.01em;
+    white-space:nowrap;
+  }
+  .arrow{
+    position:absolute; right:14px; top:50%; transform:translateY(-50%);
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    color:var(--accent); font-size:15px; opacity:0; transition:opacity .16s ease, transform .16s ease;
+  }
+  .entry:hover .arrow{opacity:1; transform:translate(3px,-50%);}
+
+  /* ---------- PDF archive ---------- */
+  .pdfs{margin-top:56px;}
+  .pdfs .cat-head{margin-bottom:10px;}
+  .pdfs .hint{font-size:13px; color:var(--ink-3); margin:0 0 14px;}
+  .pdf-grid{
+    display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:8px;
+  }
+  .pdf-link{
+    display:flex; align-items:baseline; gap:10px;
+    padding:10px 14px; border:1px solid var(--line); border-radius:8px;
+    color:inherit; text-decoration:none; background:var(--surface);
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .pdf-link:hover{border-color:var(--accent); background:var(--surface-2);}
+  .pdf-link .ar{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12px; color:var(--accent); letter-spacing:.02em; flex:none;
+    font-variant-numeric:tabular-nums;
+  }
+  .pdf-link .nm{font-size:13.5px; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+
+  /* ---------- footer ---------- */
+  footer{
+    margin-top:56px; padding-top:22px; border-top:1px solid var(--line-strong);
+    display:flex; flex-wrap:wrap; gap:8px 24px; justify-content:space-between;
+    font-size:13px; color:var(--ink-3);
+  }
+  footer code{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12.5px; color:var(--ink-2);
+    background:var(--surface-2); border-radius:4px; padding:1px 6px;
+  }
+
+  @media(max-width:640px){
+    .entry{grid-template-columns:1fr; gap:6px;}
+    .entry .ref{padding-top:0;}
+    .entry .tags{justify-content:flex-start; padding-top:2px;}
+    .sheet{position:static; text-align:left; margin-top:20px;}
+    .stats{gap:24px;}
+    .hero{padding:48px 0 32px;}
+  }
+</style>
+</head>
+<body>
+<div class="grid" aria-hidden="true"></div>
+
+<header class="masthead">
+  <span class="brand"><b>KB</b>&nbsp;/&nbsp;ROBOTIC LEARNING</span>
+  <button class="toggle" id="themeToggle" type="button" aria-label="切换深浅主题">
+    <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+    <svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+    <span id="themeLabel">自动</span>
+  </button>
+</header>
+
+<div class="wrap">
+
+  <section class="hero">
+    <div class="eyebrow">Research Archive · 研读档案</div>
+    <h1>机器人学习知识库</h1>
+    <p class="sub">把读过的论文做成一页页精读网页，随时回来温习。每一条索引对应一个独立网页，双击即可打开。</p>
+    <div class="stats">
+      <div class="stat"><span class="n">17</span><span class="l">网页</span></div>
+      <div class="stat"><span class="n">3</span><span class="l">研究方向</span></div>
+      <div class="stat"><span class="n">2026.09</span><span class="l">最近更新</span></div>
+    </div>
+    <div class="sheet">SHEET 01 / 17<br>SCALE 1:1 · LOCAL</div>
+  </section>
+
+  <section class="index">
+
+    <div class="cat">
+      <div class="cat-head">
+        <span class="no">00</span>
+        <h2>专题 · 方法对比</h2>
+        <span class="cnt">4 篇</span>
+      </div>
+
+      <a class="entry" href="为什么取log.html">
+        <span class="ref">WHY-LOG</span>
+        <span class="body">
+          <span class="title">为什么要取 log？<span class="fmt">交互推导</span></span>
+          <span class="thesis">策略梯度里那一行 log 的来历：从"算不出来"的死路，到 ∇P/P 恰好等于 ∇log P；可点掉物理项，看 model-free 是怎么白送的。</span>
+        </span>
+        <span class="tags"><span class="tag">策略梯度</span><span class="tag">可交互</span></span>
+        <span class="arrow">→</span>
+      </a>
+
+      <a class="entry" href="RLinf-RL原理对比.html">
+        <span class="ref">PRINCIPLES</span>
+        <span class="body">
+          <span class="title">RLinf RL 方法：原理视角对比<span class="fmt">专题</span></span>
+          <span class="thesis">从策略梯度与 Bellman 两条主干推导 15 种算法的原理分歧：优势怎么估、似然怎么算、分布偏移怎么修、探索从哪来。</span>
+        </span>
+        <span class="tags"><span class="tag">强化学习</span><span class="tag">原理推导</span></span>
+        <span class="arrow">→</span>
+      </a>
+
+      <a class="entry" href="RLinf-RL方法对比.html">
+        <span class="ref">RLINF</span>
+        <span class="body">
+          <span class="title">RLinf 里的 RL 方法详细对比<span class="fmt">专题</span></span>
+          <span class="thesis">框架内 15 种 RL 算法 + 5 种 SFT/模仿配方按五大家族对比，含动作块粒度与 GPU 分配模式实测结论。</span>
+        </span>
+        <span class="tags"><span class="tag">强化学习</span><span class="tag">框架</span></span>
+        <span class="arrow">→</span>
+      </a>
+
+      <a class="entry" href="VLA-RL-方法全景对比.html">
+        <span class="ref">COMPARISON</span>
+        <span class="body">
+          <span class="title">VLA 强化学习方法全景对比<span class="fmt">专题</span></span>
+          <span class="thesis">12 种 VLA 强化学习方法（整模型 / 噪声空间 / 残差 / RL token / 从零）一页对比。</span>
+        </span>
+        <span class="tags"><span class="tag">强化学习</span><span class="tag">方法对比</span></span>
+        <span class="arrow">→</span>
+      </a>
+    </div>
+
+    <div class="cat">
+      <div class="cat-head">
+        <span class="no">01</span>
+        <h2>π 系列 VLA</h2>
+        <span class="cnt">4 篇</span>
+      </div>
+
+      <a class="entry" href="pi0-论文解读.html">
+        <span class="ref">2410.24164</span>
+        <span class="body">
+          <span class="title">π0<span class="fmt">精读</span></span>
+          <span class="thesis">基于流匹配的通用 VLA 开山之作，把互联网视觉-语言先验带入机器人控制。</span>
+        </span>
+        <span class="tags"><span class="tag">VLA</span><span class="tag">Flow Matching</span></span>
+        <span class="arrow">→</span>
+      </a>
+
+      <a class="entry" href="pi0.5_论文测验_精美版.html">
+        <span class="ref">2504.16054v1</span>
+        <span class="body">
+          <span class="title">π0.5<span class="fmt">精读测验</span></span>
+          <span class="thesis">面向开放世界的泛化 VLA 模型，奠定后续 π 系列的基础。</span>
+        </span>
+        <span class="tags"><span class="tag">VLA</span><span class="tag">泛化</span></span>
+        <span class="arrow">→</span>
+      </a>
+
+      <a class="entry" href="pi0.6-论文解读.html">
+        <span class="ref">2511.14759v2</span>
+        <span class="body">
+          <span class="title">π0.6<span class="fmt">精读</span></span>
+          <span class="thesis">通过自主经验与强化学习（RECAP）持续提升，突破示范数据的性能上限。</span>
+        </span>
+        <span class="tags"><span class="tag">VLA</span><span class="tag">强化学习</span></span>
+        <span class="arrow">→</span>
+      </a>
+
+      <a class="entry" href="pi0.7_问答学习卡.html">
+        <span class="ref">2604.15483v2</span>
+        <span class="body">
+          <span class="title">π0.7<span class="fmt">问答卡</span></span>
+          <span class="thesis">Flow Matching 驱动的 VLA，prompt 多样化是核心贡献。</span>
+        </span>
+        <span class="tags"><span class="tag">VLA</span><span class="tag">Flow Matching</span></span>
+        <span class="arrow">→</span>
+      </a>
+    </div>
+
+    <div class="cat">
+      <div class="cat-head">
+        <span class="no">02</span>
+        <h2>VLA 与强化学习</h2>
+        <span class="cnt">7 篇</span>
+      </div>
+
+      <a class="entry" href="RL-Token-论文解读.html">
+        <span class="ref">2604.23073v2</span>
+        <span class="body">
+          <span class="title">RL Token<span class="fmt">解读</span></span>
+          <span class="thesis">冻结 VLA + 轻量 actor-critic，用 RL token 在几小时内精调毫米级高精度操作。</span>
+        </span>
+        <span class="tags"><span class="tag">强化学习</span><span class="tag">在线精调</span></span>
+        <span class="arrow">→</span>
+      </a>
+
+      <a class="entry" href="piRL-论文解读.html">
+        <span class="ref">2510.25889</span>
+        <span class="body">
+          <span class="title">πRL<span class="fmt">精读</span></span>
+          <span class="thesis">把流匹配 VLA 的去噪过程建模成 MDP，用 PPO 在线微调 π0/π0.5（与 RL Token 对比）。</span>
+        </span>
+        <span class="tags"><span class="tag">VLA</span><span class="tag">强化学习</span><span class="tag">Flow Matching</span></span>
+        <span class="arrow">→</span>
+      </a>
+
+      <a class="entry" href="ObjectCentric-RL-论文解读.html">
+        <span class="ref">2606.18953v1</span>
+        <span class="body">
+          <span class="title">Object-Centric Residual RL<span class="fmt">精读</span></span>
+          <span class="thesis">物体位姿残差 RL，纯仿真训练零样本 sim-to-real，成功率 42%→76%。</span>
+        </span>
+        <span class="tags"><span class="tag">强化学习</span><span class="tag">Sim-to-Real</span></span>
+        <span class="arrow">→</span>
+      </a>
+
+      <a class="entry" href="DynamicVLA-论文解读.html">
+        <span class="ref">2601.22153v1</span>
+        <span class="body">
+          <span class="title">DynamicVLA<span class="fmt">精读</span></span>
+          <span class="thesis">面向移动/动态目标抓取的 VLA，解决动作时延导致的错位问题。</span>
+        </span>
+        <span class="tags"><span class="tag">VLA</span><span class="tag">动态物体</span></span>
+        <span class="arrow">→</span>
+      </a>
+
+      <a class="entry" href="PUMA-论文解读.html">
+        <span class="ref">2603.15620v2</span>
+        <span class="body">
+          <span class="title">PUMA<span class="fmt">精读</span></span>
+          <span class="thesis">面向动态环境的可泛化机械臂操作 VLA。</span>
+        </span>
+        <span class="tags"><span class="tag">VLA</span><span class="tag">动态操作</span></span>
+        <span class="arrow">→</span>
+      </a>
+
+      <a class="entry" href="Qwen-VLA-论文解读.html">
+        <span class="ref">2605.30280v2</span>
+        <span class="body">
+          <span class="title">Qwen-VLA<span class="fmt">精读</span></span>
+          <span class="thesis">统一任务、环境与机器人构型的视觉-语言-动作建模。</span>
+        </span>
+        <span class="tags"><span class="tag">VLA</span><span class="tag">多构型</span></span>
+        <span class="arrow">→</span>
+      </a>
+
+      <a class="entry" href="Realtime-VLA-论文解读.html">
+        <span class="ref">2605.13778v1</span>
+        <span class="body">
+          <span class="title">Realtime-VLA FLASH<span class="fmt">精读</span></span>
+          <span class="thesis">投机推理加速扩散 VLA，实现实时闭环控制。</span>
+        </span>
+        <span class="tags"><span class="tag">VLA</span><span class="tag">推理加速</span></span>
+        <span class="arrow">→</span>
+      </a>
+    </div>
+
+    <div class="cat">
+      <div class="cat-head">
+        <span class="no">03</span>
+        <h2>数据与 3D 视觉</h2>
+        <span class="cnt">2 篇</span>
+      </div>
+
+      <a class="entry" href="InternData-A1-论文解读.html">
+        <span class="ref">2511.16651v1</span>
+        <span class="body">
+          <span class="title">InternData-A1<span class="fmt">精读</span></span>
+          <span class="thesis">首个证明纯合成数据可媲美真实数据的 VLA 预训练（630k 轨迹 / 7433 小时）。</span>
+        </span>
+        <span class="tags"><span class="tag">合成数据</span><span class="tag">预训练</span></span>
+        <span class="arrow">→</span>
+      </a>
+
+      <a class="entry" href="D4RT_study_cards.html">
+        <span class="ref">DeepMind</span>
+        <span class="body">
+          <span class="title">D4RT<span class="fmt">精读卡片</span></span>
+          <span class="thesis">单视频联合推理深度、时空对应与相机参数，高效 4D 场景重建。</span>
+        </span>
+        <span class="tags"><span class="tag">4D 重建</span><span class="tag">Transformer</span></span>
+        <span class="arrow">→</span>
+      </a>
+    </div>
+
+  </section>
+
+  <section class="pdfs">
+    <div class="cat-head">
+      <span class="no">PDF</span>
+      <h2>原文档案</h2>
+      <span class="cnt">12 份</span>
+    </div>
+    <p class="hint">原始论文 PDF，双击直接打开。放在 <code>pdfs/</code> 目录下，与精读页一一对应。</p>
+    <div class="pdf-grid">
+      <a class="pdf-link" href="pdfs/pi0.pdf"><span class="ar">2410.24164</span><span class="nm">π0</span></a>
+      <a class="pdf-link" href="pdfs/pi0.5_2504.16054v1.pdf"><span class="ar">2504.16054</span><span class="nm">π0.5</span></a>
+      <a class="pdf-link" href="pdfs/pi0.62511.14759v2.pdf"><span class="ar">2511.14759</span><span class="nm">π0.6</span></a>
+      <a class="pdf-link" href="pdfs/pi0.7-2604.15483v2.pdf"><span class="ar">2604.15483</span><span class="nm">π0.7</span></a>
+      <a class="pdf-link" href="pdfs/2604.23073v2-RL-Token.pdf"><span class="ar">2604.23073</span><span class="nm">RL Token</span></a>
+      <a class="pdf-link" href="pdfs/2606.18953v1-Object-Centric-rl.pdf"><span class="ar">2606.18953</span><span class="nm">Object-Centric RL</span></a>
+      <a class="pdf-link" href="pdfs/2601.22153v1-dynamic-vla.pdf"><span class="ar">2601.22153</span><span class="nm">DynamicVLA</span></a>
+      <a class="pdf-link" href="pdfs/PUMA-2603.15620v2.pdf"><span class="ar">2603.15620</span><span class="nm">PUMA</span></a>
+      <a class="pdf-link" href="pdfs/qwen-vla-2605.30280v2.pdf"><span class="ar">2605.30280</span><span class="nm">Qwen-VLA</span></a>
+      <a class="pdf-link" href="pdfs/realtime-vla-flash-2605.13778v1.pdf"><span class="ar">2605.13778</span><span class="nm">Realtime-VLA FLASH</span></a>
+      <a class="pdf-link" href="pdfs/InternData-A1-2511.16651v1.pdf"><span class="ar">2511.16651</span><span class="nm">InternData-A1</span></a>
+      <a class="pdf-link" href="pdfs/D4RT_paper.pdf"><span class="ar">DeepMind</span><span class="nm">D4RT</span></a>
+    </div>
+  </section>
+
+  <footer>
+    <span>本地知识库 · 双击 <code>index.html</code> 打开</span>
+    <span>新增论文：把网页与 PDF 放入本目录，再在此加一条索引即可。</span>
+  </footer>
+</div>
+
+<script>
+  (function(){
+    var root = document.documentElement;
+    var btn = document.getElementById('themeToggle');
+    var label = document.getElementById('themeLabel');
+    var key = 'kb-theme';
+    var mq = window.matchMedia('(prefers-color-scheme: dark)');
+
+    function stored(){ return localStorage.getItem(key); }
+    function effective(){
+      var t = root.getAttribute('data-theme');
+      if (t) return t;
+      return mq.matches ? 'dark' : 'light';
+    }
+    function sync(){
+      var dark = effective() === 'dark';
+      btn.classList.toggle('dark', dark);
+      var t = root.getAttribute('data-theme');
+      label.textContent = t ? (t === 'dark' ? '深色' : '浅色') : '自动';
+    }
+
+    var s = stored();
+    if (s) root.setAttribute('data-theme', s);
+    sync();
+
+    btn.addEventListener('click', function(){
+      var next = effective() === 'dark' ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+      localStorage.setItem(key, next);
+      sync();
+    });
+  })();
+</script>
+<script src="nav.js"></script>
+</body>
+</html>

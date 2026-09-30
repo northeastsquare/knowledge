@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RL Token · 论文解读</title>
+<style>
+  :root{
+    --bg:#faf9f6;
+    --card:#ffffff;
+    --ink:#1c1917;
+    --muted:#6b6560;
+    --faint:#9a938b;
+    --accent:#c2410c;      /* 橙 */
+    --accent-soft:#fff1e8;
+    --navy:#1e3a5f;        /* 深蓝 */
+    --navy-soft:#eef2f7;
+    --border:#e9e4da;
+    --ok:#2f7d4f;
+    --shadow:0 1px 2px rgba(28,25,23,.05),0 8px 24px rgba(28,25,23,.06);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Segoe UI","PingFang SC","Microsoft YaHei","Noto Sans SC",system-ui,-apple-system,sans-serif;
+    line-height:1.75;font-size:16px;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:900px;margin:0 auto;padding:0 24px 96px;}
+
+  /* ---------- Hero ---------- */
+  .hero{
+    position:relative;overflow:hidden;
+    background:linear-gradient(135deg,#1e3a5f 0%,#14304f 55%,#0f2538 100%);
+    color:#f7f5f0;padding:56px 32px 40px;border-radius:0 0 24px 24px;
+  }
+  .hero::after{
+    content:"";position:absolute;right:-80px;top:-80px;width:320px;height:320px;
+    background:radial-gradient(circle,rgba(194,65,12,.55),transparent 70%);
+  }
+  .hero .inner{max-width:900px;margin:0 auto;position:relative;z-index:1;}
+  .badge{
+    display:inline-block;font-size:12.5px;letter-spacing:.12em;text-transform:uppercase;
+    color:#ffd9bd;border:1px solid rgba(255,217,189,.4);border-radius:999px;
+    padding:4px 14px;margin-bottom:18px;
+  }
+  .hero h1{
+    margin:0 0 10px;font-size:40px;line-height:1.2;font-weight:800;letter-spacing:.5px;
+  }
+  .hero h1 .hl{color:#ff9a5a;}
+  .hero .sub{
+    font-size:17px;color:#d7dfe8;max-width:640px;margin:0 0 14px;
+  }
+  .hero .meta{font-size:13.5px;color:#aab8c6;margin-bottom:26px;}
+  .hero .meta b{color:#e6edf5;font-weight:600;}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+  .stat{
+    background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);
+    border-radius:14px;padding:16px 16px 14px;
+  }
+  .stat .num{font-size:26px;font-weight:800;color:#ffb37e;line-height:1;margin-bottom:6px;}
+  .stat .num small{font-size:14px;font-weight:600;color:#ffd9bd;}
+  .stat .lbl{font-size:12.5px;color:#c4cfda;line-height:1.4;}
+
+  /* ---------- Sections ---------- */
+  section{margin-top:44px;}
+  h2{
+    font-size:23px;font-weight:800;margin:0 0 6px;letter-spacing:.3px;
+    display:flex;align-items:center;gap:12px;
+  }
+  h2 .no{
+    flex:none;display:inline-flex;align-items:center;justify-content:center;
+    width:34px;height:34px;border-radius:10px;background:var(--accent);color:#fff;
+    font-size:16px;font-weight:800;
+  }
+  .lead{color:var(--muted);font-size:15px;margin:0 0 18px;}
+  .card{
+    background:var(--card);border:1px solid var(--border);border-radius:16px;
+    padding:22px 24px;box-shadow:var(--shadow);
+  }
+  .card + .card{margin-top:14px;}
+  h3{font-size:17px;font-weight:700;margin:0 0 10px;}
+  h3 .tag{
+    display:inline-block;font-size:11.5px;font-weight:700;letter-spacing:.06em;
+    color:var(--accent);background:var(--accent-soft);border-radius:6px;padding:2px 8px;
+    margin-right:8px;vertical-align:2px;
+  }
+  p{margin:0 0 12px;}
+  p:last-child{margin-bottom:0;}
+  strong{font-weight:700;color:var(--ink);}
+  .hl-orange{color:var(--accent);font-weight:700;}
+  .hl-navy{color:var(--navy);font-weight:700;}
+  ul,ol{margin:0 0 12px;padding-left:22px;}
+  li{margin-bottom:8px;}
+  li::marker{color:var(--accent);}
+
+  .callout{
+    border-radius:16px;padding:20px 22px;margin:18px 0;
+    border-left:4px solid var(--accent);background:var(--accent-soft);
+  }
+  .callout.navy{border-left-color:var(--navy);background:var(--navy-soft);}
+  .callout .ttl{font-weight:800;font-size:15px;margin-bottom:6px;}
+  .callout.navy .ttl{color:var(--navy);}
+  .callout p{margin:0;}
+
+  /* ---------- Tables ---------- */
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:6px 0 4px;}
+  th,td{padding:10px 12px;text-align:left;border-bottom:1px solid var(--border);vertical-align:top;}
+  th{background:var(--navy-soft);color:var(--navy);font-weight:700;font-size:13px;letter-spacing:.02em;}
+  tr:last-child td{border-bottom:none;}
+  td .good{color:var(--ok);font-weight:700;}
+  td .warn{color:var(--accent);font-weight:700;}
+  .caption{font-size:12.5px;color:var(--faint);margin-top:6px;}
+
+  /* ---------- Diagram ---------- */
+  .diagram{
+    background:var(--card);border:1px solid var(--border);border-radius:16px;
+    padding:20px;box-shadow:var(--shadow);margin:18px 0;
+  }
+  .diagram svg{width:100%;height:auto;display:block;}
+
+  /* ---------- TOC ---------- */
+  .toc{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:20px 24px;box-shadow:var(--shadow);}
+  .toc .ttl{font-weight:800;font-size:14px;letter-spacing:.08em;color:var(--muted);text-transform:uppercase;margin-bottom:10px;}
+  .toc a{display:inline-block;margin:4px 10px 4px 0;color:var(--navy);text-decoration:none;font-size:14px;font-weight:600;}
+  .toc a:hover{color:var(--accent);text-decoration:underline;}
+
+  .foot{margin-top:60px;padding-top:20px;border-top:1px solid var(--border);color:var(--faint);font-size:12.5px;}
+  .foot a{color:var(--navy);}
+
+  @media(max-width:680px){
+    .hero h1{font-size:30px;}
+    .stats{grid-template-columns:repeat(2,1fr);}
+  }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="inner">
+    <span class="badge">论文解读 · arXiv 2604.23073v2</span>
+    <h1>RL Token：用 VLA 模型<span class="hl">快速在线强化学习</span></h1>
+    <p class="sub">给大型 VLA 模型（π0.6）装一个"小接口"，只训练轻量 actor-critic，就能在几分钟到几小时内把毫米级高精度任务的成功率和速度大幅提上去。</p>
+    <p class="meta"><b>RL Token: Bootstrapping Online RL with Vision-Language-Action Models</b> · Physical Intelligence · Charles Xu, Jost Tobias Springenberg, Sergey Levine 等</p>
+    <div class="stats">
+      <div class="stat"><div class="num">3×</div><div class="lbl">关键阶段执行速度提升（最高）</div></div>
+      <div class="stat"><div class="num">20% → 65%</div><div class="lbl">拧螺丝任务成功率跃升</div></div>
+      <div class="stat"><div class="num">66 <small>步</small></div><div class="lbl">RLT 中位完成 vs 人类遥操作 146 步</div></div>
+      <div class="stat"><div class="num">4 <small>个</small></div><div class="lbl">真实机器人任务：螺丝 / 扎带 / 网线 / 充电器</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="toc" style="margin-top:32px;">
+    <div class="ttl">目录</div>
+    <a href="#s1">1 · 要解决什么问题</a>
+    <a href="#s2">2 · 核心思想</a>
+    <a href="#s3">3 · 三个关键设计</a>
+    <a href="#s4">4 · 完整系统流程</a>
+    <a href="#s5">5 · 实验结果</a>
+    <a href="#s6">6 · 与已有方法的关系</a>
+    <a href="#s7">7 · 局限与展望</a>
+  </div>
+
+  <!-- 1 -->
+  <section id="s1">
+    <h2><span class="no">1</span>要解决什么问题</h2>
+    <p class="lead">VLA 模型"什么都会一点"，但在最后一步毫米级的精细操作上容易掉链子。</p>
+    <div class="card">
+      <p>VLA（视觉-语言-动作）模型从海量人类遥操作数据里学到了多样化的操作技能，但往往在<span class="hl-orange">"最后一毫米"</span>的执行上出问题：</p>
+      <ul>
+        <li>动作慢、犹豫、反复"试探"（probing）；</li>
+        <li>关键时刻一点点小误差会累积成失败。</li>
+      </ul>
+      <p>本文的四个任务都是精细活——<strong>拧螺丝、扎带穿扣、插网线、插充电器</strong>。它们的"关键阶段"精度要求极高，靠演示数据很难覆盖好。</p>
+      <p>自然的想法是：用强化学习（RL）让机器人在真实任务上自己练，把最难的阶段练好。但现实约束很紧——每跑一集要时间、失败有损耗，通常只有<span class="hl-orange">几小时的训练预算</span>。</p>
+    </div>
+    <div class="card">
+      <h3>于是陷入两难</h3>
+      <table>
+        <tr><th>方案</th><th>优点</th><th>缺点</th></tr>
+        <tr><td><strong>直接微调整个 VLA</strong><br><span style="color:var(--faint)">RECAP / PPO 类</span></td><td>保留泛化能力</td><td>计算贵、样本效率低，几小时练不出来</td></tr>
+        <tr><td><strong>训练小模型做 RL</strong><br><span style="color:var(--faint)">SERL / RL100 类</span></td><td>快、样本高效</td><td>丢掉 VLA 的泛化与视觉先验，从零学</td></tr>
+      </table>
+      <p style="margin-top:12px;"><strong>核心问题</strong>：怎么"鱼与熊掌兼得"——既拿到 VLA 的泛化，又拿到小模型 RL 的速度？</p>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section id="s2">
+    <h2><span class="no">2</span>核心思想：分工</h2>
+    <p class="lead">别去动那个笨重的 VLA，让它"吐"出一个好用又小的表示 + 一组参考动作，交给轻量网络快速精修。</p>
+    <div class="callout">
+      <div class="ttl">一句话总结</div>
+      <p>冻结 VLA，让它提供<strong>① 压缩状态表示（RL token）</strong>和<strong>② 参考动作块</strong>；只训练一个轻量 actor-critic，用它做<strong>局部精修</strong>，而不是从零搜索。</p>
+    </div>
+    <div class="card">
+      <ul>
+        <li><strong>VLA 负责"看和想"</strong>：作为冻结的视觉骨干 + 行为先验。</li>
+        <li><strong>小 actor-critic 负责"微调动作"</strong>：输入 RL token + 参考动作，输出微调后的动作。</li>
+        <li><strong>锚定</strong>：用正则项把学到的动作拉在 VLA 参考动作附近，把在线 RL 变成"在已有好行为附近做局部编辑"。</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section id="s3">
+    <h2><span class="no">3</span>三个关键设计</h2>
+
+    <div class="card">
+      <h3><span class="tag">设计一</span>RL Token：给 VLA 装一个"压缩接口"</h3>
+      <p>VLA 内部 transformer 特征很高维，直接拿去 RL 又贵又慢，也不清楚哪层特征是"好表示"。作者的做法：</p>
+      <ul>
+        <li>在冻结 VLA 后面<strong>加一个小 encoder-decoder transformer</strong>；</li>
+        <li>encoder 末尾塞一个特殊 <code>[RL]</code> token，让它"读"VLA 最后一层所有 token 嵌入，输出一个<strong>紧凑向量 <code>z_rl</code></strong>（RL token）；</li>
+        <li>再让一个 decoder <strong>自回归重建</strong>原始嵌入（对 VLA 嵌入做 stop-gradient）。</li>
+      </ul>
+      <p>为什么要重建？——这就像<strong>"信息瓶颈"</strong>：为了让 decoder 能还原原始信息，<code>z_rl</code> 这个小向量必须把任务关键信息都浓缩进去。</p>
+      <div class="callout navy">
+        <div class="ttl">直觉类比</div>
+        <p>把 VLA 想成一位老专家，RL token 是他给你写的一张"小抄/摘要"——你（小 RL 网络）拿着摘要就能干活，不用把整本大脑搬走。</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3><span class="tag">设计二</span>动作块（Action Chunk），而非单步</h3>
+      <p>VLA 原生一次预测 <strong>H=50 步</strong>（1 秒）动作；RL 用它一个子块 <strong>C=10 步</strong>。</p>
+      <p>好处：<strong>缩短"信用分配"的时间跨度</strong>。在稀疏奖励（只有成功/失败一个 0/1 信号）下，单步决策会让价值函数跨超长 horizon 才能搞清楚哪步做对了；用动作块后有效决策周期变短，学习容易得多。</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="tag">设计三</span>参考动作条件 + 正则化</h3>
+      <ul>
+        <li>actor 输入除了 RL token，还包含 VLA 采样的<strong>参考动作块 <code>ã</code></strong>，输出对它的修正；</li>
+        <li>训练目标里除了最大化 Q 值，还加一项 <code>λ‖a − ã‖²</code>（把动作拉近参考动作，类似 KL 正则）。</li>
+      </ul>
+      <p>两个好处：① RL 在"好初始动作"上精修，而非高维空间乱搜；② 保留了 VLA 多峰动作分布中的"模式信息"（单峰高斯 actor 自己很难恢复多峰分布）。</p>
+      <div class="callout">
+        <div class="ttl">关键小技巧：Reference Action Dropout</div>
+        <p>如果一直给参考动作，actor 会偷懒直接"复制" <code>ã</code> 而不改进。所以训练时<strong>随机 50% 样本把参考动作置零</strong>，逼 actor 维护一条独立生成通路；等 critic 有信号后，actor 自然学会"该偏离时就偏离"。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section id="s4">
+    <h2><span class="no">4</span>完整系统流程</h2>
+    <p class="lead">适配 → 冻结 → 预热 → 在线 RL，人类只做三件事。</p>
+
+    <div class="diagram">
+      <svg viewBox="0 0 900 430" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Microsoft YaHei, sans-serif">
+        <defs>
+          <marker id="arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+            <path d="M0,0 L8,3 L0,6 Z" fill="#c2410c"/>
+          </marker>
+          <marker id="arrNavy" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+            <path d="M0,0 L8,3 L0,6 Z" fill="#1e3a5f"/>
+          </marker>
+          <marker id="arrGray" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+            <path d="M0,0 L8,3 L0,6 Z" fill="#9a938b"/>
+          </marker>
+        </defs>
+
+        <!-- VLA -->
+        <rect x="20" y="70" width="240" height="150" rx="14" fill="#eef2f7" stroke="#1e3a5f" stroke-width="1.5"/>
+        <text x="140" y="98" text-anchor="middle" font-size="15" font-weight="800" fill="#1e3a5f">预训练 VLA (π0.6)</text>
+        <text x="140" y="118" text-anchor="middle" font-size="11.5" fill="#6b6560">冻结 · 视觉骨干 + 行为先验</text>
+        <line x1="40" y1="132" x2="240" y2="132" stroke="#d5dce5"/>
+        <text x="140" y="152" text-anchor="middle" font-size="12" fill="#1c1917">VLM 骨干 (SigLIP + Gemma)</text>
+        <text x="140" y="172" text-anchor="middle" font-size="12" fill="#1c1917">动作专家 (diffusion)</text>
+        <text x="140" y="198" text-anchor="middle" font-size="12" fill="#c2410c" font-weight="700">内部嵌入 z₁…z_M</text>
+
+        <!-- RL token module -->
+        <rect x="330" y="70" width="240" height="150" rx="14" fill="#fff" stroke="#c2410c" stroke-width="1.5"/>
+        <text x="450" y="98" text-anchor="middle" font-size="15" font-weight="800" fill="#c2410c">RL Token 模块</text>
+        <text x="450" y="118" text-anchor="middle" font-size="11.5" fill="#6b6560">小 encoder-decoder · 冻结</text>
+        <line x1="350" y1="132" x2="550" y2="132" stroke="#f0d9c8"/>
+        <text x="450" y="152" text-anchor="middle" font-size="12" fill="#1c1917">encoder → [RL] token</text>
+        <text x="450" y="172" text-anchor="middle" font-size="12" fill="#1c1917">decoder 重建（信息瓶颈）</text>
+        <rect x="360" y="188" width="180" height="24" rx="8" fill="#ff9a5a"/>
+        <text x="450" y="205" text-anchor="middle" font-size="12" font-weight="800" fill="#fff">z_rl（紧凑表示）</text>
+
+        <!-- Actor-Critic -->
+        <rect x="640" y="70" width="240" height="150" rx="14" fill="#fff" stroke="#1e3a5f" stroke-width="1.5"/>
+        <text x="760" y="98" text-anchor="middle" font-size="15" font-weight="800" fill="#1e3a5f">轻量 Actor-Critic</text>
+        <text x="760" y="118" text-anchor="middle" font-size="11.5" fill="#6b6560">在线 RL · 从头训练</text>
+        <line x1="660" y1="132" x2="860" y2="132" stroke="#d5dce5"/>
+        <text x="760" y="152" text-anchor="middle" font-size="12" fill="#1c1917">actor：ã → a（局部精修）</text>
+        <text x="760" y="172" text-anchor="middle" font-size="12" fill="#1c1917">critic：Q(s,a)</text>
+        <text x="760" y="198" text-anchor="middle" font-size="11" fill="#6b6560">动作块 C=10 · 高斯策略</text>
+
+        <!-- arrows top -->
+        <line x1="260" y1="145" x2="322" y2="145" stroke="#1e3a5f" stroke-width="2" marker-end="url(#arrNavy)"/>
+        <line x1="570" y1="145" x2="632" y2="145" stroke="#c2410c" stroke-width="2" marker-end="url(#arr)"/>
+
+        <!-- reference action dashed from VLA to actor -->
+        <path d="M 140 70 C 140 26, 760 26, 760 62" fill="none" stroke="#9a938b" stroke-width="1.6" stroke-dasharray="6 5" marker-end="url(#arrGray)"/>
+        <text x="420" y="32" text-anchor="middle" font-size="11.5" fill="#6b6560">参考动作块 ã（直通）</text>
+
+        <!-- Robot -->
+        <rect x="640" y="300" width="240" height="96" rx="14" fill="#1e3a5f" stroke="#1e3a5f"/>
+        <text x="760" y="330" text-anchor="middle" font-size="15" font-weight="800" fill="#fff">真实机器人 (50 Hz)</text>
+        <text x="760" y="352" text-anchor="middle" font-size="12" fill="#c4cfda">执行动作块 a · 环境</text>
+        <text x="760" y="374" text-anchor="middle" font-size="12" fill="#c4cfda">关键阶段切换：基础 VLA ⇄ RL</text>
+
+        <!-- actor to robot -->
+        <line x1="760" y1="220" x2="760" y2="294" stroke="#1e3a5f" stroke-width="2" marker-end="url(#arrNavy)"/>
+
+        <!-- reward feedback -->
+        <path d="M 640 348 C 400 348, 460 260, 640 190" fill="none" stroke="#c2410c" stroke-width="1.6" marker-end="url(#arr)"/>
+        <text x="500" y="316" text-anchor="middle" font-size="11.5" fill="#c2410c" font-weight="700">奖励 0/1 + 人类干预</text>
+
+        <!-- human -->
+        <rect x="40" y="300" width="200" height="72" rx="14" fill="#fff" stroke="#c2410c" stroke-width="1.5"/>
+        <text x="140" y="326" text-anchor="middle" font-size="13" font-weight="800" fill="#c2410c">人类监督员（三件事）</text>
+        <text x="140" y="348" text-anchor="middle" font-size="11.5" fill="#6b6560">打成功/失败标签 · 干预修正</text>
+        <text x="140" y="366" text-anchor="middle" font-size="11.5" fill="#6b6560">决定哪段交给 RL</text>
+        <line x1="240" y1="336" x2="632" y2="336" stroke="#9a938b" stroke-width="1.5" stroke-dasharray="6 5" marker-end="url(#arrGray)"/>
+      </svg>
+      <div class="caption">RLT 系统总览：冻结的 VLA → RL token → 轻量 actor-critic → 机器人，人类提供稀疏奖励与干预。</div>
+    </div>
+
+    <div class="card">
+      <h3>训练流程（Algorithm 1）</h3>
+      <ol>
+        <li><strong>适配</strong>：用少量任务演示数据，微调 VLA + 训练 RL token（重建损失）。</li>
+        <li><strong>冻结</strong> VLA 和 RL token。</li>
+        <li><strong>预热</strong>：先用 VLA 跑几十集填满 replay buffer，给 critic 一个初始信号。</li>
+        <li><strong>在线 RL</strong>：机器人边跑边 off-policy 更新 critic 和 actor；replay buffer 混合 VLA 数据、RL 数据、人类干预数据；高更新比（update-to-data = 5）。</li>
+        <li><strong>关键阶段专注</strong>：简单部分（抓取/搬运）让基础 VLA 做，到精度要求最高的插入/紧固段切换到 RL 策略；测试时训练 VLA 学会预测"何时交接"。</li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section id="s5">
+    <h2><span class="no">5</span>实验结果</h2>
+    <p class="lead">四个真实机器人任务，全部在吞吐量和成功率上提升，最难阶段最高提速 3×。</p>
+
+    <div class="card">
+      <table>
+        <tr><th>指标</th><th>结果</th></tr>
+        <tr><td><strong>吞吐量</strong><br><span style="color:var(--faint)">每 10 分钟成功次数</span></td><td>四个任务全部大幅提升，关键阶段<span class="good">最高提速 3×</span></td></tr>
+        <tr><td><strong>成功率</strong></td><td>拧螺丝这类难任务从 ~20% 提到 <span class="good">~65%</span>；插网线这类本来就会的任务基本保持、但速度上去了</td></tr>
+        <tr><td><strong>超越人类</strong></td><td>插网线关键阶段，RLT 中位 66 步 vs 人类遥操作 146 步 vs 基础 VLA 228 步——<span class="good">比人类还快</span></td></tr>
+        <tr><td><strong>涌现新策略</strong></td><td>基础 VLA 会反复试探-后退-重试；RLT 学到"对准后一气呵成插入，失败时施压+轻微扭动利用柔性"——<span class="warn">演示数据里没有，纯靠在线探索长出来</span></td></tr>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>消融实验：每个组件都重要</h3>
+      <table>
+        <tr><th>去掉的组件</th><th>影响</th></tr>
+        <tr><td>RL token（换成 ResNet）</td><td>吞吐掉 ~50%，说明 token 编码了操纵相关的结构</td></tr>
+        <tr><td>动作块（改成单步 C=1）</td><td>基本追不上基础策略，horizon 变长导致信用分配困难</td></tr>
+        <tr><td>BC 正则项（λ=0）</td><td class="warn">性能掉得最多——被迫在整个动作空间里只靠 Q 梯度探索</td></tr>
+        <tr><td>参考动作直通（去掉 ã）</td><td>学习变慢、早期漂移、训练中失败更多（最终也能追上，但更费数据）</td></tr>
+      </table>
+    </div>
+
+    <div class="card">
+      <h3>对比基线：全部占优</h3>
+      <table>
+        <tr><th>基线</th><th>思路</th></tr>
+        <tr><td><strong>DAgger</strong></td><td>用干预数据继续微调 VLA</td></tr>
+        <tr><td><strong>HIL-SERL</strong></td><td>小模型 + 人类干预 RL（但没用 VLA 表示）</td></tr>
+        <tr><td><strong>PLD</strong></td><td>冻结 VLA + 单步残差策略</td></tr>
+        <tr><td><strong>DSRL</strong></td><td>在 flow VLA 的潜噪声空间做 RL</td></tr>
+      </table>
+      <p style="margin-top:10px;">在插网线等任务上，RLT 的吞吐和成功率均高于这些基线。</p>
+    </div>
+  </section>
+
+  <!-- 6 -->
+  <section id="s6">
+    <h2><span class="no">6</span>与已有方法的关系</h2>
+    <div class="card">
+      <table>
+        <tr><th>流派</th><th>代表</th><th>RLT 的差异</th></tr>
+        <tr><td>小模型真机 RL</td><td>SERL / RL100</td><td>把视觉编码器换成 VLA 的 RL token，保留行为先验</td></tr>
+        <tr><td>整模型 RL</td><td>RECAP / SimpleVLA-RL</td><td>只训小头，计算与样本开销小得多</td></tr>
+        <tr><td>冻结 VLA + 残差/噪声</td><td>PLD / Policy Decorator / DSRL</td><td>不是输出残差或操纵扩散噪声，而是以参考动作为条件做局部精修，且用动作块而非单步</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <!-- 7 -->
+  <section id="s7">
+    <h2><span class="no">7</span>局限与展望</h2>
+    <div class="card">
+      <ul>
+        <li>训练期间仍需<strong>人工干预</strong>：打奖励、做修正、在关键阶段切换策略。</li>
+        <li>作者展望：用<strong>奖励模型 + 进度预测</strong>自动化这些环节，走向"完全自主的 RL 改进流水线"。</li>
+        <li>目前每个任务语言指令固定，RL token 构造时暂时丢掉了语言嵌入（一般情形仍是通用的）。</li>
+      </ul>
+    </div>
+    <div class="callout">
+      <div class="ttl">一句话总结</div>
+      <p>别去动那个笨重的 VLA，而是让它"吐"出一个又好用又小的表示（RL token）和一组参考动作，再让轻量 actor-critic 拿着这些"小抄"在真实机器人上快速精修——既保住大模型的泛化，又拿到小模型 RL 的样本效率。</p>
+    </div>
+  </section>
+
+  <div class="foot">
+    论文：RL Token: Bootstrapping Online RL with Vision-Language-Action Models · arXiv:2604.23073v2 · Physical Intelligence<br>
+    <a href="piRL-论文解读.html">对比阅读：πRL（流匹配 VLA 的在线 RL 微调）→</a><br>
+    本页由 Claude 生成，仅供学习参考。
+  </div>
+</div>
+<script src="nav.js"></script>
+</body>
+</html>

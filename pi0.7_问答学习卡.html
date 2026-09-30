@@ -1,0 +1,957 @@
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>π0.7 问答学习卡</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,800&family=Noto+Sans+SC:wght@400;500;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#faf6ee; --bg-2:#f2eadc; --ink:#20242f; --ink-soft:#454d5c; --ink-faint:#8b93a1;
+    --card:#fffdf8; --line:#e8ddc9;
+    --c1:#e8503a; --c2:#2563eb; --c3:#d61f69; --c4:#0d9488; --c5:#16a34a;
+    --c6:#d97706; --c7:#ea580c; --c8:#52617a; --c9:#db2777; --c10:#7c3aed;
+    --c11:#5e9c0d; --c12:#0284c7; --c13:#b45309; --c14:#b08400;
+    --mono:'Space Mono',ui-monospace,monospace;
+    --disp:'Bricolage Grotesque',sans-serif;
+    --sans:'Noto Sans SC','Bricolage Grotesque',sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:var(--sans); background:var(--bg); color:var(--ink);
+    line-height:1.7; -webkit-font-smoothing:antialiased; overflow-x:hidden;
+    position:relative;
+  }
+  /* atmospheric background */
+  body::before{
+    content:''; position:fixed; inset:0; z-index:-2; pointer-events:none;
+    background:
+      radial-gradient(60vw 60vw at 8% -5%, rgba(214,31,105,.10), transparent 60%),
+      radial-gradient(55vw 55vw at 100% 10%, rgba(37,99,235,.10), transparent 60%),
+      radial-gradient(50vw 50vw at 50% 110%, rgba(13,148,136,.08), transparent 60%),
+      radial-gradient(40vw 40vw at -5% 80%, rgba(217,119,6,.08), transparent 60%);
+  }
+  body::after{
+    content:''; position:fixed; inset:0; z-index:-1; pointer-events:none; opacity:.5;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  }
+
+  /* progress bar */
+  #progress{position:fixed;top:0;left:0;height:4px;width:0;z-index:100;
+    background:linear-gradient(90deg,var(--c1),var(--c3),var(--c10),var(--c2),var(--c4));
+    box-shadow:0 0 12px rgba(214,31,105,.4);transition:width .08s linear}
+
+  .wrap{max-width:1280px;margin:0 auto;padding:0 24px}
+
+  /* ===== HERO ===== */
+  header.hero{padding:64px 0 30px;position:relative}
+  .eyebrow{display:inline-flex;align-items:center;gap:10px;font-family:var(--mono);
+    font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--ink-faint);
+    border:1px solid var(--line);background:var(--card);padding:7px 14px;border-radius:999px}
+  .eyebrow b{color:var(--c3);font-weight:700}
+  h1.title{font-family:var(--disp);font-weight:800;line-height:.96;letter-spacing:-.02em;
+    font-size:clamp(48px,9vw,108px);margin:18px 0 6px;color:var(--ink)}
+  h1.title .pi{font-style:italic;
+    background:linear-gradient(125deg,var(--c1),var(--c3) 45%,var(--c10));
+    -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+  .subtitle{font-family:var(--sans);font-weight:700;font-size:clamp(18px,2.6vw,26px);
+    color:var(--ink-soft);max-width:760px;margin-top:6px}
+  .subtitle .hl{color:var(--c3)}
+  .paper-meta{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:22px;
+    font-size:14px;color:var(--ink-faint);font-family:var(--mono)}
+  .paper-meta a{color:var(--c2);text-decoration:none;border-bottom:1px dotted var(--c2)}
+
+  /* summary callout */
+  .summary{margin:34px 0 8px;background:var(--card);border:1px solid var(--line);
+    border-left:6px solid var(--c3);border-radius:16px;padding:24px 26px;
+    box-shadow:0 18px 40px -28px rgba(40,30,20,.5)}
+  .summary .lab{font-family:var(--mono);font-size:12px;letter-spacing:.14em;
+    text-transform:uppercase;color:var(--c3);font-weight:700;margin-bottom:8px}
+  .summary p{font-size:17px;color:var(--ink-soft)}
+  .summary strong{color:var(--ink)}
+
+  /* key points */
+  .keys{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin:18px 0 6px}
+  .key{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px 20px 22px;
+    position:relative;overflow:hidden;box-shadow:0 16px 36px -30px rgba(40,30,20,.5);
+    transition:transform .25s ease,box-shadow .25s ease}
+  .key:hover{transform:translateY(-4px);box-shadow:0 24px 48px -28px rgba(40,30,20,.55)}
+  .key::before{content:'';position:absolute;inset:0 auto 0 0;width:5px;background:var(--accent)}
+  .key .n{font-family:var(--disp);font-weight:800;font-size:40px;line-height:1;color:var(--accent);opacity:.9}
+  .key h3{font-size:16px;font-weight:900;margin:10px 0 6px}
+  .key p{font-size:14px;color:var(--ink-soft);line-height:1.6}
+  .key code{font-family:var(--mono);font-size:.85em;background:var(--bg-2);padding:1px 5px;border-radius:4px}
+
+  /* mode toggle bar */
+  .controlbar{display:flex;flex-wrap:wrap;align-items:center;gap:14px;
+    margin:30px 0 6px;padding:14px 18px;background:var(--card);border:1px solid var(--line);
+    border-radius:14px;box-shadow:0 12px 30px -26px rgba(40,30,20,.5)}
+  .controlbar .ctitle{font-weight:900;font-size:15px;margin-right:auto}
+  .controlbar .ctitle span{color:var(--c3)}
+  .seg{display:inline-flex;background:var(--bg-2);border-radius:10px;padding:4px;gap:4px}
+  .seg button{font-family:var(--sans);font-weight:700;font-size:14px;border:0;cursor:pointer;
+    background:transparent;color:var(--ink-soft);padding:8px 16px;border-radius:7px;transition:.2s}
+  .seg button.on{background:var(--ink);color:#fff;box-shadow:0 4px 12px -4px rgba(0,0,0,.4)}
+  .hint-text{font-size:13px;color:var(--ink-faint);font-family:var(--mono)}
+
+  /* ===== LAYOUT ===== */
+  .layout{display:grid;grid-template-columns:236px 1fr;gap:40px;
+    align-items:start;padding:24px 0 80px}
+
+  /* TOC */
+  nav.toc{position:sticky;top:24px;background:var(--card);border:1px solid var(--line);
+    border-radius:16px;padding:18px 14px;box-shadow:0 16px 40px -30px rgba(40,30,20,.5)}
+  nav.toc .toc-lab{font-family:var(--mono);font-size:11px;letter-spacing:.16em;
+    text-transform:uppercase;color:var(--ink-faint);padding:0 10px 10px;font-weight:700}
+  nav.toc a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:9px;
+    color:var(--ink-soft);text-decoration:none;font-size:13.5px;font-weight:500;
+    transition:.18s;line-height:1.3}
+  nav.toc a .dot{flex:0 0 9px;width:9px;height:9px;border-radius:3px;background:var(--accent);
+    transform:rotate(45deg);transition:.18s}
+  nav.toc a .nn{font-family:var(--disp);font-weight:800;font-size:13px;color:var(--ink-faint);width:18px}
+  nav.toc a:hover{background:var(--bg-2);color:var(--ink);transform:translateX(2px)}
+  nav.toc a.active{background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--ink);font-weight:700}
+  nav.toc a.active .dot{transform:rotate(45deg) scale(1.3);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 20%,transparent)}
+  nav.toc a.active .nn{color:var(--accent)}
+
+  /* ===== SECTIONS ===== */
+  main{min-width:0}
+  .sec{margin-bottom:46px;scroll-margin-top:24px}
+  .sec-head{display:flex;align-items:center;gap:18px;margin-bottom:22px;position:relative}
+  .sec-num{flex:0 0 auto;width:60px;height:60px;border-radius:16px;display:grid;place-items:center;
+    font-family:var(--disp);font-weight:800;font-size:28px;color:#fff;background:var(--accent);
+    box-shadow:0 12px 26px -14px var(--accent)}
+  .sec-titles h2{font-size:clamp(22px,3.2vw,30px);font-weight:900;line-height:1.15;letter-spacing:-.01em}
+  .sec-titles .tag{display:inline-block;margin-top:5px;font-family:var(--mono);font-size:11px;
+    letter-spacing:.1em;text-transform:uppercase;color:var(--accent);font-weight:700;
+    background:color-mix(in srgb,var(--accent) 12%,transparent);padding:3px 9px;border-radius:6px}
+  .sec-rule{flex:1;height:3px;border-radius:3px;
+    background:linear-gradient(90deg,var(--accent),transparent)}
+
+  /* QA cards */
+  .qa{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--accent);
+    border-radius:14px;padding:20px 22px;margin-bottom:14px;position:relative;
+    box-shadow:0 14px 34px -30px rgba(40,30,20,.55);transition:transform .22s ease,box-shadow .22s ease,border-color .22s}
+  .qa:hover{transform:translateY(-3px);box-shadow:0 22px 44px -28px rgba(40,30,20,.5)}
+  .qa-q{display:flex;gap:14px;align-items:flex-start}
+  .badge{flex:0 0 auto;width:30px;height:30px;border-radius:9px;display:grid;place-items:center;
+    font-family:var(--disp);font-weight:800;font-size:15px;line-height:1}
+  .badge.q{background:var(--accent);color:#fff;box-shadow:0 6px 16px -8px var(--accent)}
+  .badge.a{background:transparent;border:2px solid var(--accent);color:var(--accent)}
+  .qtext{font-size:16.5px;font-weight:700;color:var(--ink);padding-top:3px;flex:1}
+  .qnum{font-family:var(--mono);font-size:12px;color:var(--ink-faint);font-weight:700;margin-right:4px}
+
+  .reveal-hint{display:none;align-items:center;gap:8px;margin-top:14px;margin-left:44px;
+    font-family:var(--mono);font-size:13px;color:var(--accent);font-weight:700;
+    cursor:pointer;user-select:none}
+  .reveal-hint .arr{display:inline-block;transition:transform .2s}
+
+  .qa-answer{display:flex;gap:14px;align-items:flex-start;margin-top:16px;
+    padding-top:16px;border-top:1px dashed var(--line)}
+  .atext{font-size:15px;color:var(--ink-soft);flex:1;padding-top:3px}
+  .atext strong{color:var(--ink);font-weight:700}
+  .atext mark{background:color-mix(in srgb,var(--accent) 20%,transparent);color:var(--ink);
+    padding:0 .2em;border-radius:4px;font-weight:600}
+  .atext code{font-family:var(--mono);font-size:.85em;color:var(--ink);
+    background:color-mix(in srgb,var(--accent) 9%,var(--bg-2));
+    border:1px solid color-mix(in srgb,var(--accent) 22%,transparent);
+    padding:.05em .42em;border-radius:5px;white-space:nowrap}
+  .atext .formula{display:block;font-family:var(--mono);font-size:13px;line-height:1.7;
+    background:color-mix(in srgb,var(--accent) 7%,var(--bg-2));
+    border-left:3px solid var(--accent);border-radius:0 10px 10px 0;
+    padding:12px 16px;margin:12px 0;overflow-x:auto;white-space:pre;color:var(--ink)}
+  .atext ul{list-style:none;margin:8px 0 2px}
+  .atext li{position:relative;padding-left:1.5em;margin:7px 0}
+  .atext li::before{content:'';position:absolute;left:.25em;top:.62em;width:.5em;height:.5em;
+    border-radius:2px;background:var(--accent);transform:rotate(45deg)}
+  .atext li strong{color:var(--ink)}
+
+  /* quiz mode behaviour */
+  body.quiz .qa-answer{display:none}
+  body.quiz .reveal-hint{display:flex}
+  body.quiz .qa{cursor:pointer}
+  body.quiz .qa.open .qa-answer{display:flex}
+  body.quiz .qa.open .reveal-hint{display:none}
+
+  /* footer */
+  footer{border-top:1px solid var(--line);padding:30px 0 60px;margin-top:20px;
+    color:var(--ink-faint);font-size:13.5px}
+  footer .tip{background:var(--card);border:1px solid var(--line);border-radius:12px;
+    padding:16px 20px;color:var(--ink-soft);font-size:14px;line-height:1.7}
+  footer .tip b{color:var(--c3)}
+
+  /* back to top */
+  #top{position:fixed;right:24px;bottom:24px;width:48px;height:48px;border-radius:14px;
+    border:0;cursor:pointer;background:var(--ink);color:#fff;font-size:20px;z-index:60;
+    box-shadow:0 12px 28px -10px rgba(0,0,0,.5);opacity:0;transform:translateY(12px);
+    transition:.25s;display:grid;place-items:center}
+  #top.show{opacity:1;transform:translateY(0)}
+
+  /* entrance animation */
+  .anim{opacity:0;transform:translateY(20px)}
+  .anim.in{animation:rise .6s cubic-bezier(.2,.7,.2,1) forwards}
+  @keyframes rise{to{opacity:1;transform:translateY(0)}}
+
+  /* responsive */
+  @media(max-width:980px){
+    .layout{grid-template-columns:1fr;gap:16px}
+    nav.toc{position:sticky;top:4px;display:flex;overflow-x:auto;gap:6px;padding:10px;
+      scrollbar-width:none;z-index:50;backdrop-filter:blur(6px)}
+    nav.toc::-webkit-scrollbar{display:none}
+    nav.toc .toc-lab{display:none}
+    nav.toc a{flex:0 0 auto;white-space:nowrap;font-size:13px;padding:7px 12px}
+    nav.toc a .nn{display:none}
+    .keys{grid-template-columns:1fr}
+  }
+  @media(max-width:560px){
+    .wrap{padding:0 16px}
+    header.hero{padding:40px 0 18px}
+    .sec-num{width:48px;height:48px;font-size:22px}
+    .controlbar .ctitle{margin-right:0;flex-basis:100%}
+    .qa{padding:18px 16px}
+    #top{right:14px;bottom:14px}
+  }
+</style>
+
+<div id="progress"></div>
+
+<div class="wrap">
+
+  <!-- ===== HERO ===== -->
+  <header class="hero">
+    <span class="eyebrow"><b>STUDY CARD</b> · Physical Intelligence · 2026</span>
+    <h1 class="title"><span class="pi">π0.7</span> 问答学习卡</h1>
+    <p class="subtitle">可操控的<span class="hl">通用机器人基础模型</span> · 71 个问答对 · 13 个主题</p>
+    <div class="paper-meta">
+      <span>π0.7: a Steerable Generalist Robotic Foundation Model with Emergent Capabilities</span>
+      <a href="https://pi.website/pi07" target="_blank" rel="noopener">pi.website/pi07</a>
+    </div>
+
+    <div class="summary anim">
+      <div class="lab">一句话总结</div>
+      <p>π0.7 是一个 <strong>5B 参数的可操控(steerable)通用机器人基础模型</strong>,核心创新是在训练时使用<strong>多样化的 context conditioning</strong>——不只告诉模型"做什么(语言指令)",还通过 <strong>episode metadata(质量/速度/是否出错)</strong> 和 <strong>subgoal images</strong> 告诉它"怎么做、做得好不好"。这让模型能从大规模、混合质量、甚至失败的次优数据中学习而不被"平均化",从而涌现出组合泛化、跨本体迁移、复杂语言跟随等能力。</p>
+    </div>
+
+    <div class="keys">
+      <div class="key anim" style="--accent:var(--c1)">
+        <div class="n">01</div>
+        <h3>方法论,而非新架构</h3>
+        <p>作者明确说不提新架构,而是提出一套"让 VLA 用上更多样数据源"的方法 + 实证分析。</p>
+      </div>
+      <div class="key anim" style="--accent:var(--c3);animation-delay:.08s">
+        <div class="n">02</div>
+        <h3>Diverse prompting</h3>
+        <p>把 <code>metadata</code> + <code>subgoal images</code> + 更丰富的 subtask 语言塞进 prompt,训练时全部随机 dropout,测试时可任意组合。</p>
+      </div>
+      <div class="key anim" style="--accent:var(--c12);animation-delay:.16s">
+        <div class="n">03</div>
+        <h3>混合质量数据可扩展</h3>
+        <p>带 metadata 时数据越多越好(哪怕平均质量下降);不带 metadata 反而越训越差。</p>
+      </div>
+    </div>
+
+    <div class="controlbar anim">
+      <div class="ctitle">学习模式 · <span>选你想要的方式</span></div>
+      <div class="seg" role="tablist">
+        <button id="btn-read" class="on" onclick="setMode('read')">📖 阅读模式</button>
+        <button id="btn-quiz" onclick="setMode('quiz')">🃏 翻卡测验</button>
+      </div>
+      <span class="hint-text" id="modehint">答案全部展开,适合通读</span>
+    </div>
+  </header>
+
+  <!-- ===== LAYOUT ===== -->
+  <div class="layout">
+
+    <!-- TOC -->
+    <nav class="toc" id="toc">
+      <div class="toc-lab">目录 · Contents</div>
+      <a href="#s1"  style="--accent:var(--c1)"><span class="nn">01</span><span class="dot"></span>核心思想与动机</a>
+      <a href="#s2"  style="--accent:var(--c2)"><span class="nn">02</span><span class="dot"></span>Flow-based VLA 基础</a>
+      <a href="#s3"  style="--accent:var(--c3)"><span class="nn">03</span><span class="dot"></span>Prompt 多样化 ★</a>
+      <a href="#s4"  style="--accent:var(--c4)"><span class="nn">04</span><span class="dot"></span>模型架构细节</a>
+      <a href="#s5"  style="--accent:var(--c5)"><span class="nn">05</span><span class="dot"></span>World Model</a>
+      <a href="#s6"  style="--accent:var(--c6)"><span class="nn">06</span><span class="dot"></span>训练数据与配方</a>
+      <a href="#s7"  style="--accent:var(--c7)"><span class="nn">07</span><span class="dot"></span>推理时 Prompting</a>
+      <a href="#s8"  style="--accent:var(--c8)"><span class="nn">08</span><span class="dot"></span>机器人系统</a>
+      <a href="#s9"  style="--accent:var(--c9)"><span class="nn">09</span><span class="dot"></span>实验结果</a>
+      <a href="#s10" style="--accent:var(--c10)"><span class="nn">10</span><span class="dot"></span>跨本体迁移</a>
+      <a href="#s11" style="--accent:var(--c11)"><span class="nn">11</span><span class="dot"></span>组合泛化与 Coaching</a>
+      <a href="#s12" style="--accent:var(--c12)"><span class="nn">12</span><span class="dot"></span>混合质量数据</a>
+      <a href="#s13" style="--accent:var(--c13)"><span class="nn">13</span><span class="dot"></span>局限与工程细节</a>
+      <a href="#s14" style="--accent:var(--c14)"><span class="nn">附</span><span class="dot"></span>给 fine-tune 的借鉴</a>
+    </nav>
+
+    <main>
+
+      <!-- ===== S1 ===== -->
+      <section class="sec anim" id="s1" style="--accent:var(--c1)">
+        <div class="sec-head">
+          <div class="sec-num">01</div>
+          <div class="sec-titles"><h2>核心思想与动机</h2><span class="tag">Motivation</span></div>
+          <div class="sec-rule"></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q1</span>π0.7 要解决的核心问题是什么?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">此前的 VLA 缺乏<mark>组合泛化(compositional generalization)</mark>能力——不仅无法解决新任务,甚至常常无法在不做任务特定微调的情况下流畅执行所有训练过的指令。π0.7 旨在让 VLA 具备类似 LLM 的能力:把训练数据中的技能以新方式重组来解决新问题。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q2</span>π0.7 的 main idea 是什么?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">训练时使用 <mark>diverse context conditioning</mark>。不只用描述"做什么"的语言指令,还加入描述"怎么做/用什么策略"的多模态信息(episode metadata 和 subgoal images)。这能消解大规模多样数据中的歧义,让模型从次优数据中学习而不损害性能。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q3</span>为什么不能直接(naively)在多样化数据上训练?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">多样化数据在策略和完成质量上各不相同,naive 训练会把数据集里不同的 mode <mark>平均(average together)</mark>,产生次优结果。例如同一任务有快有慢、有成功有失败,平均后两头不靠。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q4</span>方法的灵感来源是什么?为什么 robotics 不能照搬?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">灵感来自图像/视频生成中的 <mark>prompt expansion</mark>(用更详细 prompt 提升生成质量)。但 robotics 里光给数据加更详细的文字 caption 不够——决定成败的细节可能很微妙(如整体 episode 质量),或难以用语言表达(如一件叠好 T 恤的具体外观)。所以除文字外还要加 metadata 和 subgoal images。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q5</span>π0.7 相比前代在 context 上的关键扩展是什么?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">π0/π0.5/π0.6 只用任务的简短文字描述作 context。π0.7 扩展为:<mark>更具表达力的 language commands</mark>、<mark>episode metadata</mark>、<mark>subgoal images</mark>,从而能在多样且可能次优的数据上训练。</div></div>
+        </div>
+      </section>
+
+      <!-- ===== S2 ===== -->
+      <section class="sec anim" id="s2" style="--accent:var(--c2)">
+        <div class="sec-head">
+          <div class="sec-num">02</div>
+          <div class="sec-titles"><h2>Flow-based VLA 基础</h2><span class="tag">Foundations</span></div>
+          <div class="sec-rule"></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q6</span>VLA 的基本训练范式?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">从预训练 VLM backbone 出发适配机器人控制。数据集 D 包含机器人轨迹(观测 o_t 和动作 a_t 序列)。观测 <code>o_t = [I¹_t,…,Iⁿ_t, q_t]</code>(n 个相机图像 + 关节构型 q_t),动作为关节或末端执行器命令。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q7</span>什么是 action chunk?为什么用 action expert?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">VLA 通常预测 <mark>action chunk</mark>,即未来一小段动作 <code>a_{t:t+H}</code>(执行时常用更短 horizon Ĥ &lt; H)。action chunk 由 <mark>action expert</mark> 生成——一个更小的 transformer,attend 到 VLM backbone,实现快速推理。它通常用 <mark>flow matching(或 diffusion)</mark> 目标以捕捉动作的多模态性。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q8</span>什么是 Knowledge Insulation (KI) 训练配方?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">VLM backbone 用 <mark>FAST tokens</mark> 监督;action expert 虽然 attend 到 VLM backbone 的所有 activations,但 <mark>action expert 的梯度不回流到 VLM backbone</mark>。这样 VLM 通过相对稳定的离散 cross-entropy loss 训练,而不被 flow matching 的 noisy 梯度干扰。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q9</span>π0.7 的训练目标?flow matching 扮演什么角色?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">目标是给定观测历史和 context C_t 的动作近似 log-likelihood:<code class="formula">max_θ  E_D [ log π_θ( a_{t:t+H} | o_{t-T:t}, C_t ) ]</code>注意 flow matching action expert 优化的是<mark>近似下界(approximate lower bound)</mark>,不是闭式 log-likelihood。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q10</span>context C_t 在传统 VLA 和 π0.7 中分别是什么?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">传统上 <code>C_t = (ℓ_t)</code>,仅一条人工标注的语言指令(如 "clean up the kitchen")。π0.7 把 C_t 扩展为<mark>多模态、包含策略信息</mark>的丰富上下文。</div></div>
+        </div>
+      </section>
+
+      <!-- ===== S3 ===== -->
+      <section class="sec anim" id="s3" style="--accent:var(--c3)">
+        <div class="sec-head">
+          <div class="sec-num">03</div>
+          <div class="sec-titles"><h2>Prompt 多样化（核心贡献）</h2><span class="tag">★ Key Contribution</span></div>
+          <div class="sec-rule"></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q11</span>π0.7 的 prompt(context C_t)包含哪几部分?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">(1) <mark>Subtask instructions</mark> <code>ℓ̂_t</code>;(2) <mark>Subgoal images</mark> <code>g_t</code>;(3) <mark>Episode metadata</mark> <code>m</code>(speed/quality/mistake);(4) <mark>Control mode</mark> <code>c</code>。训练时每个部分都被随机 dropout,使测试时可用任意子集。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q12</span>Subtask instruction 是什么?跟整体任务描述什么关系?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">沿用 π0.5,在整体任务描述 <code>ℓ_t</code>(如 "clean the kitchen")之外,加入捕捉<mark>下一个语义子任务</mark>的中间层文字 <code>ℓ̂_t</code>(如 "open the fridge door")。推理时 ℓ̂_t 可由学到的 high-level policy 或人类提供(也可省略),且会随时间变化。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q13</span>Subtask instruction 还带来什么额外能力?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">让模型可被<mark>逐步口头指导(verbal coaching)</mark>。因为模型训练成能跟随多样语言指令,它能在新任务中跟随人类的 live 指令(如把红薯放入空气炸锅)。之后可用这些 coaching 数据微调出一个 high-level policy,让机器人全自主执行。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q14</span>Subgoal images 补足了 subtask instruction 的什么不足?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">subtask instruction 传达高层意图,但缺执行细节——如 "open the fridge door" 没说手臂该怎么抓把手。Subgoal images 通过描绘场景的<mark>期望近未来状态</mark>,更丰富地指定"任务成功推进后世界该是什么样"。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q15</span>为什么用 multi-view subgoals?各视角分工是什么?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext"><code>g_t = [G¹_t,…,Gⁿ_t]</code>,G^i_t 是相机 i 的期望近未来图像。多视角同时指定<mark>环境/物体中心</mark>的结果(base view 最易)和<mark>手臂/夹爪</mark>的结果(wrist view 最易),改善控制的空间 grounding。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q16</span>Episode metadata 包含哪些字段?怎么定义?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext"><ul>
+            <li><strong>Overall speed</strong>:episode 时间步长度,按 <mark>500 步区间</mark>离散化(如 1750–2250 → "2000 steps")。速度快常对应质量高(错误少)。</li>
+            <li><strong>Overall quality</strong>:<mark>1–5 分</mark>,5 最高。</li>
+            <li><strong>Mistake</strong>:某 action segment 内机器人是否出错(如没抓住物体、做错子任务)的<mark>布尔标签</mark>,由人工粗标。</li>
+          </ul></div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q17</span>为什么 episode metadata 是 π0.7 能用次优数据的关键?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">π0.7 大量使用低质量演示(含失败)和旧模型的自主数据。要让模型测试时仍尽可能好地执行,就需要用 metadata 标注这些轨迹"任务执行得如何",让模型正确 contextualize 它们。数据多样性(如不同速度的 episode)提供必要信号让模型学会把 metadata 与目标动作关联。测试时即可通过 <mark>metadata prompting</mark> 指定"高速、高质量、无错误"。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q18</span>Control mode 是什么?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">文字标识 <code>c ∈ {joint, ee}</code>,指定底层动作执行用关节空间还是末端执行器。训练时两种都包含,测试时按任务选择。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q19</span>一个完整 prompt 长什么样?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext"><code class="formula">&lt;Multi-view observation&gt;&lt;Multi-view subgoals&gt;
+Task: peel vegetables. Subtask: pick up the peeler.
+Speed: 8000. Quality: 5. Mistake: false. Control Mode: joint.
+&lt;Proprioception&gt;</code></div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q20</span>训练时各组件的 dropout 策略?为何这样设计?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext"><ul>
+            <li><strong>Subgoal images</strong>:仅加到每个 batch 的 <mark>25%</mark> 样本。因为给了 subgoal 后动作预测变成 "inverse dynamics" 问题(推断当前帧到未来帧之间的动作),训练快很多,故意只给少部分以防过度依赖。</li>
+            <li>有 subgoal 的样本中,subtask instruction 再以 <mark>30%</mark> 概率 dropout(视觉 subgoal 常能更丰富地替代文字)。</li>
+            <li><strong>Episode metadata</strong>:整体 <mark>15%</mark> 概率全 drop;另外每个分量(speed/quality/mistake)各以 <mark>5%</mark> 概率单独 drop。</li>
+            <li><strong>Control mode</strong>:<mark>不做 dropout</mark>。</li>
+          </ul></div></div>
+        </div>
+      </section>
+
+      <!-- ===== S4 ===== -->
+      <section class="sec anim" id="s4" style="--accent:var(--c4)">
+        <div class="sec-head">
+          <div class="sec-num">04</div>
+          <div class="sec-titles"><h2>模型架构细节</h2><span class="tag">Architecture</span></div>
+          <div class="sec-rule"></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q21</span>π0.7 的总体规模和组成?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">约 <mark>5B</mark> 参数。包括:<mark>4B VLM backbone</mark>(从 Gemma3 4B 初始化,含 400M vision encoder)+ <mark>MEM 式 video history encoder</mark> + <mark>860M flow matching action expert</mark>。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q22</span>π0.7 相比 π0.5/π0.6 的主要架构改动?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">(1) 采用 <mark>MEM 的 history vision encoder</mark>;(2) 在 context 中加入 <mark>visual subgoal images</mark>。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q23</span>history encoder 怎么处理历史帧?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">vision encoder 也从 Gemma3 初始化,遵循 MEM video history encoder 设计,对历史观测做<mark>时间和空间压缩</mark>,对任意数量历史帧输出<mark>固定数量的 token</mark>。历史帧经 encoder 压缩到与单帧相同的 token 数;subgoal images 用同一 encoder 处理。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q24</span>模型接受多少相机/历史帧?分辨率多少?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">最多 <mark>4 个相机</mark>(front、两个 wrist、可选 rear),每个最多 <mark>6 个历史帧</mark>;最多 <mark>3 个 subgoal images</mark>(省略 rear view)。相机观测和 subgoal images 都先 resize 到 <mark>448×448</mark>。历史帧采样 <mark>stride 为 1 秒</mark>;历史帧整体以 <mark>0.3</mark> 概率 dropout;rear view 也以 0.3 概率 dropout。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q25</span>π0.7 用什么 attention masking?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext"><mark>block-causal masking</mark>。observation tokens 和 subgoal image tokens 在各自内部用<mark>双向 attention</mark>;goal-image tokens 还能额外 attend observations;后续 text tokens 用 <mark>causal attention</mark>。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q26</span>π0.7 怎么处理 proprioceptive state q_t?跟 π0.6 有何不同?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">π0.6 用<mark>离散化的 text tokens</mark> 表示 q_t;π0.7 遵循 MEM,用 <mark>linear projection</mark> 把 state 维度映射到 backbone 维度来 embed。每个历史 state 当作单独 token;若对应历史帧被 drop,该 state token 也被 mask。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q27</span>Action expert 的具体设计?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext"><mark>860M</mark> 参数 transformer,用 flow matching 预测连续动作。用 <mark>adaptive RMSNorm</mark> 注入 flow matching 的 timestep 信息。固定 <mark>50 个 action token = 50 步 action chunk</mark>。这 50 个 token 之间双向 attend,并可 attend VLM backbone 的 activations。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q28</span>什么是 RTC?π0.7 怎么用?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext"><mark>Real-Time action Chunking</mark>,用于在有推理延迟时生成平滑动作轨迹。π0.7 用 <mark>training-time 版本</mark>:训练时模拟 <mark>0–12 时间步</mark>的延迟,对应 50Hz 机器人最大 <mark>240ms</mark> 推理延迟。training-time RTC <mark>不增加推理时开销</mark>。</div></div>
+        </div>
+      </section>
+
+      <!-- ===== S5 ===== -->
+      <section class="sec anim" id="s5" style="--accent:var(--c5)">
+        <div class="sec-head">
+          <div class="sec-num">05</div>
+          <div class="sec-titles"><h2>World Model / 子目标图像生成</h2><span class="tag">World Model</span></div>
+          <div class="sec-rule"></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q29</span>运行时 subgoal images 由什么产生?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">一个 <mark>lightweight world model g_ψ</mark>,它接受与主模型相同的 subtask instruction ℓ̂_t,但受益于在视频和图像编辑任务上的 web-scale 预训练,能泛化到多样任务和场景。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q30</span>World model 的训练目标?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext"><code class="formula">max_ψ  E_{D_g} [ L_CFM( g*_t , g_ψ(o_t, ℓ̂_t, m) ) ]</code>L_CFM 是标准 flow matching loss,g*_t 是未来 subgoal image,m 是 episode metadata,D_g 是 subtask label 质量特别高的 segment 子集。<mark>segment 末尾的图像帧作为 ground-truth subgoal</mark>,即 <code>g*_t = o_{t_end}</code>。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q31</span>World model 从什么初始化?为何这样选?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">遵循 <mark>SuSIE</mark>,从现成图像生成/编辑模型初始化——具体是 <mark>BAGEL(14B mixture-of-transformers)</mark>,能做图像理解、编辑、生成。用 web 数据 + 非机器人数据(如 egocentric human videos)+ 其他视频数据增强训练,从而获得语义和物理概念,<mark>再通过 subgoal images 迁移进 π0.7</mark>。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q32</span>生成的 subgoal images 相比语言指令有什么优势(实验角度)?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">grounded 在机器人当前观测上的生成 subgoal,常能比语言指令更清晰地<mark>消解目标歧义</mark>,改善 language following 和泛化。在 complex referential instructions 和 "Reverse Fridge to Microwave" 任务上,<mark>π0.7 (GC)</mark>(带生成 subgoal)显著优于不带的版本,后者甚至是成功的关键。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q33</span>训练 π0.7 处理 subgoal images 时,real image 的采样方案?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">以 <mark>0.25</mark> 概率采 end-of-segment 图像(与 world model 预测目标一致);以 <mark>0.75</mark> 概率从当前时刻往后 <mark>0–4 秒</mark>内均匀采未来图像。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q34</span>为什么训练时还要混入 world-model 生成的图像?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">缓解 real image 与 generated image 之间的 <mark>train-test mismatch</mark>。除 real future images 外,从 world model 采大量 subgoal images,构造额外训练样本(用生成图代替 real future image 放入 π0.7 的 context)。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q35</span>World model 训练的输入输出和 backbone 细节(Appendix C)?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">从 BAGEL 初始化,基本沿用其训练配方。用带<mark>高质量 segmented language labels</mark> 的机器人数据 + egocentric human video(label 质量尤其是时间分割质量对 subgoal 质量影响大),并混入开源图像编辑/视频数据集以保留语义知识。每个样本含:subtask instruction ℓ̂、3 个相机输入 o_t、3 个目标图像 o_{t_end}。相机输入同时用 <mark>ViT(语义理解)+ VAE(细粒度细节)</mark> 处理:ViT tokens 经 <mark>7B LLM backbone</mark>,VAE tokens 经 <mark>7B 生成 backbone</mark>。ViT 输入 resize 到 <mark>448×336</mark>,VAE 输入 resize 到 <mark>512×384</mark>(因 patch size 不同,分别为 14 和 16)。测试时 <mark>Δ=4 秒</mark>重新生成 subgoal(与 SuSIE 对齐)。</div></div>
+        </div>
+      </section>
+
+      <!-- ===== S6 ===== -->
+      <section class="sec anim" id="s6" style="--accent:var(--c6)">
+        <div class="sec-head">
+          <div class="sec-num">06</div>
+          <div class="sec-titles"><h2>训练数据与配方</h2><span class="tag">Training Data</span></div>
+          <div class="sec-rule"></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q36</span>π0.7 的训练数据包含哪些来源?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">(1) 多平台<mark>演示数据</mark>(静态/移动、单臂/双臂,多样环境);(2) 大量 policy evaluation 的<mark>自主数据</mark>;(3) policy rollout 中的<mark>人类干预</mark>;(4) 开源机器人数据集;(5) <mark>egocentric human video</mark>;(6) web 来源的辅助<mark>非机器人数据</mark>(物体定位、属性预测、VQA、纯文本);(7) video-language 任务(视频 captioning)。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q37</span>π0.7 在数据使用上"显著偏离经典 VLA 流程"的地方?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext"><mark>大量使用 suboptimal robot data</mark>,包括低质量演示(失败 episode 或含大量错误的成功 episode)和旧模型在评估实验中收集的数据。例如用 <mark>π*₀.₆ 在 RL 训练中收集的数据</mark>作为额外样本,相当于把它们的行为 distill 进 π0.7。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q38</span>这种"distillation"带来什么效果?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">把 metadata 加入 context 让模型能有效利用所有评估数据,<mark>达到与针对单任务做 RL 的专家模型相似的性能</mark>——即 generalist π0.7 继承 RL 专家的能力。suboptimal 数据还增加状态/场景多样性,带来更强 robustness,使 π0.7 在高难度灵巧任务上<mark>有时甚至超过</mark> RL 训练或单任务后训练的策略。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q39</span>训练数据上有什么重要的排除(exclusion)?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">排除任何 <mark>generalization-focused 评估任务</mark>(包括 Sec. IX 中的)里收集的自主数据,以保证泛化评估的公正性。</div></div>
+        </div>
+      </section>
+
+      <!-- ===== S7 ===== -->
+      <section class="sec anim" id="s7" style="--accent:var(--c7)">
+        <div class="sec-head">
+          <div class="sec-num">07</div>
+          <div class="sec-titles"><h2>推理时 Prompting</h2><span class="tag">Inference</span></div>
+          <div class="sec-rule"></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q40</span>运行时 episode metadata 怎么设置?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext"><ul>
+            <li><strong>Overall speed</strong>:按任务设为该任务 episode 长度的<mark>第 15 百分位</mark>(即偏快)。</li>
+            <li><strong>Overall quality</strong>:永远设为 <mark>5</mark>(最高)。</li>
+            <li><strong>Mistake</strong>:永远设为 <mark>false</mark>(无错误)。</li>
+          </ul></div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q41</span>subtask instruction ℓ̂_t 运行时从哪来?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">由学到的 <mark>high-level language policy</mark> 提供,或由人类监督者 <mark>coaching</mark> 提供。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q42</span>subgoal images 运行时何时刷新?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">当<mark>语义意图改变(新 ℓ̂_t)</mark>或<mark>距上次生成已过 Δ=4 秒</mark>时,取先到者。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q43</span>π0.7 的异步推理怎么运作?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">visual subgoal 生成和 subtask instruction 生成在<mark>独立线程</mark>进行;VLA 推理始终用当前可用的<mark>最新版本</mark>。world model 生成下一个 subgoal 时 π0.7 继续执行(naive async 策略)。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q44</span>推理用多少 denoising 步?执行多少步 action?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">所有实验用 <mark>5 个 denoising 步</mark>生成 50 步 action chunk,执行其中 <mark>Ĥ ∈ {15, 25}</mark> 步。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q45</span>π0.7 怎么用 CFG?为什么能用?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">因为每个 prompt 组件都用 dropout 训练,π0.7 可对任意 prompt 部分做 <mark>classifier-free guidance</mark>。每步 denoising 遵循:<code class="formula">∇_a log π_θ(a|o,C)
+ + β·( ∇_a log π_θ(a|o,C) − ∇_a log π_θ(a|o,C_uncond) )</code>论文对 <mark>episode metadata</mark> 应用 CFG 以在灵巧任务上激发强性能,用中等 <mark>β ∈ {1.3, 1.7, 2.2}</mark>。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q46</span>简述 Algorithm 1(测试时工作流)。</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">输入初始观测 o₀、任务指令 ℓ、metadata m、control mode c。先初始化 subtask ℓ̂(来自 high-level policy 或 coaching),采初始 subgoal <code>g* ~ p_ψ(·|o₀, ℓ̂, m)</code>,组成 <code>C = {ℓ, ℓ̂, g*, m, c}</code>,采初始 action chunk(可选 CFG)。循环中:<mark>若 ℓ̂ 改变或 Δ 秒计时到</mark> → 异步重采 subgoal 并更新 C;<mark>若距上次推理已过 Ĥ 步</mark> → 异步(带 RTC)重采 action chunk;执行 a_t。</div></div>
+        </div>
+      </section>
+
+      <!-- ===== S8 ===== -->
+      <section class="sec anim" id="s8" style="--accent:var(--c8)">
+        <div class="sec-head">
+          <div class="sec-num">08</div>
+          <div class="sec-titles"><h2>机器人系统</h2><span class="tag">Hardware</span></div>
+          <div class="sec-rule"></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q47</span>π0.7 部署在哪些机器人平台?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">(1) <mark>双臂移动 manipulator</mark>(2×6 DoF 臂 + 1 DoF 夹爪 + 1–2 DoF 升降 + 3 DoF holonomic base);(2) <mark>静态双臂机器人("BiPi")</mark>,轻量 6 DoF 臂;(3) <mark>双臂 UR5e + Robotiq 夹爪</mark>(用于跨本体实验);(4) <mark>单臂 6 DoF</mark>(与 BiPi 同款臂)。全部 parallel-jaw 夹爪。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q48</span>UR5e 为何是跨本体迁移的难点?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">大部分数据用类 BiPi 平台采集,而 UR5e 臂<mark>显著更长、形态不同、更重</mark>。实践中因臂的形状、相对桌面的位置(在两侧而非一边)、夹爪和手指形状,<mark>必须用不同的操作策略</mark>,使迁移到该平台成为重大挑战。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q49</span>各平台运行频率和控制方式?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext"><mark>UR5e 跑 20Hz,其余跑 50Hz</mark>。每个机器人有前向相机 + 每臂 wrist 相机,移动机器人还有后向相机。π0.7 动作输出经<mark>简单 PD 控制器</mark>施加;末端执行器命令用<mark>数值逆运动学</mark>转成目标关节位置。</div></div>
+        </div>
+      </section>
+
+      <!-- ===== S9 ===== -->
+      <section class="sec anim" id="s9" style="--accent:var(--c9)">
+        <div class="sec-head">
+          <div class="sec-num">09</div>
+          <div class="sec-titles"><h2>实验结果</h2><span class="tag">Out-of-box · Memory · Language</span></div>
+          <div class="sec-rule"></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q50</span>开箱即用(out-of-the-box)灵巧性实验的核心结论?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">同一个通用 π0.7 模型<mark>无需任务特定后训练</mark>,就能在多种高难度任务上匹配任务特定微调的专家策略(π*₀.₆ RL 专家或 π0.6 SFT 专家),并在困难的<mark>洗衣叠衣和折盒任务上 throughput 甚至超过 RL 专家</mark>。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q51</span>π0.7 (no eval data) 和 π0.7 (no metadata) 两个 ablation 说明了什么?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext"><ul>
+            <li><strong>π0.7 (no eval data)</strong>:不用自主评估 episode → 无法 distill RL 等强策略的 rollout。</li>
+            <li><strong>π0.7 (no metadata)</strong>:不用 episode metadata。</li>
+          </ul>π0.7 在所有任务上显著优于两者,<mark>throughput 上差距最明显</mark>。说明:在质量参差的评估数据上训练 + 用丰富 metadata 消解高低质量行为,对 π0.7 的强性能<mark>至关重要</mark>。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q52</span>记忆相关任务的结果?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">π0.7 <mark>无需微调</mark>即可在需要显式追踪先前上下文的任务(Swap 3 Mugs、Find Object、Scoop Coffee、Window Cleaning)上,达到或超过 MEM 论文中针对部分任务做记忆微调的专家策略。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q53</span>指令跟随实验的设置和结论?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">在 <mark>4 个未见厨房 + 2 个未见卧室</mark>上,每个测试跟随 <mark>3–6 步指令序列</mark>完成特定目标。π0.7 <mark>显著优于 π0.5 和 π0.6</mark>,整体指令跟随成功率高。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q54</span>complex referential instructions 实验说明什么?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">故意设计不寻常、用非常规方式指物、或需理解空间关系的指令(如 "pick up an object I would use to eat soup")。标准指令各模型都行,但<mark>复杂指令上 π0.7 显著更好</mark>,且加 subgoal images(π0.7 GC)进一步提升——把 world model 的语义理解 import 进来。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q55</span>"打破数据集偏置"实验是什么?结论?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">构造 <mark>Reverse Bussing</mark>(把垃圾放 bussing bin、餐具放垃圾桶,与训练相反)和 <mark>Reverse Fridge to Microwave</mark>(把食物从微波炉放回冰箱,训练里没采反向数据)。π0.7 显著优于前代,说明它语言跟随足够强、足够关注指令以打破数据偏置。其中后者上 <mark>π0.7 (GC) 是成功关键</mark>。</div></div>
+        </div>
+      </section>
+
+      <!-- ===== S10 ===== -->
+      <section class="sec anim" id="s10" style="--accent:var(--c10)">
+        <div class="sec-head">
+          <div class="sec-num">10</div>
+          <div class="sec-titles"><h2>跨本体迁移</h2><span class="tag">Cross-Embodiment</span></div>
+          <div class="sec-rule"></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q56</span>跨本体迁移实验想回答什么?主要发现?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">问:cross-embodiment transfer 是否是 π0.7 的 <mark>emergent property</mark>——能否直接把能力迁移到<mark>从未采集过任务数据</mark>的本体?发现:多个任务上 π0.7 完全开箱即用地在目标本体成功。形态差异较小时 π0.5/π0.6 也有一定 emergent transfer;但<mark>形态差距增大、需要显著改变策略时,π0.7 显著优于前代</mark>。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q57</span>物体重排类跨本体任务的难度梯度?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext"><ul>
+            <li><strong>Table Setting</strong>:多种机器人采集 → 迁到静态双臂(最有利,所有模型都好)。</li>
+            <li><strong>Bag In Backpack / Organize Tupperware</strong>:UR5e → 更小静态双臂(gap 更大,π0.5 显著退化,π0.6/π0.7 仍强)。</li>
+            <li><strong>Shirt Bagging</strong>:小静态双臂 → 单臂 UR5e(<mark>gap 最大</mark>,需完全不同策略,π0.7 显著领先)。</li>
+          </ul></div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q58</span>"emergent strategy" 的两个具体例子?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext"><ul>
+            <li><strong>(a) 装袋</strong>:源机器人(矮的静态双臂)用一只手撑开袋子、另一只手插入;更高的 UR5e 因 reach 更大,π0.7 发现<mark>单臂 pick-and-place</mark> 策略。</li>
+            <li><strong>(b) 叠衣</strong>:源机器人用<mark>倾斜末端执行器</mark>先把布按在桌上;UR5e 上 π0.7 改用更适合该臂运动学的<mark>竖直抓取</mark>。</li>
+          </ul>两例都<mark>超越"复制源行为"</mark>,发现更适合目标本体的策略。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q59</span>叠衣的人类对照实验结论?意义?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">招募 <mark>10 名 top 2%</mark>(平均约 <mark>375 小时</mark>经验)的操作员,他们在 UR5e 上从未做过叠衣(对人和策略都是 zero-shot)。<ul>
+            <li><strong>人类</strong>:task progress <mark>90.9%</mark>、成功率 <mark>80.6%</mark></li>
+            <li><strong>π0.7</strong>:task progress <mark>85.6%</mark>、成功率 <mark>80%</mark>,性能可比。</li>
+          </ul>意义:灵巧技能可从<mark>轻便、低成本、易遥操作</mark>的平台,迁移到 high-payload 工业臂(后者采集人类演示昂贵且困难)。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q60</span>跨本体实验为何用关节空间控制?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">因为发现末端执行器(EE)控制在前代模型上<mark>没有明显性能提升</mark>(Appendix E:跨任务比较 joint vs EE,无实质差异),为清晰起见主实验聚焦 joint-space 控制。</div></div>
+        </div>
+      </section>
+
+      <!-- ===== S11 ===== -->
+      <section class="sec anim" id="s11" style="--accent:var(--c11)">
+        <div class="sec-head">
+          <div class="sec-num">11</div>
+          <div class="sec-titles"><h2>组合泛化与 Coaching</h2><span class="tag">Compositional · Coaching</span></div>
+          <div class="sec-rule"></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q61</span>组合泛化为何被称为机器人基础模型的 "grand challenge"?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">此前模型已能在<mark>语义概念</mark>上泛化(如用未见文字标签去够物体),但执行<mark>全新任务</mark>一直难以实现。π0.7 展现出对训练中所见技能的组合泛化。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q62</span>短 horizon 新任务的开箱即用能力?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">π0.7 可直接执行没采过专门数据的短 horizon 任务,如<mark>按法压壶柱塞、舀米入电饭煲、擦拭办公物品、旋转铰接物体</mark>(齿轮组、台扇)。π0.7 在直接语言条件(π0.7)和生成图像目标(π0.7 GC)下表现<mark>大致同样强</mark>。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q63</span>长 horizon 新任务为什么不能直接 prompt?怎么解决?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">像"煮红薯"这类需多阶段、<mark>最长约 5 分钟</mark>交互的任务太复杂,直接要求做不出来。解决:用 π0.7 的语言跟随能力 <mark>"coach" 它</mark>——像教人一样逐步用语言指导(如 "pick up the sweet potato"、"open the air fryer")。设置 Loading/Unloading Air Fryer、Toasting a Bagel 三个多阶段厨房任务(机器人数据里<mark>没有</mark>这些任务的 episode)。π0.7 比前代更能被有效 coach,加生成 subgoal 时更好。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q64</span>coaching 如何变成全自主能力?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">用 coaching 数据里的逐步指令训练一个 <mark>high-level language policy</mark>,让它在执行时自动用合适语言 prompt π0.7。这样<mark>无需额外遥操作数据</mark>即可获得全新长 horizon 任务的全自主能力。实验显示 <mark>π0.7 (autonomous) 大致匹配 π0.7 (coaching)</mark>(5 个任务)。</div></div>
+        </div>
+      </section>
+
+      <!-- ===== S12 ===== -->
+      <section class="sec anim" id="s12" style="--accent:var(--c12)">
+        <div class="sec-head">
+          <div class="sec-num">12</div>
+          <div class="sec-titles"><h2>混合质量数据的可扩展性</h2><span class="tag">Scaling · Mixed-Quality</span></div>
+          <div class="sec-rule"></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q65</span>"能否从混合质量数据学习"实验怎么做的?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">用 <mark>Laundry (T-Shirts and Shorts)</mark> 任务,按 fold 质量和速度标注,分 4 桶:top 30%、top 50%、top 80%、全部数据。每桶从头训 π0.7,分<mark>带/不带 metadata</mark>(共 8 个模型)。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q66</span>该实验的关键结论?(对 fine-tune 尤其重要)</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext"><mark>π0.7 (without metadata) 在更大但更混杂的数据上反而变差;π0.7 (with metadata) 随数据增多持续改善</mark>,即使数据集增大伴随平均质量下降。说明 diverse prompting 让模型设计更<mark>可扩展</mark>——能从更大数据集获益,即使这些数据按常规方式训练会损害模型。metadata 在大规模数据中有效消解不同质量/策略,并在测试时可 prompt 期望行为模式。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q67</span>任务多样性(task diversity)实验怎么做?结论?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">比较两个数据量相同的模型:<ul>
+            <li><strong>π0.7 (w/o most diverse 20%)</strong>:去掉任务多样性最高的 20% 数据。</li>
+            <li><strong>π0.7 (w/o random 20%)</strong>:随机去掉 20%(数据量对照)。</li>
+          </ul>结果:所有任务上 π0.7 和 π0.7 (w/o random 20%) <mark>显著优于</mark> π0.7 (w/o most diverse 20%),说明 π0.7 能有效吸收高任务多样性数据并转化为短 horizon 未见任务上的性能提升。</div></div>
+        </div>
+      </section>
+
+      <!-- ===== S13 ===== -->
+      <section class="sec anim" id="s13" style="--accent:var(--c13)">
+        <div class="sec-head">
+          <div class="sec-num">13</div>
+          <div class="sec-titles"><h2>局限性与工程细节</h2><span class="tag">Limitations · Systems</span></div>
+          <div class="sec-rule"></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q68</span>π0.7 的主要局限?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext"><ul>
+            <li><mark>zero-shot 泛化成功率仍低于 in-distribution</mark>(seen 任务常 &gt;90%,unseen 任务或 unseen 任务-机器人组合在 <mark>60–80%</mark>)。</li>
+            <li>在如此大且多样的数据上<mark>很难明确界定哪些任务真 "seen" 哪些 "unseen"</mark>——相关技能可能以不同 label 或作为执行其他任务的一部分隐含存在;类似理解 LLM 泛化的难题,模型可能主要靠 <mark>"remixing"</mark> 已有技能。论文认为这恰是组合泛化的本质。</li>
+          </ul></div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q69</span>未来工作方向?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">利用 π0.7 的高 <mark>steerability</mark>,从测试任务的数据中高效学习——例如更详细的<mark>语言 coaching</mark>,甚至<mark>自主强化学习</mark>。</div></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q70</span>π0.7 主模型和 world model 的推理速度/优化(Appendix D)?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext"><ul>
+            <li><strong>π0.7 + high-level policy</strong>:都基于 Gemma3 4B,<mark>单张 H100</mark> 推理。RTC 后多种优化把最小变体降到 <mark>38ms</mark>(3 相机、5 denoising、training-time RTC,无额外推理开销)。启用 MEM vision encoder + 加 subgoal images 后<mark>最坏 127ms</mark>。</li>
+            <li><strong>World model</strong>:14B、序列近 <mark>10,000 token</mark>;用 <mark>4×H100 的 4-way tensor parallelism、8-bit 量化、改版 SageAttention</mark>,做到 25 denoising 步(含 text+image CFG)<mark>1.25 秒</mark>。推理时用 async 策略,π0.7 在 world model 生成下个 subgoal 时继续执行。</li>
+          </ul></div></div>
+        </div>
+      </section>
+
+      <!-- ===== S14 ===== -->
+      <section class="sec anim" id="s14" style="--accent:var(--c14)">
+        <div class="sec-head">
+          <div class="sec-num">附</div>
+          <div class="sec-titles"><h2>给 fine-tune π0.5 的实用借鉴</h2><span class="tag">★ For Your Project</span></div>
+          <div class="sec-rule"></div>
+        </div>
+
+        <div class="qa">
+          <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q71</span>哪些点能直接搬到你自己的双臂 fine-tune 项目里?</div></div>
+          <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext"><ul>
+            <li><strong>① 别丢失败/低质量数据</strong>:用 <code>quality(1–5) / speed / mistake</code> 标注后混入训练,测试时 prompt <code>quality 5 / mistake false</code> 即可拿到好行为。对"用次优 bin-picking 软块数据喂 π0.5"高度契合——不必只留完美演示。</li>
+            <li><strong>② speed 目标 = episode 长度第 15 百分位</strong>:简单可复现,直接套用即可让策略偏快。</li>
+            <li><strong>③ metadata dropout 配方</strong>:训练时各分量单独 dropout(<mark>5%</mark>)+ 整体 dropout(<mark>15%</mark>),保证测试时即使缺省也能跑。</li>
+            <li><strong>④ world model / subgoal images 可后置</strong>:它对<mark>复杂 referential 指令</mark>和<mark>跨本体</mark>最有用;短 horizon 任务上"纯语言"已接近同等表现。资源有限时先把 metadata + 更细的 subtask 语言跑通。</li>
+            <li><strong>⑤ 多视角 subgoal 分工</strong>:base view 管环境/物体中心结果,wrist view 管手臂/夹爪结果——对你多相机 visual servoing 的视角分配思路有参考价值。</li>
+            <li><strong>⑥ 架构层面</strong>:π0.7 把 proprioception 从"离散 text token"(π0.6)改成"<mark>linear projection embed</mark>"(MEM 风格),且 history state 做 token 级 mask;复现 history 机制时可注意。</li>
+          </ul></div></div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <footer>
+    <div class="tip">
+      <b>学习建议 ▸</b> 第一遍按 <b>① → ③ → ⑨/⑩/⑪</b> 主线读(动机 + 核心方法 + 三大涌现能力),建立大图;第二遍补 <b>④/⑤/⑦</b> 的实现细节;第三遍看 <b>⑫</b> 的 scaling 结论和附录工程数字。切到 <b>🃏 翻卡测验</b> 模式可以自测。
+    </div>
+  </footer>
+
+</div>
+
+<button id="top" onclick="scrollTo({top:0,behavior:'smooth'})" aria-label="回到顶部">↑</button>
+
+<script>
+  // scroll progress + back-to-top
+  const prog = document.getElementById('progress');
+  const topBtn = document.getElementById('top');
+  function onScroll(){
+    const h = document.documentElement;
+    const sc = h.scrollTop / (h.scrollHeight - h.clientHeight);
+    prog.style.width = (sc*100) + '%';
+    topBtn.classList.toggle('show', h.scrollTop > 600);
+  }
+  document.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+
+  // entrance animation via IntersectionObserver
+  const io = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{ if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target);} });
+  }, {threshold:0.08});
+  document.querySelectorAll('.anim').forEach(el=>io.observe(el));
+
+  // active TOC highlight
+  const tocLinks = [...document.querySelectorAll('nav.toc a')];
+  const secs = tocLinks.map(a=>document.querySelector(a.getAttribute('href')));
+  const spy = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        const id = '#'+e.target.id;
+        tocLinks.forEach(a=>a.classList.toggle('active', a.getAttribute('href')===id));
+        const active = tocLinks.find(a=>a.getAttribute('href')===id);
+        if(active && window.innerWidth<=980){ active.scrollIntoView({inline:'center',block:'nearest',behavior:'smooth'}); }
+      }
+    });
+  }, {rootMargin:'-20% 0px -70% 0px', threshold:0});
+  secs.forEach(s=>s&&spy.observe(s));
+
+  // reading / quiz mode
+  function setMode(mode){
+    const quiz = mode==='quiz';
+    document.body.classList.toggle('quiz', quiz);
+    document.getElementById('btn-read').classList.toggle('on', !quiz);
+    document.getElementById('btn-quiz').classList.toggle('on', quiz);
+    document.getElementById('modehint').textContent = quiz
+      ? '答案已隐藏,点卡片翻开自测'
+      : '答案全部展开,适合通读';
+    if(!quiz) document.querySelectorAll('.qa.open').forEach(c=>c.classList.remove('open'));
+  }
+
+  // click to reveal in quiz mode
+  document.querySelectorAll('.qa').forEach(card=>{
+    card.addEventListener('click',(ev)=>{
+      if(!document.body.classList.contains('quiz')) return;
+      // ignore clicks on links inside
+      if(ev.target.closest('a')) return;
+      card.classList.toggle('open');
+    });
+  });
+</script>
+
+<script src="nav.js"></script>
+</body>
+</html>

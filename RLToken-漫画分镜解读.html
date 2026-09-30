@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RL Token 漫画分镜解读 · 给VLA装一个练习接口</title>
+<style>
+:root{
+  --ink:#141210;
+  --paper:#f4ead6;
+  --riso:#ff4f18;      /* 荧光橙 */
+  --riso2:#1b6ef3;     /* 油墨蓝 */
+  --riso3:#00b894;
+  --halftone:rgba(20,18,16,.16);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  font-family:"Chalkboard SE","Comic Sans MS","Noto Sans SC","PingFang SC","Microsoft YaHei",sans-serif;
+  color:var(--ink);
+  background:var(--paper);
+  background-image:
+    radial-gradient(var(--halftone) 1.1px, transparent 1.2px),
+    radial-gradient(var(--halftone) 1.1px, transparent 1.2px);
+  background-size:8px 8px, 8px 8px;
+  background-position:0 0, 4px 4px;
+  line-height:1.75;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1040px;margin:0 auto;padding:28px 18px 120px}
+
+/* ---------- 刊头 ---------- */
+.cover{
+  border:5px solid var(--ink);
+  background:var(--riso);
+  color:var(--paper);
+  padding:26px 24px 30px;
+  box-shadow:12px 12px 0 var(--ink);
+  position:relative;
+  overflow:hidden;
+}
+.cover:before{
+  content:"";position:absolute;inset:0;
+  background:repeating-linear-gradient(45deg,rgba(255,255,255,.14) 0 12px,transparent 12px 24px);
+  pointer-events:none;
+}
+.cover .kicker{
+  font-size:13px;letter-spacing:.34em;text-transform:uppercase;
+  border:3px solid var(--paper);display:inline-block;padding:3px 10px;background:var(--ink);
+}
+.cover h1{
+  font-size:clamp(30px,6vw,58px);line-height:1.02;margin:16px 0 8px;
+  text-shadow:5px 5px 0 var(--ink);letter-spacing:-.5px;
+}
+.cover h1 em{font-style:normal;background:var(--paper);color:var(--riso);padding:0 8px;text-shadow:none;display:inline-block;transform:rotate(-2deg)}
+.cover .sub{font-size:17px;max-width:70ch;margin:14px 0 0;text-shadow:2px 2px 0 rgba(0,0,0,.35)}
+.cover .meta{margin-top:18px;font-size:13px;display:flex;flex-wrap:wrap;gap:8px}
+.cover .meta span{background:var(--ink);padding:4px 10px;border:2px solid var(--paper)}
+
+/* ---------- 分镜面板 ---------- */
+.strip{margin:52px 0 0}
+.chap{
+  display:flex;align-items:center;gap:14px;margin:0 0 18px;
+}
+.chap .no{
+  flex:none;width:58px;height:58px;border:4px solid var(--ink);background:var(--riso2);color:#fff;
+  display:grid;place-items:center;font-size:26px;font-weight:700;
+  box-shadow:5px 5px 0 var(--ink);transform:rotate(-4deg);
+}
+.chap h2{margin:0;font-size:clamp(21px,3.4vw,30px);line-height:1.2}
+.chap h2 small{display:block;font-size:13px;opacity:.6;font-weight:400;letter-spacing:.06em}
+
+.panel{
+  border:4px solid var(--ink);background:#fffdf7;
+  padding:20px 22px;margin:0 0 18px;
+  box-shadow:7px 7px 0 var(--ink);
+}
+.panel.tilt-l{transform:rotate(-.5deg)}
+.panel.tilt-r{transform:rotate(.45deg)}
+.panel h3{margin:0 0 10px;font-size:18px;display:flex;align-items:center;gap:8px}
+.panel h3:before{content:"";width:13px;height:13px;background:var(--riso);border:3px solid var(--ink);flex:none}
+.panel p{margin:0 0 11px}
+.panel p:last-child{margin-bottom:0}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(285px,1fr));gap:18px}
+
+/* 拟声词 */
+.sfx{
+  display:inline-block;font-size:clamp(22px,4vw,36px);font-weight:800;line-height:1;
+  color:var(--riso);-webkit-text-stroke:2.5px var(--ink);
+  transform:rotate(-7deg);margin:6px 10px 6px 0;letter-spacing:-1px;
+}
+.sfx.blue{color:var(--riso2)}
+.sfx.green{color:var(--riso3)}
+
+/* 对话气泡 */
+.bubble{
+  position:relative;background:#fff;border:4px solid var(--ink);border-radius:22px;
+  padding:14px 18px;margin:16px 0 26px;box-shadow:5px 5px 0 var(--ink);
+}
+.bubble:after{
+  content:"";position:absolute;left:44px;bottom:-21px;
+  border:11px solid transparent;border-top-color:var(--ink);
+}
+.bubble:before{
+  content:"";position:absolute;left:47px;bottom:-13px;z-index:1;
+  border:8px solid transparent;border-top-color:#fff;
+}
+.bubble strong{background:linear-gradient(transparent 62%,rgba(255,79,24,.45) 62%)}
+.bubble .who{
+  position:absolute;top:-16px;left:16px;background:var(--ink);color:var(--paper);
+  font-size:12px;padding:2px 10px;letter-spacing:.12em;
+}
+
+/* 关键词高亮 */
+mark{background:linear-gradient(transparent 58%,rgba(27,110,243,.38) 58%);padding:0 2px}
+b.hot{color:var(--riso)}
+kbd{
+  font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12.5px;
+  background:var(--ink);color:var(--paper);padding:1.5px 6px;border-radius:3px;
+}
+
+/* ---------- 实验台 ---------- */
+.lab{
+  border:4px dashed var(--ink);background:#fff8e8;
+  padding:18px 20px;margin:20px 0;position:relative;
+}
+.lab:before{
+  content:"动手实验台";position:absolute;top:-15px;right:16px;
+  background:var(--riso3);color:#fff;border:3px solid var(--ink);
+  font-size:12px;padding:2px 10px;letter-spacing:.14em;
+}
+.lab h4{margin:2px 0 12px;font-size:16px}
+.ctl{display:flex;flex-wrap:wrap;gap:14px;align-items:center;margin:12px 0}
+.ctl label{font-size:13px;display:flex;align-items:center;gap:8px}
+input[type=range]{width:180px;accent-color:var(--riso)}
+button{
+  font-family:inherit;font-size:14px;cursor:pointer;
+  background:var(--riso2);color:#fff;border:3px solid var(--ink);
+  padding:6px 14px;box-shadow:3px 3px 0 var(--ink);
+}
+button:hover{background:var(--riso)}
+button:active{transform:translate(3px,3px);box-shadow:none}
+button.ghost{background:var(--paper);color:var(--ink)}
+canvas{
+  display:block;width:100%;border:3px solid var(--ink);background:#fff;
+  image-rendering:auto;margin:10px 0 6px;
+}
+.readout{
+  font-family:ui-monospace,Consolas,monospace;font-size:13px;
+  background:var(--ink);color:#8fffcf;padding:9px 12px;border:3px solid var(--ink);
+  white-space:pre-wrap;line-height:1.55;
+}
+.hintline{font-size:13px;opacity:.75;margin:8px 0 0}
+
+/* 表格 */
+table{width:100%;border-collapse:collapse;font-size:14px;margin:6px 0}
+th,td{border:2.5px solid var(--ink);padding:8px 10px;text-align:left}
+th{background:var(--ink);color:var(--paper);font-weight:600}
+tbody tr:nth-child(even){background:rgba(255,79,24,.09)}
+td.num{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
+
+/* 底部 */
+.endbox{
+  border:5px solid var(--ink);background:var(--ink);color:var(--paper);
+  padding:22px;margin-top:54px;box-shadow:10px 10px 0 var(--riso);
+}
+.endbox h2{margin:0 0 12px;color:var(--riso)}
+.endbox a{color:#8fffcf}
+.toc{
+  border:4px solid var(--ink);background:#fff;padding:14px 18px;margin:26px 0 0;
+  box-shadow:6px 6px 0 var(--riso2);
+}
+.toc ol{margin:6px 0 0;padding-left:22px;font-size:14.5px}
+.toc a{color:var(--ink);text-decoration:none;border-bottom:2px solid var(--riso)}
+.toc a:hover{background:var(--riso);color:#fff}
+@media(max-width:600px){
+  .panel{padding:16px 15px}
+  .cover{box-shadow:7px 7px 0 var(--ink)}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="cover">
+  <div class="kicker">Physical Intelligence · arXiv 2604.23073v2</div>
+  <h1>RL Token：<br>给大模型机器人<em>装一个练习接口</em></h1>
+  <p class="sub">VLA 会做很多活，但"最后一毫米"总是慢、犹豫、反复试。这篇论文的办法不是重训大模型，而是从它脑子里抠出<b>一个 2048 维的小向量</b>，让一个两层 MLP 在真机上练几十分钟，就把最难那一段提速到 3 倍——有时比人类遥操作还快。</p>
+  <div class="meta">
+    <span>作者 Charles Xu · Jost Tobias Springenberg · Liyiming Ke 等</span>
+    <span>底座 π0.6</span>
+    <span>4 个真机任务</span>
+    <span>15 分钟 ~ 5 小时数据</span>
+  </div>
+</header>
+
+<div class="toc">
+  <strong>这一话的分镜顺序</strong>
+  <ol>
+    <li><a href="#s1">痛点：VLA 的"最后一毫米"在磨蹭</a></li>
+    <li><a href="#s2">为什么不能直接拿 RL 训整个大模型</a></li>
+    <li><a href="#s3">核心招式一：RL Token（信息瓶颈）</a></li>
+    <li><a href="#s4">核心招式二：动作块，缩短记功距离</a></li>
+    <li><a href="#s5">核心招式三：抄着改，而不是从零猜</a></li>
+    <li><a href="#s6">完整流水线：人类当裁判和保险</a></li>
+    <li><a href="#s7">成绩单与消融实验</a></li>
+    <li><a href="#s8">最有意思的部分：它自己发明了新动作</a></li>
+  </ol>
+</div>
+
+<section class="strip" id="s1">
+  <div class="chap"><div class="no">1</div>
+    <h2>痛点：会干活，但"最后一毫米"在磨蹭<small>Introduction</small></h2></div>
+
+  <div class="panel tilt-l">
+    <h3>一句话版本</h3>
+    <p>现在的 VLA（视觉-语言-动作模型）拿来就能干几十种活：抓、放、叠衣服、拧螺丝。但真正决定成败的，往往是<mark>插进去那一下</mark>——网线口对不对正、螺丝刀尖有没有卡进螺丝头、拉链扣能不能穿过那个窄缝。</p>
+    <p>模型在这几秒里的表现很典型：<b class="hot">靠近 → 犹豫 → 退回来 → 再试一次</b>，来回磨蹭好几轮才成。论文管这叫 probing（试探）行为。</p>
+  </div>
+
+  <div class="bubble">
+    <span class="who">为什么会这样</span>
+    因为 VLA 是<strong>模仿人类遥操作数据</strong>学出来的。遥操作数据里本来就有人类的迟疑、停顿、重试；而且高精度任务的示教数据又少又不一致。模仿学习的天花板 = 数据的质量天花板，所以<strong>光加数据是治不好"慢"的</strong>。
+  </div>
+
+  <div class="panel tilt-r">
+    <h3>那就让它自己练：强化学习（RL）</h3>
+    <p>RL 的逻辑很朴素：真机上反复试，成功给 +1，失败给 0，自己摸索出比人更快更稳的招。但真机 RL 有个铁一样的约束——<b class="hot">每一次尝试都要花真实时间，还磨损硬件</b>。论文的目标定得很具体：几小时内（有的任务甚至几十分钟）必须看到提升。</p>
+  </div>
+</section>
+
+<section class="strip" id="s2">
+  <div class="chap"><div class="no">2</div>
+    <h2>两条老路，各有各的死穴<small>Related Work 的取舍</small></h2></div>
+
+  <div class="grid2">
+    <div class="panel tilt-l">
+      <h3>路线 A：直接用 RL 训整个 VLA</h3>
+      <p>几十亿参数一起更新。理论上最彻底，实际上：<br>• 每步梯度都很贵<br>• 需要巨量交互样本<br>• 几小时内根本训不出东西</p>
+      <p><span class="sfx">太慢！</span></p>
+    </div>
+    <div class="panel tilt-r">
+      <h3>路线 B：抛开 VLA，训个小模型</h3>
+      <p>像 HIL-SERL 那样，ResNet 编码器 + 小 actor-critic。几小时能学会，但：<br>• 丢掉了 VLA 的泛化与常识<br>• 等于从零开始学这个任务</p>
+      <p><span class="sfx blue">白瞎了预训练！</span></p>
+    </div>
+  </div>
+
+  <div class="bubble">
+    <span class="who">论文的问题意识</span>
+    能不能<strong>既吃到 VLA 的泛化能力，又保留小模型的学习速度</strong>？——办法是分工：<strong>冻住的 VLA 负责"看懂世界 + 给建议"，一个小网络负责"把最难那几秒改得更好"。</strong>
+  </div>
+</section>
+
+<section class="strip" id="s3">
+  <div class="chap"><div class="no">3</div>
+    <h2>招式一：RL Token，把大模型的理解压成一颗药丸<small>Sec. IV-A</small></h2></div>
+
+  <div class="panel tilt-r">
+    <h3>问题：VLA 内部的特征太多太杂</h3>
+    <p>一个 transformer VLA 每层都有几百个 token、每个 2048 维。你不知道该喂哪些给 RL。全喂进去，小网络会被维度淹死；随便挑几个，又可能丢掉关键信息。</p>
+    <h3>解法：加一个"复述考试"</h3>
+    <p>在 VLA 最后一层的 token 序列 <kbd>z₁..z_M</kbd> 后面追加一个可学习的特殊 token <kbd>&lt;rl&gt;</kbd>，一起过一个<b class="hot">小的 encoder transformer</b>。取 <kbd>&lt;rl&gt;</kbd> 那个位置的输出，就是 <mark>RL Token（1×2048）</mark>。</p>
+    <p>关键在于怎么训它：再接一个 decoder，<b class="hot">只给它这一颗 RL Token，要求它把原来所有 token 全部重建出来</b>（自回归、L2 损失、对原特征 stop-gradient）。</p>
+    <p>这就是经典的<mark>信息瓶颈</mark>：想通过考试，这颗 token 就必须把任务相关的信息尽量塞进去。训练时 VLA 本体是冻的（可选同时做一点监督微调），训完 VLA 和这个编解码器一起冻住。</p>
+  </div>
+
+  <div class="lab">
+    <h4>实验 1：瓶颈有多窄，才还能"复述"得出来？</h4>
+    <p class="hintline">灰线 = VLA 原始特征；橙线 = 只靠瓶颈向量重建出来的结果。拖动瓶颈宽度，看重建误差怎么变。点"换一组特征"可以看不同样本。</p>
+    <div class="ctl">
+      <label>瓶颈宽度 <input id="bnK" type="range" min="1" max="40" value="6"> <span id="bnKv">6</span></label>
+      <button class="ghost" id="bnNew">换一组特征</button>
+    </div>
+    <canvas id="bnCv" height="190"></canvas>
+    <div class="readout" id="bnOut"></div>
+    <p class="hintline">要点：瓶颈越窄，重建越糊，但向量越"精炼"。论文选的是 <b class="hot">1×2048</b>——足够小到让两层 MLP 能在几分钟数据上学动，又足够大到装下任务相关结构。后面的消融会告诉你：换成 ImageNet 预训练的 ResNet-10 编码器，吞吐直接掉一半。</p>
+  </div>
+</section>
+
+<section class="strip" id="s4">
+  <div class="chap"><div class="no">4</div>
+    <h2>招式二：以"动作块"为单位，把记功距离缩短 10 倍<small>chunked action</small></h2></div>
+
+  <div class="panel tilt-l">
+    <h3>50Hz 是 RL 的噩梦</h3>
+    <p>机器人以 50Hz 控制，一段"插网线"的关键阶段有 250~1000 步。奖励只在最后给一个 +1。如果 RL 按<b class="hot">单步</b>决策，价值函数得把这一个稀疏奖励沿着几百步一路往回传——这就是<mark>信用分配（credit assignment）</mark>难题，实际上传不动。</p>
+    <p>RLT 的做法：actor 一次输出 <kbd>C=10</kbd> 步的动作块（14 维 × 10 = 140 维动作），critic 也按块估值。有效决策步数一下砍到几十步。</p>
+    <p>顺带一个小技巧：虽然按 10 步一块决策，但每 2 步就抽样存一条 transition 进回放池，<b class="hot">1 秒数据能榨出约 25 个训练样本</b>。</p>
+  </div>
+
+  <div class="panel tilt-r">
+    <h3>先把记号钉死：s 和 x 不是一回事</h3>
+    <p>这是全篇最容易晕的地方，也正是这篇论文的贡献所在。<b class="hot">s 是物理世界的状态，x 是小网络透过 VLA 这块镜片看到的 s。</b></p>
+    <p><kbd>s（相机图像+本体感知）</kbd> → 冻住的 VLA + 冻住的 encoder → <kbd>z_rl（1×2048）</kbd> → 拼上 <kbd>sᵖ</kbd> → <kbd>x</kbd></p>
+    <p>机器人在 <kbd>s</kbd> 空间里真实转移，但学习全程发生在 <kbd>x</kbd> 空间里。论文写 <kbd>z_rl(s)</kbd> 就是在强调 RL Token 是状态的一个函数。消融里"去掉 RL Token"换成 ResNet-10，改的就是 <kbd>s→x</kbd> 这一步，<kbd>s</kbd> 本身没变。</p>
+    <table>
+      <thead><tr><th>记号</th><th>含义</th><th>维度</th></tr></thead>
+      <tbody>
+        <tr><td class="num">s</td><td>世界真实状态：4 路相机 + 本体感知 + 语言</td><td class="num">原始高维</td></tr>
+        <tr><td class="num">sᵖ</td><td>s 里的本体感知部分（关节位置/速度或末端位姿）</td><td class="num">几十维</td></tr>
+        <tr><td class="num">z = f(s, ℓ)</td><td>冻住的 VLA 末层的全部 token 嵌入</td><td class="num">M × 2048</td></tr>
+        <tr><td class="num">z_rl</td><td><b>RL Token</b>：z 过小 encoder 后 &lt;rl&gt; 位置的输出</td><td class="num">1 × 2048</td></tr>
+        <tr><td class="num">x = (z_rl, sᵖ)</td><td><b>小网络实际看到的状态</b></td><td class="num">~2100 维</td></tr>
+        <tr><td class="num">a_{1:C}</td><td>动作块，10 步 × 14 维</td><td class="num">140 维</td></tr>
+        <tr><td class="num">ã</td><td><b>VLA 建议的</b>参考动作块（喂给 actor 看的草稿）</td><td class="num">140 维</td></tr>
+        <tr><td class="num">a'</td><td>落点处从策略<b>新采样的假想动作</b>，只用来估值，<b class="hot">不在机器人上执行</b></td><td class="num">140 维</td></tr>
+        <tr><td class="num">Q(x, a)</td><td>critic：2 层 MLP 隐层 256（螺丝任务 3 层 512）</td><td class="num">输出 1 标量</td></tr>
+        <tr><td class="num">λ</td><td>Eq.5 里拉住 actor、不许离 ã 太远的系数</td><td class="num">—</td></tr>
+      </tbody>
+    </table>
+    <h3>那这个 Q 到底哪来的？</h3>
+    <p><b class="hot">Q 就是一个随机初始化的 2 层 MLP</b>，输入 <kbd>(x, a_{1:C})</kbd> 拼接，输出一个标量。论文明确写 actor 和 critic 都 from scratch 初始化。</p>
+    <p>所以训练刚开始，减法两边都是<b>彻头彻尾的胡话</b>——一个随机网络说"这状态值 0.37"，另一个说"下个状态值 0.52"，全无根据。它没一直胡话下去，靠两件事：</p>
+    <p><b class="hot">① r 是唯一的真相注入口。</b>终点那格的 +1 是人类给的、真实的，那一格的目标里没有任何猜测成分，所以它第一个被拽准。然后邻居 bootstrap 它、邻居的邻居再 bootstrap 邻居……真相一跳一跳从终点往回扩散（下面那张图画的就是这个过程）。</p>
+    <p><b class="hot">② 目标那侧被冻住</b>（target 网络 + detach）。每次更新里目标是个不动的靶子；若两侧都动，就会互相追着漂到"差值为 0 但全是 0"的退化解。论文还按 TD3 用两个 Q 取最小值，因为 bootstrap 天生倾向高估自己。</p>
+    <p>一句话：<mark>Q 不是算出来的，是被真实奖励反复拽出来的。</mark>它的可信度完全来自终点那些 +1。</p>
+    <h3>但要命的是：r 几乎总是 0</h3>
+    <p>论文的奖励设定极其稀疏——人类只在回合结束时标一次，成功 <kbd>r_T=1</kbd>，否则 0，中间<b>全程没有任何奖励</b>。把目标公式的 10 项展开就看清了（γ=0.97, C=10, 当前 Q=0.30，落点 target 网络给 0.50）：</p>
+    <p><kbd>Q̂ = γ⁰·r₁ + γ¹·r₂ + … + γ⁹·r₁₀ + γ¹⁰·Q_target</kbd><br>
+    <kbd>&nbsp;&nbsp; = 0 + 0 + … + 0 + 0.7374 × 0.50 = 0.369</kbd> → <kbd>δ = +0.069</kbd>，略微上调</p>
+    <p>整个第一项全军覆没。<b class="hot">对 99% 以上的 transition，目标里一点真相都没有，纯粹是"用猜测改进猜测"</b>：</p>
+    <table>
+      <thead><tr><th>情况</th><th>目标</th><th>成分</th></tr></thead>
+      <tbody>
+        <tr><td>非终点（绝大多数）</td><td class="num">Q̂ = γ^C · Q_target</td><td>纯 bootstrap，<b class="hot">零真相</b></td></tr>
+        <tr><td>终点（极少数）</td><td class="num">Q̂ = r = 1</td><td>纯真相，零猜测</td></tr>
+      </tbody>
+    </table>
+    <p>若第 10 步插进去了：<kbd>Q̂ = γ⁹×1 = 0.760</kbd>，<kbd>δ = +0.46</kbd>——大幅上调，而且不 bootstrap。</p>
+    <p><b>这个 r=0 才是全篇真正的难点</b>，也一口气解释了论文所有设计动机：<br>
+    • 必须用<b>动作块</b> → 纯 bootstrap 的链条每多一环多一层误差，C=10 把链缩短 10 倍<br>
+    • 必须<b>双 Q 取最小</b> → 链条全是自我引用，高估会沿链放大<br>
+    • 必须<b>只练关键阶段</b> → 把片段拎出来练，r 到起点的距离短得多<br>
+    • HIL-SERL 在 50Hz 下<b>学不动</b> → 单步、几百步长、r 全是 0，信号传不过来</p>
+  </div>
+
+  <div class="panel tilt-l">
+    <h3>插播：TD3 是什么，RLT 借了它哪几件装备</h3>
+    <p>TD3 = <b>T</b>win <b>D</b>elayed <b>D</b>eep <b>D</b>eterministic policy gradient（Fujimoto et al. 2018，论文引用 [19]），是 DDPG 的修补版，专治一个顽疾：<b class="hot">critic 系统性高估自己</b>。</p>
+    <p>高估怎么来的：你总朝"看起来最好的动作"去 bootstrap，而 Q 是带噪声的网络，<mark>噪声里偏高的那些值会被优先选中、写进目标、下一轮又被 bootstrap</mark>——误差正反馈放大，Q 膨胀到离谱，actor 追着一个虚高指标走，训练崩掉。上面说的"99% 纯 bootstrap"让这个风险更大。</p>
+    <table>
+      <thead><tr><th>TD3 的招</th><th>做法</th><th>RLT 用了吗</th></tr></thead>
+      <tbody>
+        <tr><td>Twin 双 Q</td><td>养两个独立 critic，算目标时<b>取两者最小值</b>。两边高估噪声不一致，取 min 就偏保守——宁可低估（学得慢）也别高估（会崩）</td><td>✅ 附录明说</td></tr>
+        <tr><td>Delayed 延迟更新</td><td>actor 更新频率低于 critic，等 critic 稳了再动</td><td>✅ 2 次 critic 配 1 次 actor</td></tr>
+        <tr><td>Target smoothing</td><td>给目标动作加噪声，抹平 Q 的尖峰</td><td>论文未提</td></tr>
+      </tbody>
+    </table>
+    <p>还有个 TD3 之前就有、它也在用的东西：<b>target 网络</b>。上面那个 0.50 就是它给的——一份缓慢跟进的 critic 副本。要副本是因为：若用正在训练的 critic 自己算目标，<b class="hot">靶子会跟着枪口一起动</b>，容易发散。</p>
+    <p class="hintline">要说准确：<b>RLT 不是照搬 TD3</b>。TD3 的 actor 是确定性策略，RLT 的 actor 是高斯策略、还额外吃参考动作 ã。论文说自己建立在 SAC[17] / TD3[19] / SVG[34] 这一系之上，借的主要是 <b>critic 那半边的机械装置</b>。</p>
+  </div>
+
+  <div class="lab">
+    <h4>实验 2：稀疏奖励往回传，块长决定要多久</h4>
+    <p class="hintline"><b>先说清"TD 更新"是什么</b>：TD = 时序差分。critic 要估"从这里开始未来能拿多少奖励"，但奖励只在最后给一个 +1。TD 的办法是<b class="hot">不等结局</b>，而是把 <kbd>Q(现在)</kbd> 往 <kbd>即时奖励 + γ·Q(下一步)</kbd> 拉近——用一个猜测去改进另一个猜测（bootstrap）。论文按块版本：<kbd>Q̂ = Σγ^(t'-1)·r_t' + γ^C·Q_target(x')</kbd>，先把块内 C 步的真实奖励加起来，再从 C 步之后的状态借估计。</p>
+    <p class="hintline"><b>"谁减谁"</b>：<kbd>δ = [r + γ^C·Q_target(x',a')] − Q_online(x, a_{1:C})</kbd>，<b>后一时刻的 Q（加上中间真实拿到的奖励）减去前一时刻的 Q</b>。两处要注意：<b class="hot">①</b> 不是对称减法——目标那侧被 detach（论文按 TD3 用 target 网络算，还取两个 Q 的最小值防高估），梯度只进减数那侧，是<b>单向拉拽</b>；若两侧都给梯度，它们会互相靠拢漂到退化解。<b class="hot">②</b> 这两个 Q 是<b>同一个 critic 在相邻时刻的自我评价</b>，不是两个动作比大小——"时序差分"的名字就来自这里。目标之所以更可信，是因为掺了 <kbd>r</kbd> 这一粒真相；而<b>终点那一格根本没有第二个 Q</b>（回合结束不 bootstrap，目标就是纯 +1），它是整条链的锚点。</p>
+    <p class="hintline">代个数（γ=0.97, C=10，当前 <kbd>Q=0.30</kbd>）：块内没成功、落点 target 网络给 0.50 → <kbd>Q̂ = 0.97¹⁰×0.50 = 0.369</kbd>，δ=+0.069，略微上调；块内插进去了 → <kbd>Q̂ = 0.97⁹×1 = 0.760</kbd>，δ=+0.46，大幅上调。δ 为负就是"实际不如预期"，下调。</p>
+    <p class="hintline">关键后果就是下面这张图：<b>一次 TD 更新，奖励信息只能往回移动"一跳"，而一跳的长度正好是 C</b>。格子是一段任务的时间轴，最右端成功给 +1。每点一次按钮跑一轮更新，价值就往前渗透一跳。比较 C=1 和 C=10 各需要多少轮才能把信号传到起点——注意最终传到起点的<b>数值是一样的</b>，差的只是更新次数。</p>
+    <div class="ctl">
+      <label>块长 C <input id="tdC" type="range" min="1" max="20" value="1"> <span id="tdCv">1</span></label>
+      <button id="tdStep">跑一轮 TD 更新</button>
+      <button id="tdAuto">自动跑到头</button>
+      <button class="ghost" id="tdReset">重置</button>
+    </div>
+    <canvas id="tdCv2" height="120"></canvas>
+    <div class="readout" id="tdOut"></div>
+    <p class="hintline">这就是论文里 HIL-SERL 和 PLD 两个单步基线在网线任务上<b class="hot">学不动</b>的直接原因：任务跨几百步、奖励又稀疏，单步 TD 根本传不回来。</p>
+    <p class="hintline">补一句真实情况：现实中"一轮更新"不是这里这种整齐的全局扫描，而是<b>从回放池采一个 batch 做一次梯度更新</b>，每跳都带着神经网络逼近误差和采样噪声，跳数越多误差累积越狠。所以单步方法不只是"慢一点"，而是常常<b class="hot">根本收敛不了</b>。本 demo 用确定性回溯，展示的是每个 C 的最理想传播速度，真实差距比图上更悬殊。</p>
+  </div>
+</section>
+
+<section class="strip" id="s5">
+  <div class="chap"><div class="no">5</div>
+    <h2>招式三：抄着改，别从零猜<small>reference action + BC 正则</small></h2></div>
+
+  <div class="panel tilt-r">
+    <h3>actor 的输入里，直接塞进 VLA 的答案</h3>
+    <p>RLT 的 actor 是个高斯策略 <kbd>π(a|x, ã)</kbd>：输入不只有状态 <kbd>x =(RL Token, 关节/位姿)</kbd>，<b class="hot">还有 VLA 当前采样出的参考动作块 ã</b>。相当于考试时允许看学霸的草稿，任务从"自己想答案"变成"把这份草稿改得更好"。</p>
+    <p>还有个隐藏好处：VLA 的动作分布是<mark>多模态</mark>的（有好几种可行做法），而高斯 actor 是单峰的。把采样出的 ã 传进来，等于顺手保留了"这次打算走哪条路"的模态信息。</p>
+    <h3>损失函数里再拴一根绳</h3>
+    <p>目标是 <kbd>L(π) = −Q(x,a) + λ‖a − ã‖²</kbd>：一边要 critic 打高分，一边被拉住不许离 VLA 太远。λ 就是"允许多大胆"的旋钮，精神上等价于 KL 正则的 RL。</p>
+    <h3>但也不能让它变成复印机</h3>
+    <p>只要既看着 ã 又被罚着靠近 ã，actor 很容易退化成<b class="hot">直接照抄</b>——尤其是 critic 还没学明白的早期。所以论文加了<mark>参考动作 dropout</mark>：训练时随机把 50% 的 ã 换成全零，逼 actor 保留一条"没有草稿也能作答"的独立通路；推理时 ã 总是给。</p>
+  </div>
+
+  <div class="lab">
+    <h4>实验 3：λ 旋钮——保守得一无所获，激进到摔个稀烂</h4>
+    <p class="hintline">灰虚线是 VLA 参考动作的轨迹，橙线是 RLT 实际执行的。背景绿色越深 = critic 认为价值越高（右下角那片是"又快又准"的最优区）。拖 λ 看策略被拉到哪。</p>
+    <div class="ctl">
+      <label>λ（靠近 VLA 的力度） <input id="lmR" type="range" min="0" max="100" value="35"> <span id="lmV">0.35</span></label>
+      <button class="ghost" id="lmRun">重跑一次</button>
+    </div>
+    <canvas id="lmCv" height="230"></canvas>
+    <div class="readout" id="lmOut"></div>
+    <p class="hintline">论文的消融结论正是这样：<b class="hot">把 λ 设成 0（去掉 BC 正则）是所有消融里掉得最惨的一项</b>——actor 失去约束，只靠 Q 的梯度在 140 维动作空间里乱撞。</p>
+  </div>
+</section>
+
+<section class="strip" id="s6">
+  <div class="chap"><div class="no">6</div>
+    <h2>完整流水线：人类当裁判，也当保险<small>Algorithm 1 · Sec. V</small></h2></div>
+
+  <div class="panel tilt-l">
+    <h3>按顺序读一遍这条流水线</h3>
+    <p><b class="hot">① 备料</b>：收 1~10 小时该任务的遥操作示教，微调 VLA + 训 RL Token（2000~10000 步梯度），然后<b>全部冻住</b>。</p>
+    <p><b class="hot">② 热身</b>：先用 VLA 自己跑若干回合，把回放池填上，让 critic 有初始信号——RL 一开始就站在"已经会干活"的水平上。</p>
+    <p><b class="hot">③ 只练最难那一段</b>：每个回合先由 VLA 执行简单部分，人类在关键阶段前把控制权交给 RL 策略。数据收集和记功都集中在这 5~20 秒。</p>
+    <p><b class="hot">④ 人类的两个角色</b>：给稀疏的成功/失败标签（这就是全部奖励信号）；必要时接管遥操作，接管数据会<b>替换掉参考动作</b>存进回放池。</p>
+    <p><b class="hot">⑤ 更新</b>：off-policy，回放池里 VLA 数据、RL 数据、人类接管数据混着用。UTD（更新/数据比）高达 <kbd>5</kbd>，每 2 次 critic 更新配 1 次 actor 更新，采集与训练异步跑。</p>
+    <p><b class="hot">⑥ 收尾自动化</b>：最后再微调 VLA，让它学会预测"该交班了"（用人类的接管时机当标签），测试时就能自动切换。</p>
+  </div>
+
+  <div class="panel tilt-r">
+    <h3>整个流程图：16 格一圈，r 在第 ⑧ 格进来</h3>
+    <p class="hintline">灰虚线 = VLA 给 actor 的参考动作 ã（不经过 RL，直接旁路送过去）。最右侧虚线 = 循环回到 ⑤ 跑下一个动作块。橙色格子是 <b class="hot">r 唯一的入口</b>，绿色格子是唯一接收梯度的地方。</p>
+    <svg viewBox="0 0 1000 500" style="width:100%;border:4px solid #141210;background:#fffdf7;margin:10px 0">
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="#141210"/>
+        </marker>
+        <style>
+          .bx{fill:#fff;stroke:#141210;stroke-width:4}
+          .bxr{fill:#ffe0d4;stroke:#141210;stroke-width:4}
+          .bxg{fill:#d6f5ec;stroke:#141210;stroke-width:4}
+          .bxb{fill:#e2ecff;stroke:#141210;stroke-width:4}
+          .n{font:700 20px sans-serif;fill:#ff4f18}
+          .t{font:600 16px "Noto Sans SC",sans-serif;fill:#141210}
+          .s{font:400 13px "Noto Sans SC",sans-serif;fill:#6b6459}
+          .ar{stroke:#141210;stroke-width:4;fill:none;marker-end:url(#ah)}
+          .dh{stroke:#9a938a;stroke-width:3.5;fill:none;stroke-dasharray:9 7;marker-end:url(#ah)}
+        </style>
+      </defs>
+
+      <rect class="bx"  x="24"  y="56"  width="200" height="66" rx="4"/>
+      <text class="n" x="36" y="82">①</text><text class="t" x="66" y="82">s：4 路相机</text>
+      <text class="s" x="36" y="106">+ 本体感知 + 语言指令</text>
+
+      <rect class="bxb" x="268" y="56"  width="200" height="66" rx="4"/>
+      <text class="n" x="280" y="82">②</text><text class="t" x="310" y="82">冻住的 π0.6</text>
+      <text class="s" x="280" y="106">出末层嵌入 z，和参考动作 ã</text>
+
+      <rect class="bxb" x="512" y="56"  width="200" height="66" rx="4"/>
+      <text class="n" x="524" y="82">③</text><text class="t" x="554" y="82">冻住的 encoder</text>
+      <text class="s" x="524" y="106">z → z_rl（1×2048）</text>
+
+      <rect class="bx"  x="756" y="56"  width="200" height="66" rx="4"/>
+      <text class="n" x="768" y="82">④</text><text class="t" x="798" y="82">x = (z_rl, sᵖ)</text>
+      <text class="s" x="768" y="106">小网络看到的状态</text>
+
+      <rect class="bxg" x="756" y="168" width="200" height="66" rx="4"/>
+      <text class="n" x="768" y="194">⑤</text><text class="t" x="798" y="194">actor π(·|x, ã)</text>
+      <text class="s" x="768" y="218">输出 10 步动作块 a_{1:C}</text>
+
+      <rect class="bx"  x="512" y="168" width="200" height="66" rx="4"/>
+      <text class="n" x="524" y="194">⑥</text><text class="t" x="554" y="194">机器人执行 10 步</text>
+      <text class="s" x="524" y="218">50Hz，人可随时接管</text>
+
+      <rect class="bx"  x="268" y="168" width="200" height="66" rx="4"/>
+      <text class="n" x="280" y="194">⑦</text><text class="t" x="310" y="194">落到 x'</text>
+      <text class="s" x="280" y="218">人类判断：成了没？</text>
+
+      <rect class="bxr" x="24"  y="168" width="200" height="66" rx="4"/>
+      <text class="n" x="36" y="194">⑧</text><text class="t" x="66" y="194">r ← 人给的标签</text>
+      <text class="s" x="36" y="218">成功 +1，否则 0（全程唯一真相）</text>
+
+      <rect class="bx"  x="24"  y="280" width="200" height="66" rx="4"/>
+      <text class="n" x="36" y="306">⑨</text><text class="t" x="66" y="306">存入回放池 B</text>
+      <text class="s" x="36" y="330">(x, a, ã, r, x') 每 2 步抽一条</text>
+
+      <rect class="bx"  x="268" y="280" width="200" height="66" rx="4"/>
+      <text class="n" x="280" y="306">⑩</text><text class="t" x="310" y="306">采一个 batch</text>
+      <text class="s" x="280" y="330">off-policy：VLA/RL/人类数据混采</text>
+
+      <rect class="bxr" x="512" y="280" width="200" height="66" rx="4"/>
+      <text class="n" x="524" y="306">⑪</text><text class="t" x="554" y="306">算目标 Q̂</text>
+      <text class="s" x="524" y="330">Σγ^(t'-1)r + γ^C·Q_target(x',a')</text>
+
+      <rect class="bxr" x="756" y="280" width="200" height="66" rx="4"/>
+      <text class="n" x="768" y="306">⑫</text><text class="t" x="798" y="306">δ = Q̂ − Q_θ(x,a)</text>
+      <text class="s" x="768" y="330">TD 误差，一个标量</text>
+
+      <rect class="bxg" x="756" y="392" width="200" height="66" rx="4"/>
+      <text class="n" x="768" y="418">⑬</text><text class="t" x="798" y="418">更新 critic θ</text>
+      <text class="s" x="768" y="442">∇θ = −2δ·∇Q，δ 就是步长缩放</text>
+
+      <rect class="bxg" x="512" y="392" width="200" height="66" rx="4"/>
+      <text class="n" x="524" y="418">⑭</text><text class="t" x="554" y="418">Q 全局变准一点</text>
+      <text class="s" x="524" y="442">泛化：所有相似 (x,a) 一起动</text>
+
+      <rect class="bxg" x="268" y="392" width="200" height="66" rx="4"/>
+      <text class="n" x="280" y="418">⑮</text><text class="t" x="310" y="418">更新 actor</text>
+      <text class="s" x="280" y="442">−Q(x,a) + λ‖a−ã‖²（2:1 配比）</text>
+
+      <rect class="bx"  x="24"  y="392" width="200" height="66" rx="4"/>
+      <text class="n" x="36" y="418">⑯</text><text class="t" x="66" y="418">动作更快更准</text>
+      <text class="s" x="36" y="442">UTD=5，采集与训练异步</text>
+
+      <!-- 横向箭头 -->
+      <path class="ar" d="M224,89 L262,89"/><path class="ar" d="M468,89 L506,89"/>
+      <path class="ar" d="M712,89 L750,89"/>
+      <path class="ar" d="M750,201 L712,201"/><path class="ar" d="M506,201 L468,201"/>
+      <path class="ar" d="M262,201 L224,201"/>
+      <path class="ar" d="M224,313 L262,313"/><path class="ar" d="M468,313 L506,313"/>
+      <path class="ar" d="M712,313 L750,313"/>
+      <path class="ar" d="M750,425 L712,425"/><path class="ar" d="M506,425 L468,425"/>
+      <path class="ar" d="M262,425 L224,425"/>
+      <!-- 换行竖箭头 -->
+      <path class="ar" d="M856,122 L856,162"/>
+      <path class="ar" d="M124,234 L124,274"/>
+      <path class="ar" d="M856,346 L856,386"/>
+      <!-- ã 旁路：② 直接送到 ⑤ -->
+      <path class="dh" d="M368,122 L368,145 L640,145 L640,155 L820,155 L820,162"/>
+      <text class="s" x="648" y="140" style="fill:#9a938a">ã 旁路送给 actor（50% 训练时置零）</text>
+      <!-- 回路：⑯ → ⑤ -->
+      <path class="dh" d="M124,458 L124,480 L985,480 L985,201 L960,201"/>
+      <text class="s" x="700" y="474" style="fill:#9a938a">下一个动作块，回到 ⑤</text>
+    </svg>
+    <p class="hintline">注意颜色的分布：<b class="hot">橙</b>只有 ⑧⑪⑫ 三格——<kbd>r</kbd> 进来、进目标、变成 δ；<b style="color:#00b894">绿</b>只有 ⑤⑬⑭⑮ 四格，是唯一会被梯度改动的部件。<b style="color:#1b6ef3">蓝</b>的 ②③ 全程冻结，一个梯度都不走。这就是为什么几十分钟真机数据够用：<b>真正在学的只有那两个小 MLP</b>。</p>
+  </div>
+
+  <div class="lab">
+    <h4>实验 5：r 怎么一路把整条链拽准（这次带采样噪声）</h4>
+    <p class="hintline">12 个动作块边界串成一条链，最右端成功给 +1。<b>每个格子的数字就是 critic 当前的 Q 估计</b>，初始是随机小值（模拟随机初始化的 MLP）。每点一次"采样一次更新"，随机抽一条 transition 做一次真实的 TD 更新（含学习率、含噪声），看 δ 怎么从终点开始把整条链拽准。</p>
+    <div class="ctl">
+      <button id="rqStep">采样一次更新</button>
+      <button id="rqAuto">自动训练</button>
+      <button class="ghost" id="rqReset">重新随机初始化</button>
+    </div>
+    <canvas id="rqCv" height="200"></canvas>
+    <div class="readout" id="rqOut"></div>
+    <p class="hintline">观察两件事：<b class="hot">①</b> 靠近终点的格子先变准，误差像波纹一样往左推——因为只有它们的目标里含真实的 <kbd>r</kbd>。<b class="hot">②</b> δ 一开始很大（学得猛），收敛后趋近 0（没东西可学了）。对比实验 2 的理想扫描，这里能看到真实训练的抖动。</p>
+  </div>
+
+  <div class="bubble">
+    <span class="who">一句话记住整个系统</span>
+    <strong>冻住的大模型提供眼睛和草稿，一个两层 MLP（难任务用三层 512）在真机上练手，人类只负责说"这次算成功"和偶尔扶一把。</strong>
+  </div>
+</section>
+
+<section class="strip" id="s7">
+  <div class="chap"><div class="no">7</div>
+    <h2>成绩单：4 个任务，最难阶段快到 3 倍<small>Sec. VI</small></h2></div>
+
+  <div class="panel tilt-r">
+    <h3>任务都卡在同一个地方：亚毫米对齐</h3>
+    <table>
+      <thead><tr><th>任务</th><th>难在哪</th></tr></thead>
+      <tbody>
+        <tr><td>拧螺丝（M3）</td><td>螺丝可能没站正；夹持点离螺丝刀尖 10cm，末端一点旋转误差被放大；关键视觉线索只有对侧手腕的广角相机看得见</td></tr>
+        <tr><td>扎带扣紧</td><td>双臂协同操作可变形物体，要靠手腕相机推断尖端和窄缝位置</td></tr>
+        <tr><td>插网线</td><td>沉孔内插接，位置和角度都得准，还必须"果断"插进去，犹豫就会卡在外壳上</td></tr>
+        <tr><td>插充电器</td><td>厘米级对齐，但插头和插孔经常看不清，容易反复试探</td></tr>
+      </tbody>
+    </table>
+    <p class="hintline">整个任务 30~120 秒（1500~6000 控制步），关键阶段只占 5~20 秒（250~1000 步）。评估分两档：<b>关键阶段</b>（重置到临界状态开始，每方法 50 回合）和更真实的<b>全任务</b>（从 home 位置开始）。</p>
+  </div>
+
+  <div class="panel tilt-l">
+    <h3>关键数字</h3>
+    <table>
+      <thead><tr><th>结论</th><th>数字</th></tr></thead>
+      <tbody>
+        <tr><td>关键阶段速度提升</td><td class="num">最高 3×（网线、充电器这类基线已经挺稳的任务也有）</td></tr>
+        <tr><td>螺丝插入成功率（关键阶段）</td><td class="num">20% → 65%</td></tr>
+        <tr><td>全任务成功率提升</td><td class="num">螺丝 +40%，扎带 +60%</td></tr>
+        <tr><td>网线任务完成步数</td><td class="num">比基线策略少一半（2× 更快）</td></tr>
+        <tr><td>回合长度中位数（网线）</td><td class="num">RLT 66 步 · 人类遥操作 146 步 · 基线 VLA 228 步</td></tr>
+        <tr><td>训练开销</td><td class="num">400~1000 回合，约 15 分钟 ~ 5 小时真机数据</td></tr>
+      </tbody>
+    </table>
+    <p><span class="sfx green">比人还快！</span>网线关键阶段里，<b class="hot">有一半的 RL 回合比所有人类示教都快</b>。</p>
+  </div>
+
+  <div class="panel tilt-r">
+    <h3>和别的方法比 / 拆掉零件会怎样</h3>
+    <table>
+      <thead><tr><th>对照</th><th>结果</th></tr></thead>
+      <tbody>
+        <tr><td>HIL-SERL、PLD（单步 RL）</td><td>在这个 50Hz、稀疏奖励的设定下基本学不动</td></tr>
+        <tr><td>DAgger（微调模仿人类接管）</td><td>成功率能追平，但速度被人类示教锁死</td></tr>
+        <tr><td>DSRL（在扩散噪声空间里"操舵"）</td><td>成功率高、训练稳，但约束太紧，提速远不如 RLT</td></tr>
+        <tr><td>去掉 RL Token（换 ResNet-10）</td><td>吞吐掉 <b class="hot">50%</b></td></tr>
+        <tr><td>去掉动作块（C=1）</td><td>信用分配距离暴涨，连基线水平都追不上</td></tr>
+        <tr><td>去掉 BC 正则（λ=0）</td><td><b class="hot">跌幅最大的一项</b></td></tr>
+        <tr><td>去掉参考动作直通</td><td>最终能追平（在较简单的网线任务上），但学得慢、训练途中失败多、早期容易探索漂移</td></tr>
+      </tbody>
+    </table>
+    <p class="hintline">最能说明效率的一句：在网线任务上，RLT <b class="hot">只消耗 5 分钟关键阶段数据</b>（整个实验约 40 分钟）就超过了基线策略。</p>
+  </div>
+
+  <div class="lab">
+    <h4>实验 4：三条速度分布叠在一起看（对应论文 Fig. 9）</h4>
+    <p class="hintline">横轴是完成关键阶段用的控制步数（越左越快）。拖动竖线，读出各自有多少比例落在这条线左边。三个中位数分别是 66 / 146 / 228。</p>
+    <div class="ctl">
+      <button class="ghost" id="hgT1">RLT</button>
+      <button class="ghost" id="hgT2">人类遥操作</button>
+      <button class="ghost" id="hgT3">基线 VLA</button>
+      <label>阈值 <input id="hgX" type="range" min="20" max="400" value="146"> <span id="hgXv">146</span> 步</label>
+    </div>
+    <canvas id="hgCv" height="220"></canvas>
+    <div class="readout" id="hgOut"></div>
+    <p class="hintline">把阈值拉到人类分布的最左边，你会看到 RLT 仍有相当一部分回合更快——这就是"超过专家遥操作速度"的含义。（此处分布按论文中位数与形状复现，用于建立直觉，非原始数据。）</p>
+  </div>
+</section>
+
+<section class="strip" id="s8">
+  <div class="chap"><div class="no">8</div>
+    <h2>最有意思的一格：它自己发明了新动作<small>Q4 · 涌现策略</small></h2></div>
+
+  <div class="grid2">
+    <div class="panel tilt-l">
+      <h3>基线 VLA 的样子</h3>
+      <p>靠近插孔 → 稍微退回 → 重新调整 → 再试。有时要循环好几轮才插进去。<span class="sfx blue">嗯…再来…</span></p>
+    </div>
+    <div class="panel tilt-r">
+      <h3>RLT 的样子</h3>
+      <p>一气呵成地怼进去。<b class="hot">第一次没成也不撤退</b>，而是<mark>保持压力 + 轻微扭动</mark>，利用接触的柔顺性把插头带进孔里。</p>
+      <p><span class="sfx">嗯——咔！</span></p>
+    </div>
+  </div>
+
+  <div class="bubble">
+    <span class="who">为什么这段重要</span>
+    这个"压住再扭"的动作<strong>示教数据里根本没有</strong>，纯粹从在线探索里长出来。它证明了 RL 不只是把模仿学得更熟，而是<strong>真能翻过示教数据的天花板</strong>。
+  </div>
+
+  <div class="panel tilt-l">
+    <h3>诚实的局限（论文自己写的）</h3>
+    <p>整套流程目前还离不开人：<b>发奖励信号</b>要人判断成功失败，<b>纠正</b>要人接管，<b>切换时机</b>也需要人示范。论文说这些原则上都能自动化——用奖励模型、用进度预测——但那是未来工作。</p>
+    <p>作者最后抛出的观点值得记一下：<mark>当"上岗后改进"足够快且可靠时，预训练的角色就退化成"提供一个好的起点"，最终最强的策略是靠强化学习自己探索出来的。</mark></p>
+  </div>
+</section>
+
+<div class="endbox">
+  <h2>一张便签总结</h2>
+  <p>RLT = <b>冻住的 π0.6</b>（眼睛 + 草稿）＋ <b>一颗 2048 维 RL Token</b>（用"复述考试"压出来的状态表征）＋ <b>按 10 步动作块决策的小 actor-critic</b>（缩短信用分配）＋ <b>抄着改 + λ 正则 + 50% 参考 dropout</b>（局部精修而非乱撞）＋ <b>人类给稀疏奖励和接管</b>。</p>
+  <p>换来的是：四个亚毫米精度任务上，关键阶段最高 <b>3×</b> 提速、螺丝成功率 <b>20%→65%</b>，训练只要几十分钟到几小时真机数据，某些动作比专家遥操作还快。</p>
+  <p style="margin-bottom:0">原文：<a href="https://arxiv.org/abs/2604.23073">arXiv:2604.23073</a> · 项目页 <a href="https://pi.website/research/rlt">pi.website/research/rlt</a></p>
+</div>
+
+<script>
+/* ============ 实验 1：信息瓶颈 ============ */
+(function(){
+  const cv=document.getElementById('bnCv'),ctx=cv.getContext('2d');
+  const kR=document.getElementById('bnK'),kV=document.getElementById('bnKv'),out=document.getElementById('bnOut');
+  const N=64; let sig=[];
+  function gen(){ // 造一段有结构的"特征"
+    sig=[];const a=[];for(let j=0;j<7;j++)a.push((Math.random()*2-1)/(j*0.7+1));
+    for(let i=0;i<N;i++){let v=0;for(let j=0;j<7;j++)v+=a[j]*Math.cos(Math.PI*(i+0.5)*j/N);
+      sig.push(v+(Math.random()*2-1)*0.06);}
+  }
+  function dct(x){const out=[];for(let k=0;k<x.length;k++){let s=0;
+    for(let n=0;n<x.length;n++)s+=x[n]*Math.cos(Math.PI*(n+0.5)*k/x.length);out.push(s*2/x.length);}return out;}
+  function idct(c,K,n){const out=[];for(let i=0;i<n;i++){let s=c[0]/2;
+    for(let k=1;k<K;k++)s+=c[k]*Math.cos(Math.PI*(i+0.5)*k/n);out.push(s);}return out;}
+  function draw(){
+    const K=+kR.value;kV.textContent=K;
+    const c=dct(sig),rec=idct(c,K,N);
+    const W=cv.width=cv.clientWidth*2,H=cv.height=380;cv.style.height='190px';
+    ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,W,H);
+    const pad=30,ih=H-pad*2;
+    const all=sig.concat(rec);const mx=Math.max(...all.map(Math.abs))*1.15||1;
+    const X=i=>pad+i*(W-pad*2)/(N-1), Y=v=>H/2-v/mx*ih/2;
+    ctx.strokeStyle='#ddd';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(pad,H/2);ctx.lineTo(W-pad,H/2);ctx.stroke();
+    ctx.lineWidth=5;ctx.strokeStyle='#9a938a';ctx.beginPath();
+    sig.forEach((v,i)=>i?ctx.lineTo(X(i),Y(v)):ctx.moveTo(X(i),Y(v)));ctx.stroke();
+    ctx.lineWidth=6;ctx.strokeStyle='#ff4f18';ctx.beginPath();
+    rec.forEach((v,i)=>i?ctx.lineTo(X(i),Y(v)):ctx.moveTo(X(i),Y(v)));ctx.stroke();
+    let err=0,nrm=0;for(let i=0;i<N;i++){err+=(sig[i]-rec[i])**2;nrm+=sig[i]**2;}
+    const rel=Math.sqrt(err/nrm)*100;
+    out.textContent='瓶颈宽度 K = '+K+' / '+N+'   压缩率 '+(K/N*100).toFixed(0)+'%\n'
+      +'重建相对误差 = '+rel.toFixed(1)+'%   '+(rel<8?'→ 信息基本保住了':rel<25?'→ 主要结构在，细节丢了':'→ 太窄，关键信息已经丢了');
+  }
+  kR.oninput=draw;document.getElementById('bnNew').onclick=()=>{gen();draw();};
+  gen();draw();addEventListener('resize',draw);
+})();
+</script>
+<script>
+/* ============ 实验 2：TD 回传 vs 块长 ============ */
+(function(){
+  const cv=document.getElementById('tdCv2'),ctx=cv.getContext('2d');
+  const cR=document.getElementById('tdC'),cV=document.getElementById('tdCv'),out=document.getElementById('tdOut');
+  const N=60,GAMMA=0.97; let V=new Array(N).fill(0),rounds=0,timer=null;
+  function reset(){V=new Array(N).fill(0);rounds=0;draw();}
+  function step(){
+    const C=+cR.value,nv=V.slice();
+    for(let i=0;i<N;i++){
+      const j=i+C;
+      if(j>=N-1) nv[i]=Math.max(nv[i],Math.pow(GAMMA,N-1-i));       // 直接摸到终端奖励
+      else nv[i]=Math.max(nv[i],Math.pow(GAMMA,C)*V[j]);            // 从 C 步之后 bootstrap
+    }
+    V=nv;rounds++;draw();
+  }
+  function draw(){
+    cV.textContent=cR.value;
+    const W=cv.width=cv.clientWidth*2,H=cv.height=240;cv.style.height='120px';
+    ctx.clearRect(0,0,W,H);
+    const pad=16,cw=(W-pad*2)/N;
+    for(let i=0;i<N;i++){
+      const v=V[i];
+      ctx.fillStyle = v>0.001 ? 'rgba(0,184,148,'+(0.25+0.75*Math.min(1,v))+')' : '#f0ece2';
+      ctx.fillRect(pad+i*cw,60,cw-2,110);
+    }
+    ctx.fillStyle='#ff4f18';ctx.fillRect(pad+(N-1)*cw,60,cw-2,110);
+    ctx.fillStyle='#141210';ctx.font='700 22px system-ui';
+    ctx.fillText('起点（这里学会了才算信号传到）',pad,42);
+    ctx.textAlign='right';ctx.fillText('+1 成功',W-pad,42);ctx.textAlign='left';
+    const reached=V[0]>0.001, first=V.findIndex(v=>v>0.001);
+    out.textContent='块长 C = '+cR.value+'   已跑 '+rounds+' 轮 TD 更新\n'
+      +'价值信号最前沿：第 '+(first<0?'—':first)+' 格   起点 V(0) = '+V[0].toFixed(4)+'\n'
+      +(reached?'✅ 信号已经传回起点，策略可以开始改进这一段了'
+              :'⏳ 起点还是 0——actor 在这里拿不到任何梯度方向')
+      +'\n理论所需轮数 ≈ ceil('+(N-1)+' / '+cR.value+') = '+Math.ceil((N-1)/+cR.value);
+  }
+  document.getElementById('tdStep').onclick=step;
+  document.getElementById('tdReset').onclick=()=>{clearInterval(timer);reset();};
+  document.getElementById('tdAuto').onclick=()=>{clearInterval(timer);
+    timer=setInterval(()=>{if(V[0]>0.001){clearInterval(timer);return;}step();},160);};
+  cR.oninput=()=>{clearInterval(timer);reset();};
+  reset();addEventListener('resize',draw);
+})();
+</script>
+<script>
+/* ============ 实验 3：λ 正则的拉扯 ============ */
+(function(){
+  const cv=document.getElementById('lmCv'),ctx=cv.getContext('2d');
+  const R=document.getElementById('lmR'),V=document.getElementById('lmV'),out=document.getElementById('lmOut');
+  // 2D 动作空间：x=速度, y=精度偏置。Q 的最优在右下(快且准)，但离 VLA 参考较远
+  const ref={x:0.30,y:0.62}, opt={x:0.80,y:0.30};
+  function Q(x,y){ // 高价值区 + 一条"翻车带"
+    const g=Math.exp(-(((x-opt.x)**2)/0.055+((y-opt.y)**2)/0.055));
+    const bad=Math.exp(-(((x-0.95)**2)/0.02+((y-0.85)**2)/0.05));
+    return g-1.1*bad;
+  }
+  function run(){
+    const lam=+R.value/100;V.textContent=lam.toFixed(2);
+    const W=cv.width=cv.clientWidth*2,H=cv.height=460;cv.style.height='230px';
+    ctx.clearRect(0,0,W,H);
+    const P=(x,y)=>[30+x*(W-60),H-30-y*(H-60)];
+    // 价值热力图
+    const st=14;
+    for(let px=0;px<W;px+=st)for(let py=0;py<H;py+=st){
+      const x=(px-30)/(W-60),y=(H-30-py)/(H-60),q=Q(x,y);
+      if(q>0.03){ctx.fillStyle='rgba(0,184,148,'+(q*0.55)+')';ctx.fillRect(px,py,st,st);}
+      else if(q<-0.03){ctx.fillStyle='rgba(255,79,24,'+(-q*0.45)+')';ctx.fillRect(px,py,st,st);}
+    }
+    // 梯度上升：maximize Q - lam*||a-ref||^2
+    let a={x:ref.x,y:ref.y};const path=[{...a}];
+    for(let t=0;t<260;t++){
+      const e=1e-3;
+      const gx=(Q(a.x+e,a.y)-Q(a.x-e,a.y))/(2*e)-2*lam*(a.x-ref.x);
+      const gy=(Q(a.x,a.y+e)-Q(a.x,a.y-e))/(2*e)-2*lam*(a.y-ref.y);
+      a.x=Math.max(0,Math.min(1,a.x+0.012*gx+(Math.random()-.5)*0.004));
+      a.y=Math.max(0,Math.min(1,a.y+0.012*gy+(Math.random()-.5)*0.004));
+      path.push({...a});
+    }
+    // 参考点与轨迹
+    ctx.setLineDash([10,8]);ctx.strokeStyle='#9a938a';ctx.lineWidth=4;
+    ctx.beginPath();const[rx,ry]=P(ref.x,ref.y);const[ox,oy]=P(opt.x,opt.y);
+    ctx.moveTo(rx,ry);ctx.lineTo(ox,oy);ctx.stroke();ctx.setLineDash([]);
+    ctx.strokeStyle='#ff4f18';ctx.lineWidth=6;ctx.beginPath();
+    path.forEach((p,i)=>{const[X,Y]=P(p.x,p.y);i?ctx.lineTo(X,Y):ctx.moveTo(X,Y);});ctx.stroke();
+    function dot(x,y,c,label){const[X,Y]=P(x,y);ctx.fillStyle=c;ctx.strokeStyle='#141210';ctx.lineWidth=4;
+      ctx.beginPath();ctx.arc(X,Y,11,0,7);ctx.fill();ctx.stroke();
+      ctx.fillStyle='#141210';ctx.font='700 20px system-ui';ctx.fillText(label,X+16,Y+7);}
+    dot(ref.x,ref.y,'#9a938a','VLA 参考动作 ã');
+    dot(opt.x,opt.y,'#00b894','critic 认为的最优');
+    dot(a.x,a.y,'#ff4f18','RLT 最终策略');
+    const dist=Math.hypot(a.x-ref.x,a.y-ref.y),q=Q(a.x,a.y);
+    out.textContent='λ = '+lam.toFixed(2)+'   最终 Q ≈ '+q.toFixed(3)+'   离参考动作距离 = '+dist.toFixed(3)+'\n'
+      +(lam>0.75?'🔒 太保守：几乎黏在 VLA 身上，RL 白练了'
+       :lam<0.04?'💥 没有绳子：可能飘到左上那片红色翻车带，训练不稳'
+       :'✅ 刚好：以 VLA 为起点局部精修，落进高价值区');
+  }
+  R.oninput=run;document.getElementById('lmRun').onclick=run;run();addEventListener('resize',run);
+})();
+</script>
+<script>
+/* ============ 实验 4：速度分布 ============ */
+(function(){
+  const cv=document.getElementById('hgCv'),ctx=cv.getContext('2d');
+  const xR=document.getElementById('hgX'),xV=document.getElementById('hgXv'),out=document.getElementById('hgOut');
+  const defs=[
+    {k:'RLT',med:66, sd:0.34,color:'rgba(255,79,24,.72)',on:true},
+    {k:'人类遥操作',med:146,sd:0.22,color:'rgba(0,184,148,.65)',on:true},
+    {k:'基线 VLA',med:228,sd:0.42,color:'rgba(27,110,243,.55)',on:true}
+  ];
+  const LO=20,HI=400,BINS=48;
+  function pdf(d,x){ // 对数正态，中位数=med
+    if(x<=0)return 0;const z=(Math.log(x)-Math.log(d.med))/d.sd;
+    return Math.exp(-z*z/2)/(x*d.sd*Math.sqrt(2*Math.PI));
+  }
+  function cdf(d,x){const z=(Math.log(x)-Math.log(d.med))/(d.sd*Math.SQRT2);
+    // erf 近似
+    const t=1/(1+0.3275911*Math.abs(z));
+    const e=1-(((((1.061405429*t-1.453152027)*t)+1.421413741)*t-0.284496736)*t+0.254829592)*t*Math.exp(-z*z);
+    return 0.5*(1+(z<0?-e:e));}
+  function draw(){
+    const thr=+xR.value;xV.textContent=thr;
+    const W=cv.width=cv.clientWidth*2,H=cv.height=440;cv.style.height='220px';
+    ctx.clearRect(0,0,W,H);const pad=44,bw=(W-pad*2)/BINS;
+    let mx=0;const data=defs.map(d=>{const arr=[];
+      for(let i=0;i<BINS;i++){const x=LO+(i+0.5)*(HI-LO)/BINS;const v=pdf(d,x);arr.push(v);mx=Math.max(mx,v);}return arr;});
+    // 轴
+    ctx.strokeStyle='#141210';ctx.lineWidth=4;ctx.beginPath();
+    ctx.moveTo(pad,H-pad);ctx.lineTo(W-pad,H-pad);ctx.stroke();
+    ctx.fillStyle='#141210';ctx.font='600 19px system-ui';
+    [50,100,150,200,250,300,350].forEach(t=>{const X=pad+(t-LO)/(HI-LO)*(W-pad*2);
+      ctx.fillText(t,X-14,H-pad+28);});
+    ctx.fillText('完成关键阶段所需控制步数 →',pad,H-pad+58);
+    defs.forEach((d,di)=>{ if(!d.on)return;
+      ctx.fillStyle=d.color;
+      data[di].forEach((v,i)=>{const h=v/mx*(H-pad*2-30);
+        ctx.fillRect(pad+i*bw,H-pad-h,bw-1.5,h);});
+    });
+    // 阈值线
+    const TX=pad+(thr-LO)/(HI-LO)*(W-pad*2);
+    ctx.setLineDash([9,7]);ctx.strokeStyle='#141210';ctx.lineWidth=5;
+    ctx.beginPath();ctx.moveTo(TX,24);ctx.lineTo(TX,H-pad);ctx.stroke();ctx.setLineDash([]);
+    // 图例
+    let ly=32;defs.forEach(d=>{if(!d.on)return;ctx.fillStyle=d.color;ctx.fillRect(W-330,ly-16,26,26);
+      ctx.fillStyle='#141210';ctx.font='700 20px system-ui';ctx.fillText(d.k+'（中位 '+d.med+'）',W-296,ly+6);ly+=34;});
+    out.textContent=defs.map(d=>{const p=cdf(d,thr)*100;
+      return (d.on?'● ':'○ ')+d.k.padEnd(7,'　')+' 快于 '+thr+' 步的比例：'+p.toFixed(1)+'%';}).join('\n');
+  }
+  [['hgT1',0],['hgT2',1],['hgT3',2]].forEach(([id,i])=>{
+    const b=document.getElementById(id);
+    function sync(){b.style.background=defs[i].on?'#ff4f18':'#f4ead6';b.style.color=defs[i].on?'#fff':'#141210';}
+    b.onclick=()=>{defs[i].on=!defs[i].on;sync();draw();};sync();
+  });
+  xR.oninput=draw;draw();addEventListener('resize',draw);
+})();
+</script>
+<script>
+/* ============ 实验 5：带噪声的真实 TD 更新 ============ */
+(function(){
+  const cv=document.getElementById('rqCv'),ctx=cv.getContext('2d'),out=document.getElementById('rqOut');
+  const N=12,GAMMA=0.9,LR=0.3;
+  let Q=[],hits=[],last=-1,lastD=0,n=0,timer=null;
+  function reset(){clearInterval(timer);
+    Q=Array.from({length:N},()=>Math.random()*0.16-0.08);   // 随机初始化的"MLP"
+    hits=new Array(N).fill(0);last=-1;lastD=0;n=0;draw();}
+  function step(){
+    const i=Math.floor(Math.random()*N);                     // 从回放池随机采一条
+    const term = i===N-1;                                    // 落点是终点？
+    const r = term?1:0;                                      // r 只在终点非零
+    const target = term ? r : GAMMA*Q[i+1];                  // 终点不 bootstrap
+    const d = target - Q[i];
+    Q[i]+= LR*d;
+    last=i;lastD=d;hits[i]++;n++;draw();
+  }
+  function draw(){
+    const W=cv.width=cv.clientWidth*2,H=cv.height=400;cv.style.height='200px';
+    ctx.clearRect(0,0,W,H);
+    const pad=20,cw=(W-pad*2)/N;
+    for(let i=0;i<N;i++){
+      const v=Math.max(0,Math.min(1,Q[i]));
+      ctx.fillStyle = i===N-1 ? '#ff4f18' : 'rgba(0,184,148,'+(0.12+0.8*v)+')';
+      ctx.fillRect(pad+i*cw,110,cw-4,150);
+      ctx.strokeStyle=i===last?'#1b6ef3':'#141210';ctx.lineWidth=i===last?9:3.5;
+      ctx.strokeRect(pad+i*cw,110,cw-4,150);
+      ctx.fillStyle='#141210';ctx.font='700 21px ui-monospace,monospace';ctx.textAlign='center';
+      ctx.fillText(Q[i].toFixed(3),pad+i*cw+(cw-4)/2,196);
+      ctx.font='500 15px sans-serif';ctx.fillStyle='#6b6459';
+      ctx.fillText('×'+hits[i],pad+i*cw+(cw-4)/2,228);
+      ctx.fillText(i===N-1?'终点 +1':'块 '+i,pad+i*cw+(cw-4)/2,288);
+    }
+    ctx.textAlign='left';ctx.fillStyle='#141210';ctx.font='700 22px sans-serif';
+    ctx.fillText('起点',pad,96);ctx.textAlign='right';
+    ctx.fillText('成功（r=+1，这里不 bootstrap）',W-pad,96);ctx.textAlign='left';
+    // 真值参考线
+    const truth=i=>Math.pow(GAMMA,N-1-i);
+    let mse=0;for(let i=0;i<N;i++)mse+=(Q[i]-truth(i))**2;
+    out.textContent='已做 '+n+' 次更新\n'
+      +(last<0?'点按钮开始。所有 Q 现在都是随机噪声，没有任何意义。'
+        :'本次采到块 '+last+'：'+(last===N-1
+          ? 'r=1，终点不 bootstrap → 目标 = 1.000（纯真相，无猜测成分）'
+          : 'r=0 → 目标 = γ·Q['+(last+1)+'] = '+(GAMMA*Q[last+1]).toFixed(3)+'（借邻居的估计）')
+        +'\n  δ = '+lastD.toFixed(4)+'   权重更新量 ∝ δ   →  Q['+last+'] 变成 '+Q[last].toFixed(3))
+      +'\n距离真值的均方误差 = '+(mse/N).toFixed(5)+(mse/N<0.001?'  ✅ 基本收敛，δ 已趋近 0':'');
+  }
+  document.getElementById('rqStep').onclick=step;
+  document.getElementById('rqReset').onclick=reset;
+  document.getElementById('rqAuto').onclick=()=>{clearInterval(timer);timer=setInterval(step,90);};
+  reset();addEventListener('resize',draw);
+})();
+</script>
+<script src="nav.js"></script>
+</div>
+</body>
+</html>

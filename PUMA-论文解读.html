@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PUMA：动态环境中的可泛化机器人操作 · 精读</title>
+<meta name="description" content="面向动态环境（移动/变化目标）的可泛化机械臂操作 VLA">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f1f4f6;
+    --surface:#fbfcfd;
+    --surface-2:#eaf0f4;
+    --ink:#16222e;
+    --ink-2:#51626f;
+    --ink-3:#83919c;
+    --accent:#0e6e8a;
+    --accent-strong:#0a4c60;
+    --signal:#c4572a;
+    --line:#d8e1e7;
+    --line-strong:#c3d0d9;
+    --grid-line:rgba(22,34,46,.05);
+    --shadow:0 1px 2px rgba(22,34,46,.04),0 14px 34px rgba(22,34,46,.07);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+      --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+      --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+      --line:#1e2d3a; --line-strong:#2b3d4b;
+      --grid-line:rgba(231,238,244,.045);
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+    --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+    --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+    --line:#1e2d3a; --line-strong:#2b3d4b;
+    --grid-line:rgba(231,238,244,.045);
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Sans",-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+    line-height:1.78; font-size:16px; -webkit-font-smoothing:antialiased;
+  }
+  .grid{
+    position:fixed; inset:0; z-index:-1; pointer-events:none;
+    background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);
+    background-size:28px 28px;
+  }
+  .wrap{max-width:860px; margin:0 auto; padding:0 24px 96px;}
+
+  .masthead{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px 24px 0; max-width:860px; margin:0 auto;
+  }
+  .back{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:13px; color:var(--accent); text-decoration:none; letter-spacing:.03em;
+  }
+  .back:hover{text-decoration:underline;}
+  .masthead .ref{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12.5px; color:var(--ink-3); letter-spacing:.04em;
+  }
+
+  .hero{padding:52px 0 34px; border-bottom:1px solid var(--line-strong);}
+  .eyebrow{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent);
+    margin-bottom:16px;
+  }
+  .hero h1{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:clamp(28px,4.6vw,42px); font-weight:700; line-height:1.2;
+    margin:0 0 16px; color:var(--ink); text-wrap:balance;
+  }
+  .hero .summary{
+    font-size:17px; color:var(--ink-2); max-width:640px; margin:0 0 22px;
+  }
+  .meta{
+    border:1px solid var(--line); border-radius:12px; background:var(--surface);
+    padding:14px 18px; font-size:13.5px; display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px 24px;
+    box-shadow:var(--shadow);
+  }
+  .meta .m{display:flex; flex-direction:column; gap:1px;}
+  .meta .m .k{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:11px;
+    color:var(--ink-3); letter-spacing:.08em; text-transform:uppercase;
+  }
+  .meta .m .v{color:var(--ink); font-weight:500;}
+
+  section{margin-top:40px;}
+  h2{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:21px; font-weight:600; margin:0 0 14px; color:var(--ink);
+    display:flex; align-items:center; gap:12px;
+  }
+  h2::before{
+    content:""; width:10px; height:10px; flex:none;
+    background:var(--accent); border-radius:2px; transform:rotate(45deg);
+  }
+  p{margin:0 0 12px;}
+  strong{font-weight:700;}
+  .hl{color:var(--accent); font-weight:600;}
+  a{color:var(--accent);}
+
+  ul,ol{margin:0 0 14px; padding-left:22px;}
+  li{margin-bottom:7px;}
+  li::marker{color:var(--accent);}
+
+  blockquote{
+    margin:16px 0; padding:14px 18px; border-left:3px solid var(--accent);
+    background:var(--surface-2); border-radius:0 10px 10px 0; color:var(--ink);
+  }
+  blockquote p{margin:0;}
+
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    padding:20px 22px; box-shadow:var(--shadow); margin:14px 0;
+  }
+  .card h3{font-size:16px; font-weight:700; margin:0 0 10px;}
+
+  table{width:100%; border-collapse:collapse; font-size:14px; margin:12px 0;}
+  th,td{padding:9px 12px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12.5px;
+    color:var(--accent-strong); background:var(--surface-2); letter-spacing:.03em; font-weight:600;
+  }
+  tr:last-child td{border-bottom:none;}
+  .tbl-wrap{overflow-x:auto;}
+
+  code{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:13.5px;
+    background:var(--surface-2); border:1px solid var(--line); border-radius:5px; padding:1px 6px;
+  }
+  pre{overflow-x:auto; background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:16px; font-size:13px; line-height:1.6;}
+  pre code{border:none; background:none; padding:0;}
+
+  .diagram{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px; margin:16px 0; box-shadow:var(--shadow); overflow-x:auto;}
+  .diagram svg{max-width:100%; height:auto; display:block;}
+
+  footer{
+    margin-top:56px; padding-top:20px; border-top:1px solid var(--line-strong);
+    display:flex; justify-content:space-between; gap:12px; font-size:13px; color:var(--ink-3);
+  }
+  footer a{color:var(--accent); text-decoration:none;}
+  footer a:hover{text-decoration:underline;}
+</style>
+</head>
+<body>
+<div class="grid" aria-hidden="true"></div>
+
+<header class="masthead">
+  <a class="back" href="index.html">← 返回知识库</a>
+  <span class="ref">arXiv 2603.15620v2</span>
+</header>
+
+<div class="wrap">
+
+  <section class="hero">
+    <div class="eyebrow">精读笔记 · VLA</div>
+    <h1>PUMA：动态环境中的可泛化机器人操作</h1>
+    <p class="summary">面向动态环境（移动/变化目标）的可泛化机械臂操作 VLA —— 作者先造出大规模动态操作基准 DOMINO，再提出耦合「场景级历史光流 + 目标级未来预测」的 PUMA 架构，把成功率相对最强基线提升 6.3 个百分点。</p>
+    <div class="meta">
+      <div class="m"><span class="k">论文</span><span class="v">Towards Generalizable Robotic Manipulation in Dynamic Environments</span></div>
+      <div class="m"><span class="k">机构</span><span class="v">华中科技大学 · 华为</span></div>
+      <div class="m"><span class="k">arXiv</span><span class="v">2603.15620v2</span></div>
+      <div class="m"><span class="k">主题</span><span class="v">VLA · 动态操作</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>它解决的问题</h2>
+    <p>VLA（视觉-语言-动作）模型在<strong>静态操作</strong>上已经很能打——抓取、放置、对齐静止物体这类任务的成功率可以很高。但一旦目标物体<strong>自己会动</strong>（流水线上的传送带、走动的人类递来的物品、被抛接的物体），主流 VLA 的性能会断崖式下跌。</p>
+    <p>作者把根因归结为两点，缺一不可：</p>
+    <ul>
+      <li><strong>数据稀缺</strong>：高质量动态操作数据集几乎没有。造动态环境要保证「移动目标与机器人动作的严格时空同步」，而人类遥操作员/脚本策略在连续变化的环境里很难做出精准反应，专家示教极难采集。</li>
+      <li><strong>架构缺陷</strong>：主流 VLA 依赖<strong>单帧观测</strong>，本质是「无记忆」的策略，无法感知历史运动、更无法预测目标未来的运动趋势——而这恰恰是动态操作的核心能力。</li>
+    </ul>
+    <blockquote>
+      <p>论文 Fig. 1 给出最直观的证据：SOTA 模型从静态切到动态环境，成功率大幅退化——例如 π0.5 的平均成功率从静态的 44.8% 掉到动态的 7.5%。作者把这种「只看得见当前一帧、看不见运动」的缺陷称为 <strong>Motion Blindness（运动盲区）</strong>。</p>
+    </blockquote>
+    <p>动态操作本身的难点还在于：它同时要求<strong>时空精度</strong>（在对的时刻、对的位置截住运动目标），并要求实时感知与运动预测<strong>持续耦合</strong>。作者明确主张：这不能靠「把静态方法放大」解决，而是一个独立的新方向。</p>
+  </section>
+
+  <section>
+    <h2>方法主线</h2>
+    <p>整篇论文是一条「先立基准、再补架构」的路线，可以拆成 5 步：</p>
+    <ol>
+      <li><strong>定义问题</strong>：把可泛化动态操作形式化为 POMDP——策略只能拿到观测历史 <code>o<sub>t-h:t</sub></code>，却要在转移概率时刻变化的环境中做出精确拦截。</li>
+      <li><strong>建基准 DOMINO</strong>：基于 RoboTwin 2.0 + SAPIEN 物理引擎，用「两阶段时空同步」流水线低成本、大规模地生成专家示教（35 任务 / 5 种机器人本体 / 11.7 万条轨迹），并配套多维评估协议。</li>
+      <li><strong>分级难度</strong>：把目标运动按复杂度分三级（匀速 → 高阶多项式曲线 → 分段随机突变），并用标量「动力学系数 β」控制速度，得到 <code>DOMINO@β</code> 变体，使难度可量化、可调。</li>
+      <li><strong>提出 PUMA</strong>：在 Qwen3-VL 基础上，用「场景级历史光流」显式提供运动线索，用「目标级 world queries + 辅助未来特征预测」隐式预测目标未来状态，实现「历史感知 + 短期预测」的耦合。</li>
+      <li><strong>验证两个结论</strong>：① PUMA 在动态任务上 SOTA（+6.3% SR）；② 动态数据学到的时空表征能<strong>零样本迁移回静态任务</strong>，动静混合训练还能进一步提升。</li>
+    </ol>
+    <p>一句话主线：<span class="hl">别让模型从单帧里「猜」运动，而是把「运动」作为显式输入喂进去，再把「预测未来」作为辅助任务练出来。</span></p>
+  </section>
+
+  <section>
+    <h2>输入、输出与数据流</h2>
+    <p>PUMA 的输入由三部分组成，输出是「动作块 + 未来表征」两路，训练时额外用冻结的 Grounding 模块提供目标级监督。</p>
+
+    <div class="diagram">
+      <svg viewBox="0 0 900 400" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Microsoft YaHei, sans-serif">
+        <defs>
+          <marker id="arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+            <path d="M0,0 L8,3 L0,6 Z" fill="var(--accent)"/>
+          </marker>
+          <marker id="arrGray" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+            <path d="M0,0 L8,3 L0,6 Z" fill="var(--ink-3)"/>
+          </marker>
+        </defs>
+
+        <!-- Inputs -->
+        <rect x="20" y="30" width="250" height="150" rx="12" fill="var(--surface-2)" stroke="var(--line-strong)" stroke-width="1.5"/>
+        <text x="145" y="56" text-anchor="middle" font-size="14" font-weight="700" fill="var(--ink)">输入（三类）</text>
+        <text x="145" y="82" text-anchor="middle" font-size="12" fill="var(--ink-2)">① 语言指令 l（任务说明）</text>
+        <text x="145" y="108" text-anchor="middle" font-size="12" fill="var(--ink-2)">② 当前多视角帧（RGB 224×224）</text>
+        <text x="145" y="134" text-anchor="middle" font-size="12" fill="var(--ink-2)">③ 历史帧 → 光流图（64×64）</text>
+        <text x="145" y="160" text-anchor="middle" font-size="11" fill="var(--ink-3)">光流：Farneback，HSV 编码方向+幅度</text>
+
+        <!-- Encoder -->
+        <rect x="330" y="30" width="250" height="150" rx="12" fill="var(--surface-2)" stroke="var(--accent)" stroke-width="1.5"/>
+        <text x="455" y="56" text-anchor="middle" font-size="14" font-weight="700" fill="var(--accent-strong)">Qwen3-VL 共享骨干</text>
+        <text x="455" y="84" text-anchor="middle" font-size="12" fill="var(--ink-2)">视觉编码器 + 文本编码器</text>
+        <text x="455" y="110" text-anchor="middle" font-size="12" fill="var(--ink-2)">光流图与当前帧一同送入</text>
+        <text x="455" y="134" text-anchor="middle" font-size="12" fill="var(--ink-2)">视觉编码器 → 观测历史 o(t-h:t)</text>
+        <text x="455" y="160" text-anchor="middle" font-size="11" fill="var(--ink-3)">隐藏维度 2560（Qwen3-VL-4B）</text>
+
+        <!-- Queries -->
+        <rect x="640" y="30" width="250" height="150" rx="12" fill="var(--surface-2)" stroke="var(--line-strong)" stroke-width="1.5"/>
+        <text x="765" y="56" text-anchor="middle" font-size="14" font-weight="700" fill="var(--ink)">双查询机制</text>
+        <text x="765" y="84" text-anchor="middle" font-size="12" fill="var(--accent-strong)" font-weight="700">Action Queries → 动作块</text>
+        <text x="765" y="108" text-anchor="middle" font-size="12" fill="var(--ink-2)">â(t:t+K-1)，K=15 步 ×14 维关节</text>
+        <text x="765" y="134" text-anchor="middle" font-size="12" fill="var(--accent-strong)" font-weight="700">World Queries → 未来表征</text>
+        <text x="765" y="158" text-anchor="middle" font-size="12" fill="var(--ink-2)">z(t+1:t+N)，N=4 步</text>
+
+        <!-- arrows -->
+        <line x1="270" y1="105" x2="322" y2="105" stroke="var(--accent)" stroke-width="2" marker-end="url(#arr)"/>
+        <line x1="580" y1="105" x2="632" y2="105" stroke="var(--accent)" stroke-width="2" marker-end="url(#arr)"/>
+
+        <!-- Supervision -->
+        <rect x="330" y="250" width="250" height="130" rx="12" fill="var(--surface-2)" stroke="var(--line-strong)" stroke-width="1.5"/>
+        <text x="455" y="276" text-anchor="middle" font-size="13" font-weight="700" fill="var(--ink)">目标级监督（仅训练时）</text>
+        <text x="455" y="302" text-anchor="middle" font-size="12" fill="var(--ink-2)">GroundingDINO（框）+ SAM2（掩码）</text>
+        <text x="455" y="326" text-anchor="middle" font-size="12" fill="var(--ink-2)">+ DINO 编码 → 目标未来特征 f(t+i)</text>
+        <text x="455" y="350" text-anchor="middle" font-size="12" fill="var(--ink-2)">余弦相似度损失 L_world</text>
+        <text x="455" y="372" text-anchor="middle" font-size="11" fill="var(--ink-3)">模块冻结 · 不新增可学习参数</text>
+
+        <!-- action output -->
+        <rect x="640" y="250" width="250" height="80" rx="12" fill="var(--surface-2)" stroke="var(--accent)" stroke-width="1.5"/>
+        <text x="765" y="282" text-anchor="middle" font-size="13" font-weight="700" fill="var(--accent-strong)">输出动作块</text>
+        <text x="765" y="306" text-anchor="middle" font-size="12" fill="var(--ink-2)">L1 回归损失 L_action</text>
+
+        <!-- arrows down -->
+        <line x1="765" y1="180" x2="765" y2="242" stroke="var(--accent)" stroke-width="2" marker-end="url(#arr)"/>
+        <line x1="455" y1="180" x2="455" y2="242" stroke="var(--accent)" stroke-width="2" marker-end="url(#arr)"/>
+
+        <!-- world query to supervision (cosine) -->
+        <path d="M 640 130 C 540 130, 540 250, 588 250" fill="none" stroke="var(--ink-3)" stroke-width="1.5" stroke-dasharray="6 5" marker-end="url(#arrGray)"/>
+        <text x="520" y="200" text-anchor="middle" font-size="11" fill="var(--ink-3)">z 与 f 对齐（余弦）</text>
+      </svg>
+    </div>
+
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>环节</th><th>内容</th><th>说明</th></tr>
+        <tr><td><strong>输入</strong></td><td>语言指令 + 当前多视角帧 + 历史光流图</td><td>光流替代「原始帧堆叠」，显式给出运动状态，比让网络自己推时间变化容易得多</td></tr>
+        <tr><td><strong>历史编码</strong></td><td>h 帧历史（步长 4）→ Farneback 光流 → HSV→RGB 图（64×64）</td><td>场景级历史动态（scene-centric）</td></tr>
+        <tr><td><strong>双查询</strong></td><td>Action Queries 解码动作块；World Queries 聚合动态表征</td><td>共享骨干，一次前向同时出动作与未来表征</td></tr>
+        <tr><td><strong>目标级监督</strong></td><td>指令解析出目标 → GroundingDINO 框 + SAM2 掩码 + DINO 池化 → 未来特征 f</td><td>目标级未来动态（object-centric），只在训练时算</td></tr>
+        <tr><td><strong>输出</strong></td><td>动作块 â（K=15 步，14 维关节）+ 未来表征 z（N=4）</td><td>推理时<strong>不需要未来帧</strong>，无额外开销</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>训练或运行方式</h2>
+    <p>PUMA 是<strong>端到端监督学习</strong>，目标函数是「行为克隆 + 辅助未来预测」的加权和：</p>
+    <blockquote>
+      <p><code>L_total = L_action + λ · L_world</code>，其中 <code>L_action</code> 是对动作块的 L1 回归，<code>L_world</code> 是预测表征 <code>z</code> 与目标未来特征 <code>f</code> 的余弦距离；<code>λ = 0.05</code>，平衡因子。</p>
+    </blockquote>
+    <p>关键设计是<strong>辅助预测器只在训练时监督</strong>——它强迫共享表征「学会预判目标运动」，从而正则化动作策略，但在推理时不引入任何额外计算（不需要未来帧）。</p>
+    <div class="card">
+      <h3>训练配置（附录 A.2）</h3>
+      <ul>
+        <li><strong>骨干</strong>：Qwen3-VL-4B，隐藏维度 2560；动作头是 MLP，预测 14 维绝对关节动作、未来 15 步窗口。</li>
+        <li><strong>优化</strong>：AdamW（β1=0.9, β2=0.95），余弦 LR + 前 5000 步线性 warmup，骨干 LR=10⁻⁵、动作头 LR=10⁻⁴；100 epochs、最多 10 万步。</li>
+        <li><strong>工程</strong>：混合精度 + 梯度检查点 + DeepSpeed ZeRO-2 全参数微调，8 卡 A100、每卡 batch 8。</li>
+        <li><strong>PUMA 专属超参</strong>：4 个 world queries、λ=0.05；历史与未来窗口均 4 帧、步长 4；光流分辨率 64×64；未来特征用冻结的 DINOv2-B/14 提取。</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>两个「缓存」工程技巧</h3>
+      <ul>
+        <li><strong>光流缓存</strong>：光流图用 hash key（数据集路径/轨迹 ID/步号/帧偏移/视角/分辨率）唯一标识，首个 epoch 算好后以压缩 NumPy 存盘，后续 epoch 直接读盘，摊销计算开销。</li>
+        <li><strong>掩码缓存</strong>：Grounding 掩码同样按 hash（模型配置/帧标识/文本提示）缓存，只在初始训练阶段算一次。</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>评估方式（闭环）</h3>
+      <ul>
+        <li>每任务评估 100 个 episode；动态环境里目标运动在每个 episode 开始时随机初始化。</li>
+        <li>持续监测夹爪与动态物体的接触——一旦接触，目标停止自主运动以模拟「被抓住」；目标移出相机视野立即判失败并终止。</li>
+        <li>除 SR 外，还记录 Manipulation Score 与 Route Completion，并对越界/碰撞施加惩罚。</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2>关键结果</h2>
+    <p>所有数字均取自论文表格（DOMINO@0.1，Aloha-AgileX 本体，35 任务平均）。第一组结果回答「动态有多难、补数据够不够」：</p>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>模型</th><th>静态 SS</th><th>动态零样本 SD</th><th>动态微调 DD</th><th>结论</th></tr>
+        <tr><td>ACT</td><td>27.7%</td><td>6.5%</td><td>9.4%</td><td rowspan="3">从静态到动态大幅下跌；<strong>微调只补回不到 3%</strong>，瓶颈在架构而非数据分布</td></tr>
+        <tr><td>OpenVLA-OFT</td><td>17.5%</td><td>6.7%</td><td>9.1%</td></tr>
+        <tr><td>π0.5</td><td>44.8%</td><td>7.5%</td><td>9.6%</td></tr>
+      </table>
+    </div>
+    <p>第二组是主结果——PUMA 对 SOTA 基线的对比（Tab. 3）：</p>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>方法</th><th>SR (%)</th><th>MS</th></tr>
+        <tr><td>OpenVLA（Llama-2）</td><td>1.54</td><td>6.10</td></tr>
+        <tr><td>RDT-1B</td><td>5.34</td><td>17.71</td></tr>
+        <tr><td>π0</td><td>8.17</td><td>23.96</td></tr>
+        <tr><td>π0.5</td><td>9.63</td><td>26.17</td></tr>
+        <tr><td>OpenVLA-OFT*（Qwen3-VL）</td><td>10.90</td><td>30.49</td></tr>
+        <tr><td><strong>PUMA（ours）</strong></td><td><strong>17.20</strong></td><td><strong>34.97</strong></td></tr>
+      </table>
+    </div>
+    <p>PUMA 相对最强基线（OpenVLA-OFT*）SR 领先 <strong>6.3 个百分点</strong>（17.20 vs 10.90），MS 也最高。消融实验进一步锁定每个组件的贡献（Tab. 5）：</p>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>配置</th><th>SR (%)</th><th>MS</th><th>说明</th></tr>
+        <tr><td>Baseline</td><td>10.86</td><td>30.49</td><td>—</td></tr>
+        <tr><td>+ 历史光流</td><td>11.71</td><td>31.02</td><td>显式运动线索有正向收益</td></tr>
+        <tr><td>+ 光流 + 辅助预测（N=2）</td><td>14.80</td><td>32.74</td><td>预测未来有效正则化策略</td></tr>
+        <tr><td>+ <strong>原始帧</strong> + 辅助预测（N=2）</td><td>8.15</td><td>28.62</td><td><span class="hl">比 baseline 还差</span>——从原始帧隐式推运动不如显式光流</td></tr>
+        <tr><td>+ 光流 + 辅助预测（N=4）</td><td><strong>17.20</strong></td><td><strong>34.97</strong></td><td>更长的预测视界 → 更鲁棒的未来轨迹理解</td></tr>
+      </table>
+    </div>
+    <p>最后一组回答「动态数据有没有额外价值」（Sec. 4.4 / Finding 3）：</p>
+    <ul>
+      <li><strong>反哺静态</strong>：只用动态数据训练的模型，零样本放到静态任务上表现相当甚至更好——例如 OpenVLA-OFT 在 Adjust Bottle 上动态训练 65% vs 静态训练 47%，Place Container Plate 40% vs 27%。</li>
+      <li><strong>动静混合</strong>：PUMA 混入静态数据后，SR 从 14.80% 升到 19.71%（+4.91），MS 从 32.74 升到 37.76（+5.02）。作者解释：静态数据给「稳定结构先验」，动态数据给「反应式灵巧性」，二者互补。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>我真正学到的内容</h2>
+    <ul>
+      <li><strong>单帧是动态操作的天花板</strong>：SOTA VLA 之所以在动态环境崩，不是数据不够，而是「只看得见当前一帧」的架构根本拿不到运动信息。补数据（微调）只涨不到 3%，说明先得改架构。</li>
+      <li><strong>光流是「最便宜的显式运动先验」</strong>：同样是历史信息，喂原始帧（让网络自己推运动）反而比 baseline 差（8.15% vs 10.86%），喂光流则稳定上升。把「运动」显式算好再喂进去，性价比极高。</li>
+      <li><strong>「预测未来」当辅助任务，而非显式注入</strong>：oracle 实验（Tab. 2）把真实未来轨迹直接灌给策略，SR 几乎不涨、还可能有副作用——因为模型没学到「为什么这样动」的物理，只会机械跟随轨迹。而把未来预测做成 latent 空间的辅助损失，反而稳（14.80%→17.20%）。</li>
+      <li><strong>动态数据能缓解静态过拟合</strong>：跟踪/拦截运动目标「覆盖」了静态操作所需的技能，动态训练的表征能零样本迁移回静态，动静混合训练最优。这与「难任务数据包含易任务能力」的直觉一致。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>可复用设计</h2>
+    <ul>
+      <li><strong>两阶段时空同步数据生成</strong>：先在静态环境「dry-run」记录机器人执行耗时，再按耗时反推目标初始位姿，最后以运动学刚体实例化目标——用低成本、确定性的方式保证「移动目标 + 机器人动作」的时空对齐，值得在任何「动态示教采集」里复用。</li>
+      <li><strong>光流缓存流水线</strong>：hash 索引 + 磁盘缓存 + 百分位归一化 + 阈值置零，把光流预计算的开销摊销到可忽略，推理时实时算。</li>
+      <li><strong>冻结 GroundingDINO + SAM2 + DINO 做目标级监督</strong>：不新增任何可学习参数，就能从语言指令自动抠出目标 mask 并提取未来特征，充当「世界模型」的监督信号。</li>
+      <li><strong>双查询 + 辅助预测正则化</strong>：在共享 VLM 骨干上同时挂「动作解码」和「未来预测」两条 query 路径，推理时丢弃预测分支，白嫖一个正则化。</li>
+      <li><strong>难度系数 β 分级</strong>：用标量控制目标最大速度，让同一基准能测「从匀速到随机突变」的连续难度谱。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>疑问与风险</h2>
+    <ul>
+      <li><strong>绝对成功率仍低</strong>：即便 SOTA 的 PUMA 也只有 17.20% 的 35 任务平均 SR，动态操作本身极难；主实验只在 Level 1 动力学（β=0.1）下做，Level 2/3（高阶曲线、随机突变）只测了 ACT 的退化，PUMA 在更高难度下的表现未验证。</li>
+      <li><strong>纯仿真、无 real-to-real</strong>：全部在 SAPIEN 仿真中验证，sim-to-real 迁移完全没讨论；光流对真实世界的光照、遮挡、纹理缺失更敏感。</li>
+      <li><strong>依赖冻结的 Grounding 模块</strong>：目标监督靠指令解析 + GroundingDINO + SAM2，指令解析失败时退化为整句提示，分割/检测误差会直接污染未来特征监督。</li>
+      <li><strong>语言条件是否被充分利用存疑</strong>：每个任务语言指令固定，未验证跨指令泛化；「目标从指令中解析」的链路说明语言信息更多被当作 grounding 提示，而非完整任务语义。</li>
+      <li><strong>动作块只 15 步、14 维绝对关节</strong>：对高速、突发扰动（Level 3）是否来得及闭环反应，论文没有给答案。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>后续动作</h2>
+    <ul>
+      <li><strong>读代码</strong>：<a href="https://github.com/H-EmbodVis/DOMINO">github.com/H-EmbodVis/DOMINO</a>——重点看数据生成的两阶段时空同步、光流缓存、world queries 与余弦监督的实现。</li>
+      <li><strong>补概念</strong>：Farneback 光流、DINOv2 patch-token 特征、GroundingDINO/SAM2 组合、POMDP 在操作任务里的建模。</li>
+      <li><strong>做实验</strong>：① 在自有 VLA 上先加「历史光流输入」这一最低成本改动，看动态任务是否立竿见影；② 把「未来特征预测」作为辅助损失接到 latent 层，验证正则化效果；③ 在 Level 2/3 上评估 PUMA 式架构的鲁棒性。</li>
+      <li><strong>追踪</strong>：sim-to-real 迁移、更高动力学难度下的表现、以及「动静混合训练比例」的敏感性，都是这篇没展开但值得跟进的方向。</li>
+    </ul>
+  </section>
+
+  <footer>
+    <span>精读笔记 · PUMA：动态环境中的可泛化机器人操作</span>
+    <a href="index.html">返回知识库 →</a>
+  </footer>
+</div>
+<script src="nav.js"></script>
+</body>
+</html>

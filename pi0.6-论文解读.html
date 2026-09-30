@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>π0.6：会从经验中学习的 VLA · 精读</title>
+<meta name="description" content="通过自主交互经验与强化学习（RECAP）持续提升的 VLA，突破示范数据的性能上限">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f1f4f6;
+    --surface:#fbfcfd;
+    --surface-2:#eaf0f4;
+    --ink:#16222e;
+    --ink-2:#51626f;
+    --ink-3:#83919c;
+    --accent:#0e6e8a;
+    --accent-strong:#0a4c60;
+    --signal:#c4572a;
+    --line:#d8e1e7;
+    --line-strong:#c3d0d9;
+    --grid-line:rgba(22,34,46,.05);
+    --shadow:0 1px 2px rgba(22,34,46,.04),0 14px 34px rgba(22,34,46,.07);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+      --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+      --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+      --line:#1e2d3a; --line-strong:#2b3d4b;
+      --grid-line:rgba(231,238,244,.045);
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+    --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+    --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+    --line:#1e2d3a; --line-strong:#2b3d4b;
+    --grid-line:rgba(231,238,244,.045);
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Sans",-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+    line-height:1.78; font-size:16px; -webkit-font-smoothing:antialiased;
+  }
+  .grid{
+    position:fixed; inset:0; z-index:-1; pointer-events:none;
+    background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);
+    background-size:28px 28px;
+  }
+  .wrap{max-width:860px; margin:0 auto; padding:0 24px 96px;}
+
+  .masthead{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px 24px 0; max-width:860px; margin:0 auto;
+  }
+  .back{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:13px; color:var(--accent); text-decoration:none; letter-spacing:.03em;
+  }
+  .back:hover{text-decoration:underline;}
+  .masthead .ref{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12.5px; color:var(--ink-3); letter-spacing:.04em;
+  }
+
+  .hero{padding:52px 0 34px; border-bottom:1px solid var(--line-strong);}
+  .eyebrow{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent);
+    margin-bottom:16px;
+  }
+  .hero h1{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:clamp(28px,4.6vw,42px); font-weight:700; line-height:1.2;
+    margin:0 0 16px; color:var(--ink); text-wrap:balance;
+  }
+  .hero .summary{
+    font-size:17px; color:var(--ink-2); max-width:640px; margin:0 0 22px;
+  }
+  .meta{
+    border:1px solid var(--line); border-radius:12px; background:var(--surface);
+    padding:14px 18px; font-size:13.5px; display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px 24px;
+    box-shadow:var(--shadow);
+  }
+  .meta .m{display:flex; flex-direction:column; gap:1px;}
+  .meta .m .k{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:11px;
+    color:var(--ink-3); letter-spacing:.08em; text-transform:uppercase;
+  }
+  .meta .m .v{color:var(--ink); font-weight:500;}
+
+  section{margin-top:40px;}
+  h2{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:21px; font-weight:600; margin:0 0 14px; color:var(--ink);
+    display:flex; align-items:center; gap:12px;
+  }
+  h2::before{
+    content:""; width:10px; height:10px; flex:none;
+    background:var(--accent); border-radius:2px; transform:rotate(45deg);
+  }
+  p{margin:0 0 12px;}
+  strong{font-weight:700;}
+  .hl{color:var(--accent); font-weight:600;}
+  a{color:var(--accent);}
+
+  ul,ol{margin:0 0 14px; padding-left:22px;}
+  li{margin-bottom:7px;}
+  li::marker{color:var(--accent);}
+
+  blockquote{
+    margin:16px 0; padding:14px 18px; border-left:3px solid var(--accent);
+    background:var(--surface-2); border-radius:0 10px 10px 0; color:var(--ink);
+  }
+  blockquote p{margin:0;}
+
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    padding:20px 22px; box-shadow:var(--shadow); margin:14px 0;
+  }
+  .card h3{font-size:16px; font-weight:700; margin:0 0 10px;}
+
+  table{width:100%; border-collapse:collapse; font-size:14px; margin:12px 0;}
+  th,td{padding:9px 12px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12.5px;
+    color:var(--accent-strong); background:var(--surface-2); letter-spacing:.03em; font-weight:600;
+  }
+  tr:last-child td{border-bottom:none;}
+  .tbl-wrap{overflow-x:auto;}
+
+  code{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:13.5px;
+    background:var(--surface-2); border:1px solid var(--line); border-radius:5px; padding:1px 6px;
+  }
+  pre{overflow-x:auto; background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:16px; font-size:13px; line-height:1.6;}
+  pre code{border:none; background:none; padding:0;}
+
+  .diagram{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px; margin:16px 0; box-shadow:var(--shadow); overflow-x:auto;}
+  .diagram svg{max-width:100%; height:auto; display:block;}
+
+  footer{
+    margin-top:56px; padding-top:20px; border-top:1px solid var(--line-strong);
+    display:flex; justify-content:space-between; gap:12px; font-size:13px; color:var(--ink-3);
+  }
+  footer a{color:var(--accent); text-decoration:none;}
+  footer a:hover{text-decoration:underline;}
+</style>
+</head>
+<body>
+<div class="grid" aria-hidden="true"></div>
+
+<header class="masthead">
+  <a class="back" href="index.html">← 返回知识库</a>
+  <span class="ref">arXiv:2511.14759v2</span>
+</header>
+
+<div class="wrap">
+
+  <section class="hero">
+    <div class="eyebrow">精读笔记 · VLA</div>
+    <h1>π0.6：会从经验中学习的 VLA</h1>
+    <p class="summary">通过自主交互经验与强化学习（RECAP）持续提升的 VLA，突破示范数据的性能上限</p>
+    <div class="meta">
+      <div class="m"><span class="k">论文</span><span class="v">π0.6: a VLA That Learns From Experience</span></div>
+      <div class="m"><span class="k">机构</span><span class="v">Physical Intelligence</span></div>
+      <div class="m"><span class="k">arXiv</span><span class="v">2511.14759v2</span></div>
+      <div class="m"><span class="k">主题</span><span class="v">VLA · 强化学习 · 经验学习</span></div>
+    </div>
+  </section>
+
+  <!-- 以下每节：替换占位内容为真实内容，可加 ul/ol/table/blockquote/mermaid 图；保留 h2 标题与整体结构不变 -->
+  <section>
+    <h2>它解决的问题</h2>
+    <p>纯模仿学习训练的 VLA 存在两个天花板：一是<span class="hl">复合误差</span>（compounding errors），策略一跑偏就越滚越远；二是<span class="hl">性能上限被示范数据锁死</span>——最多只能做到和人类遥操作示范一样好，没法更快、更稳、更适应新环境。</p>
+    <p>自然的答案是"让机器人像人一样<strong>练出来</strong>"——用强化学习（RL）在真实部署中自己收集经验、纠正自己的错误。但把 RL 套到大型 VLA 上，难点集中成三件事：</p>
+    <ul>
+      <li><strong>大规模模型上做 RL 要稳定可扩展</strong>：传统策略梯度（PPO/REINFORCE）对 flow-matching / diffusion 这类没有可计算对数似然的动作模型很难直接套；</li>
+      <li><strong>数据是异质的</strong>：既要示范数据，又要自主 rollout，还要专家遥操作纠错，几路数据得融进同一次学习；</li>
+      <li><strong>真实世界的奖励信号暧昧又随机</strong>：只有"成功/失败"这类稀疏结果反馈，噪声大、延迟高。</li>
+    </ul>
+    <blockquote><p>本文的贡献是把这三件事打包成一个通用配方 <strong>RECAP</strong>，并证明它能把通用 VLA（π0.6）在叠衣服、做咖啡、装纸盒这些长时程精细任务上练到"实用级"水平。</p></blockquote>
+  </section>
+
+  <section>
+    <h2>方法主线</h2>
+    <p>RECAP = <strong>R</strong>L with <strong>E</strong>xperience and <strong>C</strong>orrections via <strong>A</strong>dvantage-conditioned <strong>P</strong>olicies（通过优势条件化策略，用经验与纠错做 RL）。整条流水线只有三个子程序，反复循环即可：</p>
+    <ol>
+      <li><strong>预训练一个"带优势条件化"的通用 VLA（π0.6）</strong>：在数万小时、多任务多机器人的离线数据集上，先训一个分布式价值函数，再训一个以"二值优势指示 <code>I_t</code>"为输入的策略，用离线 RL 的方式把 RL 能力烙进底座模型；</li>
+      <li><strong>任务级监督微调（SFT）</strong>：用目标任务的示范数据微调 π0.6，此阶段把优势指示固定为 <code>True</code>，等价于普通行为克隆，得到初始策略 <code>π0</code>；</li>
+      <li><strong>数据收集</strong>：部署策略在真实机器人上跑 episode，给每集打"成功/失败"标签（即奖励），并可选地让专家遥操作介入纠错（human-gated DAgger 风格）；</li>
+      <li><strong>价值函数更新</strong>：用至今收集到的<em>全部</em>数据（示范 + 自主 + 纠错）训练价值函数，让它估计"离成功完成还差多少步"；</li>
+      <li><strong>优势条件化策略提取</strong>：用价值函数算出每个动作的优势 <code>A</code>，按阈值二值化成 <code>I_t</code> 塞进模型前缀重新微调策略——得到一个在参考策略基础上单调改进的新策略。回到第 3 步再循环，可做多轮。</li>
+    </ol>
+    <p>核心洞察一句话：<span class="hl">不跟策略梯度死磕，而是把"这个动作比当前策略好还是差"作为一个二元条件喂回模型，用监督学习的方式完成策略改进。</span></p>
+  </section>
+
+  <section>
+    <h2>输入、输出与数据流</h2>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>角色</th><th>输入</th><th>输出</th></tr>
+        <tr>
+          <td><strong>策略 π0.6</strong><br><span style="color:var(--ink-3)">Gemma 3 4B 骨干 + 860M 动作专家</span></td>
+          <td>观察 <code>o_t</code>（相机图像 <code>X</code> + 机器人关节构型 <code>q</code>）+ 语言指令 <code>ℓ</code>（任务提示 + 元数据）+ 二值优势指示 <code>I_t</code>（"Advantage: positive/negative"）</td>
+          <td>动作块 <code>a_{t:t+H}</code>（关节角 + 夹爪指令，<strong>50 Hz</strong>）+ 离散子任务 token <code>ŷ</code>（如"拿起咖啡杯"）</td>
+        </tr>
+        <tr>
+          <td><strong>价值函数 V</strong><br><span style="color:var(--ink-3)">更小的 670M VLM 骨干，分布式</span></td>
+          <td>与策略相同的观察 <code>o_t</code> + 语言指令 <code>ℓ</code></td>
+          <td>B=201 个 bin 的价值分布 <code>p(V|o_t, ℓ)</code>，归一化到 (-1, 0)，0 表示完成</td>
+        </tr>
+      </table>
+    </div>
+    <div class="diagram">
+      <strong style="font-size:14px;">数据流（一轮迭代）</strong>
+      <ol style="margin:10px 0 0;">
+        <li><strong>部署</strong>：当前策略 π<sub>k-1</sub> 在机器人上自主执行，收集 episode；</li>
+        <li><strong>打标签 / 纠错</strong>：每集标注成功（奖励 0）或失败（奖励 -C<sub>fail</sub>，其余步 -1）；专家可中途遥操作介入，介入动作被强制标为 <code>I_t = True</code>；</li>
+        <li><strong>训价值函数</strong>：从预训练 checkpoint 出发，用所有数据微调 V<sub>k</sub>（预测"负的剩余步数"）；</li>
+        <li><strong>估计优势</strong>：<code>A(o_t,a_t) = Σ_{t}^{t+N-1} r + V(o_{t+N}) − V(o_t)</code>（部署后取 N=50 步前瞻）；</li>
+        <li><strong>二值化</strong>：按任务阈值 τ 把优势映射成 <code>I_t ∈ {True, False}</code>；</li>
+        <li><strong>微调策略</strong>：把 <code>I_t</code> 作为文本前缀输入，重新训练 π<sub>k</sub>，回到第 1 步。</li>
+      </ol>
+    </div>
+  </section>
+
+  <section>
+    <h2>训练或运行方式</h2>
+    <div class="card">
+      <h3>模型与奖励设计</h3>
+      <ul>
+        <li><strong>π0.6 架构</strong>：由 π0.5 进化而来——基础 VLM 换成 <strong>Gemma 3 4B</strong>，动作专家增大到 <strong>860M 参数</strong>，预训练数据加入多个机器人平台；沿用 <strong>KI（Knowledge Insulation）</strong>训练法：flow matching 动作专家用 stop-gradient 隔离，离散动作走 FAST 分词，语言子任务 <code>ŷ</code> 先预测、再条件化动作生成。</li>
+        <li><strong>价值函数</strong>：与策略同架构、但用更小的 <strong>670M</strong> VLM 骨干（也初始化自 Gemma 3），分布式输出 201 个 bin；为防过拟合还混入少量多模态网页数据联合训练。</li>
+        <li><strong>稀疏奖励</strong>：<code>r_t = 0</code>（成功那步）、<code>-C_fail</code>（失败那步）、否则 <code>-1</code>——等价于让价值函数预测"离完成还差多少步"的负值。</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>关键训练细节（决定成败的超参）</h3>
+      <ul>
+        <li><strong>优势阈值 τ</strong>：预训练时取每个任务价值 30% 分位；微调时取每轮 40% rollout 优势为正；对"示范太好导致慢"的叠 T 恤任务，收紧到只留 10% 正优势——用 τ 调节"正则化 vs 最优性"的权衡，替代 classifier-free guidance 的权重 γ；</li>
+        <li><strong>优势条件化 dropout</strong>：训练时随机 <strong>30%</strong> 概率丢弃 <code>I_t</code>，让模型同时学会条件/无条件策略，推理时才能做 CFG（γ ∈ [1.5, 2.5] 适度锐化）；</li>
+        <li><strong>每次迭代从预训练 checkpoint 微调</strong>，而非从上一轮模型续训，避免多轮漂移；</li>
+        <li><strong>迭代式离线更新</strong>：批量收集数据 → 重训 → 再收集，而非完全在线的 RL 循环。</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2>关键结果</h2>
+    <p>三大真实任务：<strong>叠衣物</strong>（含 11 类衣物的多样化版本）、<strong>做咖啡</strong>（双份浓缩，200 秒内完成）、<strong>组装纸盒</strong>（600 秒内，工厂部署场景）。每集耗时 5–15 分钟。</p>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>指标</th><th>量化结论</th></tr>
+        <tr><td><strong>吞吐量</strong><br><span style="color:var(--ink-3)">每小时成功完成次数</span></td><td>多样化叠衣与做咖啡任务上<span class="hl">翻倍以上（&gt;2×）</span>；叠 T 恤两轮迭代后 +50%；装盒第二轮后 2×</td></tr>
+        <tr><td><strong>失败率</strong></td><td>约<span class="hl">降低 2×</span>（halves）</td></tr>
+        <tr><td><strong>成功率</strong></td><td>除多样化叠衣外，各任务达<span class="hl">90% 以上</span></td></tr>
+        <tr><td><strong>消除特定失败模式</strong></td><td>严格标准（领口必须朝上）下，两轮迭代（每轮 600 条轨迹）后<span class="hl">97% 成功率</span></td></tr>
+        <tr><td><strong>装盒子任务分解</strong></td><td>取纸板 / 折盒 / 贴标 / 入箱四步全面占优，折盒与贴标约 90% 成功率</td></tr>
+        <tr><td><strong>真实部署</strong></td><td>连续做咖啡 <strong>13 小时</strong>、新家叠衣物 <strong>2 小时+</strong> 无中断、工厂真实装盒</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3>与基线 / 消融对比</h3>
+      <ul>
+        <li><strong>对比基线</strong>：预训练 π0.5、监督预训练 π0.6、RL 预训练 π0.6、π0.6 离线RL+SFT——最终 π0.6（RECAP）在所有任务上显著胜出；</li>
+        <li><strong>策略提取方法对比</strong>：同数据下，<strong>AWR</strong> 成功率尚可但策略更慢、吞吐低；<strong>PPO</strong> 需极小的信任域（ε=0.01）才能稳定，且性能不佳——两者都远逊于优势条件化；</li>
+        <li><strong>离线 RL + 高质量 SFT</strong> 本身已优于普通 SFT，是后续在机 RL 的好起点。</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2>我真正学到的内容</h2>
+    <ul>
+      <li><strong>优势条件化是把 RL 塞进生成式 VLA 的最省力姿势</strong>：不碰策略梯度的对数似然难题，把优势二值化成一句"Advantage: positive/negative"当文本前缀，策略改进就退化成普通的监督学习。</li>
+      <li><strong>稀疏奖励可以很便宜地定义</strong>：把价值函数设成"负的剩余步数"，成功=0、失败=大负值、其余=-1，几乎任何任务都能套，还顺带把"速度"纳入优化目标（步数越少价值越高）。</li>
+      <li><strong>示范数据只是起点，自主经验 + 纠错才是超额收益来源</strong>：离线 RL+SFT 已强于纯 SFT，但真正的翻倍来自机载自主 rollout 与人类纠错的迭代循环。</li>
+      <li><strong>用一个更小的 VLM 当价值函数是可行且便宜的</strong>：670M 骨干在训练时即时推理，开销可忽略。</li>
+      <li><strong>阈值 τ 比 CFG 权重 γ 更好调</strong>：高 CFG 权重会把动作分布推向支撑集边界（动作变激进），而用 τ 在训练阶段直接控制"最优性 vs 正则化"更稳。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>可复用设计</h2>
+    <ul>
+      <li><strong>二值优势指示作为文本前缀</strong>：<code>"Advantage: positive/negative"</code> 直接接入 VLA 输入，只影响动作对数似然，不动语言与子任务部分；</li>
+      <li><strong>优势条件化的闭式改进</strong>：<code>π̂(a|o) ∝ π_ref(a|o) · π_ref(a|I,o)/π_ref(a|o)</code>，配合 30% dropout 即可在推理时用 CFG（γ&gt;1）进一步锐化，无需额外训练；</li>
+      <li><strong>分布式价值函数 + 归一化</strong>：201 bin 分布预测、每任务按最大 episode 长度归一化到 (-1,0)，跨任务可比；</li>
+      <li><strong>人类纠错强制 <code>I_t=True</code></strong>：把专家介入动作一律标成正优势，融进同一数据集，不必单独处理；</li>
+      <li><strong>每次迭代从预训练 checkpoint 重启微调</strong>：防止多轮漂移的实用技巧。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>疑问与风险</h2>
+    <ul>
+      <li><strong>还不是全自主</strong>：奖励标注、专家纠错、环境 reset 都依赖人；作者自己也把"自动化这些环节"列为未来方向；</li>
+      <li><strong>探索基本是贪心的</strong>：靠策略随机性和人类介入探索新解，缺乏更精妙的探索机制；</li>
+      <li><strong>是"迭代式离线"而非"全在线"RL</strong>：批量收数据再重训，实时性弱；</li>
+      <li><strong>价值函数用的是 on-policy 蒙特卡洛估计</strong>：论文承认比经典 off-policy Q 估计更弱，只是胜在简单可靠；</li>
+      <li><strong>阈值 τ 是逐任务的启发式</strong>（30% / 40% / 10%），迁移到新任务可能要重新调。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>后续动作</h2>
+    <ul>
+      <li>补读 <strong>CFGRL</strong>（Frans et al. 2025，"Diffusion guidance is a controllable policy improvement operator"）——本文优势条件化的直接理论来源；</li>
+      <li>补读 <strong>KI（Knowledge Insulation）</strong>与 <strong>FAST 分词</strong>，理解 π 系列 VLA 的训练底座；</li>
+      <li>对照 <strong>π0.5 / π0</strong> 论文和 π0.6 model card，理清三代模型差异；</li>
+      <li>在自己任务上复现最小闭环：稀疏奖励 + 分布式价值函数 + 二值优势前缀，先验证"离线RL+SFT 是否已优于纯 SFT"；</li>
+      <li>关注 flow matching 与 diffusion 的对数似然下界等价性（附录 C/D），判断能否套到现有扩散策略上。</li>
+    </ul>
+  </section>
+
+  <footer>
+    <span>精读笔记 · π0.6：会从经验中学习的 VLA</span>
+    <a href="index.html">返回知识库 →</a>
+  </footer>
+</div>
+<script src="nav.js"></script>
+</body>
+</html>

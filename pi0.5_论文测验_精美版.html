@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>π0.5 论文精读测验</title>
+<style>
+  :root{
+    --bg:#F5F6FB;
+    --panel:#FFFFFF;
+    --ink:#1B1D2E;
+    --ink-soft:#3A3D55;
+    --muted:#71748C;
+    --line:#E7E8F2;
+    --font-cjk:"PingFang SC","Hiragino Sans GB","Source Han Sans SC","Noto Sans SC","Microsoft YaHei",system-ui,sans-serif;
+    --font-mono:ui-monospace,"SF Mono","JetBrains Mono","Cascadia Code",Consolas,monospace;
+    --gold:#E9A23B;
+    --gold-deep:#B9781A;
+    --gold-tint:#FFF7E8;
+    --shadow:0 1px 2px rgba(27,29,46,.04), 0 8px 24px rgba(27,29,46,.06);
+    --shadow-hover:0 2px 6px rgba(27,29,46,.06), 0 16px 40px rgba(27,29,46,.10);
+  }
+
+  /* 六个主题分类的配色 */
+  .cat-motive{ --accent:#E11D48; --accent-deep:#9F1239; --tint:#FFF1F4; --tint-2:#FFE0E7; }
+  .cat-arch  { --accent:#4F46E5; --accent-deep:#3730A3; --tint:#EEEFFF; --tint-2:#E0E2FF; }
+  .cat-train { --accent:#0E9488; --accent-deep:#115E56; --tint:#E9FBF6; --tint-2:#CCF3EA; }
+  .cat-system{ --accent:#EA580C; --accent-deep:#9A3412; --tint:#FFF3EA; --tint-2:#FFE2CC; }
+  .cat-exp   { --accent:#7C3AED; --accent-deep:#5B21B6; --tint:#F5EEFF; --tint-2:#E8DBFF; }
+  .cat-detail{ --accent:#0284C7; --accent-deep:#075985; --tint:#EAF6FF; --tint-2:#D2EBFF; }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    font-family:var(--font-cjk);
+    color:var(--ink);
+    background:var(--bg);
+    line-height:1.7;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+
+  /* 顶部贯穿的六色光谱条（标识元素） */
+  .spectrum{height:6px;width:100%;display:flex;}
+  .spectrum span{flex:1;}
+  .spectrum .s1{background:#E11D48;} .spectrum .s2{background:#EA580C;}
+  .spectrum .s3{background:#E9A23B;} .spectrum .s4{background:#0E9488;}
+  .spectrum .s5{background:#4F46E5;} .spectrum .s6{background:#7C3AED;}
+  .spectrum .s7{background:#0284C7;}
+
+  /* 顶部细工具条 */
+  .topbar{
+    position:sticky;top:0;z-index:50;
+    background:rgba(255,255,255,.82);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+    display:flex;align-items:center;justify-content:space-between;
+    padding:10px clamp(16px,4vw,40px);
+  }
+  .topbar .brand{font-family:var(--font-mono);font-size:.82rem;letter-spacing:.04em;color:var(--muted);}
+  .topbar .brand b{color:var(--ink);font-weight:700;}
+  .toggle{
+    font-family:var(--font-cjk);font-size:.86rem;font-weight:600;
+    border:1px solid var(--line);background:#fff;color:var(--ink);
+    padding:7px 14px;border-radius:999px;cursor:pointer;
+    transition:background .15s ease,border-color .15s ease,transform .1s ease;
+  }
+  .toggle:hover{background:#FAFAFE;border-color:#D7D8E6;}
+  .toggle:active{transform:translateY(1px);}
+  .toggle[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink);}
+  .toggle:focus-visible{outline:3px solid #4F46E5;outline-offset:2px;}
+
+  .wrap{max-width:880px;margin:0 auto;padding:0 clamp(16px,4vw,40px) 80px;}
+
+  /* 头图 */
+  header.hero{padding:54px 0 30px;}
+  .hero .eyebrow{
+    font-family:var(--font-mono);font-size:.78rem;letter-spacing:.18em;
+    text-transform:uppercase;color:var(--muted);margin-bottom:14px;
+  }
+  .hero h1{
+    font-size:clamp(2.1rem,5.6vw,3.2rem);line-height:1.12;margin:0 0 14px;
+    font-weight:800;letter-spacing:-.01em;
+    background:linear-gradient(96deg,#E11D48 0%,#EA580C 18%,#E9A23B 34%,#0E9488 54%,#4F46E5 74%,#7C3AED 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+  }
+  .hero .lede{font-size:1.06rem;color:var(--ink-soft);max-width:62ch;margin:0 0 20px;}
+  .hero .meta{
+    font-family:var(--font-mono);font-size:.8rem;color:var(--muted);
+    display:flex;flex-wrap:wrap;gap:6px 18px;margin-bottom:26px;
+  }
+  .hero .meta b{color:var(--ink);font-weight:700;}
+
+  /* 图例 */
+  .legend{
+    background:var(--panel);border:1px solid var(--line);border-radius:16px;
+    padding:16px 18px;box-shadow:var(--shadow);
+    display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;
+  }
+  .legend .lab{font-family:var(--font-mono);font-size:.72rem;letter-spacing:.1em;color:var(--muted);text-transform:uppercase;margin-right:4px;}
+  .legend .chip{display:inline-flex;align-items:center;gap:7px;font-size:.85rem;color:var(--ink-soft);}
+  .legend .dot{width:11px;height:11px;border-radius:50%;flex:none;}
+  .legend .sep{width:1px;height:18px;background:var(--line);}
+  .legend .star-note{display:inline-flex;align-items:center;gap:7px;font-size:.85rem;color:var(--gold-deep);font-weight:600;}
+  .legend .star-badge{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:6px;background:var(--gold-tint);color:var(--gold-deep);font-size:.72rem;border:1px solid #F2D9A6;}
+
+  /* 分类区块 */
+  section.cat{margin-top:46px;}
+  .cat-head{display:flex;align-items:baseline;gap:14px;margin-bottom:8px;}
+  .cat-head .idx{font-family:var(--font-mono);font-weight:700;font-size:.9rem;color:var(--accent);letter-spacing:.04em;}
+  .cat-head h2{font-size:1.45rem;margin:0;font-weight:800;letter-spacing:-.01em;color:var(--ink);}
+  .cat-head .count{
+    font-family:var(--font-mono);font-size:.72rem;color:var(--accent-deep);
+    background:var(--tint-2);padding:3px 9px;border-radius:999px;margin-left:auto;
+  }
+  .cat-rule{height:3px;border-radius:3px;margin:6px 0 22px;
+    background:linear-gradient(90deg,var(--accent),var(--accent) 30%,transparent);}
+
+  /* 问答卡片 */
+  .card{
+    position:relative;background:var(--panel);border:1px solid var(--line);
+    border-radius:16px;padding:22px 24px 20px 28px;margin-bottom:16px;
+    box-shadow:var(--shadow);overflow:hidden;
+    transition:box-shadow .2s ease,transform .15s ease;
+  }
+  .card:hover{box-shadow:var(--shadow-hover);}
+  .card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--accent);}
+  .card.star{box-shadow:0 0 0 1.5px #F2D9A6, var(--shadow);}
+  .card.star:hover{box-shadow:0 0 0 1.5px #E7C778, var(--shadow-hover);}
+
+  .q-row{display:flex;align-items:flex-start;gap:12px;flex-wrap:wrap;}
+  .q-num{
+    font-family:var(--font-mono);font-weight:700;font-size:.82rem;
+    color:var(--accent-deep);background:var(--tint-2);
+    padding:4px 9px;border-radius:8px;flex:none;line-height:1.3;margin-top:2px;
+  }
+  .q-text{font-size:1.12rem;font-weight:700;color:var(--ink);line-height:1.55;flex:1;min-width:60%;}
+  .star-tag{
+    display:inline-flex;align-items:center;gap:5px;flex:none;
+    font-size:.72rem;font-weight:700;color:var(--gold-deep);
+    background:var(--gold-tint);border:1px solid #F2D9A6;
+    padding:3px 9px 3px 7px;border-radius:999px;margin-top:2px;
+  }
+
+  .peek{display:none;margin-top:14px;}
+  .peek button{
+    font-family:var(--font-cjk);font-size:.86rem;font-weight:600;
+    color:var(--accent-deep);background:var(--tint);
+    border:1px dashed var(--accent);border-radius:10px;
+    padding:9px 16px;cursor:pointer;transition:background .15s ease;
+  }
+  .peek button:hover{background:var(--tint-2);}
+  .peek button:focus-visible{outline:3px solid var(--accent);outline-offset:2px;}
+
+  .answer{
+    margin-top:15px;background:var(--tint);border-radius:12px;
+    padding:15px 18px 14px;font-size:.99rem;color:var(--ink-soft);line-height:1.78;
+  }
+  .answer .alab{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:24px;height:24px;border-radius:7px;
+    background:var(--accent);color:#fff;font-weight:800;font-size:.8rem;
+    margin-right:9px;vertical-align:-5px;
+  }
+  .answer code{
+    font-family:var(--font-mono);font-size:.88em;
+    background:#fff;border:1px solid var(--tint-2);
+    padding:1px 6px;border-radius:6px;color:var(--accent-deep);
+  }
+  .answer .hl{background:var(--gold-tint);box-shadow:inset 0 -.5em 0 var(--gold-tint);padding:0 2px;font-weight:600;color:var(--ink);}
+  .answer .num{font-family:var(--font-mono);font-weight:700;color:var(--accent-deep);}
+
+  .cite{
+    display:inline-block;margin-top:12px;
+    font-family:var(--font-mono);font-size:.72rem;letter-spacing:.02em;
+    color:var(--muted);background:#F3F4FA;border:1px solid var(--line);
+    padding:3px 9px;border-radius:999px;
+  }
+
+  /* 结尾 */
+  footer.foot{
+    margin-top:54px;padding-top:24px;border-top:1px solid var(--line);
+    font-size:.86rem;color:var(--muted);line-height:1.7;
+  }
+  footer.foot b{color:var(--ink-soft);}
+  .key-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;}
+  .key-list span{font-family:var(--font-mono);font-size:.74rem;background:#EEF0F8;color:#4A4D66;padding:3px 9px;border-radius:7px;}
+
+  /* 回到顶部 */
+  .totop{
+    position:fixed;right:22px;bottom:22px;z-index:40;
+    width:42px;height:42px;border-radius:12px;
+    background:var(--ink);color:#fff;border:none;cursor:pointer;
+    font-size:1.05rem;box-shadow:var(--shadow-hover);
+    opacity:0;pointer-events:none;transition:opacity .2s ease,transform .15s ease;
+  }
+  .totop.show{opacity:1;pointer-events:auto;}
+  .totop:hover{transform:translateY(-2px);}
+  .totop:focus-visible{outline:3px solid #7C3AED;outline-offset:2px;}
+
+  @media (max-width:560px){
+    .q-text{min-width:100%;}
+    .hero h1{letter-spacing:0;}
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    *{transition:none !important;scroll-behavior:auto !important;}
+  }
+
+  /* 打印 / 导出 PDF：去掉交互件、强制显示全部答案、卡片不被截断 */
+  @media print{
+    body{background:#fff;}
+    .topbar,.totop{display:none !important;}
+    .card{break-inside:avoid;box-shadow:none;border:1px solid #ddd;}
+    .card.star{box-shadow:none;}
+    .legend{box-shadow:none;}
+    body.study .card .answer{display:block !important;}
+    body.study .card .peek{display:none !important;}
+    .hero h1{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  }
+</style>
+</head>
+<body>
+
+<div class="spectrum"><span class="s1"></span><span class="s2"></span><span class="s3"></span><span class="s4"></span><span class="s5"></span><span class="s6"></span><span class="s7"></span></div>
+
+<div class="topbar">
+  <div class="brand"><b>π0.5</b> · 论文精读测验</div>
+  <button class="toggle" id="toggle-answers" aria-pressed="false">隐藏答案（自测）</button>
+</div>
+
+<div class="wrap">
+
+  <header class="hero">
+    <div class="eyebrow">Physical Intelligence · Open-World Generalization</div>
+    <h1>π0.5 论文精读测验</h1>
+    <p class="lede">25 道问答，覆盖动机、架构、动作表示、两阶段训练、机器人系统、实验消融与局限。每题配答案与论文定位，按主题分色，⭐ 标记反直觉的精华考点。</p>
+    <div class="meta">
+      <span>共 <b>25</b> 题</span>
+      <span>6 个主题</span>
+      <span><b>6</b> 道精华考点 ⭐</span>
+      <span>含答案 · 含论文定位</span>
+    </div>
+
+    <div class="legend">
+      <span class="lab">主题</span>
+      <span class="chip"><span class="dot" style="background:#E11D48"></span>动机</span>
+      <span class="chip"><span class="dot" style="background:#4F46E5"></span>架构 / 动作</span>
+      <span class="chip"><span class="dot" style="background:#0E9488"></span>训练 / 数据</span>
+      <span class="chip"><span class="dot" style="background:#EA580C"></span>机器人系统</span>
+      <span class="chip"><span class="dot" style="background:#7C3AED"></span>实验消融</span>
+      <span class="chip"><span class="dot" style="background:#0284C7"></span>细节 / 局限</span>
+      <span class="sep"></span>
+      <span class="star-note"><span class="star-badge">★</span>反直觉精华，重点抠</span>
+    </div>
+  </header>
+
+  <!-- ============ 1. 核心思想与动机 ============ -->
+  <section class="cat cat-motive">
+    <div class="cat-head"><span class="idx">01</span><h2>核心思想与动机</h2><span class="count">3 题</span></div>
+    <div class="cat-rule"></div>
+
+    <article class="card">
+      <div class="q-row"><span class="q-num">Q01</span><span class="q-text">π0.5 要解决的核心问题是什么？它用什么核心技术来解决？</span></div>
+      <div class="peek"><button>点击显示答案 ▸</button></div>
+      <div class="answer"><span class="alab">A</span>核心问题是 <span class="hl">open-world generalization（开放世界泛化）</span>——让机器人离开实验室、在训练时完全没见过的真实环境里完成实用任务。核心技术是<b>在异质数据上 co-training（联合训练）</b>：把来自其他机器人、高层语义预测、口头指令、网络多模态数据等多种来源的数据，统一 cast 进同一个序列建模框架里一起训练。
+      <br><span class="cite">Abstract · Sec I</span></div>
+    </article>
+
+    <article class="card star">
+      <div class="q-row"><span class="q-num">Q02</span><span class="q-text">第一阶段训练数据里，真正来自"移动机械臂做家务"的占多大比例？这说明什么设计哲学？</span><span class="star-tag">★ 精华</span></div>
+      <div class="peek"><button>点击显示答案 ▸</button></div>
+      <div class="answer"><span class="alab">A</span>只占 <span class="num">2.4%</span>——即 <span class="hl">97.6% 的训练样本不来自移动机械臂做家务</span>，而来自其他机器人、网络数据等。哲学是：泛化不能靠在目标平台上暴力采数据，而要靠从大量异质来源<b>迁移知识</b>，就像人靠书本、他人经验、其他任务的洞见来解决新问题，而非全靠在目标任务上反复练习。
+      <br><span class="cite">Sec I · p.2</span></div>
+    </article>
+
+    <article class="card">
+      <div class="q-row"><span class="q-num">Q03</span><span class="q-text">π0.5 直接采集的移动机械臂数据有多少小时、覆盖多少个家庭？凭这个量为什么还能泛化到全新的家？</span></div>
+      <div class="peek"><button>点击显示答案 ▸</button></div>
+      <div class="answer"><span class="alab">A</span><span class="num">约 400 小时、约 100 个</span>不同家庭环境。靠从其他（非移动）机器人、实验室跨本体数据、高层语义预测、口头指令、网络数据等迁移知识，一个中等规模的目标数据也足以泛化到全新的家。
+      <br><span class="cite">Sec I · Sec IV-C（MM）</span></div>
+    </article>
+  </section>
+
+  <!-- ============ 2. 架构与动作表示 ============ -->
+  <section class="cat cat-arch">
+    <div class="cat-head"><span class="idx">02</span><h2>架构与动作表示</h2><span class="count">7 题</span></div>
+    <div class="cat-rule"></div>
+
+    <article class="card">
+      <div class="q-row"><span class="q-num">Q04</span><span class="q-text">π0.5 的 backbone 是什么 VLM？action expert 多大？</span></div>
+      <div class="peek"><button>点击显示答案 ▸</button></div>
+      <div class="answer"><span class="alab">A</span>backbone 是 <b>PaliGemma</b>（SigLIP 400M 视觉编码器 + Gemma 2B）；action expert 约 <span class="num">300M</span> 参数。
+      <br><span class="cite">Fig 3 · Appendix E</span></div>
+    </article>
+
+    <article class="card star">
+      <div class="q-row"><span class="q-num">Q05</span><span class="q-text">联合分布 π(a, ℓ̂ | o, ℓ) 怎么分解？反直觉点：低层动作分布依赖总指令 ℓ，还是子任务 ℓ̂？</span><span class="star-tag">★ 精华</span></div>
+      <div class="peek"><button>点击显示答案 ▸</button></div>
+      <div class="answer"><span class="alab">A</span>分解为 <code>π(a, ℓ̂ | o, ℓ) = π(a | o, ℓ̂) · π(ℓ̂ | o, ℓ)</code>。反直觉点：低层动作分布 <span class="hl">只依赖预测出的子任务 ℓ̂，不直接依赖总指令 ℓ</span>——高层先把总指令变成子任务，低层再只看子任务出动作。
+      <br><span class="cite">Sec IV-A · p.5</span></div>
+    </article>
+
+    <article class="card">
+      <div class="q-row"><span class="q-num">Q06</span><span class="q-text">ℓ̂（模型的文本输出）可能是哪两类东西？</span></div>
+      <div class="peek"><button>点击显示答案 ▸</button></div>
+      <div class="answer"><span class="alab">A</span>要么是<b>预测的高层子任务</b>（如 "pick up the plate"），要么是<b>网络数据里视觉-语言问答的答案</b>。同一个文本输出口既用于分层推理，也用于 co-training 的 VQA 任务。
+      <br><span class="cite">Sec IV-A</span></div>
+    </article>
+
+    <article class="card star">
+      <div class="q-row"><span class="q-num">Q07</span><span class="q-text">为什么 flow-matching 连续动作 token 与 FAST 离散动作 token 不互相 attend？信息流方向如何？</span><span class="star-tag">★ 精华</span></div>
+      <div class="peek"><button>点击显示答案 ▸</button></div>
+      <div class="answer"><span class="alab">A</span>用注意力 mask 隔开，是为了<b>避免两种动作表示之间的信息泄漏</b>。信息 <span class="hl">单向从 VLM 流向 action expert</span>——image/prompt/本体状态构成 prefix，FAST 动作 token 注意 prefix 并自回归注意之前动作 token，action expert 的 embedding 注意 prefix 和彼此、但不注意 FAST token；没有任何 VLM embedding 反过来注意 action expert。
+      <br><span class="cite">Sec IV-B · Appendix E · Fig 18</span></div>
+    </article>
+
+    <article class="card">
+      <div class="q-row"><span class="q-num">Q08</span><span class="q-text">为什么既用 FAST 离散 token 训练、又用 flow matching？两者各解决什么？</span></div>
+      <div class="peek"><button>点击显示答案 ▸</button></div>
+      <div class="answer"><span class="alab">A</span><b>FAST 离散 token</b> 让 VLA 训练更快、更稳，且语言跟随更强，但推理要昂贵的自回归解码、慢；<b>flow matching</b> 适合实时连续动作推理。所以结合两者：训练用离散 token（pre-training），推理用 flow matching 出连续动作，取两者之长。
+      <br><span class="cite">Sec IV-B · p.5</span></div>
+    </article>
+
+    <article class="card">
+      <div class="q-row"><span class="q-num">Q09</span><span class="q-text">联合训练损失（Eq.1）由哪两部分组成？α 在 pre-training 与 post-training 分别取多少、各意味着什么？</span></div>
+      <div class="peek"><button>点击显示答案 ▸</button></div>
+      <div class="answer"><span class="alab">A</span>两部分：(i) 文本 token / FAST 动作 token 的<b>交叉熵 H</b>；(ii) <code>α × ‖ω − a − f^a‖²</code> 的 flow matching 向量场 MSE。α：<b>pre-training α=0</b>（只用离散 token、当标准 VLM 训，action expert 不参与）；<b>post-training α=10.0</b>（加入随机初始化的 action expert，开始训 flow matching）。
+      <br><span class="cite">Eq.1 · Sec IV-C/D</span></div>
+    </article>
+
+    <article class="card">
+      <div class="q-row"><span class="q-num">Q10</span><span class="q-text">推理时，动作用多少步 flow matching 去噪生成？</span></div>
+      <div class="peek"><button>点击显示答案 ▸</button></div>
+      <div class="answer"><span class="alab">A</span><span class="num">10 步</span>去噪——先自回归 decode 出高层子任务文本 ℓ̂，再以其为条件做 10 步 flow matching 生成动作。
+      <br><span class="cite">Sec IV-B 末 · p.5</span></div>
+    </article>
+  </section>
+
+  <!-- ============ 3. 两阶段训练与数据 ============ -->
+  <section class="cat cat-train">
+    <div class="cat-head"><span class="idx">03</span><h2>两阶段训练与数据</h2><span class="count">5 题</span></div>
+    <div class="cat-rule"></div>
+
+    <article class="card">
+      <div class="q-row"><span class="q-num">Q11</span><span class="q-text">Pre-training 与 post-training 各训了多少 gradient steps？action expert 何时、如何初始化？</span></div>
+      <div class="peek"><button>点击显示答案 ▸</button></div>
+      <div class="answer"><span class="alab">A</span>pre-training <span class="num">280k 步</span>（全离散 token 做 next-token prediction）；post-training <span class="num">80k 步</span>。action expert 在 <b>post-training 开始时用随机权重初始化</b>。
+      <br><span class="cite">Sec IV-C/D · p.6</span></div>
+    </article>
+
+    <article class="card">
+      <div class="q-row"><span class="q-num">Q12</span><span class="q-text">列出 pre-training 的五类数据源及其缩写。</span></div>
+      <div class="peek"><button>点击显示答案 ▸</button></div>
+      <div class="answer"><span class="alab">A</span><b>MM</b>（移动机械臂家务）、<b>ME</b>（Multi-Environment 非移动机器人）、<b>CE</b>（Cross-Embodiment 实验室跨本体，含开源 OXE）、<b>HL</b>（High-Level 子任务预测）、<b>WD</b>（multi-modal Web Data：图像描述 / VQA / 物体定位）。
+      <br><span class="cite">Sec IV-C · Fig 4</span></div>
+    </article>
+
+    <article class="card">
+      <div class="q-row"><span class="q-num">Q13</span><span class="q-text">从 pre-training 到 post-training，数据上加了什么、去掉了什么？为什么？</span></div>
+      <div class="peek"><button>点击显示答案 ▸</button></div>
+      <div class="answer"><span class="alab">A</span><b>加了 VI</b>（口头指令，人用语言给的高层演示）；<b>去掉了 CE</b>（实验室跨本体数据），以聚焦移动操作与多样真实环境。动作数据被 filter 成<b>成功且长度低于阈值</b>的片段；同时保留 WD（保住语义/视觉能力）和多环境对应的 HL 数据。
+      <br><span class="cite">Fig 4 caption · Sec IV-D</span></div>
+    </article>
+
+    <article class="card star">
+      <div class="q-row"><span class="q-num">Q14</span><span class="q-text">VI（口头指令）数据怎么采集？它在高层样本里占比多小，但消融显示有多关键？</span><span class="star-tag">★ 精华</span></div>
+      <div class="peek"><button>点击显示答案 ▸</button></div>
+      <div class="answer"><span class="alab">A</span>由专家用<b>"语言遥操作"</b>采集——实时用语言挑选合适的子任务指令、驱动已训练好的低层策略完成任务，相当于给"好的高层子任务输出"打演示。它只占高层移动操作样本约 <span class="num">11%</span>，但消融（no VI）显示去掉后性能 <span class="hl">显著下降</span>，是高层推理强表现的关键。
+      <br><span class="cite">Sec IV-D · Sec V-E · p.11</span></div>
+    </article>
+
+    <article class="card">
+      <div class="q-row"><span class="q-num">Q15</span><span class="q-text">不同机器人动作维度不同，π0.5 怎么统一？动作数值怎么归一化？joint / ee 控制怎么告诉模型？</span></div>
+      <div class="peek"><button>点击显示答案 ▸</button></div>
+      <div class="answer"><span class="alab">A</span>动作维度<b>补齐到所有数据集里最大的动作空间</b>，低维机器人 <b>zero-pad</b>；数值归一化到 <code>[−1, 1]</code>，用每个数据集<b>每个维度的 1% 和 99% 分位数</b>；在文本 prompt 里加 <code>&lt;control mode&gt; joint/end effector &lt;control mode&gt;</code> 区分控制模式。
+      <br><span class="cite">Sec IV-C · p.7</span></div>
+    </article>
+  </section>
+
+  <!-- ============ 4. 机器人系统与推理 ============ -->
+  <section class="cat cat-system">
+    <div class="cat-head"><span class="idx">04</span><h2>机器人系统与推理</h2><span class="count">3 题</span></div>
+    <div class="cat-rule"></div>
+
+    <article class="card">
+      <div class="q-row"><span class="q-num">Q16</span><span class="q-text">移动机械臂状态/动作空间总维度多少？几个相机？高层、低层推理分别用哪些相机？</span></div>
+      <div class="peek"><button>点击显示答案 ▸</button></div>
+      <div class="answer"><span class="alab">A</span>总维度 <span class="num">18 或 19</span>（取决于平台）；<span class="num">4 个相机</span>（前向、后向、左右两个腕部）。<b>高层推理用全部 4 个</b>，<b>低层推理用腕部 + 前向</b>相机。
+      <br><span class="cite">Sec IV-E · Fig 5</span></div>
+    </article>
+
+    <article class="card">
+      <div class="q-row"><span class="q-num">Q17</span><span class="q-text">π0.5 的底层控制有多"简单"？有没有轨迹规划/碰撞检测？控制频率多少？</span></div>
+      <div class="peek"><button>点击显示答案 ▸</button></div>
+      <div class="answer"><span class="alab">A</span>极其简单：模型直接以 <span class="num">50 Hz</span>（带 action chunking）输出手臂/夹爪/躯干升降目标位姿与底盘目标速度，用<b>简单 PD 控制器</b>跟踪，<span class="hl">没有任何额外的轨迹规划或碰撞检测</span>，操作与导航全程端到端。
+      <br><span class="cite">Sec IV-E · p.7</span></div>
+    </article>
+
+    <article class="card">
+      <div class="q-row"><span class="q-num">Q18</span><span class="q-text">描述 π0.5 的两段式推理流程，以及高层与低层的运行频率关系。</span></div>
+      <div class="peek"><button>点击显示答案 ▸</button></div>
+      <div class="answer"><span class="alab">A</span>每步推理<b>先预测高层语义子任务 ℓ̂</b>（基于场景语义和任务结构推断下一步），再<b>以 ℓ̂ 为条件预测低层动作 chunk</b>；同一个模型完成两件事。<b>高层推理频率低于低层动作推理</b>（高层不必每步重算）。
+      <br><span class="cite">Sec IV-A · Sec I</span></div>
+    </article>
+  </section>
+
+  <!-- ============ 5. 实验与消融 ============ -->
+  <section class="cat cat-exp">
+    <div class="cat-head"><span class="idx">05</span><h2>实验与消融</h2><span class="count">4 题</span></div>
+    <div class="cat-rule"></div>
+
+    <article class="card">
+      <div class="q-row"><span class="q-num">Q19</span><span class="q-text">测"泛化随场景数 scaling"用了哪几个数量级的环境数？最关键的结论是什么（对比"直接拿测试家数据训练"的模型）？</span></div>
+      <div class="peek"><button>点击显示答案 ▸</button></div>
+      <div class="answer"><span class="alab">A</span>用了 <span class="num">3、12、22、53、82、104</span> 个环境。关键结论：泛化随训练环境数稳步提升，且 <span class="hl">104 个环境训练出的最佳模型 ≈ 直接把测试家数据放进训练的对照模型</span>——说明 co-training 让它达到了"如同见过测试环境"的泛化水平。
+      <br><span class="cite">Sec V-B · Fig 8</span></div>
+    </article>
+
+    <article class="card star">
+      <div class="q-row"><span class="q-num">Q20</span><span class="q-text">co-training 消融里，哪类数据对整体任务完成度影响最大？WD 对整体完成度显著吗？WD 到底在哪里关键？</span><span class="star-tag">★ 精华</span></div>
+      <div class="peek"><button>点击显示答案 ▸</button></div>
+      <div class="answer"><span class="alab">A</span><b>跨本体数据 ME 和 CE 影响最大</b>——去掉任一都显著降低，两个都去掉更差。<span class="hl">WD 对整体任务完成度差异不显著</span>。但 WD 在两处关键：对<b>没见过类别（OOD）物体的语言跟随</b>至关重要，对<b>高层子任务推理</b>也很重要。
+      <br><span class="cite">Sec V-C · Fig 10/11 · Sec V-E</span></div>
+    </article>
+
+    <article class="card">
+      <div class="q-row"><span class="q-num">Q21</span><span class="q-text">π0.5 和 π0、π0-FAST+Flow 比谁强？论文借此印证了 FAST 的什么结论？</span></div>
+      <div class="peek"><button>点击显示答案 ▸</button></div>
+      <div class="answer"><span class="alab">A</span>π0.5 <b>显著优于</b> π0 和 π0-FAST+Flow，即便把 π0 训到 300k 步也是如此。借此印证 FAST 的结论：<span class="hl">用 FAST token 训练在计算效率上优于纯 diffusion/flow 训练</span>。
+      <br><span class="cite">Sec V-D · Fig 12</span></div>
+    </article>
+
+    <article class="card star">
+      <div class="q-row"><span class="q-num">Q22</span><span class="q-text">高层推理消融（Fig 13）两个反直觉结果：(a) 完整 π0.5 与"人类专家当高层 oracle"谁强？(b) 第二好的配置是哪个、说明什么？另：GPT-4 当高层策略表现如何？</span><span class="star-tag">★ 精华</span></div>
+      <div class="peek"><button>点击显示答案 ▸</button></div>
+      <div class="answer"><span class="alab">A</span>(a) 完整 π0.5 <span class="hl">甚至超过了"人类专家当高层 oracle"</span>这个基线。(b) 第二好的是 <b>implicit HL</b>（运行时不做显式高层推理、但训练数据含高层子任务预测）——说明 <span class="hl">很大一部分收益来自"训练混合里有子任务预测数据"本身</span>，而不仅是显式分层推理。<b>GPT-4 当高层策略表现最差</b>，说明必须用机器人数据适配 VLM，不能 zero-shot 直接套大模型。
+      <br><span class="cite">Sec V-E · Fig 13</span></div>
+    </article>
+  </section>
+
+  <!-- ============ 6. 细节与局限 ============ -->
+  <section class="cat cat-detail">
+    <div class="cat-head"><span class="idx">06</span><h2>细节与局限</h2><span class="count">3 题</span></div>
+    <div class="cat-rule"></div>
+
+    <article class="card">
+      <div class="q-row"><span class="q-num">Q23</span><span class="q-text">π0.5 的 flow-matching 时间步 τ 怎么采样（不是均匀采样）？</span></div>
+      <div class="peek"><button>点击显示答案 ▸</button></div>
+      <div class="answer"><span class="alab">A</span>不用均匀采样，而用<b>偏向低时间步的 Beta 分布</b>：<code>p(τ)=Beta((s−τ)/s; α=1.5, β=1)</code>，并排除高于阈值 s 的时间步（积分步长足够大时用不到）。实验取 <span class="num">s = 0.999</span>（支持最多 1000 步积分）。
+      <br><span class="cite">Appendix E · p.19</span></div>
+    </article>
+
+    <article class="card">
+      <div class="q-row"><span class="q-num">Q24</span><span class="q-text">timestep 信息怎么注入 action expert（和 π0 有什么不同）？</span></div>
+      <div class="peek"><button>点击显示答案 ▸</button></div>
+      <div class="answer"><span class="alab">A</span>用一个<b>单独的 MLP 只投影时间步 τ</b>，再用 <b>adaptive RMSNorm</b> 把时间步信息注入 action expert 每一层；不同于 π0——π0 是把 τ 直接和 noisy action 融合后一起喂进 transformer。
+      <br><span class="cite">Appendix E</span></div>
+    </article>
+
+    <article class="card">
+      <div class="q-row"><span class="q-num">Q25</span><span class="q-text">论文自己列了哪些局限？（至少说三个）</span></div>
+      <div class="peek"><button>点击显示答案 ▸</button></div>
+      <div class="answer"><span class="alab">A</span>① 某些环境持续困难（不熟悉的抽屉把手、物理上难开的柜子）；② 部分可观测问题（手臂遮挡了该擦的污渍）；③ 高层子任务推理易被干扰（反复开关同一抽屉）；④ 只能处理相对简单的 prompt（复杂度受训练数据限制）；⑤ context 较小、缺乏记忆，跨房间或需记住物体存放位置等场景受限。
+      <br><span class="cite">Sec VI</span></div>
+    </article>
+  </section>
+
+  <footer class="foot">
+    <b>抓手</b>：⭐ 标的六题（Q02 / Q05 / Q07 / Q14 / Q20 / Q22）是 π0.5 区别于普通 VLA 的精华，反直觉、也最容易看漏。把下面这几点能脱口而出，这篇基本就吃透了：
+    <div class="key-list">
+      <span>97.6% 非目标任务</span>
+      <span>动作只依赖 ℓ̂</span>
+      <span>两种动作表示信息隔离</span>
+      <span>小小 VI 极关键</span>
+      <span>WD 只在 OOD 关键</span>
+      <span>光放子任务数据就拿大半收益</span>
+    </div>
+  </footer>
+
+</div>
+
+<button class="totop" id="totop" aria-label="回到顶部">↑</button>
+
+<script>
+  // 答案自测开关
+  const btn = document.getElementById('toggle-answers');
+  btn.addEventListener('click', () => {
+    const studying = document.body.classList.toggle('study');
+    btn.textContent = studying ? '显示答案' : '隐藏答案（自测）';
+    btn.setAttribute('aria-pressed', String(studying));
+    if (studying) document.querySelectorAll('.card.revealed').forEach(c => c.classList.remove('revealed'));
+  });
+
+  // 每张卡片在自测模式下单独揭晓
+  document.querySelectorAll('.peek button').forEach(b => {
+    b.addEventListener('click', () => b.closest('.card').classList.add('revealed'));
+  });
+
+  // 回到顶部
+  const totop = document.getElementById('totop');
+  window.addEventListener('scroll', () => {
+    totop.classList.toggle('show', window.scrollY > 600);
+  }, {passive:true});
+  totop.addEventListener('click', () => window.scrollTo({top:0, behavior:'smooth'}));
+</script>
+
+<script src="nav.js"></script>
+</body>
+</html>

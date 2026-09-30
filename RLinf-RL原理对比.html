@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RLinf RL 方法：原理视角对比</title>
+<meta name="description" content="从策略梯度与 Bellman 两条主干出发，推导 RLinf 内 15 种 RL 算法的原理差异：优势怎么估、似然怎么算、分布偏移怎么修、探索从哪来。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f1f4f6;
+    --surface:#fbfcfd;
+    --surface-2:#eaf0f4;
+    --ink:#16222e;
+    --ink-2:#51626f;
+    --ink-3:#83919c;
+    --accent:#0e6e8a;
+    --accent-strong:#0a4c60;
+    --signal:#c4572a;
+    --line:#d8e1e7;
+    --line-strong:#c3d0d9;
+    --grid-line:rgba(22,34,46,.05);
+    --shadow:0 1px 2px rgba(22,34,46,.04),0 14px 34px rgba(22,34,46,.07);
+    --c-full:#1e3a5f;      /* 整模型 */
+    --c-noise:#0e6e8a;     /* 噪声空间 */
+    --c-resid:#2f7d4f;     /* 残差 */
+    --c-rlt:#c4572a;       /* RL token */
+    --c-zero:#7a8791;      /* 从零 */
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+      --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+      --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+      --line:#1e2d3a; --line-strong:#2b3d4b;
+      --grid-line:rgba(231,238,244,.045);
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+      --c-full:#5f86b8; --c-noise:#3fb0d0; --c-resid:#5cb87a; --c-rlt:#e08a5a; --c-zero:#9db0bd;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+    --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+    --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+    --line:#1e2d3a; --line-strong:#2b3d4b;
+    --grid-line:rgba(231,238,244,.045);
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+    --c-full:#5f86b8; --c-noise:#3fb0d0; --c-resid:#5cb87a; --c-rlt:#e08a5a; --c-zero:#9db0bd;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--paper); color:var(--ink); font-family:"IBM Plex Sans",-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif; line-height:1.78; font-size:16px; -webkit-font-smoothing:antialiased;}
+  .grid{position:fixed; inset:0; z-index:-1; pointer-events:none; background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px); background-size:28px 28px;}
+  .wrap{max-width:960px; margin:0 auto; padding:0 24px 96px;}
+
+  .masthead{display:flex; align-items:center; justify-content:space-between; padding:22px 24px 0; max-width:960px; margin:0 auto;}
+  .back{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:13px; color:var(--accent); text-decoration:none; letter-spacing:.03em;}
+  .back:hover{text-decoration:underline;}
+  .masthead .ref{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12.5px; color:var(--ink-3); letter-spacing:.04em;}
+
+  .hero{padding:52px 0 36px; border-bottom:1px solid var(--line-strong);}
+  .eyebrow{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent); margin-bottom:16px;}
+  .hero h1{font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif; font-size:clamp(30px,5vw,46px); font-weight:700; line-height:1.16; margin:0 0 16px; color:var(--ink); text-wrap:balance;}
+  .hero .sub{font-size:17px; color:var(--ink-2); max-width:660px; margin:0 0 24px;}
+  .stats{display:flex; flex-wrap:wrap; gap:32px;}
+  .stat{display:flex; flex-direction:column; gap:2px;}
+  .stat .n{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:22px; font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums;}
+  .stat .l{font-size:12.5px; color:var(--ink-3);}
+
+  /* spectrum */
+  .spectrum{margin:44px 0 8px;}
+  .spec-head{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12px; color:var(--ink-3); letter-spacing:.05em; display:flex; justify-content:space-between; margin-bottom:10px;}
+  .spec-line{position:relative; height:12px; border-radius:6px; background:linear-gradient(90deg,var(--c-full),var(--c-noise) 30%,var(--c-resid) 60%,var(--c-rlt) 82%,var(--c-zero)); margin-bottom:16px;}
+  .spec-legend{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px;}
+  .leg{display:flex; align-items:center; gap:8px; font-size:13px; color:var(--ink-2);}
+  .dot{width:10px; height:10px; border-radius:50%; flex:none;}
+
+  h2{font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif; font-size:22px; font-weight:600; margin:0 0 14px; color:var(--ink); display:flex; align-items:center; gap:12px;}
+  h2::before{content:""; width:10px; height:10px; flex:none; background:var(--accent); border-radius:2px; transform:rotate(45deg);}
+  h3{font-size:16px; font-weight:700; margin:0 0 8px;}
+  p{margin:0 0 12px;}
+  strong{font-weight:700;}
+  a{color:var(--accent);}
+
+  .note{font-size:13.5px; color:var(--ink-3); margin:0 0 20px;}
+
+  /* comparison table */
+  .tbl-wrap{overflow-x:auto; border:1px solid var(--line); border-radius:14px; background:var(--surface); box-shadow:var(--shadow);}
+  table{width:100%; border-collapse:collapse; font-size:13.5px; min-width:860px;}
+  th,td{padding:11px 13px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12px; color:var(--ink-2); background:var(--surface-2); letter-spacing:.03em; font-weight:600; position:sticky; top:0;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:var(--surface-2);}
+  td.mname{white-space:nowrap; font-weight:700; color:var(--ink);}
+  td.mname .tag{display:inline-block; font-size:10.5px; font-weight:600; color:#fff; border-radius:4px; padding:1px 6px; margin-left:7px; vertical-align:1px; letter-spacing:.02em;}
+
+  /* camp sections */
+  .camp{margin-top:40px; border:1px solid var(--line); border-radius:14px; background:var(--surface); box-shadow:var(--shadow); overflow:hidden;}
+  .camp-head{display:flex; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid var(--line);}
+  .camp-head .bar{width:5px; align-self:stretch; border-radius:3px; margin:-16px 0 -16px -20px;}
+  .camp-head h2{margin:0; font-size:18px;}
+  .camp-head .cnt{margin-left:auto; font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12px; color:var(--ink-3);}
+  .camp-body{padding:6px 20px 14px;}
+  .camp-body .desc{font-size:14px; color:var(--ink-2); margin:10px 0 14px;}
+  .mcard{border-top:1px solid var(--line); padding:12px 0;}
+  .mcard:first-child{border-top:none;}
+  .mcard .mt{font-weight:700; font-size:15px; color:var(--ink);}
+  .mcard .mt a{font-weight:700;}
+  .mcard .md{font-size:13.5px; color:var(--ink-2); margin-top:3px;}
+
+  .guide{margin-top:40px; border:1px solid var(--line); border-radius:14px; background:var(--surface); padding:20px 22px; box-shadow:var(--shadow);}
+  .guide ul{margin:0; padding-left:20px;}
+  .guide li{margin-bottom:9px;}
+
+  footer{margin-top:56px; padding-top:20px; border-top:1px solid var(--line-strong); display:flex; justify-content:space-between; gap:12px; font-size:13px; color:var(--ink-3);}
+  footer a{color:var(--accent); text-decoration:none;}
+  footer a:hover{text-decoration:underline;}
+
+  @media(max-width:640px){
+    .spec-line{margin-bottom:12px;}
+    table{min-width:780px;}
+  }
+
+  /* 本页特有：家族色语义复用 c-full/c-resid/c-noise/c-rlt/c-zero */
+  .spec-line{background:linear-gradient(90deg,var(--c-full),var(--c-resid) 28%,var(--c-noise) 52%,var(--c-rlt) 74%,var(--c-zero));}
+  .fam{display:inline-block; font-size:10.5px; font-weight:600; color:#fff; border-radius:4px; padding:1px 6px; letter-spacing:.02em; white-space:nowrap;}
+  .kv{display:grid; grid-template-columns:132px 1fr; gap:4px 14px; font-size:13.5px; margin:10px 0 0;}
+  .kv dt{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12px; color:var(--ink-3); padding-top:2px;}
+  .kv dd{margin:0; color:var(--ink-2);}
+  .box{margin-top:40px; border:1px solid var(--line); border-radius:14px; background:var(--surface); padding:20px 22px; box-shadow:var(--shadow);}
+  .box h2{font-size:20px;}
+  .tips{list-style:none; margin:0; padding:0;}
+  .tips li{padding:10px 0; border-top:1px solid var(--line); font-size:14px; color:var(--ink-2);}
+  .tips li:first-child{border-top:none;}
+  .tips b{color:var(--ink);}
+  code{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12.5px; background:var(--surface-2); padding:1px 5px; border-radius:4px; color:var(--accent-strong);}
+
+  .fml{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:13.5px; line-height:2.0; background:var(--surface-2); border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:0 8px 8px 0; padding:13px 16px; margin:14px 0; overflow-x:auto; white-space:pre; color:var(--ink); font-variant-numeric:tabular-nums;}
+  .fml .c{color:var(--ink-3);}
+  .fml .h{color:var(--signal); font-weight:600;}
+  .axis{display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:14px; margin:18px 0 0;}
+  .ax{border:1px solid var(--line); border-radius:12px; background:var(--surface); padding:14px 16px; box-shadow:var(--shadow);}
+  .ax .n{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:11.5px; color:var(--accent); letter-spacing:.1em; text-transform:uppercase;}
+  .ax .t{font-weight:700; font-size:15px; margin:4px 0 5px;}
+  .ax .d{font-size:13px; color:var(--ink-2); line-height:1.65;}
+  .lede{font-size:15px; color:var(--ink-2); border-left:3px solid var(--line-strong); padding-left:14px; margin:0 0 18px;}
+</style>
+</head>
+<body>
+<div class="grid" aria-hidden="true"></div>
+<header class="masthead">
+  <a class="back" href="index.html">← 返回知识库</a>
+  <span class="ref">PRINCIPLES · RLINF</span>
+</header>
+
+<div class="wrap">
+
+  <section class="hero">
+    <div class="eyebrow">原理视角 · RLinf</div>
+    <h1>同一个梯度，十五种估计法</h1>
+    <p class="sub">RLinf 里的算法看着五花八门，其实几乎全都在算<strong>同一个东西</strong>——策略梯度里的那一项优势，或者 Bellman 方程里的那一个价值。这一页不讲怎么配参数，只顺着两条主干把它们的分歧点推一遍：优势怎么估、似然怎么算、分布偏移怎么修、探索从哪来。</p>
+    <div class="stats">
+      <div class="stat"><span class="n">2</span><span class="l">条理论主干</span></div>
+      <div class="stat"><span class="n">4</span><span class="l">个分歧维度</span></div>
+      <div class="stat"><span class="n">3</span><span class="l">个硬难题</span></div>
+    </div>
+  </section>
+
+  <section style="margin-top:44px">
+    <h2>起点：两条主干</h2>
+    <p class="lede">所有 on-policy 方法来自策略梯度定理，所有 off-policy / 离线方法来自 Bellman 方程。这是整张图的分水岭。</p>
+    <p><strong>主干 A · 策略梯度定理。</strong>要最大化期望回报 J(θ)=E[Σγᵗr]，梯度形式是：</p>
+    <div class="fml">∇J(θ) = E[ ∇log π_θ(a|s) · <span class="h">A(s,a)</span> ]
+         <span class="c">└─ 唯一需要"猜"的东西，就是这个 A</span></div>
+    <p>这个式子里 <code>∇log π</code> 是自动微分白给的，<strong>全部的算法设计都花在 A 上</strong>：A 怎么估，方差多大，偏差多大，要不要 critic。顺带一个前提——你得能算出 <code>log π</code>，这对高斯策略是白给的，对流匹配 / 扩散策略<strong>不是</strong>，于是有了家族 ③。</p>
+    <p><strong>主干 B · Bellman 方程。</strong>不走梯度，走不动点迭代。学一个 Q 满足自一致性，再让策略去贪 Q：</p>
+    <div class="fml">Q(s,a) = r + γ·E[ <span class="h">max</span> Q(s',a') ]     <span class="c">← 这个 max 是万恶之源</span>
+π ← argmax Q                        <span class="c">（最大熵版本：加 −α log π）</span></div>
+    <p>好处是数据可以反复用（off-policy），样本效率高一个量级。坏处全在那个 <code>max</code> 上：它<strong>专挑估计误差最大的动作</strong>，于是误差被系统性放大 —— 这就是价值高估。家族 ② 和 ⑤ 的所有花招，本质都是在跟这个 max 搏斗。</p>
+  </section>
+
+  <section style="margin-top:44px">
+    <h2>四个分歧维度</h2>
+    <div class="axis">
+      <div class="ax"><div class="n">Axis 1</div><div class="t">优势怎么估</div><div class="d">学一个 critic（GAE）？用组内相对回报当 baseline？用 teacher 的 logprob？还是从时序顺序自监督学？—— 偏差-方差的取舍全在这里。</div></div>
+      <div class="ax"><div class="n">Axis 2</div><div class="t">似然怎么算</div><div class="d">策略是高斯就白给；是流匹配 / 扩散就算不出来。要么把它变可算（SAC-Flow、πRL），要么换个空间绕开（DSRL）。</div></div>
+      <div class="ax"><div class="n">Axis 3</div><div class="t">分布偏移怎么修</div><div class="d">on-policy 靠裁剪 / KL 限住步长；off-policy 靠重要性采样或直接忽略；离线只能靠<strong>不去问 OOD 动作</strong>。</div></div>
+      <div class="ax"><div class="n">Axis 4</div><div class="t">探索从哪来</div><div class="d">策略自身的随机性？最大熵项显式奖励熵？还是靠预训练 VLA 的行为先验提供一个已经不错的起点？</div></div>
+    </div>
+  </section>
+  <div class="camp">
+    <div class="camp-head"><span class="bar" style="background:var(--c-full)"></span><h2>① on-policy：都在改同一个 A</h2><span class="cnt">主干 A</span></div>
+    <div class="camp-body">
+      <p class="desc">这一族的共同软肋是<strong>数据用一次就废</strong>——因为策略一更新，旧数据的分布就不对了。所以它们全部要回答同一个问题：能走多远？</p>
+
+      <h3 style="margin-top:16px">PPO：用裁剪代替信任域</h3>
+      <p>理论上该约束 KL(π_new‖π_old) ≤ δ，但那要解带约束优化。PPO 的做法是把约束<strong>换成一个不再奖励越界的目标函数</strong>：</p>
+      <div class="fml">L = E[ min( r·A , clip(r, 1−ε, 1+ε)·A ) ]      r = π_θ/π_old</div>
+      <p>关键在这个 <code>min</code> 的非对称性：A&gt;0 时上界被 1+ε 截住，再增大 r 也没有额外收益；A&lt;0 时下界被 1−ε 截住。所以梯度在越界后<strong>直接归零</strong>，而不是变成惩罚。优势用 GAE 估：</p>
+      <div class="fml">A_t = Σ (γλ)^l · δ_{t+l}        δ_t = r_t + γV(s_{t+1}) − V(s_t)
+      <span class="c">λ→0：单步 TD，低方差高偏差    λ→1：蒙特卡洛，高方差低偏差</span></div>
+      <p>代价很实在：<strong>必须养一个 critic</strong>。对 VLA 这意味着第二个几十亿参数的网络，所以 RLinf 让它跟语言主干共享参数、只挂个 value head。</p>
+
+      <h3 style="margin-top:20px">GRPO：用组内比较替掉 critic</h3>
+      <p>一个观察：A(s,a) 本质是「这个动作比该状态的平均水平好多少」。既然 V(s) 就是个 baseline，那<strong>为什么不直接采一组样本、用组内均值当 baseline</strong>？</p>
+      <div class="fml">A_i = ( R_i − mean(R_1..R_G) ) / std(R_1..R_G)</div>
+      <p>省掉一整个 critic 网络。代价有三个，都是理论上的硬代价：<strong>① 要能从同一状态重复采样</strong>（仿真器行，真机基本不行）；<strong>② 只有轨迹级信号</strong>，组内所有时间步共享一个优势，细粒度信用分配没了；<strong>③ 全成或全败时 std→0、优势恒为 0</strong>，这组样本白采。第③点直接催生了「成功率过滤」。</p>
+
+      <h3 style="margin-top:20px">DAPO：GRPO 的四个补丁</h3>
+      <p>都是针对具体病灶：<strong>Clip-Higher</strong>（ε_low 和 ε_high 解耦，上界放宽）治的是熵坍缩——对称裁剪会过度压制低概率 token 的上升空间；<strong>动态采样</strong>治的正是上面第③点；<strong>token 级损失</strong>治的是长序列被平均稀释；超长惩罚治长度失控。</p>
+      <div class="fml">min( r·A , clip(r, 1−ε_low, <span class="h">1+ε_high</span>)·A )    <span class="c">ε_high &gt; ε_low</span></div>
+
+      <h3 style="margin-top:20px">Reinforce++：把 KL 挪进奖励</h3>
+      <p>连裁剪都不要，因为裁剪会给梯度估计引入偏差。KL 不作为损失项，而是<strong>直接从奖励里减掉</strong>，再做全局归一化：</p>
+      <div class="fml">A_t = r(o,q) − β·Σ_{i≥t} KL(i)        KL(t) = log[ π_old(o_t|·) / π_SFT(o_t|·) ]
+A_norm = (A − mean_batch) / std_batch</div>
+      <p>注意这个细节：把 KL 放进奖励里，它会被<strong>折扣与累积</strong>，语义上是「偏离参考策略要一路付代价」；放进损失里则只惩罚当前一步。两者不等价。</p>
+    </div>
+  </div>
+  <div class="camp">
+    <div class="camp-head"><span class="bar" style="background:var(--c-resid)"></span><h2>② off-policy 最大熵：跟 max 搏斗</h2><span class="cnt">主干 B</span></div>
+    <div class="camp-body">
+      <p class="desc">SAC 先把 Bellman 里那个硬 <code>max</code> 换成<strong>软的</strong>——在目标里加一个熵项，于是最优策略不再是 argmax 的尖峰，而是一个玻尔兹曼分布：</p>
+      <div class="fml">Q(s,a) = r + γ·E[ Q(s',a') <span class="h">− α log π(a'|s')</span> ]      <span class="c">软 Bellman</span>
+π* ∝ exp( Q(s,a) / α )                          <span class="c">最优策略是软最大，不是尖峰</span></div>
+      <p>这一步同时买到两样东西：<strong>探索变成目标的一部分</strong>（不用外挂噪声调度），以及 max 的尖锐性被削弱。但高估问题只是被缓解，没有消失。剩下三种变体是三种正交的压法：</p>
+
+      <h3 style="margin-top:18px">SAC：双 Q 取小 + target 网络</h3>
+      <div class="fml">y = r + γ·[ <span class="h">min</span>(Q_θ̄1, Q_θ̄2)(s',a') − α log π(a'|s') ]</div>
+      <p>取小是刻意引入<strong>负偏差</strong>去对冲 max 的正偏差；target 网络 θ̄ 靠滑动平均缓慢跟随，切断「自己的误差立刻喂给自己」的正反馈回路。</p>
+
+      <h3 style="margin-top:18px">CrossQ：反过来，把 target 删掉</h3>
+      <p>一个反直觉的论断：target 网络虽然稳住了训练，但它<strong>人为延迟了价值传播</strong>，这是样本效率的隐形税。CrossQ 直接用当前参数算 bootstrap 目标：</p>
+      <div class="fml">y = r + γ·[ min Q_<span class="h">φ</span>(s',a') − α log π ]     <span class="c">φ 是当前参数，不是 θ̄</span></div>
+      <p>那稳定性从哪来？—— 从 <strong>Batch Renormalization</strong>。关键技巧是把当前状态和后继状态<strong>拼成一个 batch 做联合前向</strong>，这样 BRN 的统计量覆盖两个分布，修正了 s 和 s' 分布不一致带来的偏移（这正是以往 BN 在 RL 里失败的原因）。再把 critic 加宽到 2048 补表达力。结果：UTD=1 就追平 REDQ/DroQ 的样本效率，算力省一个数量级。</p>
+
+      <h3 style="margin-top:18px">RLPD：用离线数据当锚，不做预训练</h3>
+      <p>常规思路是「先离线预训练，再在线微调」，但那会引入两阶段的分布断层。RLPD 的主张是<strong>压根不用分阶段</strong>，只需三个最小改动：</p>
+      <div class="fml">batch = 50% D_online  +  50% D_offline    <span class="c">对称采样：演示数据永久当锚</span>
+critic: + LayerNorm                      <span class="c">限制外推幅度，防价值爆炸</span>
+critic: E=10 集成 + 随机子集              <span class="c">支撑高 UTD / 异步更新</span></div>
+      <p>LayerNorm 这一条理论上最有意思：它不是为了收敛更快，而是<strong>限制网络在 OOD 动作上输出任意大的值</strong>——把外推的灾难性后果钳住。这三招合起来说明了一件事：标准 off-policy 算法不需要复杂的保守性约束，也能吃下离线数据。</p>
+    </div>
+  </div>
+
+  <div class="camp">
+    <div class="camp-head"><span class="bar" style="background:var(--c-noise)"></span><h2>③ 流 / 噪声空间：log π 算不出来怎么办</h2><span class="cnt">Axis 2</span></div>
+    <div class="camp-body">
+      <p class="desc">这一族解决的是一个纯粹的<strong>理论障碍</strong>。流匹配 / 扩散策略生成动作靠解 ODE：</p>
+      <div class="fml">A^0 ~ N(0,I)  →  dA/dτ = v_θ(A^τ, s)  →  A^1 = 最终动作</div>
+      <p>它是<strong>确定性映射</strong>：给定初始噪声，输出唯一。这意味着 log π(a|s) 需要沿轨迹积分 divergence，算不动也不可导。而主干 A 和主干 B 都需要 log π。三条解法：</p>
+
+      <h3 style="margin-top:18px">SAC-Flow：把确定性路径改造成高斯链</h3>
+      <p>思路是在每一步<strong>注入噪声并加漂移修正</strong>，让终点分布保持不变，但路径变成随机的。随机路径的密度就可以拆解：</p>
+      <div class="fml">log p(A) = Σ_k log N(A^{k+1} ; μ_k, Σ_k)     <span class="c">单步高斯的乘积 → 可导</span></div>
+      <p>另一半贡献是把 K 步采样<strong>视作 RNN 展开</strong>——既然是展开就会有梯度爆炸/消失，于是用循环式 Transformer 结构重参数化速度网络来治。</p>
+
+      <h3 style="margin-top:18px">DSRL：不碰似然，换个动作空间</h3>
+      <p>最优雅的一招：既然 <code>噪声 → 动作</code> 是确定性映射，那<strong>选噪声就等于选动作</strong>。于是冻结整个策略，把噪声本身定义成新的动作空间：</p>
+      <div class="fml">原 MDP: (s) → a，   π 不可算似然
+新 MDP: (s) → <span class="h">z</span>，  a = Flow_frozen(z, s)      <span class="c">z 是高斯的 → 似然白给</span></div>
+      <p>在这个新 MDP 上跑标准 SAC 就行，~500K 参数。理论代价是<strong>动作空间被冻结策略的像集限制住</strong>——只能在 VLA 能生成的动作里挑，出不了它的分布。这既是安全网（泛化不损），也是天花板。</p>
+
+      <h3 style="margin-top:18px">πRL：把 ODE 转成 SDE</h3>
+      <p>第三种思路，见 <a href="piRL-论文解读.html">πRL 精读</a>：<strong>Flow-Noise</strong> 学一个噪声网络把采样过程变成可算似然的高斯链；<strong>Flow-SDE</strong> 做 ODE→SDE 转换（保持边缘分布不变）并配两层 MDP，然后照常上 PPO。和 SAC-Flow 殊途同归，都是「让路径随机化以换取可分解的密度」。</p>
+    </div>
+  </div>
+  <div class="camp">
+    <div class="camp-head"><span class="bar" style="background:var(--c-zero)"></span><h2>⑤ 离线：不能问 OOD 动作</h2><span class="cnt">主干 B</span></div>
+    <div class="camp-body">
+      <p class="desc">纯离线时，那个 <code>max Q(s',a')</code> 会去问「数据里从没出现过的动作」值多少 —— 而网络对这些动作的输出纯属幻觉，且幻觉一定是<strong>偏高</strong>的（否则不会被 max 选中）。这个误差还会沿 Bellman 迭代累积放大。三种回避方式：</p>
+
+      <h3 style="margin-top:18px">IQL：干脆不取 max</h3>
+      <p>核心招数是用<strong>期望回归</strong>估计 V。把 τ 设成 0.7 这类大于 0.5 的值，非对称地加权正负残差：</p>
+      <div class="fml">L_V = E[ ρ_τ( Q(s,a) − V(s) ) ]        ρ_τ(u) = |τ − 1(u&lt;0)|·u²
+      <span class="c">τ&gt;0.5 时更重罚"低估"，于是 V 逼近数据内动作的高分位，近似 max 的效果</span>
+L_Q = E[ (Q(s,a) − (r + γV(s')))² ]   <span class="c">目标只用 V，从不枚举 a'</span>
+L_π = −E[ exp((Q−V)/β) · log π(a|s) ] <span class="c">优势加权 BC：只重加权数据内动作</span></div>
+      <p>整套流程<strong>从头到尾没有任何一处对未见动作求值</strong>。这是它稳的全部原因。策略提升由「优势高的样本权重指数级更大」隐式完成。</p>
+
+      <h3 style="margin-top:18px">RECAP：把优势变成 CFG 的条件</h3>
+      <p>对扩散 / 流策略，优势加权 BC 不好做。RECAP 换一个机制：<strong>把「优势高低」当成一个可以被条件化的属性</strong>。</p>
+      <div class="fml">算折扣回报 G_t → 训价值模型 V → 优势 A_t = G_t − V(s_t)
+A_t 高 → 当作<span class="h">条件</span>输入训练      A_t 低 → 当作<span class="h">无条件</span>输入训练
+推理: v = v_uncond + w·(v_cond − v_uncond)   <span class="c">guidance 强度 w 推向高优势方向</span></div>
+      <p>这等于把 RL 的策略提升<strong>转译成生成模型自己的语言</strong>：不改损失形式，只改条件。好处是完全避开了 off-policy 的价值高估链条（因为只是监督学习），代价是提升幅度受数据覆盖范围限制。</p>
+
+      <h3 style="margin-top:18px">STEAM：优势信号从时序顺序里自监督出来</h3>
+      <p>RECAP 仍然需要奖励才能算回报。STEAM 追问：<strong>能不能连奖励都不要</strong>？它的答案是利用一个免费的监督信号——专家演示里，<strong>时间本身就是进度</strong>。</p>
+      <div class="fml">取帧对 (f_i, f_j)，监督目标 = 有符号步长 (j − i)
+  j &gt; i → 正向进步        j &lt; i → 倒退（逆序喂入即可制造负样本）
+偏移按轨迹长度归一 (∝ L_max/L_τ)  <span class="c">→ 衡量"时间效率"而非步数，越快得分越高</span>
+集成聚合: A = <span class="h">min</span>_m A_m               <span class="c">worst-of-N：保守估计，压 OOD 高估</span></div>
+      <p>两个理论亮点：<strong>①</strong> 只从成功演示就能学到「什么是倒退」，靠的是把帧对逆序输入 —— 不需要失败数据；<strong>②</strong> worst-of-N 取集成最小值，和 SAC 双 Q 取小是同一个思想（用刻意的负偏差对冲乐观偏差），只是搬到了离线优势估计上。</p>
+    </div>
+  </div>
+
+  <div class="camp">
+    <div class="camp-head"><span class="bar" style="background:var(--c-rlt)"></span><h2>④ 表示与蒸馏：换掉 A 的来源</h2><span class="cnt">Axis 1 / 4</span></div>
+    <div class="camp-body">
+      <h3>RLT：先解决状态表示，再谈 RL</h3>
+      <p>RL 在 VLA 上难训，一个根因是<strong>状态维度太高</strong>——几十亿参数的特征直接喂 critic，样本效率无从谈起。RLT 先用信息瓶颈把它压掉：</p>
+      <div class="fml">冻结 VLA → encoder-decoder（自回归重建损失）→ <span class="h">z_rl</span>（紧凑表示）
+actor(z_rl, 本体感觉, <span class="h">ã</span>) → a          ã = VLA 参考动作块
+损失 + λ‖a − ã‖²                        <span class="c">锚定：不许跑离 VLA 先验太远</span></div>
+      <p>三件事一起发生：状态降维（样本效率）、<strong>以参考动作为条件</strong>（探索的起点不是随机而是 VLA 的行为先验，这是 Axis 4）、正则锚定（防止灾难性遗忘）。动作块还顺手缩短了信用分配链。详见 <a href="RL-Token-论文解读.html">RL Token 精读</a>。</p>
+
+      <h3 style="margin-top:20px">OPD：优势不是学来的，是老师给的</h3>
+      <p>如果已经有一个更强的同架构模型，那根本不必从奖励里辛苦提取信号。直接把<strong>师生 logprob 之差当优势</strong>：</p>
+      <div class="fml">A_OPD = log π_teacher(a_student|s) − <span class="c">sg</span>[ log π_student(a_student|s) ]</div>
+      <p>注意两个设计的理论含义：<strong>① 在学生自己的 rollout 上评分</strong>（on-policy 蒸馏），所以纠正的是学生真实会犯的错，而非离线蒸馏里那些它根本不会到达的状态；<strong>② teacher 不生成动作，只打分</strong>，因此这是一个 dense、逐 token 的信号——比稀疏的成功/失败奖励富含的信息多几个数量级。停梯度符号保证梯度只流向学生。本质上这是<strong>反向 KL 的梯度</strong>，不是真正的 RL。</p>
+    </div>
+  </div>
+  <div class="box">
+    <h2>横切问题：动作块把信用分配搞坏了</h2>
+    <p>VLA 一次吐一整块动作（如 H=50），这在理论上制造了一个 <strong>semi-MDP</strong>：一次决策跨越多个时间步。于是「优势算在哪一级」不是实现细节，而是<strong>改变了 MDP 本身</strong>：</p>
+    <div class="fml">chunk-level:  整块当一个宏动作，共享 1 个优势   V: s → <span class="h">标量</span>
+action-level: 块内每步各有优势                V: s → <span class="h">K 维向量</span>
+token-level:  细到每个 token（仅 logprob）</div>
+    <p>chunk-level 的问题是<strong>块内信息被抹平</strong>：50 步里只有第 37 步错了，整块一起被罚或被奖，梯度信号极其模糊。action-level 保留了块内的时间结构，代价是 critic 要输出 K 维。RLinf 的实测站得很稳：<strong>action-level 一致更优</strong>，成功率更高且 value loss 更低（ManiSkill、LIBERO-Goal 都成立）。</p>
+    <p class="note">另一个同源问题：<strong>episode 提前成功后的时间步</strong>。它们已经不在任务的有效轨迹里，算进损失就是往梯度里掺噪声 —— 所以 GRPO 要开 valid action mask，PPO 要用 partial reset（因为目标是 success_once，固定长度会稀释信号）。RLT 把动作块从 50 缩到 10 也是同一动机：缩短信用分配链。</p>
+  </div>
+
+  <section style="margin-top:44px">
+    <h2>原理对照总表</h2>
+    <p class="note">同一行读下来就是这个算法的完整理论身份。</p>
+    <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>算法</th><th>优势 / 价值从哪来</th><th>需要 log π</th><th>分布偏移怎么处理</th><th>探索来源</th><th>主要理论代价</th></tr></thead>
+      <tbody>
+        <tr><td class="mname">PPO</td><td>GAE（学 critic）</td><td>是</td><td>裁剪限步长</td><td>策略自身随机性</td><td>要养 critic；数据用一次即弃</td></tr>
+        <tr><td class="mname">GRPO</td><td>组内相对回报</td><td>是</td><td>裁剪限步长</td><td>策略自身随机性</td><td>需可重复采样；只有轨迹级信号；同质组白采</td></tr>
+        <tr><td class="mname">DAPO</td><td>组内相对回报</td><td>是</td><td>非对称裁剪</td><td>Clip-Higher 保熵</td><td>同 GRPO；补丁多、超参多</td></tr>
+        <tr><td class="mname">Reinforce++</td><td>回报 − KL 累积</td><td>是</td><td>KL 减进奖励</td><td>策略自身随机性</td><td>无裁剪 → 方差更大</td></tr>
+        <tr><td class="mname">SAC</td><td>软 Bellman 学 Q</td><td>是</td><td>off-policy 直接复用</td><td><strong>熵项显式激励</strong></td><td>价值高估；靠双 Q + target 压</td></tr>
+        <tr><td class="mname">CrossQ</td><td>软 Bellman（无 target）</td><td>是</td><td>off-policy 直接复用</td><td>熵项显式激励</td><td>稳定性全押在 BRN 上</td></tr>
+        <tr><td class="mname">RLPD</td><td>软 Bellman + 集成</td><td>是</td><td><strong>50/50 对称采样锚定</strong></td><td>熵项 + 演示数据</td><td>需要演示数据；10 个 critic 的开销</td></tr>
+        <tr><td class="mname">SAC-Flow</td><td>软 Bellman 学 Q</td><td><strong>构造出来</strong></td><td>off-policy 直接复用</td><td>熵项 + 流的多样性</td><td>加噪改了采样过程；RNN 式梯度难训</td></tr>
+        <tr><td class="mname">DSRL</td><td>软 Bellman（噪声空间）</td><td><strong>绕开</strong></td><td>策略冻结，无偏移</td><td>噪声空间探索</td><td>动作受限于冻结策略的像集</td></tr>
+        <tr><td class="mname">πRL</td><td>GAE</td><td><strong>构造出来</strong></td><td>裁剪限步长</td><td>SDE 注入的随机性</td><td>要改采样器；仿真依赖重</td></tr>
+        <tr><td class="mname">RLT</td><td>轻量双 Q（低维表示上）</td><td>是</td><td><strong>‖a−ã‖² 锚定 VLA</strong></td><td><strong>VLA 行为先验</strong></td><td>表示是冻结的，瓶颈可能丢信息</td></tr>
+        <tr><td class="mname">OPD</td><td><strong>师生 logprob 之差</strong></td><td>是</td><td>on-policy 蒸馏，无偏移</td><td>学生自身 rollout</td><td>上限 = teacher；不是真 RL</td></tr>
+        <tr><td class="mname">IQL</td><td>期望回归 V + Bellman Q</td><td>是</td><td><strong>从不枚举 OOD 动作</strong></td><td>无（纯离线）</td><td>提升受数据覆盖限制；τ 敏感</td></tr>
+        <tr><td class="mname">RECAP</td><td>回报 − 学到的 V</td><td>否（CFG）</td><td>只做监督学习</td><td>无（纯离线）</td><td>需奖励标注；受数据覆盖限制</td></tr>
+        <tr><td class="mname">STEAM</td><td><strong>时序顺序自监督 + worst-of-N</strong></td><td>否（CFG）</td><td>集成保守估计</td><td>无（纯离线）</td><td>「时间即进度」假设需演示接近最优</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+
+  <div class="guide">
+    <h2>四条可迁移的直觉</h2>
+    <ul>
+      <li><strong>一切都是在跟乐观偏差搏斗。</strong>双 Q 取小、STEAM 的 worst-of-N、RLPD 的 LayerNorm、IQL 的不取 max —— 四个完全不同的场景，同一个敌人。看到新算法先问：它怎么防高估？</li>
+      <li><strong>省掉 critic 从不免费。</strong>GRPO 省了显存，付出的是「需可重复采样 + 只有轨迹级信号」。天下没有白拿的 baseline。</li>
+      <li><strong>算不出似然时，先想能不能换空间。</strong>DSRL 比 SAC-Flow / πRL 简单一个量级，仅仅因为它换了动作空间的定义而不是去硬算密度。遇到不可导 / 不可算，先找有没有等价的可算参数化。</li>
+      <li><strong>探索的起点比探索的策略更重要。</strong>RLT 和 RECAP 都不靠更聪明的探索，而是靠<strong>预训练先验提供一个已经不错的起点</strong>，再小步修正。这是具身 RL 和游戏 RL 最根本的分野 —— 真机上你没有一亿次试错的预算。</li>
+    </ul>
+  </div>
+
+  <footer>
+    <span>原理视角 · RLinf 内 15 种 RL 算法 · 看不懂第一行公式？读 <a href="为什么取log.html">为什么要取 log</a></span>
+    <a href="RLinf-RL方法对比.html">← 实用视角对比</a>
+  </footer>
+</div>
+<script src="nav.js"></script>
+</body>
+</html>

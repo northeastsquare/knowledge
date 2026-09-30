@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VLA 强化学习方法全景对比</title>
+<meta name="description" content="整模型 RL、噪声空间 RL、残差策略、RL token、从零小模型五类 VLA 强化学习方法的一页对比。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f1f4f6;
+    --surface:#fbfcfd;
+    --surface-2:#eaf0f4;
+    --ink:#16222e;
+    --ink-2:#51626f;
+    --ink-3:#83919c;
+    --accent:#0e6e8a;
+    --accent-strong:#0a4c60;
+    --signal:#c4572a;
+    --line:#d8e1e7;
+    --line-strong:#c3d0d9;
+    --grid-line:rgba(22,34,46,.05);
+    --shadow:0 1px 2px rgba(22,34,46,.04),0 14px 34px rgba(22,34,46,.07);
+    --c-full:#1e3a5f;      /* 整模型 */
+    --c-noise:#0e6e8a;     /* 噪声空间 */
+    --c-resid:#2f7d4f;     /* 残差 */
+    --c-rlt:#c4572a;       /* RL token */
+    --c-zero:#7a8791;      /* 从零 */
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+      --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+      --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+      --line:#1e2d3a; --line-strong:#2b3d4b;
+      --grid-line:rgba(231,238,244,.045);
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+      --c-full:#5f86b8; --c-noise:#3fb0d0; --c-resid:#5cb87a; --c-rlt:#e08a5a; --c-zero:#9db0bd;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+    --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+    --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+    --line:#1e2d3a; --line-strong:#2b3d4b;
+    --grid-line:rgba(231,238,244,.045);
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+    --c-full:#5f86b8; --c-noise:#3fb0d0; --c-resid:#5cb87a; --c-rlt:#e08a5a; --c-zero:#9db0bd;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--paper); color:var(--ink); font-family:"IBM Plex Sans",-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif; line-height:1.78; font-size:16px; -webkit-font-smoothing:antialiased;}
+  .grid{position:fixed; inset:0; z-index:-1; pointer-events:none; background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px); background-size:28px 28px;}
+  .wrap{max-width:960px; margin:0 auto; padding:0 24px 96px;}
+
+  .masthead{display:flex; align-items:center; justify-content:space-between; padding:22px 24px 0; max-width:960px; margin:0 auto;}
+  .back{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:13px; color:var(--accent); text-decoration:none; letter-spacing:.03em;}
+  .back:hover{text-decoration:underline;}
+  .masthead .ref{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12.5px; color:var(--ink-3); letter-spacing:.04em;}
+
+  .hero{padding:52px 0 36px; border-bottom:1px solid var(--line-strong);}
+  .eyebrow{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent); margin-bottom:16px;}
+  .hero h1{font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif; font-size:clamp(30px,5vw,46px); font-weight:700; line-height:1.16; margin:0 0 16px; color:var(--ink); text-wrap:balance;}
+  .hero .sub{font-size:17px; color:var(--ink-2); max-width:660px; margin:0 0 24px;}
+  .stats{display:flex; flex-wrap:wrap; gap:32px;}
+  .stat{display:flex; flex-direction:column; gap:2px;}
+  .stat .n{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:22px; font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums;}
+  .stat .l{font-size:12.5px; color:var(--ink-3);}
+
+  /* spectrum */
+  .spectrum{margin:44px 0 8px;}
+  .spec-head{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12px; color:var(--ink-3); letter-spacing:.05em; display:flex; justify-content:space-between; margin-bottom:10px;}
+  .spec-line{position:relative; height:12px; border-radius:6px; background:linear-gradient(90deg,var(--c-full),var(--c-noise) 30%,var(--c-resid) 60%,var(--c-rlt) 82%,var(--c-zero)); margin-bottom:16px;}
+  .spec-legend{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px;}
+  .leg{display:flex; align-items:center; gap:8px; font-size:13px; color:var(--ink-2);}
+  .dot{width:10px; height:10px; border-radius:50%; flex:none;}
+
+  h2{font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif; font-size:22px; font-weight:600; margin:0 0 14px; color:var(--ink); display:flex; align-items:center; gap:12px;}
+  h2::before{content:""; width:10px; height:10px; flex:none; background:var(--accent); border-radius:2px; transform:rotate(45deg);}
+  h3{font-size:16px; font-weight:700; margin:0 0 8px;}
+  p{margin:0 0 12px;}
+  strong{font-weight:700;}
+  a{color:var(--accent);}
+
+  .note{font-size:13.5px; color:var(--ink-3); margin:0 0 20px;}
+
+  /* comparison table */
+  .tbl-wrap{overflow-x:auto; border:1px solid var(--line); border-radius:14px; background:var(--surface); box-shadow:var(--shadow);}
+  table{width:100%; border-collapse:collapse; font-size:13.5px; min-width:860px;}
+  th,td{padding:11px 13px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12px; color:var(--ink-2); background:var(--surface-2); letter-spacing:.03em; font-weight:600; position:sticky; top:0;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:var(--surface-2);}
+  td.mname{white-space:nowrap; font-weight:700; color:var(--ink);}
+  td.mname .tag{display:inline-block; font-size:10.5px; font-weight:600; color:#fff; border-radius:4px; padding:1px 6px; margin-left:7px; vertical-align:1px; letter-spacing:.02em;}
+
+  /* camp sections */
+  .camp{margin-top:40px; border:1px solid var(--line); border-radius:14px; background:var(--surface); box-shadow:var(--shadow); overflow:hidden;}
+  .camp-head{display:flex; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid var(--line);}
+  .camp-head .bar{width:5px; align-self:stretch; border-radius:3px; margin:-16px 0 -16px -20px;}
+  .camp-head h2{margin:0; font-size:18px;}
+  .camp-head .cnt{margin-left:auto; font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12px; color:var(--ink-3);}
+  .camp-body{padding:6px 20px 14px;}
+  .camp-body .desc{font-size:14px; color:var(--ink-2); margin:10px 0 14px;}
+  .mcard{border-top:1px solid var(--line); padding:12px 0;}
+  .mcard:first-child{border-top:none;}
+  .mcard .mt{font-weight:700; font-size:15px; color:var(--ink);}
+  .mcard .mt a{font-weight:700;}
+  .mcard .md{font-size:13.5px; color:var(--ink-2); margin-top:3px;}
+
+  .guide{margin-top:40px; border:1px solid var(--line); border-radius:14px; background:var(--surface); padding:20px 22px; box-shadow:var(--shadow);}
+  .guide ul{margin:0; padding-left:20px;}
+  .guide li{margin-bottom:9px;}
+
+  footer{margin-top:56px; padding-top:20px; border-top:1px solid var(--line-strong); display:flex; justify-content:space-between; gap:12px; font-size:13px; color:var(--ink-3);}
+  footer a{color:var(--accent); text-decoration:none;}
+  footer a:hover{text-decoration:underline;}
+
+  @media(max-width:640px){
+    .spec-line{margin-bottom:12px;}
+    table{min-width:780px;}
+  }
+</style>
+</head>
+<body>
+<div class="grid" aria-hidden="true"></div>
+
+<header class="masthead">
+  <a class="back" href="index.html">← 返回知识库</a>
+  <span class="ref">METHODS · 12</span>
+</header>
+
+<div class="wrap">
+
+  <section class="hero">
+    <div class="eyebrow">专题对比 · VLA + RL</div>
+    <h1>VLA 强化学习方法全景对比</h1>
+    <p class="sub">给预训练 VLA 做强化学习精调，有整整一条谱系：从「整模型端到端 RL」到「冻结 VLA 只加一个轻量头」。这一页把 12 种方法按「改多少、在哪练、怎么锚定」摊开对比。</p>
+    <div class="stats">
+      <div class="stat"><span class="n">12</span><span class="l">种方法</span></div>
+      <div class="stat"><span class="n">5</span><span class="l">类路线</span></div>
+      <div class="stat"><span class="n">2</span><span class="l">条坐标轴（更新范围 · 训练环境）</span></div>
+    </div>
+  </section>
+
+  <section class="spectrum">
+    <div class="spec-head"><span>整模型 RL</span><span>← 更新范围 →</span><span>冻结 VLA + 轻量头</span></div>
+    <div class="spec-line" aria-hidden="true"></div>
+    <div class="spec-legend">
+      <div class="leg"><span class="dot" style="background:var(--c-full)"></span>整模型 RL（3）</div>
+      <div class="leg"><span class="dot" style="background:var(--c-noise)"></span>噪声 / 潜空间 RL（3）</div>
+      <div class="leg"><span class="dot" style="background:var(--c-resid)"></span>残差策略（4）</div>
+      <div class="leg"><span class="dot" style="background:var(--c-rlt)"></span>RL token（1）</div>
+      <div class="leg"><span class="dot" style="background:var(--c-zero)"></span>从零小模型（1）</div>
+    </div>
+    <p class="note">第二条坐标轴是<strong>训练环境</strong>：仿真的（πRL、DPPO、Policy Decorator、Object-Centric）能大批量、靠密集奖励；真机的（RLT、SERL、RECAP、DSRL、GR-RL）数据贵，靠稀疏奖励 + 人类干预。</p>
+  </section>
+
+  <section>
+    <h2>总对比表</h2>
+    <div class="tbl-wrap">
+      <table>
+        <thead>
+          <tr><th>方法</th><th>更新什么</th><th>RL 方式</th><th>动作表示</th><th>训练环境</th><th>核心机制 / 锚定</th></tr>
+        </thead>
+        <tbody>
+          <tr><td class="mname">RECAP（π0.6）<span class="tag" style="background:var(--c-full)">整模型</span></td><td>整个 π0.6 端到端</td><td>offline RL（优势条件）</td><td>VLA 原生动作块</td><td>真机收集 → 离线更新</td><td>分布价值函数估每步优势，optimality 指示器加权高优势动作</td></tr>
+          <tr><td class="mname">SimpleVLA-RL<span class="tag" style="background:var(--c-full)">整模型</span></td><td>整个 VLA</td><td>online（PPO 类）</td><td>VLA 原生</td><td>仿真（大规模）</td><td>规模化 VLA RL 训练</td></tr>
+          <tr><td class="mname">DPPO<span class="tag" style="background:var(--c-full)">整模型</span></td><td>扩散策略</td><td>online（PPO）</td><td>扩散去噪</td><td>仿真</td><td>对扩散策略做 PPO 优化</td></tr>
+          <tr><td class="mname">πRL<span class="tag" style="background:var(--c-noise)">噪声空间</span></td><td>动作专家（冻结 VLM）</td><td>online（PPO + GAE）</td><td>flow 去噪 / 噪声</td><td>仿真（320 envs）</td><td>Flow-Noise / Flow-SDE 让 log π 可解</td></tr>
+          <tr><td class="mname">DSRL<span class="tag" style="background:var(--c-noise)">噪声空间</span></td><td>潜噪声策略（冻结 VLA）</td><td>online（off-policy）</td><td>扩散噪声空间</td><td>真机</td><td>选噪声 steer 冻结生成器，隐式约束探索</td></tr>
+          <tr><td class="mname">GR-RL<span class="tag" style="background:var(--c-noise)">噪声空间</span></td><td>噪声预测器（冻结 VLA）</td><td>offline BC → online RL</td><td>扩散潜空间</td><td>真机</td><td>多阶段：过滤 BC 后，噪声预测器 steer 潜空间</td></tr>
+          <tr><td class="mname">Policy Decorator<span class="tag" style="background:var(--c-resid)">残差</span></td><td>残差策略（冻结 VLA）</td><td>online</td><td>单步残差</td><td>仿真（百万级步）</td><td>残差 × 手工超参 加到 VLA 预测</td></tr>
+          <tr><td class="mname">PLD<span class="tag" style="background:var(--c-resid)">残差</span></td><td>残差策略（冻结 VLA）</td><td>Cal-QL 预训 critic → 残差</td><td>单步残差</td><td>真机</td><td>Cal-QL 预训 critic，可选蒸馏回 VLA</td></tr>
+          <tr><td class="mname">ConRFT<span class="tag" style="background:var(--c-resid)">残差</span></td><td>action head（冻结 encoder）</td><td>一致性 + 奖励分类器</td><td>单步</td><td>短程任务</td><td>一致性目标 + 学习二值奖励分类器</td></tr>
+          <tr><td class="mname">Object-Centric RL<span class="tag" style="background:var(--c-resid)">残差</span></td><td>残差策略（冻结 VLA）</td><td>online（仿真）</td><td>残差（修正 VLA 动作）</td><td>纯仿真 → 真机零样本</td><td>物体位姿观测 + 噪声注入/dropout，42%→76%</td></tr>
+          <tr><td class="mname">RLT（RL Token）<span class="tag" style="background:var(--c-rlt)">RL token</span></td><td>轻量 actor-critic（冻结 VLA）</td><td>online（off-policy，TD3）</td><td>动作块（以 ã 为条件）</td><td>真机在线</td><td>RL token 表示 + KL 正则锚定 + reference dropout</td></tr>
+          <tr><td class="mname">SERL / RL100<span class="tag" style="background:var(--c-zero)">从零</span></td><td>从零小模型</td><td>online（off-policy）</td><td>小块动作</td><td>真机</td><td>无 VLA 先验，ResNet 编码器（对照基线）</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="camp">
+    <div class="camp-head"><span class="bar" style="background:var(--c-full)"></span><h2>① 整模型 RL</h2><span class="cnt">3 个</span></div>
+    <div class="camp-body">
+      <p class="desc">直接更新整个 VLA。上限最高、能真正改变行为模式，但计算和样本成本最贵，on-policy 方法尤其难上真机。RECAP 用<strong>离线 RL</strong>绕开在线探索，是这一类的实用代表。</p>
+      <div class="mcard"><div class="mt"><a href="pi0.6-论文解读.html">RECAP（π0.6）</a></div><div class="md">优势条件策略抽取：价值函数估每步优势，把「演示 + 自主 rollout + 人类干预」全喂给模型，吞吐 >2×。</div></div>
+      <div class="mcard"><div class="mt">SimpleVLA-RL</div><div class="md">PPO 类整模型 RL，面向规模化 VLA 训练。</div></div>
+      <div class="mcard"><div class="mt">DPPO</div><div class="md">Diffusion Policy 上的 PPO，把策略梯度用到扩散策略。</div></div>
+    </div>
+  </div>
+
+  <div class="camp">
+    <div class="camp-head"><span class="bar" style="background:var(--c-noise)"></span><h2>② 噪声 / 潜空间 RL</h2><span class="cnt">3 个</span></div>
+    <div class="camp-body">
+      <p class="desc">冻结 VLA，但<strong>在生成过程内部</strong>做 RL——要么微调动作专家（πRL），要么学一个「选噪声 / steer 去噪」的小策略（DSRL、GR-RL）。好处是保留 VLA 的生成能力，探索天然被约束在 VLA 能产出的动作内。</p>
+      <div class="mcard"><div class="mt"><a href="piRL-论文解读.html">πRL（Flow-Noise / Flow-SDE）</a></div><div class="md">把流去噪 MDP 化让 log π 可解；冻结 VLM 只微调 300M 动作专家；LIBERO 57.6→97.6。</div></div>
+      <div class="mcard"><div class="mt">DSRL</div><div class="md">在 flow VLA 的潜噪声空间学策略，选噪声喂给冻结生成器。</div></div>
+      <div class="mcard"><div class="mt">GR-RL</div><div class="md">多阶段长程任务（系鞋带）：先过滤 BC，再在线学噪声预测器 steer 潜空间。</div></div>
+    </div>
+  </div>
+
+  <div class="camp">
+    <div class="camp-head"><span class="bar" style="background:var(--c-resid)"></span><h2>③ 残差策略（冻结 VLA）</h2><span class="cnt">4 个</span></div>
+    <div class="camp-body">
+      <p class="desc">冻结 VLA，学一个<strong>对 VLA 动作做修正的残差</strong>。最简单、最省算力，但大多局限在<strong>单步动作</strong>（PLD、ConRFT、Policy Decorator），信用分配链更长；Object-Centric 用物体位姿缩小观测空间做到零样本 sim-to-real。</p>
+      <div class="mcard"><div class="mt"><a href="ObjectCentric-RL-论文解读.html">Object-Centric Residual RL</a></div><div class="md">物体位姿观测 + 仿真噪声注入，纯仿真训练零样本上真机，42%→76%。</div></div>
+      <div class="mcard"><div class="mt">PLD（Probe-Learn-Distill）</div><div class="md">Cal-QL 预训 critic，再学单步残差，可选蒸馏回 VLA。</div></div>
+      <div class="mcard"><div class="mt">ConRFT</div><div class="md">冻结 encoder 微调 action head，一致性目标 + 二值奖励分类器。</div></div>
+      <div class="mcard"><div class="mt">Policy Decorator</div><div class="md">残差 × 手工超参加到 VLA 预测；仅仿真、需百万级步。</div></div>
+    </div>
+  </div>
+
+  <div class="camp">
+    <div class="camp-head"><span class="bar" style="background:var(--c-rlt)"></span><h2>④ RL token（本文路线）</h2><span class="cnt">1 个</span></div>
+    <div class="camp-body">
+      <p class="desc">在「残差 / 轻量头」之上更进一步：不直接拿 VLA 高维特征，而是<strong>先抽一个紧凑表示（RL token）</strong>，再训轻量 actor-critic，并且用<strong>参考动作 + KL 正则</strong>锚定、用<strong>动作块</strong>缩短信用分配。是「冻结 VLA + 轻量 RL」里数据效率最极致的做法。</p>
+      <div class="mcard"><div class="mt"><a href="RL-Token-论文解读.html">RLT（RL Token）</a></div><div class="md">RL token（信息瓶颈表示）+ actor 以参考动作 ã 为条件 + KL 正则 + reference dropout；真机几分钟~几小时，关键阶段提速最高 3×。</div></div>
+    </div>
+  </div>
+
+  <div class="camp">
+    <div class="camp-head"><span class="bar" style="background:var(--c-zero)"></span><h2>⑤ 从零小模型（对照基线）</h2><span class="cnt">1 个</span></div>
+    <div class="camp-body">
+      <p class="desc">完全不用 VLA，从零训小 actor-critic + ResNet 编码器。样本效率尚可，但<strong>丢了 VLA 的泛化与行为先验</strong>，精度上限被小模型限制。作为对照，反衬出「用 VLA 先验」的价值。</p>
+      <div class="mcard"><div class="mt">SERL / HIL-SERL / RL100</div><div class="md">off-policy actor-critic + ResNet，真机小时级；无 VLA 先验。</div></div>
+    </div>
+  </div>
+
+  <div class="guide">
+    <h2>怎么选</h2>
+    <ul>
+      <li><strong>有仿真器 + 要大改</strong>：走 ①整模型 或 ②噪声空间（πRL），上限高、靠密集奖励批量练。</li>
+      <li><strong>只能上真机 + 要快 + 保泛化</strong>：走 ④RL token，几分钟到几小时精调高精度阶段。</li>
+      <li><strong>有物体位姿可观测 + 想零样本 sim-to-real</strong>：③里的 Object-Centric 残差 RL。</li>
+      <li><strong>只想最小改动、短程任务</strong>：③里的 PLD / ConRFT（但注意单步动作的信用分配短板）。</li>
+      <li><strong>连 VLA 都没有 / 只想做个对照</strong>：⑤ SERL 类。</li>
+    </ul>
+  </div>
+
+  <footer>
+    <span>专题对比 · VLA + RL 方法 · 另见 <a href="RLinf-RL方法对比.html">RLinf 框架内 15 种算法</a> / <a href="RLinf-RL原理对比.html">原理视角推导</a></span>
+    <a href="index.html">返回知识库 →</a>
+  </footer>
+</div>
+<script src="nav.js"></script>
+</body>
+</html>

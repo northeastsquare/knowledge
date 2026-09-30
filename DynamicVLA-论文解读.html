@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DynamicVLA：面向动态物体操作的 VLA · 精读</title>
+<meta name="description" content="面向移动/动态目标抓取的 VLA，解决动作时延导致的错位问题">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f1f4f6;
+    --surface:#fbfcfd;
+    --surface-2:#eaf0f4;
+    --ink:#16222e;
+    --ink-2:#51626f;
+    --ink-3:#83919c;
+    --accent:#0e6e8a;
+    --accent-strong:#0a4c60;
+    --signal:#c4572a;
+    --line:#d8e1e7;
+    --line-strong:#c3d0d9;
+    --grid-line:rgba(22,34,46,.05);
+    --shadow:0 1px 2px rgba(22,34,46,.04),0 14px 34px rgba(22,34,46,.07);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+      --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+      --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+      --line:#1e2d3a; --line-strong:#2b3d4b;
+      --grid-line:rgba(231,238,244,.045);
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+    --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+    --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+    --line:#1e2d3a; --line-strong:#2b3d4b;
+    --grid-line:rgba(231,238,244,.045);
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Sans",-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+    line-height:1.78; font-size:16px; -webkit-font-smoothing:antialiased;
+  }
+  .grid{
+    position:fixed; inset:0; z-index:-1; pointer-events:none;
+    background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);
+    background-size:28px 28px;
+  }
+  .wrap{max-width:860px; margin:0 auto; padding:0 24px 96px;}
+
+  .masthead{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px 24px 0; max-width:860px; margin:0 auto;
+  }
+  .back{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:13px; color:var(--accent); text-decoration:none; letter-spacing:.03em;
+  }
+  .back:hover{text-decoration:underline;}
+  .masthead .ref{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12.5px; color:var(--ink-3); letter-spacing:.04em;
+  }
+
+  .hero{padding:52px 0 34px; border-bottom:1px solid var(--line-strong);}
+  .eyebrow{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent);
+    margin-bottom:16px;
+  }
+  .hero h1{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:clamp(28px,4.6vw,42px); font-weight:700; line-height:1.2;
+    margin:0 0 16px; color:var(--ink); text-wrap:balance;
+  }
+  .hero .summary{
+    font-size:17px; color:var(--ink-2); max-width:640px; margin:0 0 22px;
+  }
+  .meta{
+    border:1px solid var(--line); border-radius:12px; background:var(--surface);
+    padding:14px 18px; font-size:13.5px; display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px 24px;
+    box-shadow:var(--shadow);
+  }
+  .meta .m{display:flex; flex-direction:column; gap:1px;}
+  .meta .m .k{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:11px;
+    color:var(--ink-3); letter-spacing:.08em; text-transform:uppercase;
+  }
+  .meta .m .v{color:var(--ink); font-weight:500;}
+
+  section{margin-top:40px;}
+  h2{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:21px; font-weight:600; margin:0 0 14px; color:var(--ink);
+    display:flex; align-items:center; gap:12px;
+  }
+  h2::before{
+    content:""; width:10px; height:10px; flex:none;
+    background:var(--accent); border-radius:2px; transform:rotate(45deg);
+  }
+  p{margin:0 0 12px;}
+  strong{font-weight:700;}
+  .hl{color:var(--accent); font-weight:600;}
+  a{color:var(--accent);}
+
+  ul,ol{margin:0 0 14px; padding-left:22px;}
+  li{margin-bottom:7px;}
+  li::marker{color:var(--accent);}
+
+  blockquote{
+    margin:16px 0; padding:14px 18px; border-left:3px solid var(--accent);
+    background:var(--surface-2); border-radius:0 10px 10px 0; color:var(--ink);
+  }
+  blockquote p{margin:0;}
+
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    padding:20px 22px; box-shadow:var(--shadow); margin:14px 0;
+  }
+  .card h3{font-size:16px; font-weight:700; margin:0 0 10px;}
+
+  table{width:100%; border-collapse:collapse; font-size:14px; margin:12px 0;}
+  th,td{padding:9px 12px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12.5px;
+    color:var(--accent-strong); background:var(--surface-2); letter-spacing:.03em; font-weight:600;
+  }
+  tr:last-child td{border-bottom:none;}
+  .tbl-wrap{overflow-x:auto;}
+
+  code{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:13.5px;
+    background:var(--surface-2); border:1px solid var(--line); border-radius:5px; padding:1px 6px;
+  }
+  pre{overflow-x:auto; background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:16px; font-size:13px; line-height:1.6;}
+  pre code{border:none; background:none; padding:0;}
+
+  .diagram{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px; margin:16px 0; box-shadow:var(--shadow); overflow-x:auto;}
+  .diagram svg{max-width:100%; height:auto; display:block;}
+
+  footer{
+    margin-top:56px; padding-top:20px; border-top:1px solid var(--line-strong);
+    display:flex; justify-content:space-between; gap:12px; font-size:13px; color:var(--ink-3);
+  }
+  footer a{color:var(--accent); text-decoration:none;}
+  footer a:hover{text-decoration:underline;}
+</style>
+</head>
+<body>
+<div class="grid" aria-hidden="true"></div>
+
+<header class="masthead">
+  <a class="back" href="index.html">← 返回知识库</a>
+  <span class="ref">2601.22153v1</span>
+</header>
+
+<div class="wrap">
+
+  <section class="hero">
+    <div class="eyebrow">精读笔记 · VLA</div>
+    <h1>DynamicVLA：面向动态物体操作的 VLA</h1>
+    <p class="summary">面向移动/动态目标抓取的 VLA，解决动作时延导致的错位问题——用一个 0.4B 紧凑模型 + 连续推理 + 潜在感知的动作流，把动态抓取的成功率从基线约 13% 拉到 47%，并配套造了一个全自动的动态操作基准 DOM。</p>
+    <div class="meta">
+      <div class="m"><span class="k">论文</span><span class="v">DynamicVLA: A Vision-Language-Action Model for Dynamic Object Manipulation</span></div>
+      <div class="m"><span class="k">机构</span><span class="v">南洋理工大学 S-Lab</span></div>
+      <div class="m"><span class="k">arXiv</span><span class="v">2601.22153v1</span></div>
+      <div class="m"><span class="k">主题</span><span class="v">VLA · 动态物体</span></div>
+    </div>
+  </section>
+
+  <!-- 1 -->
+  <section>
+    <h2>它解决的问题</h2>
+    <p>VLA 模型在<span class="hl">静态</span>操作上泛化已经很强，但一到<span class="hl">动态</span>物体（移动、翻滚、被抛出的目标）就掉链子：这类任务需要快速感知、时间预测和连续闭环控制，而传统 VLA 的推理时延会直接导致失败。</p>
+    <p>作者把问题归结为一个被静态操作掩盖、在动态操作里致命的因素——<strong>观察与动作执行之间的时序错位（temporal misalignment）</strong>，具体表现为两个缺口：</p>
+    <ul>
+      <li><strong>感知-执行缺口（Perception–Execution gap）</strong>：模型在时刻 <code>t</code> 基于观测 <code>Ot</code> 推理，但推理要花 <code>m</code> 步时延，动作在 <code>t+m</code> 才可用，此时物体已经从 <code>st</code> 运动到了 <code>st+m</code>——预测的动作已对不上当前环境。</li>
+      <li><strong>块间等待（inter-chunk waiting）</strong>：现有 VLA 要等上一个动作序列<em>完整执行完</em>才触发下一次推理，推理与执行被串行化，控制流被卡住。</li>
+    </ul>
+    <blockquote>
+      <p>论文在讨论部分点破的核心判断：动态操作的主导失败模式<span class="hl">不是"看不看得懂"（感知歧义），而是观察与动作执行之间的时序错位</span>——这是静态操作里几乎被忽略的因素。</p>
+    </blockquote>
+    <p>此外还有两个现实约束让这件事更难：</p>
+    <ul>
+      <li><strong>现有数据缺位</strong>：主流机器人数据集几乎全是静态场景，没有大规模动态操作数据；而动态操作下遥操作（teleoperation）基本失效——人类反应速度追不上快速移动的物体。</li>
+      <li><strong>已有动态工作要么太窄要么太松</strong>：DBC-TFP、GEM 只在传送带式可预测运动里做；RDT-2、RTVLA、VLASH 虽能对快速目标实时交互，但容忍大接触余量（如球拍接球），不需要动态操作所要求的精确 6DoF 控制。</li>
+    </ul>
+  </section>
+
+  <!-- 2 -->
+  <section>
+    <h2>方法主线</h2>
+    <p>DynamicVLA 的思路不是堆大模型，而是"<span class="hl">把时延当成首要敌人来打</span>"，主线四步：</p>
+    <ol>
+      <li><strong>造一个足够快的 0.4B VLA</strong>：用卷积视觉编码器 <code>FastViT</code>（高效空间压缩、结构保真、避免多帧输入下 token 二次增长）+ 截断到前 16 层的 <code>SmolLM2-360M</code> 语言骨干 + Flow Matching 动作专家，把推理压到 <span class="hl">~88Hz</span>（1.8GB 显存）。</li>
+      <li><strong>Continuous Inference（CI）</strong>：推理与执行重叠的流水线——上一次推理一完成就立刻触发下一次，不等动作序列执行完，消除块间等待。</li>
+      <li><strong>Latent-aware Action Streaming（LAAS）</strong>：一个显式的执行策略，丢弃过时动作、优先最新预测，恢复"感知-执行"的时间对齐。</li>
+      <li><strong>补上数据地基 DOM benchmark</strong>：用自动化管线（仿真 200K 集 + 真实世界 2K 集，无需遥操作）训练并评测，覆盖多本体（Franka、PiPER）。</li>
+    </ol>
+    <p>三件创新对应当前动态 VLA 的三个瓶颈：紧凑骨干→推理速度；CI→消除块间等待；LAAS→消除感知-执行错位。数据管线→解决动态数据缺失。</p>
+  </section>
+
+  <!-- 3 -->
+  <section>
+    <h2>输入、输出与数据流</h2>
+    <p>模型在时刻 <code>t</code> 接收三路输入，输出一个动作块；执行阶段靠 CI + LAAS 保证时序一致：</p>
+    <div class="card">
+      <table>
+        <tr><th>环节</th><th>内容</th></tr>
+        <tr><td><strong>输入 · 观测</strong></td><td>时间窗口 <code>Ot = {ot-2, ot}</code>（默认稀疏两帧，多视角 RGB 按通道拼接，用于隐式感知速度）</td></tr>
+        <tr><td><strong>输入 · 语言</strong></td><td>指令 <code>Lt</code>，按长度 token 化</td></tr>
+        <tr><td><strong>输入 · 本体</strong></td><td>32 维本体状态 <code>Pt</code>（末端笛卡尔位姿，未用项零填充），线性投影成单个 960 维 token</td></tr>
+        <tr><td><strong>编码</strong></td><td>FastViT 输出 <span class="hl">36 个 960 维视觉 token</span>；三路 token 拼接后交给 SmolLM2-360M 前 16 层，KV 表示缓存复用</td></tr>
+        <tr><td><strong>动作专家</strong></td><td>Flow Matching Transformer（隐维 720 = 0.75× 语言嵌入），去噪时查询缓存的 KV，不重编码感知输入</td></tr>
+        <tr><td><strong>输出</strong></td><td>动作块 <code>At</code>，horizon <code>n=20</code> 步，每步 32 维（末端位姿 + 夹爪状态）</td></tr>
+        <tr><td><strong>执行</strong></td><td>CI 在 <code>t, t+m, t+2m…</code> 连续触发；LAAS 丢弃早于 <code>t+m</code> 的过时动作、重叠处新块覆盖旧块</td></tr>
+      </table>
+    </div>
+
+    <div class="diagram">
+      <svg viewBox="0 0 900 420" xmlns="http://www.w3.org/2000/svg" font-family="'IBM Plex Sans','Microsoft YaHei',sans-serif">
+        <defs>
+          <marker id="a1" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+            <path d="M0,0 L8,3 L0,6 Z" fill="#0e6e8a"/>
+          </marker>
+          <marker id="a2" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
+            <path d="M0,0 L8,3 L0,6 Z" fill="#c4572a"/>
+          </marker>
+        </defs>
+
+        <!-- 输入 -->
+        <rect x="20" y="30" width="210" height="190" rx="14" fill="#eaf0f4" stroke="#0e6e8a" stroke-width="1.5"/>
+        <text x="125" y="58" text-anchor="middle" font-size="15" font-weight="700" fill="#0a4c60">输入（时间 t）</text>
+        <line x1="40" y1="72" x2="210" y2="72" stroke="#d8e1e7"/>
+        <text x="125" y="96" text-anchor="middle" font-size="12" fill="#16222e">观测窗口 Ot = {o(t-2), o(t)}</text>
+        <text x="125" y="118" text-anchor="middle" font-size="11" fill="#51626f">双帧 · 多视角 RGB 拼接</text>
+        <text x="125" y="148" text-anchor="middle" font-size="12" fill="#16222e">语言指令 Lt</text>
+        <text x="125" y="170" text-anchor="middle" font-size="11" fill="#51626f">token 化 · 长度可变</text>
+        <text x="125" y="198" text-anchor="middle" font-size="12" fill="#16222e">本体状态 Pt（32 维）</text>
+
+        <!-- 模型 -->
+        <rect x="280" y="30" width="340" height="190" rx="14" fill="#fbfcfd" stroke="#0e6e8a" stroke-width="1.5"/>
+        <text x="450" y="58" text-anchor="middle" font-size="15" font-weight="700" fill="#0a4c60">DynamicVLA（0.4B）</text>
+        <line x1="300" y1="72" x2="600" y2="72" stroke="#d8e1e7"/>
+        <text x="450" y="96" text-anchor="middle" font-size="12" fill="#16222e">FastViT 卷积编码 → 36 token × 960</text>
+        <text x="450" y="118" text-anchor="middle" font-size="11" fill="#51626f">状态线性投影为单个 960 维 token</text>
+        <text x="450" y="148" text-anchor="middle" font-size="12" fill="#16222e">SmolLM2-360M（前 16 层）</text>
+        <text x="450" y="170" text-anchor="middle" font-size="11" fill="#51626f">多模态融合 · 缓存 KV</text>
+        <text x="450" y="198" text-anchor="middle" font-size="12" fill="#c4572a" font-weight="600">动作专家：Flow Matching（隐维 720）</text>
+
+        <!-- 输出 -->
+        <rect x="670" y="30" width="210" height="190" rx="14" fill="#eaf0f4" stroke="#0e6e8a" stroke-width="1.5"/>
+        <text x="775" y="58" text-anchor="middle" font-size="15" font-weight="700" fill="#0a4c60">输出</text>
+        <line x1="690" y1="72" x2="860" y2="72" stroke="#d8e1e7"/>
+        <text x="775" y="96" text-anchor="middle" font-size="12" fill="#16222e">动作块 At（n=20 步）</text>
+        <text x="775" y="118" text-anchor="middle" font-size="11" fill="#51626f">每步 32 维</text>
+        <text x="775" y="148" text-anchor="middle" font-size="11" fill="#51626f">末端位姿 + 夹爪状态</text>
+        <text x="775" y="178" text-anchor="middle" font-size="11" fill="#51626f">（零填充对齐维度）</text>
+
+        <!-- 箭头 -->
+        <line x1="230" y1="125" x2="272" y2="125" stroke="#0e6e8a" stroke-width="2" marker-end="url(#a1)"/>
+        <line x1="620" y1="125" x2="662" y2="125" stroke="#0e6e8a" stroke-width="2" marker-end="url(#a1)"/>
+
+        <!-- 执行流水线 -->
+        <rect x="20" y="270" width="860" height="130" rx="14" fill="#fbfcfd" stroke="#c4572a" stroke-width="1.5"/>
+        <text x="450" y="296" text-anchor="middle" font-size="14" font-weight="700" fill="#c4572a">执行流水线：消除感知-执行错位</text>
+
+        <rect x="40" y="312" width="260" height="70" rx="10" fill="#eaf0f4" stroke="#d8e1e7"/>
+        <text x="170" y="336" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0a4c60">① Continuous Inference</text>
+        <text x="170" y="356" text-anchor="middle" font-size="11" fill="#51626f">推理与执行重叠</text>
+        <text x="170" y="372" text-anchor="middle" font-size="11" fill="#51626f">t / t+m / t+2m… 连续触发</text>
+
+        <rect x="320" y="312" width="260" height="70" rx="10" fill="#eaf0f4" stroke="#d8e1e7"/>
+        <text x="450" y="336" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0a4c60">② LAAS（动作流）</text>
+        <text x="450" y="356" text-anchor="middle" font-size="11" fill="#51626f">丢弃 &lt; t+m 的过时动作</text>
+        <text x="450" y="372" text-anchor="middle" font-size="11" fill="#51626f">重叠处：新块覆盖旧块</text>
+
+        <rect x="600" y="312" width="260" height="70" rx="10" fill="#eaf0f4" stroke="#d8e1e7"/>
+        <text x="730" y="336" text-anchor="middle" font-size="12.5" font-weight="700" fill="#0a4c60">③ 机器人闭环执行</text>
+        <text x="730" y="356" text-anchor="middle" font-size="11" fill="#51626f">时序对齐的动作流</text>
+        <text x="730" y="372" text-anchor="middle" font-size="11" fill="#51626f">及时适应物体运动</text>
+
+        <!-- 输出 → 执行 -->
+        <line x1="775" y1="220" x2="775" y2="262" stroke="#c4572a" stroke-width="2" marker-end="url(#a2)"/>
+      </svg>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section>
+    <h2>训练或运行方式</h2>
+    <p>训练分三阶段，全程约两周；数据则靠"状态机 + 仿真器"自动化采集。</p>
+    <div class="card">
+      <h3>三阶段训练（32×A100，batch 40/卡，AdamW，lr 1e-4，cosine + 1000 warmup）</h3>
+      <ul>
+        <li><strong>预训练（2 天）</strong>：只用视觉-语言对齐，在 COYO-700M 采样 150M 英文图文对上训练 FastViT + SmolLM2-360M。</li>
+        <li><strong>中训练（10 天）</strong>：在合成 DOM 数据集上训练完整 VLA，动作专家按 Flow Matching 目标（Eq.1）去噪。</li>
+        <li><strong>后训练（2 天）</strong>：用机器人本体相关的真实世界演示微调，适配新本体和传感配置。</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>数据管线（免遥操作）</h3>
+      <ul>
+        <li><strong>仿真</strong>：Isaac Sim 提供真值 6D 位姿/速度，驱动一个四阶段状态机控制器（接近物体→抓取提升→接近目标放置→复位），物体速度采样 0~0.75 m/s、摩擦 0.5~1.5，2.8K 场景 × 206 物体，产出 <span class="hl">200K 集</span>。</li>
+        <li><strong>真实世界</strong>：因为人类遥操作追不上快速物体、且无真值状态，作者搭了一个"真实世界仿真器"——双 RGB 视角（Azure Kinect DK）+ 腕部 RealSense，用 EfficientTAM 出掩码、几何三角化出 3D 质心、短时间窗口拟合出线/角速度，用同一状态机自主执行，约 <span class="hl">10 秒/集</span>，产出 <span class="hl">2K 集</span>，Franka 与 PiPER 通用。</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>推理</h3>
+      <p>模型 <span class="hl">1.8GB 显存、~88Hz</span>（NVIDIA RTX A6000）；动作块 <code>n=20</code>，CI 假设 <code>n &gt; m</code>（新块在旧块执行完之前就绪）。</p>
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section>
+    <h2>关键结果</h2>
+    <p>仿真基准（每个方法 1800 次试跑 = 10 场景 × 9 维度 × 20 次）上 DynamicVLA 全面碾压基线；真实机器人上同样领先。</p>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>方法</th><th>平均成功率 SR (%)</th><th>路径长度 (m)</th><th>完成时间 (s)</th></tr>
+        <tr><td>Diffusion Policy</td><td>0.38</td><td>1.34</td><td>10.89</td></tr>
+        <tr><td>OpenVLA-OFT</td><td>1.33</td><td>1.08</td><td>10.83</td></tr>
+        <tr><td>π0</td><td>8.11</td><td>1.19</td><td>10.55</td></tr>
+        <tr><td>π0.5</td><td>11.06</td><td>1.28</td><td>10.62</td></tr>
+        <tr><td>SmolVLA</td><td>12.67</td><td>1.30</td><td>10.65</td></tr>
+        <tr><td>GR00T-N1.5</td><td>13.05</td><td>1.29</td><td>10.56</td></tr>
+        <tr><td>VLA-Adapter-Pro</td><td>13.61</td><td>1.51</td><td>9.98</td></tr>
+        <tr><td>VLASH</td><td>12.33</td><td>1.27</td><td>10.60</td></tr>
+        <tr><td><strong>DynamicVLA</strong></td><td><strong class="hl">47.06</strong></td><td><strong>2.50</strong></td><td><strong>8.53</strong></td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3>分维度量化结论（DOM 基准，仿真）</h3>
+      <table>
+        <tr><th>类别</th><th>子维度</th><th>DynamicVLA SR</th><th>相对最强基线</th></tr>
+        <tr><td rowspan="3">交互 Interaction</td><td>闭环反应 CR</td><td>60.5%</td><td>+188.1%</td></tr>
+        <tr><td>动态适应 DA</td><td>38.5%</td><td>+87.8%</td></tr>
+        <tr><td>长时程排序 LS</td><td>40.5%</td><td>+440.0%</td></tr>
+        <tr><td rowspan="3">感知 Perception</td><td>视觉理解 VU</td><td>51.5%</td><td rowspan="3">真实世界 51.9% vs 最强基线 11.7%</td></tr>
+        <tr><td>空间推理 SR</td><td>48.0%</td></tr>
+        <tr><td>运动感知 MP</td><td>33.5%</td></tr>
+        <tr><td rowspan="3">泛化 Generalization</td><td>视觉泛化 VG</td><td>59.5%</td><td rowspan="3">外观/运动泛化更优；扰动鲁棒性仍是短板</td></tr>
+        <tr><td>运动泛化 MG</td><td>65.0%</td></tr>
+        <tr><td>扰动鲁棒性 DR</td><td>26.5%</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3>消融：每个组件都起作用（最终配置 47.06%）</h3>
+      <table>
+        <tr><th>变动</th><th>SR (%)</th><th>结论</th></tr>
+        <tr><td>去掉 CI</td><td>36.11</td><td>重新出现块间等待，反应变慢</td></tr>
+        <tr><td>去掉 LAAS</td><td>39.72</td><td>仅连续生成不够，时序仍错位</td></tr>
+        <tr><td>CI 和 LAAS 都去掉</td><td>30.27</td><td>降幅最大，两者互补</td></tr>
+        <tr><td>视觉编码换 transformer（去 FastViT）</td><td>28.89</td><td>卷积编码更快、结构更保真</td></tr>
+        <tr><td>骨干 135M</td><td>26.67</td><td>容量不足</td></tr>
+        <tr><td>骨干 1.7B</td><td>24.33</td><td class="hl">越大越慢反而更差</td></tr>
+      </table>
+      <p>额外结论：LLM 深度 16 层最优（8 层 44.17、16 层 47.06、24 层 48.44、全量 32 层 42.11——越深时延越高收益还下降）；稀疏时间上下文 <code>{ot-2, ot}</code> 优于单帧（38.22）和 <code>{ot-1, ot}</code>（43.39），再多帧收益递减。</p>
+    </div>
+    <blockquote>
+      <p><strong>一句话总结结果</strong>：动态操作的胜负手不是模型大小，而是时延管理。0.4B 的 DynamicVLA 用"快推理 + 重叠执行 + 丢弃过时动作"三招，把动态抓取成功率从最强基线的 13.61% 提到 47.06%，同时完成时间还更短（8.53s vs 基线约 10.5s+）。</p>
+    </blockquote>
+  </section>
+
+  <!-- 6 -->
+  <section>
+    <h2>我真正学到的内容</h2>
+    <ul>
+      <li><strong>动态操作的第一性问题是时延，不是感知</strong>。静态操作里"慢一点没关系"，一旦物体在动，推理的每一毫秒都在制造"感知-执行错位"。这改变了调优方向：优先压推理频率、对齐时间轴，而不是一味加模型容量。</li>
+      <li><strong>错位可以用极简单的执行策略消除</strong>。LAAS 就是"丢弃过时动作 + 新块覆盖旧块"，不需要重训、不需要改模型，却能补上感知-执行 gap——而且它是即插即用的（论文直接装到 SmolVLA、π0.5 上验证过）。</li>
+      <li><strong>在实时约束下，小模型能赢大模型</strong>。1.7B 骨干反而只有 24.33%，因为推理时延直接损害闭环响应。这对"越大越好"是重要反例：预算要给到"够快"而非"够大"。</li>
+      <li><strong>数据能自动化，遥操作不是唯一答案</strong>。面对"人类反应追不上物体"的困境，作者用状态机 + 真实世界"仿真器"（无真值感知，靠 RGB-D + 分割 + 三角化 + 速度拟合）自主采集，10 秒一集。这是可迁移的采集范式。</li>
+      <li><strong>卷积视觉编码器在动态多帧下更合适</strong>。FastViT 靠空间压缩避免 token 二次增长、保持结构保真，比 transformer 视觉快且效果更好。</li>
+    </ul>
+  </section>
+
+  <!-- 7 -->
+  <section>
+    <h2>可复用设计</h2>
+    <ul>
+      <li><strong>CI + LAAS 执行机制（最值得抄）</strong>：与模型解耦，不改骨干、不重训即可装到现有 VLA 上；论文验证了对时延适中的模型（SmolVLA）有稳定增益，对时延过高的模型（π0.5）收益有限——可作为通用"时延对齐插件"。</li>
+      <li><strong>四阶段状态机控制器</strong>：接近物体（预测 ~0.23s 近未来运动、悬停上方 10cm）→抓取提升→接近目标放置→复位。可直接作为动态抓取的策略骨架或数据生成器。</li>
+      <li><strong>真实世界"仿真器"管线</strong>：双视角 RGB-D + EfficientTAM 掩码 + 几何三角化 3D 质心 + 短窗口速度拟合，用商品级传感器近似真值状态，免除遥操作和真值标注。</li>
+      <li><strong>动作专家缓存 KV 查询</strong>：去噪时查询语言骨干缓存的 KV 表示而非重编码感知输入，省算力、提吞吐。</li>
+      <li><strong>稀疏时间上下文设计</strong>：<code>{ot-2, ot}</code> 两帧间隔足够估计速度，再多帧收益递减——动态任务里"给足时间间隔"比"给多帧"更重要。</li>
+    </ul>
+  </section>
+
+  <!-- 8 -->
+  <section>
+    <h2>疑问与风险</h2>
+    <ul>
+      <li><strong>扰动鲁棒性仍是短板</strong>：DR 只有 26.5%，作者也承认环境扰动下 DynamicVLA 依然吃力，且真实世界未测扰动（难以可靠复现）。</li>
+      <li><strong>只覆盖短/中时程反应式交互</strong>：长时程多阶段任务（规划、记忆、任务分解）未涉及；物体持续运动的多阶段操作是空白。</li>
+      <li><strong>刚体假设</strong>：数据管线假设刚体状态估计，流体/非刚体/软体动力学不在范围内。</li>
+      <li><strong>成本与依赖</strong>：训练约两周、32×A100；真实世界采集依赖 6D 状态估计精度，"仿真器"接口的鲁棒性存疑。</li>
+      <li><strong>小模型的天花板</strong>：0.4B 在复杂语言理解上的能力边界未充分讨论；图 6 中 DynamicVLA 泛化绝对成功率仍不算高（约 48%），说明"快但不够聪明"的取舍仍在。</li>
+      <li><strong>待核实细节</strong>：论文正文引用的 SmolLM2 编号（[3]/[29]）不一致、部分图数值在文字中未逐一对应，引用时需回到原文核对。</li>
+    </ul>
+  </section>
+
+  <!-- 9 -->
+  <section>
+    <h2>后续动作</h2>
+    <ul>
+      <li><strong>读代码/项目页</strong>：<a href="https://haozhexie.com/project/dynamic-vla">https://haozhexie.com/project/dynamic-vla</a>，重点看 CI 与 LAAS 在推理循环里的具体调度实现。</li>
+      <li><strong>复现最小实验</strong>：把 CI + LAAS 装到自己项目里的 VLA 上，在时延敏感场景测成功率变化（不改骨干、不重训即可验证）。</li>
+      <li><strong>补概念</strong>：Flow Matching / rectified flow 去噪目标；FastViT 的结构重参数化；EfficientTAM 分割跟踪；SmolVLA 的骨干截断技巧。</li>
+      <li><strong>理解量化约束</strong>：感知-执行 gap 的时延步数 <code>m</code> 如何测量；动作块尺寸需满足 <code>n &gt; m</code> 的设计前提。</li>
+      <li><strong>做实验</strong>：在本项目的移动/动态抓取场景上验证"丢弃过时动作 + 最新预测覆盖"是否同样带来时序对齐收益；评估是否要复刻其真实世界"仿真器"采集管线。</li>
+    </ul>
+  </section>
+
+  <footer>
+    <span>精读笔记 · DynamicVLA：面向动态物体操作的 VLA</span>
+    <a href="index.html">返回知识库 →</a>
+  </footer>
+</div>
+<script src="nav.js"></script>
+</body>
+</html>

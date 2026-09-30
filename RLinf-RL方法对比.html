@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RLinf 里的 RL 方法详细对比</title>
+<meta name="description" content="RLinf 框架内 15 种 RL 算法与 5 种 SFT/IL 配方的详细对比：on-policy 策略梯度、off-policy 最大熵、流与噪声空间、离线优势条件、表示与蒸馏五大家族。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f1f4f6;
+    --surface:#fbfcfd;
+    --surface-2:#eaf0f4;
+    --ink:#16222e;
+    --ink-2:#51626f;
+    --ink-3:#83919c;
+    --accent:#0e6e8a;
+    --accent-strong:#0a4c60;
+    --signal:#c4572a;
+    --line:#d8e1e7;
+    --line-strong:#c3d0d9;
+    --grid-line:rgba(22,34,46,.05);
+    --shadow:0 1px 2px rgba(22,34,46,.04),0 14px 34px rgba(22,34,46,.07);
+    --c-full:#1e3a5f;      /* 整模型 */
+    --c-noise:#0e6e8a;     /* 噪声空间 */
+    --c-resid:#2f7d4f;     /* 残差 */
+    --c-rlt:#c4572a;       /* RL token */
+    --c-zero:#7a8791;      /* 从零 */
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+      --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+      --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+      --line:#1e2d3a; --line-strong:#2b3d4b;
+      --grid-line:rgba(231,238,244,.045);
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+      --c-full:#5f86b8; --c-noise:#3fb0d0; --c-resid:#5cb87a; --c-rlt:#e08a5a; --c-zero:#9db0bd;
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+    --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+    --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+    --line:#1e2d3a; --line-strong:#2b3d4b;
+    --grid-line:rgba(231,238,244,.045);
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+    --c-full:#5f86b8; --c-noise:#3fb0d0; --c-resid:#5cb87a; --c-rlt:#e08a5a; --c-zero:#9db0bd;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:var(--paper); color:var(--ink); font-family:"IBM Plex Sans",-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif; line-height:1.78; font-size:16px; -webkit-font-smoothing:antialiased;}
+  .grid{position:fixed; inset:0; z-index:-1; pointer-events:none; background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px); background-size:28px 28px;}
+  .wrap{max-width:960px; margin:0 auto; padding:0 24px 96px;}
+
+  .masthead{display:flex; align-items:center; justify-content:space-between; padding:22px 24px 0; max-width:960px; margin:0 auto;}
+  .back{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:13px; color:var(--accent); text-decoration:none; letter-spacing:.03em;}
+  .back:hover{text-decoration:underline;}
+  .masthead .ref{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12.5px; color:var(--ink-3); letter-spacing:.04em;}
+
+  .hero{padding:52px 0 36px; border-bottom:1px solid var(--line-strong);}
+  .eyebrow{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent); margin-bottom:16px;}
+  .hero h1{font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif; font-size:clamp(30px,5vw,46px); font-weight:700; line-height:1.16; margin:0 0 16px; color:var(--ink); text-wrap:balance;}
+  .hero .sub{font-size:17px; color:var(--ink-2); max-width:660px; margin:0 0 24px;}
+  .stats{display:flex; flex-wrap:wrap; gap:32px;}
+  .stat{display:flex; flex-direction:column; gap:2px;}
+  .stat .n{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:22px; font-weight:600; color:var(--ink); font-variant-numeric:tabular-nums;}
+  .stat .l{font-size:12.5px; color:var(--ink-3);}
+
+  /* spectrum */
+  .spectrum{margin:44px 0 8px;}
+  .spec-head{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12px; color:var(--ink-3); letter-spacing:.05em; display:flex; justify-content:space-between; margin-bottom:10px;}
+  .spec-line{position:relative; height:12px; border-radius:6px; background:linear-gradient(90deg,var(--c-full),var(--c-noise) 30%,var(--c-resid) 60%,var(--c-rlt) 82%,var(--c-zero)); margin-bottom:16px;}
+  .spec-legend{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px;}
+  .leg{display:flex; align-items:center; gap:8px; font-size:13px; color:var(--ink-2);}
+  .dot{width:10px; height:10px; border-radius:50%; flex:none;}
+
+  h2{font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif; font-size:22px; font-weight:600; margin:0 0 14px; color:var(--ink); display:flex; align-items:center; gap:12px;}
+  h2::before{content:""; width:10px; height:10px; flex:none; background:var(--accent); border-radius:2px; transform:rotate(45deg);}
+  h3{font-size:16px; font-weight:700; margin:0 0 8px;}
+  p{margin:0 0 12px;}
+  strong{font-weight:700;}
+  a{color:var(--accent);}
+
+  .note{font-size:13.5px; color:var(--ink-3); margin:0 0 20px;}
+
+  /* comparison table */
+  .tbl-wrap{overflow-x:auto; border:1px solid var(--line); border-radius:14px; background:var(--surface); box-shadow:var(--shadow);}
+  table{width:100%; border-collapse:collapse; font-size:13.5px; min-width:860px;}
+  th,td{padding:11px 13px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12px; color:var(--ink-2); background:var(--surface-2); letter-spacing:.03em; font-weight:600; position:sticky; top:0;}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:var(--surface-2);}
+  td.mname{white-space:nowrap; font-weight:700; color:var(--ink);}
+  td.mname .tag{display:inline-block; font-size:10.5px; font-weight:600; color:#fff; border-radius:4px; padding:1px 6px; margin-left:7px; vertical-align:1px; letter-spacing:.02em;}
+
+  /* camp sections */
+  .camp{margin-top:40px; border:1px solid var(--line); border-radius:14px; background:var(--surface); box-shadow:var(--shadow); overflow:hidden;}
+  .camp-head{display:flex; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid var(--line);}
+  .camp-head .bar{width:5px; align-self:stretch; border-radius:3px; margin:-16px 0 -16px -20px;}
+  .camp-head h2{margin:0; font-size:18px;}
+  .camp-head .cnt{margin-left:auto; font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12px; color:var(--ink-3);}
+  .camp-body{padding:6px 20px 14px;}
+  .camp-body .desc{font-size:14px; color:var(--ink-2); margin:10px 0 14px;}
+  .mcard{border-top:1px solid var(--line); padding:12px 0;}
+  .mcard:first-child{border-top:none;}
+  .mcard .mt{font-weight:700; font-size:15px; color:var(--ink);}
+  .mcard .mt a{font-weight:700;}
+  .mcard .md{font-size:13.5px; color:var(--ink-2); margin-top:3px;}
+
+  .guide{margin-top:40px; border:1px solid var(--line); border-radius:14px; background:var(--surface); padding:20px 22px; box-shadow:var(--shadow);}
+  .guide ul{margin:0; padding-left:20px;}
+  .guide li{margin-bottom:9px;}
+
+  footer{margin-top:56px; padding-top:20px; border-top:1px solid var(--line-strong); display:flex; justify-content:space-between; gap:12px; font-size:13px; color:var(--ink-3);}
+  footer a{color:var(--accent); text-decoration:none;}
+  footer a:hover{text-decoration:underline;}
+
+  @media(max-width:640px){
+    .spec-line{margin-bottom:12px;}
+    table{min-width:780px;}
+  }
+
+  /* 本页特有：家族色语义复用 c-full/c-resid/c-noise/c-rlt/c-zero */
+  .spec-line{background:linear-gradient(90deg,var(--c-full),var(--c-resid) 28%,var(--c-noise) 52%,var(--c-rlt) 74%,var(--c-zero));}
+  .fam{display:inline-block; font-size:10.5px; font-weight:600; color:#fff; border-radius:4px; padding:1px 6px; letter-spacing:.02em; white-space:nowrap;}
+  .kv{display:grid; grid-template-columns:132px 1fr; gap:4px 14px; font-size:13.5px; margin:10px 0 0;}
+  .kv dt{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12px; color:var(--ink-3); padding-top:2px;}
+  .kv dd{margin:0; color:var(--ink-2);}
+  .box{margin-top:40px; border:1px solid var(--line); border-radius:14px; background:var(--surface); padding:20px 22px; box-shadow:var(--shadow);}
+  .box h2{font-size:20px;}
+  .tips{list-style:none; margin:0; padding:0;}
+  .tips li{padding:10px 0; border-top:1px solid var(--line); font-size:14px; color:var(--ink-2);}
+  .tips li:first-child{border-top:none;}
+  .tips b{color:var(--ink);}
+  code{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12.5px; background:var(--surface-2); padding:1px 5px; border-radius:4px; color:var(--accent-strong);}
+</style>
+</head>
+<body>
+<div class="grid" aria-hidden="true"></div>
+<header class="masthead">
+  <a class="back" href="index.html">← 返回知识库</a>
+  <span class="ref">RLINF · ALGOS 15+5</span>
+</header>
+
+<div class="wrap">
+
+  <section class="hero">
+    <div class="eyebrow">框架专题 · RLinf</div>
+    <h1>RLinf 里的 RL 方法详细对比</h1>
+    <p class="sub">RLinf（"inf" = Infrastructure / Infinite）不是一种算法，而是把<strong>十几种 RL 算法塞进同一套接口</strong>的具身 RL 基础设施。这一页按「数据从哪来、要不要 critic、改模型哪部分」把内置的 15 种 RL 算法 + 5 种 SFT/模仿配方摊开对比。</p>
+    <div class="stats">
+      <div class="stat"><span class="n">15</span><span class="l">RL 算法</span></div>
+      <div class="stat"><span class="n">5</span><span class="l">SFT / 模仿配方</span></div>
+      <div class="stat"><span class="n">5</span><span class="l">算法家族</span></div>
+      <div class="stat"><span class="n">15+</span><span class="l">仿真器</span></div>
+    </div>
+  </section>
+
+  <section class="spectrum">
+    <div class="spec-head"><span>严格 on-policy</span><span>← 数据来源 →</span><span>纯离线（不交互）</span></div>
+    <div class="spec-line" aria-hidden="true"></div>
+    <div class="spec-legend">
+      <span class="leg"><span class="dot" style="background:var(--c-full)"></span>① on-policy 策略梯度</span>
+      <span class="leg"><span class="dot" style="background:var(--c-resid)"></span>② off-policy 最大熵</span>
+      <span class="leg"><span class="dot" style="background:var(--c-noise)"></span>③ 流 / 噪声空间</span>
+      <span class="leg"><span class="dot" style="background:var(--c-rlt)"></span>④ 表示 / 蒸馏</span>
+      <span class="leg"><span class="dot" style="background:var(--c-zero)"></span>⑤ 离线优势条件</span>
+    </div>
+  </section>
+
+  <section style="margin-top:44px">
+    <h2>一张总表</h2>
+    <p class="note">「Critic」列指是否需要独立训练的价值 / Q 网络；「交互」列指训练是否需要环境 rollout。</p>
+    <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th>算法</th><th>家族</th><th>Critic</th><th>交互</th><th>核心机制</th><th>在 RLinf 里的典型用法</th>
+      </tr></thead>
+      <tbody>
+        <tr><td class="mname">PPO</td><td><span class="fam" style="background:var(--c-full)">①</span></td><td>价值头</td><td>on-policy</td><td>裁剪代理目标 + GAE，信任域约束更新幅度</td><td>ManiSkill 上最稳的主力；VLA 上与语言主干<strong>共享参数 + 轻量 value head</strong></td></tr>
+        <tr><td class="mname">Async PPO</td><td><span class="fam" style="background:var(--c-full)">①</span></td><td>价值头</td><td>on-policy*</td><td>数学同 PPO，但把环境 / 推理 / 训练解耦成常驻并发流水线，去掉同步栅栏</td><td>仅具身任务；需 <code>decoupled_actor_critic</code> + <code>add_value_head</code>。仿真慢或视觉编码器重时用</td></tr>
+        <tr><td class="mname">GRPO</td><td><span class="fam" style="background:var(--c-full)">①</span></td><td>不需要</td><td>on-policy</td><td>同一初始状态采 G 条轨迹，用<strong>组内相对回报</strong>当优势，省掉 critic</td><td>LIBERO 130 任务多任务训练主力；配 valid action mask + 成功率过滤</td></tr>
+        <tr><td class="mname">DAPO</td><td><span class="fam" style="background:var(--c-full)">①</span></td><td>不需要</td><td>on-policy</td><td>GRPO + 四件套：Clip-Higher、动态采样、token 级损失、超长惩罚</td><td>长 CoT 推理任务；其动态采样思想被搬进具身 GRPO 当<strong>成功率过滤</strong></td></tr>
+        <tr><td class="mname">Reinforce++</td><td><span class="fam" style="background:var(--c-full)">①</span></td><td>不需要</td><td>on-policy</td><td>经典 REINFORCE + 逐 token KL 惩罚（并入奖励而非额外损失）+ 全局优势归一化，不加裁剪项</td><td>轻量后训练；<code>group_size=1</code> 单样本，&gt;1 时组均值当 baseline</td></tr>
+        <tr><td class="mname">SAC</td><td><span class="fam" style="background:var(--c-resid)">②</span></td><td>双 Q + target</td><td>off-policy</td><td>最大熵目标 + 软 Bellman + 自动温度 α</td><td>连续控制、真机；是下面几种的共同底座</td></tr>
+        <tr><td class="mname">CrossQ</td><td><span class="fam" style="background:var(--c-resid)">②</span></td><td>双 Q，<strong>无 target</strong></td><td>off-policy</td><td>去掉 target 网络 + Batch Renorm 稳定 + 加宽 critic（如 2048）</td><td>想要 REDQ / DroQ 级样本效率但只花 <strong>UTD=1</strong> 算力时</td></tr>
+        <tr><td class="mname">RLPD</td><td><span class="fam" style="background:var(--c-resid)">②</span></td><td>Q 集成（~10）</td><td>off-policy + 离线</td><td>对称采样（在线 / 离线 50:50）+ critic LayerNorm + 集成随机子集</td><td>有演示数据的<strong>真机</strong>在线 RL；高 UTD 或异步更新下防价值高估</td></tr>
+        <tr><td class="mname">SAC-Flow</td><td><span class="fam" style="background:var(--c-noise)">③</span></td><td>双 Q</td><td>off-policy</td><td>把流策略 K 步采样当 RNN 重参数化；每步加噪 + 漂移修正，把路径密度拆成单步高斯乘积得到可导 log π</td><td>ManiSkill PickCube / 真机 Franka 插孔；可叠 RLPD 用演示 buffer 加速</td></tr>
+        <tr><td class="mname">DSRL</td><td><span class="fam" style="background:var(--c-noise)">③</span></td><td>10 Q 头集成</td><td>off-policy</td><td><strong>冻结</strong>扩散策略，只训 ~500K 参数的 SAC agent 在<strong>潜噪声空间</strong>产出「初始噪声」，替代随机采样</td><td>π₀ + LIBERO-Spatial；可训参数最少、最大程度保住泛化</td></tr>
+        <tr><td class="mname">RLT</td><td><span class="fam" style="background:var(--c-rlt)">④</span></td><td>轻量双 Q</td><td>在线</td><td>冻结 VLA 抽<strong>紧凑 RL token</strong>（信息瓶颈）→ 轻量 actor-critic 以参考动作块为条件 + 正则锚定</td><td>真机在线精调高精度阶段；见 <a href="RL-Token-论文解读.html">RL Token 精读</a></td></tr>
+        <tr><td class="mname">OPD</td><td><span class="fam" style="background:var(--c-rlt)">④</span></td><td>不需要</td><td>on-policy</td><td>在线策略蒸馏：学生自己 rollout，teacher 只<strong>事后打分</strong>同一批 action token，<code>A = log π_teacher − sg(log π_student)</code></td><td>OpenVLA-OFT 学生 ← 同架构 teacher，LIBERO-Spatial；teacher 打完分即卸载省显存</td></tr>
+        <tr><td class="mname">IQL</td><td><span class="fam" style="background:var(--c-zero)">⑤</span></td><td>Q + V</td><td><strong>纯离线</strong></td><td>期望回归（expectile τ≈0.7）学 V，Bellman 回归学 Q，优势加权 BC 更新策略，不对 OOD 动作外推</td><td>D4RL 离线基准；数据固定、不能交互时的稳妥选择</td></tr>
+        <tr><td class="mname">RECAP (CFG)</td><td><span class="fam" style="background:var(--c-zero)">⑤</span></td><td>价值模型</td><td><strong>纯离线</strong></td><td>四段式：算折扣回报 → SFT 价值模型 → 逐帧优势 → <strong>CFG 训练</strong>（高优势当条件、低优势当无条件）</td><td>π₀.₅ + LeRobot 数据；真机上无法大规模在线采样时的主路线</td></tr>
+        <tr><td class="mname">STEAM</td><td><span class="fam" style="background:var(--c-zero)">⑤</span></td><td>集成进度 critic</td><td><strong>纯离线</strong></td><td>从<strong>帧对时序顺序</strong>自监督学「进度」（无需奖励 / 人工标签），深度集成取 <strong>worst-of-N</strong>（A = min A_m）压 OOD 高估，再交给同一套 CFG</td><td>RECAP 的升级版价值信号；SigLIP + Gemma3 critic + π₀.₅</td></tr>
+      </tbody>
+    </table>
+    </div>
+  </section>
+  <div class="camp">
+    <div class="camp-head"><span class="bar" style="background:var(--c-full)"></span><h2>① on-policy 策略梯度</h2><span class="cnt">5 个</span></div>
+    <div class="camp-body">
+      <p class="desc">主力家族。共同点：<strong>只用刚采的数据更新一次</strong>，靠裁剪或 KL 约束住步长。分水岭在<strong>优势怎么来</strong>——PPO 系要训 critic（GAE），GRPO 系用组内相对回报代替 critic，省一半显存但要求同一状态能重复采样。</p>
+      <div class="mcard"><div class="mt">PPO / Async PPO</div><div class="md">在 ManiSkill 上比 GRPO 更稳、更好。代价是要养 critic；RLinf 的处理是让 critic 和 VLA 的语言主干<strong>共享参数</strong>，只挂一个轻量 value head。Async PPO 数学不变，纯粹解决系统吞吐。</div></div>
+      <div class="mcard"><div class="mt">GRPO / DAPO / Reinforce++</div><div class="md">无 critic 路线。GRPO 是 LIBERO 多任务主力；DAPO 的四件套主要面向长 CoT，其<strong>动态采样</strong>是具身场景唯一被大量继承的部分；Reinforce++ 最轻，把 KL 直接减进奖励。</div></div>
+    </div>
+  </div>
+
+  <div class="camp">
+    <div class="camp-head"><span class="bar" style="background:var(--c-resid)"></span><h2>② off-policy 最大熵</h2><span class="cnt">3 个</span></div>
+    <div class="camp-body">
+      <p class="desc">SAC 一脉。样本效率远高于 ①（能反复复用 replay buffer），代价是<strong>价值高估</strong>要靠一堆工程手段压住。RLinf 的三个变体正好是三种压法：CrossQ 改架构、RLPD 改数据配比 + 集成、SAC 本身靠 target 网络。</p>
+      <div class="mcard"><div class="mt">SAC</div><div class="md">软 Bellman + 自动调温度 α，双 Q + target 网络。</div></div>
+      <div class="mcard"><div class="mt">CrossQ</div><div class="md">反其道行之：<strong>删掉 target 网络</strong>（消除价值传播的人为延迟），用 Batch Renorm 补稳定性，critic 加宽到 2048。结果是 UTD=1 就能打到 REDQ/DroQ 的样本效率，算力便宜得多。</div></div>
+      <div class="mcard"><div class="mt">RLPD</div><div class="md">真机上最实用的一个：批次<strong>一半在线一半演示数据</strong>，critic 加 LayerNorm 防外推爆炸，10 个 Q 的集成里随机取子集。不需要离线预训练阶段。</div></div>
+    </div>
+  </div>
+
+  <div class="camp">
+    <div class="camp-head"><span class="bar" style="background:var(--c-noise)"></span><h2>③ 流 / 噪声空间</h2><span class="cnt">2 个（+πRL）</span></div>
+    <div class="camp-body">
+      <p class="desc">专门解决一个麻痹问题：<strong>流匹配 / 扩散策略的 log π 算不出来</strong>，而策略梯度和最大熵 RL 都要它。两条解法——要么想办法把似然变可算（SAC-Flow、<a href="piRL-论文解读.html">πRL</a>），要么<strong>换个地方做 RL</strong>，绕开似然（DSRL）。</p>
+      <div class="mcard"><div class="mt">SAC-Flow</div><div class="md">把 K 步 ODE 采样视作 RNN 展开，用循环式 Transformer 重参数化速度网络解决稳定性；每步加高斯噪声 + 漂移修正，保持终点分布不变，于是路径密度可拆成单步高斯乘积 → 得到可导 log π。可叠 RLPD 上真机。</div></div>
+      <div class="mcard"><div class="mt">DSRL</div><div class="md">最"懒"也最省的解法：<strong>完全不碰似然</strong>。冻结 π₀，把「选初始噪声」当成新的动作空间，训一个 ~500K 的 SAC agent 在这个空间里出手。可训参数比整模型少三个数量级，泛化几乎不损。</div></div>
+      <div class="mcard"><div class="mt"><a href="piRL-论文解读.html">πRL</a>（RLinf 自家 π₀/π₀.₅ 报告）</div><div class="md">同一问题的第三种解法：Flow-Noise 学一个噪声网络把采样变成可算似然的高斯链；Flow-SDE 把 ODE 转成保持边缘分布的 SDE + 两层 MDP，然后照常上 PPO。</div></div>
+    </div>
+  </div>
+
+  <div class="camp">
+    <div class="camp-head"><span class="bar" style="background:var(--c-rlt)"></span><h2>④ 表示 / 蒸馏</h2><span class="cnt">2 个</span></div>
+    <div class="camp-body">
+      <p class="desc">都不改 VLA 本体，但目的不同：RLT 是<strong>换个更好的状态表示</strong>再做 RL；OPD 根本不做 RL，而是<strong>用 teacher 的 logprob 当优势</strong>做在线蒸馏。</p>
+      <div class="mcard"><div class="mt"><a href="RL-Token-论文解读.html">RLT（RL Token）</a></div><div class="md">冻结 VLA 上加编码-解码器，用自回归重建损失压出一个紧凑 RL token（信息瓶颈）；轻量 actor-critic 以 RL token + 本体感觉 + VLA 参考动作块为条件，靠正则锚定不跑偏。</div></div>
+      <div class="mcard"><div class="mt">OPD（On-Policy Distillation）</div><div class="md">学生 rollout，teacher <strong>不生成动作</strong>，只在事后给学生自己的 action token 打 dense token 级 logprob，优势 = teacher logprob − 学生 logprob（后者停梯度）。打完即卸载，省显存省延迟。</div></div>
+    </div>
+  </div>
+
+  <div class="camp">
+    <div class="camp-head"><span class="bar" style="background:var(--c-zero)"></span><h2>⑤ 离线优势条件</h2><span class="cnt">3 个</span></div>
+    <div class="camp-body">
+      <p class="desc">真机场景的现实主义路线：<strong>完全不做新 rollout</strong>，只把已有数据重新打分再训。IQL 走经典优势加权 BC；RECAP / STEAM 走一条更有意思的路——把优势变成<strong>CFG 的条件信号</strong>，高优势样本当条件输入、低优势当无条件输入，推理时用 guidance 把策略往高优势方向推。</p>
+      <div class="mcard"><div class="mt">IQL</div><div class="md">期望回归学 V（不对 OOD 动作取 max，这是它稳的关键）+ Bellman 学 Q + 优势加权 BC。D4RL 上的经典基线。</div></div>
+      <div class="mcard"><div class="mt">RECAP (CFG)</div><div class="md">四段流水线：折扣回报 → 价值模型 SFT → 逐帧优势 → CFG 训练。对应 π₀.₆ 的训练配方，见 <a href="pi0.6-论文解读.html">π₀.₆ 精读</a>。</div></div>
+      <div class="mcard"><div class="mt">STEAM</div><div class="md">把 RECAP 的价值信号换掉：不回归折扣回报，而是<strong>从专家演示的时序顺序自监督</strong>学「进度」——帧对正序监督前进、逆序暴露倒退，偏移按轨迹长度归一化（越高效得分越高）。再用 <strong>worst-of-N 集成</strong>取最小值当优势，专门压制对 OOD rollout 的高估。完全不需要奖励和人工标签。</div></div>
+    </div>
+  </div>
+  <div class="box">
+    <h2>VLA 专属：动作块带来的粒度问题</h2>
+    <p>VLA 一次输出一个<strong>动作块</strong>，这让「优势 / logprob 算在哪一级」成了真问题。RLinf 把它做成配置项，支持三级粒度：</p>
+    <dl class="kv">
+      <dt>chunk-level</dt><dd>整块当一个宏动作，共享一个奖励和优势；critic 只出一个标量。</dd>
+      <dt>action-level</dt><dd>块内每个原子动作各自算奖励与优势；critic 出一个 K 维向量。</dd>
+      <dt>token-level</dt><dd>仅 logprob 支持，细到每个 token。</dd>
+    </dl>
+    <p class="note" style="margin-top:14px">论文的结论很干脆：<strong>action-level 一致优于 chunk-level</strong>，成功率更高、value loss 更低，在 ManiSkill PutOnPlateInScene25Main 和 LIBERO-Goal 上都成立。</p>
+    <h3 style="margin-top:20px">PPO 的两条实操经验</h3>
+    <ul class="tips">
+      <li><b>用 action-level 价值估计</b>，不要 chunk-level。</li>
+      <li><b>用 Partial Reset</b>，不要固定 episode 长度。因为优化目标是「至少成功一次」（success_once），部分重置的成功率明显更高，OpenVLA 和 OpenVLA-OFT 上都一致。</li>
+    </ul>
+    <h3 style="margin-top:20px">GRPO 的两条实操经验</h3>
+    <ul class="tips">
+      <li><b>开 Valid Action Mask</b>：任务提前完成后的时间步要 mask 掉，不要算进损失。</li>
+      <li><b>开成功率过滤</b>（借 DAPO 的动态采样思想）：一组轨迹全成或全败时优势恒为 0，直接丢掉这组。OpenVLA + ManiSkill 上不加过滤会在 step 400 附近<strong>崩溃</strong>，加了就稳；但在 OpenVLA-OFT 上收益不明显——<strong>不是万灵药</strong>。</li>
+    </ul>
+  </div>
+
+  <div class="box">
+    <h2>系统层：为什么同一个算法能快 2 倍</h2>
+    <p>RLinf 的底层范式叫 <strong>M2Flow</strong>（macro-to-micro flow transformation）：你用粗粒度的直觉方式写工作流，系统自己把它翻译成细粒度的执行计划，靠<strong>弹性流水线</strong>（空间调度）和<strong>自动上下文切换</strong>（时间调度）去搜一个巨大的调度空间。</p>
+    <p>对具身 RL，三种 GPU 分配模式差别很大，而且<strong>最优模式取决于仿真器是 CPU 密集还是 GPU 密集</strong>：</p>
+    <dl class="kv">
+      <dt>collocated</dt><dd>全部组件共享全部 GPU。LIBERO（CPU 并行、rollout 是瓶颈）上最优，比基线快 <strong>1.25×–2.13×</strong>。</dd>
+      <dt>disaggregated</dt><dd>各组件分占不同 GPU。</dd>
+      <dt>hybrid</dt><dd>RLinf 新提的混合模式 + 细粒度流水。ManiSkill（GPU 并行）上 8 卡快 <strong>1.88×</strong>，16/32 卡仍有 1.61×–1.69×。</dd>
+    </dl>
+    <p class="note" style="margin-top:14px">推理 RL 侧：GRPO 训 Qwen2.5 的 1.5B / 7B / 32B，比 veRL 快 <strong>1.10×–1.58×</strong>；长上下文（28,672）下 disaggregated 比 collocated 快 1.17×–1.21×。后端可选 FSDP+HF/SGLang/vLLM（快速原型）或 Megatron+SGLang/vLLM（大规模）。</p>
+    <p class="note">效果侧：单一模型在 <strong>130 个 LIBERO 任务上 98.11%</strong>，另一个单模型在 <strong>25 个 ManiSkill 任务上 97.66%</strong>，RoboTwin 6 个任务专用模型平均 84.63%。整体比基座模型提升约 20%–85%。</p>
+  </div>
+
+  <div class="guide">
+    <h2>怎么选</h2>
+    <ul>
+      <li><strong>有仿真器、要大改、要稳</strong>：PPO（action-level + partial reset）。ManiSkill 类 GPU 并行环境配 hybrid 模式。</li>
+      <li><strong>多任务、不想养 critic</strong>：GRPO + valid action mask + 成功率过滤。LIBERO 类 CPU 环境配 collocated。</li>
+      <li><strong>真机 + 有演示数据</strong>：RLPD（对称采样是关键），或 SAC-Flow + RLPD。</li>
+      <li><strong>真机 + 不能大规模采样</strong>：RECAP 或 STEAM，纯离线走 CFG。没有奖励标注就选 STEAM。</li>
+      <li><strong>要最大程度保住 VLA 泛化</strong>：DSRL（~500K 参数）或 RLT（紧凑表示 + 轻量头）。</li>
+      <li><strong>有更强的同架构模型可当老师</strong>：OPD，比 RL 简单得多。</li>
+      <li><strong>数据固定、就是离线基准</strong>：IQL。</li>
+      <li><strong>吞吐是瓶颈而非算法</strong>：先换 Async PPO / 调 GPU 分配模式，别改算法。</li>
+    </ul>
+  </div>
+
+  <footer>
+    <span>框架专题 · RLinf · arXiv:2509.15965 / 2510.06710</span>
+    <a href="RLinf-RL原理对比.html">原理视角对比 →</a>
+  </footer>
+</div>
+<script src="nav.js"></script>
+</body>
+</html>

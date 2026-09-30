@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>物体中心残差 RL：零样本 Sim-to-Real 增强 VLA · 精读</title>
+<meta name="description" content="用物体位姿做观测的残差 RL，纯仿真训练、零样本迁移到真机，成功率 42%→76%">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f1f4f6;
+    --surface:#fbfcfd;
+    --surface-2:#eaf0f4;
+    --ink:#16222e;
+    --ink-2:#51626f;
+    --ink-3:#83919c;
+    --accent:#0e6e8a;
+    --accent-strong:#0a4c60;
+    --signal:#c4572a;
+    --line:#d8e1e7;
+    --line-strong:#c3d0d9;
+    --grid-line:rgba(22,34,46,.05);
+    --shadow:0 1px 2px rgba(22,34,46,.04),0 14px 34px rgba(22,34,46,.07);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+      --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+      --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+      --line:#1e2d3a; --line-strong:#2b3d4b;
+      --grid-line:rgba(231,238,244,.045);
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+    --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+    --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+    --line:#1e2d3a; --line-strong:#2b3d4b;
+    --grid-line:rgba(231,238,244,.045);
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Sans",-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+    line-height:1.78; font-size:16px; -webkit-font-smoothing:antialiased;
+  }
+  .grid{
+    position:fixed; inset:0; z-index:-1; pointer-events:none;
+    background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);
+    background-size:28px 28px;
+  }
+  .wrap{max-width:860px; margin:0 auto; padding:0 24px 96px;}
+
+  .masthead{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px 24px 0; max-width:860px; margin:0 auto;
+  }
+  .back{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:13px; color:var(--accent); text-decoration:none; letter-spacing:.03em;
+  }
+  .back:hover{text-decoration:underline;}
+  .masthead .ref{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12.5px; color:var(--ink-3); letter-spacing:.04em;
+  }
+
+  .hero{padding:52px 0 34px; border-bottom:1px solid var(--line-strong);}
+  .eyebrow{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent);
+    margin-bottom:16px;
+  }
+  .hero h1{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:clamp(28px,4.6vw,42px); font-weight:700; line-height:1.2;
+    margin:0 0 16px; color:var(--ink); text-wrap:balance;
+  }
+  .hero .summary{
+    font-size:17px; color:var(--ink-2); max-width:640px; margin:0 0 22px;
+  }
+  .meta{
+    border:1px solid var(--line); border-radius:12px; background:var(--surface);
+    padding:14px 18px; font-size:13.5px; display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px 24px;
+    box-shadow:var(--shadow);
+  }
+  .meta .m{display:flex; flex-direction:column; gap:1px;}
+  .meta .m .k{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:11px;
+    color:var(--ink-3); letter-spacing:.08em; text-transform:uppercase;
+  }
+  .meta .m .v{color:var(--ink); font-weight:500;}
+
+  section{margin-top:40px;}
+  h2{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:21px; font-weight:600; margin:0 0 14px; color:var(--ink);
+    display:flex; align-items:center; gap:12px;
+  }
+  h2::before{
+    content:""; width:10px; height:10px; flex:none;
+    background:var(--accent); border-radius:2px; transform:rotate(45deg);
+  }
+  p{margin:0 0 12px;}
+  strong{font-weight:700;}
+  .hl{color:var(--accent); font-weight:600;}
+  a{color:var(--accent);}
+
+  ul,ol{margin:0 0 14px; padding-left:22px;}
+  li{margin-bottom:7px;}
+  li::marker{color:var(--accent);}
+
+  blockquote{
+    margin:16px 0; padding:14px 18px; border-left:3px solid var(--accent);
+    background:var(--surface-2); border-radius:0 10px 10px 0; color:var(--ink);
+  }
+  blockquote p{margin:0;}
+
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    padding:20px 22px; box-shadow:var(--shadow); margin:14px 0;
+  }
+  .card h3{font-size:16px; font-weight:700; margin:0 0 10px;}
+
+  table{width:100%; border-collapse:collapse; font-size:14px; margin:12px 0;}
+  th,td{padding:9px 12px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12.5px;
+    color:var(--accent-strong); background:var(--surface-2); letter-spacing:.03em; font-weight:600;
+  }
+  tr:last-child td{border-bottom:none;}
+  .tbl-wrap{overflow-x:auto;}
+
+  code{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:13.5px;
+    background:var(--surface-2); border:1px solid var(--line); border-radius:5px; padding:1px 6px;
+  }
+  pre{overflow-x:auto; background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:16px; font-size:13px; line-height:1.6;}
+  pre code{border:none; background:none; padding:0;}
+
+  .diagram{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px; margin:16px 0; box-shadow:var(--shadow); overflow-x:auto;}
+  .diagram svg{max-width:100%; height:auto; display:block;}
+
+  footer{
+    margin-top:56px; padding-top:20px; border-top:1px solid var(--line-strong);
+    display:flex; justify-content:space-between; gap:12px; font-size:13px; color:var(--ink-3);
+  }
+  footer a{color:var(--accent); text-decoration:none;}
+  footer a:hover{text-decoration:underline;}
+</style>
+</head>
+<body>
+<div class="grid" aria-hidden="true"></div>
+
+<header class="masthead">
+  <a class="back" href="index.html">← 返回知识库</a>
+  <span class="ref">2606.18953v1</span>
+</header>
+
+<div class="wrap">
+
+  <section class="hero">
+    <div class="eyebrow">精读笔记 · 强化学习</div>
+    <h1>物体中心残差 RL：零样本 Sim-to-Real 增强 VLA</h1>
+    <p class="summary">用物体位姿做观测的残差 RL，纯仿真训练、零样本迁移到真机，成功率 42%→76%</p>
+    <div class="meta">
+      <div class="m"><span class="k">论文</span><span class="v">Object-Centric Residual RL for Zero-Shot Sim-to-Real VLA Enhancement</span></div>
+      <div class="m"><span class="k">机构</span><span class="v">KAIST · 微软亚洲研究院</span></div>
+      <div class="m"><span class="k">arXiv</span><span class="v">2606.18953v1</span></div>
+      <div class="m"><span class="k">主题</span><span class="v">强化学习 · Sim-to-Real</span></div>
+    </div>
+  </section>
+
+  <!-- 以下每节：替换占位内容为真实内容，可加 ul/ol/table/blockquote/mermaid 图；保留 h2 标题与整体结构不变 -->
+  <section>
+    <h2>它解决的问题</h2>
+    <p>VLA（视觉-语言-动作）模型靠海量遥操作演示做模仿学习，泛化能力强，但在需要<strong>精确物理交互</strong>的任务上很脆弱：模仿学习的小误差会随时间<strong>累积</strong>，一碰到没见过的状态就失败。强化学习（RL）本可以通过在线交互来恢复，但直接给现代 VLA 上 RL 很难——很多 VLA 用扩散（diffusion）或流匹配（flow matching）生成动作，其<strong>迭代去噪过程无法直接用标准策略梯度求导</strong>。</p>
+    <p>残差 RL（在冻结的 VLA 之上学一个轻量修正策略）是一条自然的路，但现有做法都卡在同一个 Sim-to-Real 困境上：</p>
+    <div class="tbl-wrap"><table>
+      <tr><th>路线</th><th>代表</th><th>失败原因</th></tr>
+      <tr><td><strong>特权状态蒸馏</strong></td><td>ResiP</td><td>仿真里用接触力等特权状态，部署时必须蒸馏成图像策略，蒸馏过程损失性能</td></tr>
+      <tr><td><strong>图像残差 RL</strong></td><td>RialTo / ResFiT / PLD</td><td>直接吃图像，但视觉域差距（光照、纹理、背景）太大，仿真训练的策略无法零样本迁移</td></tr>
+      <tr><td><strong>真机 RL</strong></td><td>ResFiT / PLD</td><td>直接在真机上训练，昂贵且不安全（需要安全探索、重置、奖励检测）</td></tr>
+    </table></div>
+    <blockquote>
+      <p><strong>核心洞见</strong>：之前仿真残差策略迁移失败，是因为它的观测空间本身就是<strong>域相关</strong>的。与其费力去弥合两个域，不如把观测换成「在仿真和真机上都能一致获得」的量——6-DoF 物体位姿 + 本体感受 + 基础 VLA 动作。</p>
+    </blockquote>
+    <p>本文要回答的问题：<span class="hl">一个只在仿真里训练的 RL 策略，能不能零样本提升真机 VLA 的鲁棒性？</span>答案是能——在真机 Franka Research 3 上五个任务平均成功率从 42% 提到 76%，全程没有任何真机 RL 或微调。</p>
+  </section>
+
+  <section>
+    <h2>方法主线</h2>
+    <p>整体是一条「真机演示 → 仿真孪生 → 仿真残差 RL → 零样本部署 → 反哺 VLA」的三阶段流水线，核心是<strong>让残差策略只观测跨域一致的物体位姿</strong>。</p>
+    <ol>
+      <li><strong>Stage 1 · 遥操作回放，构建成对的仿真/真机 VLA</strong>：常规流程是在真机上采集遥操作演示、用 (RGB, 动作) 微调真机 VLA <code>V_real</code>；作者额外把<strong>同一批遥操作动作在 MuJoCo 里回放</strong>，渲染出平行仿真数据集，训练一个仿真 VLA <code>V_sim</code>。两个 VLA 被完全相同的动作监督，虽然视觉域不同，但<strong>动作分布是对齐的</strong>——这为「仿真里训练、真机上部署」埋下伏笔。</li>
+      <li><strong>Stage 2 · 物体中心残差 RL</strong>：残差策略 <code>π_res</code> 的观测定义为 <code>s_t = [s_obj, s_prop, a_base]</code>——任务相关物体的 6-DoF 位姿、本体感受（末端位姿 + 夹爪）、当前 VLA 基础动作。用 <strong>TD3</strong> 训练一个 2 层 MLP 残差网络，并用<strong>位姿噪声注入 + 位姿 dropout</strong> 增强鲁棒性。</li>
+      <li><strong>Stage 3 · 零样本真机部署</strong>：部署时 <code>V_real</code> 和 <code>π_res</code> 都<strong>冻结</strong>，无任何训练或适配。每个时间步用 FoundationPose + SAM2 估计物体位姿和跟踪置信度 <code>c_t</code>；当 <code>c_t</code> 低于阈值 0.5 时把位姿输入<strong>置零</strong>，触发训练时学到的 dropout 回退策略。</li>
+      <li><strong>（附加）VLA 自我改进</strong>：把残差修正后成功跑通的真机轨迹，与原始演示合并，用来对基础 VLA 做监督微调（SFT），<strong>不需要额外的遥操作</strong>就能让 VLA 自我提升。</li>
+    </ol>
+    <p>组合动作的公式是整个方法的核心：<code>a_t = a_base ⊕ π_res(s_t)</code>，其中 <code>⊕</code> 表示逐分量组合——<strong>位置和夹爪做加法、旋转做四元数乘法</strong>。</p>
+  </section>
+
+  <section>
+    <h2>输入、输出与数据流</h2>
+    <p>整个系统里有两条并行的信息流：<strong>基础 VLA</strong>（看图、低频出动作块）和<strong>残差策略</strong>（看位姿、高频做修正），最后在动作层面合成。</p>
+    <div class="tbl-wrap"><table>
+      <tr><th>组件</th><th>输入</th><th>输出</th><th>频率 / 说明</th></tr>
+      <tr><td><strong>基础 VLA</strong><br><code>V_sim</code> / <code>V_real</code></td><td>RGB 图像 <code>o</code> + 本体感受 <code>s_prop</code> + 语言指令 <code>l</code></td><td>长度 H=16 的动作块 <code>A</code>，读 <code>a_base = A[t mod H]</code></td><td>每 H 步查询一次（低频）</td></tr>
+      <tr><td><strong>位姿估计</strong></td><td>RGB 图像</td><td>6-DoF 物体位姿 <code>s_obj</code> + 置信度 <code>c_t</code></td><td>FoundationPose + SAM2，跟踪模式 18ms/帧，异步运行</td></tr>
+      <tr><td><strong>残差策略</strong><br><code>π_res</code></td><td><code>s_t = [s_obj, s_prop, a_base]</code></td><td>残差动作 <code>δ_t</code>（位置/旋转/夹爪修正）</td><td>每个时间步（高频），前向 0.06ms</td></tr>
+      <tr><td><strong>组合动作</strong></td><td><code>a_base</code> + <code>δ_t</code></td><td><code>a_t = a_base ⊕ δ_t</code></td><td>位置/夹爪相加，旋转四元数相乘</td></tr>
+    </table></div>
+    <div class="card">
+      <h3>部署时的数据流（按时间步）</h3>
+      <ol>
+        <li>相机抓一帧 RGB；<code>t mod H == 0</code> 时查询冻结 VLA，拿到新动作块 <code>A</code>。</li>
+        <li>读出当前基础动作 <code>a_base = A[t mod H]</code>。</li>
+        <li>FoundationPose(SAM2(图像)) 输出位姿 <code>x̃_obj</code> 与置信度 <code>c_t</code>；若 <code>c_t &lt; 0.5</code> 则 <code>x̃_obj ← 0</code>（置信度门控 dropout）。</li>
+        <li>拼观测 <code>s_t = [x̃_obj, s_prop, a_base]</code>，残差网络输出 <code>δ_t</code>。</li>
+        <li>合成 <code>a_t = a_base ⊕ δ_t</code>，发给机器人执行。</li>
+      </ol>
+    </div>
+    <blockquote>
+      <p><strong>为什么敢零样本迁移</strong>：三个观测分量里，本体感受是域不变的（误差 ≈ 0），基础动作因双 VLA 同数据训练而对齐（误差 ≈ 0），<strong>唯一有不可忽略噪声的是物体位姿</strong>——这正是训练时用噪声注入 + dropout 专门鲁棒化的部分。</p>
+    </blockquote>
+  </section>
+
+  <section>
+    <h2>训练或运行方式</h2>
+    <div class="tbl-wrap"><table>
+      <tr><th>环节</th><th>设置</th></tr>
+      <tr><td>基础 VLA</td><td>GR00T-N1.5（开源），每个任务用 30 条遥操作演示微调（仿真/真机各一份）；另用 π0.5 验证跨架构泛化</td></tr>
+      <tr><td>残差网络</td><td>2 层 MLP：actor 隐层 512 维、critic 隐层 1024 维；Adam 优化</td></tr>
+      <tr><td>RL 算法</td><td>TD3，带截断高斯探索噪声（clip 界 c=0.5）；离线采样比例、折扣因子 γ、L2 正则按任务微调</td></tr>
+      <tr><td>奖励</td><td>稠密、分阶段（如 Lift：Reach→Grasp→Lift），裁剪到 [0,1]</td></tr>
+      <tr><td>位姿鲁棒性</td><td>位置噪声 <code>p_max=5mm</code>、朝向噪声 <code>q_max=0.1rad</code>（每步重采样），位姿 dropout 概率 <code>δ_drop=0.1</code></td></tr>
+      <tr><td>动作块长度</td><td>H=16（GR00T-N1.5 默认）</td></tr>
+      <tr><td>推理开销</td><td>残差前向 0.06ms（GPU），不到 VLA 140ms 推理时间的 0.05%</td></tr>
+    </table></div>
+    <p>训练只在 MuJoCo 仿真里进行：仿真环境只按真机量了物体尺寸，<strong>不要求视觉逼真</strong>（残差不看图）；物体初始位姿在桌面上随机化，以覆盖多样配置。部署阶段完全冻结、无真机 RL、无蒸馏。</p>
+  </section>
+
+  <section>
+    <h2>关键结果</h2>
+    <p>五个桌面操作任务（抬起方块 / 抓放 / 叠方块 / 关抽屉 / 立起杯子），在真机 FR3 上<strong>平均成功率 42% → 76%，零样本、无任何真机 RL</strong>。</p>
+    <div class="tbl-wrap"><table>
+      <tr><th>任务</th><th>仿真 Base</th><th>仿真 +残差</th><th>真机 Base</th><th>真机 +残差</th></tr>
+      <tr><td>Cube Lift（抬方块）</td><td>4.3/20</td><td>20.0/20</td><td>7/20</td><td>17/20</td></tr>
+      <tr><td>Pick-and-Place（抓放）</td><td>7.0/20</td><td>17.0/20</td><td>9/20</td><td>16/20</td></tr>
+      <tr><td>Stack Cube（叠方块）</td><td>10.0/20</td><td>14.7/20</td><td>7/20</td><td>15/20</td></tr>
+      <tr><td>Close Drawer（关抽屉）</td><td>11.3/20</td><td>19.7/20</td><td>14/20</td><td>20/20</td></tr>
+      <tr><td>Stand Cup Up（立杯子）</td><td>5.3/20</td><td>14.7/20</td><td>5/20</td><td>8/20</td></tr>
+      <tr><td><strong>平均</strong></td><td>7.6/20</td><td>17.2/20</td><td><strong>8.4/20 (42%)</strong></td><td><strong>15.2/20 (76%)</strong></td></tr>
+    </table></div>
+    <div class="card">
+      <h3>消融实验</h3>
+      <div class="tbl-wrap"><table>
+        <tr><th>去掉的组件</th><th>影响</th></tr>
+        <tr><td>位姿 dropout</td><td class="hl">贡献最大</td><td>去掉后对「检测失败」的韧性下降，各任务明显掉点</td></tr>
+        <tr><td>噪声注入</td><td>帮助大</td><td>对紧公差任务（tolerance 敏感）尤其重要</td></tr>
+        <tr><td>两者都去</td><td>最差</td><td>组合训练才能拿到最强的 sim-to-real 迁移</td></tr>
+        <tr><td>换成图像观测</td><td>≈8/20</td><td>被视觉域差距拖垮</td></tr>
+        <tr><td>换成特权状态蒸馏</td><td>≈9/20</td><td>蒸馏过程损失性能</td></tr>
+      </table></div>
+    </div>
+    <div class="card">
+      <h3>分析与泛化</h3>
+      <ul>
+        <li><strong>选择性修正</strong>：当基础 VLA 动作与目标方向对齐时，残差几乎不干预；偏离时才大力修正（余弦相似度分析），任务完成时间缩短 <span class="hl">9%–22%</span>。</li>
+        <li><strong>跨架构泛化</strong>：把基础 VLA 换成 π0.5，残差 RL 仍一致提升真机表现，说明物体中心接口与 VLA 骨架无关。</li>
+        <li><strong>强基础也不退化</strong>：对已经很强的 π0.5 基础（真机 17/20），残差学到「保持接近零」，成功率不降反微升。</li>
+        <li><strong>自我改进</strong>：用残差修正后的轨迹做 SFT，比用原始基础轨迹 SFT 的成功率更高、episode 更短，且无需额外遥操作。</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <h2>我真正学到的内容</h2>
+    <ul>
+      <li><strong>Sim-to-Real 的本质是「观测空间设计」</strong>，不是渲染或动力学对齐。与其把图像逼真渲染、把动力学调准，不如选一个<strong>跨域一致的观测</strong>（位姿 + 本体 + 基础动作），域差距从源头被缩小。</li>
+      <li><strong>「回放遥操作」是一招便宜又好用的域对齐</strong>：同一批动作在仿真里再跑一遍，就能训出一个动作分布与真机 VLA 对齐的仿真 VLA，省掉整条 3D 重建 + 蒸馏流水线。</li>
+      <li><strong>训练时随机 dropout，部署时置信度门控 dropout</strong>：把「随机丢位姿」做成训练增强，部署时位姿丢失就用置信度触发同样的置零回退——训练和部署被同一套机制打通，非常优雅。</li>
+      <li><strong>残差策略要「按需出手」</strong>：强基础 VLA 面前，残差学会输出接近零，不添乱；弱基础面前才大幅修正。这是残差框架天然的「安全网」性质。</li>
+      <li><strong>残差 RL 的输出可以被回收再利用</strong>：修正后的好轨迹聚合起来重训 VLA，形成一个无需人工标注的自我改进闭环。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>可复用设计</h2>
+    <ul>
+      <li><strong>观测三件套</strong>：<code>[物体 6-DoF 位姿, 本体感受, 基础动作]</code>——一个低维、可迁移、信息充分的残差观测模板，几乎不挑基础策略。</li>
+      <li><strong>成对 VLA 训练</strong>：遥操作回放（仿 MimicGen 思路）构建仿真孪生 VLA，让「仿真训练、真机部署」成立。</li>
+      <li><strong>两级鲁棒化位姿</strong>：层级均匀噪声（每步重采样幅值）+ 整段置零 dropout，覆盖真实估计器的误差分布与偶发失败。</li>
+      <li><strong>分域动作合成</strong>：位置/夹爪做加法、旋转做四元数乘法——残差组合的正确姿势，避免旋转的加性误差。</li>
+      <li><strong>置信度门控回退</strong>：用跟踪置信度阈值把「随机 dropout」切换成「确定性 dropout」，作为训练-部署桥。</li>
+      <li><strong>异步位姿估计</strong>：位姿跟踪（18ms/帧）与控制环解耦，不让感知成为瓶颈。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>疑问与风险</h2>
+    <ul>
+      <li><strong>只弥合了视觉 gap，没弥合动力学 gap</strong>：接触摩擦、夹爪柔顺性等仿真/真机差异仍在，接触密集任务里可能给出次优修正。</li>
+      <li><strong>依赖实时 6-DoF 位姿跟踪</strong>：完全遮挡或严重杂乱下 FoundationPose 会失效；失败案例里还出现了<strong>误检（锁定到镜面反光）</strong>和位姿漂移——都是「过了置信度门」的感知错误。</li>
+      <li><strong>任务相关物体要人工指定</strong>：离「开放世界」还有距离，需要从 VLA 注意力图里自动识别物体。</li>
+      <li><strong>残差只能修「轻度偏离」</strong>：无法把远超基础 VLA 训练分布的状态拉回来，本质仍是围绕基础策略做局部修正。</li>
+      <li><strong>亚毫米精度或极小物体</strong>：超过当前位姿估计精度上限，需要更高分辨率传感或触觉反馈。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>后续动作</h2>
+    <ul>
+      <li><strong>补概念</strong>：读 FoundationPose + SAM2 的 6-DoF 跟踪细节；TD3 与截断探索噪声的实现；GR00T-N1.5 与 π0.5 的动作分块（chunk）机制。</li>
+      <li><strong>读代码/复现</strong>：找到论文项目页，看 MuJoCo 里「遥操作回放」和「位姿噪声注入」的具体实现，跑通 Cube Lift 的最小闭环。</li>
+      <li><strong>做实验</strong>：在自己任务上搭一个「物体位姿 + 本体 + 基础动作」的残差观测，验证 42%→76% 这类提升能否复现；重点测<strong>接触密集任务</strong>里动力学 gap 到底多伤。</li>
+      <li><strong>找改进方向</strong>：加 VLM 语义校验或多假设位姿估计，挡住「看着对其实错」的感知错误；尝试从 VLA 注意力图自动识别任务物体。</li>
+    </ul>
+  </section>
+
+  <footer>
+    <span>精读笔记 · 物体中心残差 RL：零样本 Sim-to-Real 增强 VLA</span>
+    <a href="index.html">返回知识库 →</a>
+  </footer>
+</div>
+<script src="nav.js"></script>
+</body>
+</html>

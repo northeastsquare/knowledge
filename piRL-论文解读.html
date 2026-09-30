@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>πRL：流匹配 VLA 的在线强化学习微调 · 精读</title>
+<meta name="description" content="把流匹配 VLA 的去噪过程建模成 MDP，让动作似然可解，从而用 PPO 在线微调 π0/π0.5。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f1f4f6;
+    --surface:#fbfcfd;
+    --surface-2:#eaf0f4;
+    --ink:#16222e;
+    --ink-2:#51626f;
+    --ink-3:#83919c;
+    --accent:#0e6e8a;
+    --accent-strong:#0a4c60;
+    --signal:#c4572a;
+    --line:#d8e1e7;
+    --line-strong:#c3d0d9;
+    --grid-line:rgba(22,34,46,.05);
+    --shadow:0 1px 2px rgba(22,34,46,.04),0 14px 34px rgba(22,34,46,.07);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+      --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+      --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+      --line:#1e2d3a; --line-strong:#2b3d4b;
+      --grid-line:rgba(231,238,244,.045);
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+    --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+    --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+    --line:#1e2d3a; --line-strong:#2b3d4b;
+    --grid-line:rgba(231,238,244,.045);
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Sans",-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+    line-height:1.78; font-size:16px; -webkit-font-smoothing:antialiased;
+  }
+  .grid{
+    position:fixed; inset:0; z-index:-1; pointer-events:none;
+    background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);
+    background-size:28px 28px;
+  }
+  .wrap{max-width:860px; margin:0 auto; padding:0 24px 96px;}
+
+  .masthead{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px 24px 0; max-width:860px; margin:0 auto;
+  }
+  .back{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:13px; color:var(--accent); text-decoration:none; letter-spacing:.03em;}
+  .back:hover{text-decoration:underline;}
+  .masthead .ref{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12.5px; color:var(--ink-3); letter-spacing:.04em;}
+
+  .hero{padding:52px 0 34px; border-bottom:1px solid var(--line-strong);}
+  .eyebrow{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent); margin-bottom:16px;}
+  .hero h1{font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif; font-size:clamp(28px,4.6vw,42px); font-weight:700; line-height:1.2; margin:0 0 16px; color:var(--ink); text-wrap:balance;}
+  .hero .summary{font-size:17px; color:var(--ink-2); max-width:640px; margin:0 0 22px;}
+  .meta{border:1px solid var(--line); border-radius:12px; background:var(--surface); padding:14px 18px; font-size:13.5px; display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px 24px; box-shadow:var(--shadow);}
+  .meta .m{display:flex; flex-direction:column; gap:1px;}
+  .meta .m .k{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:11px; color:var(--ink-3); letter-spacing:.08em; text-transform:uppercase;}
+  .meta .m .v{color:var(--ink); font-weight:500;}
+
+  section{margin-top:40px;}
+  h2{font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif; font-size:21px; font-weight:600; margin:0 0 14px; color:var(--ink); display:flex; align-items:center; gap:12px;}
+  h2::before{content:""; width:10px; height:10px; flex:none; background:var(--accent); border-radius:2px; transform:rotate(45deg);}
+  h2 .vs{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:13px; color:var(--signal); letter-spacing:.04em; margin-left:4px;}
+  p{margin:0 0 12px;}
+  strong{font-weight:700;}
+  .hl{color:var(--accent); font-weight:600;}
+  a{color:var(--accent);}
+
+  ul,ol{margin:0 0 14px; padding-left:22px;}
+  li{margin-bottom:7px;}
+  li::marker{color:var(--accent);}
+
+  blockquote{margin:16px 0; padding:14px 18px; border-left:3px solid var(--accent); background:var(--surface-2); border-radius:0 10px 10px 0; color:var(--ink);}
+  blockquote p{margin:0;}
+
+  .card{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:20px 22px; box-shadow:var(--shadow); margin:14px 0;}
+  .card h3{font-size:16px; font-weight:700; margin:0 0 10px;}
+
+  table{width:100%; border-collapse:collapse; font-size:14px; margin:12px 0;}
+  th,td{padding:9px 12px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12.5px; color:var(--accent-strong); background:var(--surface-2); letter-spacing:.03em; font-weight:600;}
+  tr:last-child td{border-bottom:none;}
+  .tbl-wrap{overflow-x:auto;}
+  td .up{color:var(--signal); font-weight:600;}
+  td .good{color:var(--accent-strong); font-weight:600;}
+
+  code{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:13.5px; background:var(--surface-2); border:1px solid var(--line); border-radius:5px; padding:1px 6px;}
+  pre{overflow-x:auto; background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:16px; font-size:13px; line-height:1.6;}
+  pre code{border:none; background:none; padding:0;}
+
+  footer{margin-top:56px; padding-top:20px; border-top:1px solid var(--line-strong); display:flex; justify-content:space-between; gap:12px; font-size:13px; color:var(--ink-3);}
+  footer a{color:var(--accent); text-decoration:none;}
+  footer a:hover{text-decoration:underline;}
+</style>
+</head>
+<body>
+<div class="grid" aria-hidden="true"></div>
+
+<header class="masthead">
+  <a class="back" href="index.html">← 返回知识库</a>
+  <span class="ref">2510.25889</span>
+</header>
+
+<div class="wrap">
+
+  <section class="hero">
+    <div class="eyebrow">精读笔记 · VLA / 强化学习</div>
+    <h1>πRL：流匹配 VLA 的在线强化学习微调</h1>
+    <p class="summary">把流匹配 VLA 的去噪过程建模成马尔可夫决策过程（MDP），让动作似然变得可解，从而用 PPO 在线微调 π0 / π0.5——与「冻结 VLA + 轻量头」的 RL Token 正好是两条相反路线。</p>
+    <div class="meta">
+      <div class="m"><span class="k">论文</span><span class="v">π-RL: Online RL Fine-tuning for Flow-based Vision-Language-Action Models</span></div>
+      <div class="m"><span class="k">机构</span><span class="v">清华大学 · 华为</span></div>
+      <div class="m"><span class="k">arXiv</span><span class="v">2510.25889</span></div>
+      <div class="m"><span class="k">主题</span><span class="v">VLA · 强化学习 · Flow Matching</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>它解决的问题</h2>
+    <p>流匹配（Flow Matching）VLA 通过<strong>迭代去噪 ODE</strong>生成动作，这把标准策略梯度 RL 卡住了：</p>
+    <ul>
+      <li><strong>动作似然不可解</strong>——执行动作的对数似然 <code>log π(a|o)</code> 没有闭式表达，PPO / GRPO 需要的概率比算不出来；</li>
+      <li><strong>去噪过程是确定性的</strong>——没有天然的随机性可供探索。</li>
+    </ul>
+    <p>于是 π0 / π0.5 这类流模型无法像普通高斯策略那样直接做在线 RL 微调。πRL 的目标就是<strong>给流模型补上「可计算似然 + 可探索」这两个缺口</strong>，让它们在仿真里用 PPO 大幅提分。</p>
+  </section>
+
+  <section>
+    <h2>方法主线</h2>
+    <ol>
+      <li><strong>把去噪过程重写成 MDP</strong>：每步去噪当作一个状态转移，配一个高斯转移分布，整条去噪链的对数似然就变成可计算的乘积。</li>
+      <li><strong>Flow-Noise</strong>：注入可学习的噪声网络，去噪每步服从 <code>N(μ_τ, σ_τ²)</code>——均值来自原 ODE 的欧拉步，方差由噪声网络给出；训练后丢弃噪声网络，推理退回确定性。</li>
+      <li><strong>Flow-SDE</strong>：把确定性「概率流 ODE」换成<strong>保边际分布</strong>的等价 SDE，在两层 MDP 里同时建模去噪步骤与环境交互，探索来自 SDE 的随机项。</li>
+      <li><strong>PPO + GAE 优化</strong>：动作块当作一个宏步、块内奖励求和；RL 阶段<strong>冻结 3.3B VLM，只微调 300M 动作专家</strong>（省显存）。</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>输入、输出与数据流</h2>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>环节</th><th>说明</th></tr>
+        <tr><td>输入观测 o</td><td>图像 + 语言指令 + 本体感受</td></tr>
+        <tr><td>VLM 骨干（3.3B）</td><td><strong>冻结</strong>，只输出条件表征</td></tr>
+        <tr><td>动作专家（300M）</td><td><strong>被 RL 微调</strong>；去噪 ODE 被改写成 MDP / SDE</td></tr>
+        <tr><td>Flow-Noise / Flow-SDE</td><td>给去噪每步引入高斯随机，让 log π 可算</td></tr>
+        <tr><td>输出</td><td>动作块（多步动作，视作一个宏步）</td></tr>
+        <tr><td>奖励</td><td>仿真任务奖励（块内求和）</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2>训练或运行方式</h2>
+    <ul>
+      <li>先在目标任务上做 <strong>SFT</strong>（少样本，如 ManiSkill 用 16,384 合成 episode）；</li>
+      <li>再用 <strong>PPO + GAE</strong> 在线 RL 微调动作专家，训练于 <strong>8× NVIDIA H100</strong>；</li>
+      <li><strong>critic 位置</strong>：π0.5 的 critic 接 VLM 输出，π0 的 critic 接动作专家（对去噪轨迹上的专家价值取平均近似观测价值）；</li>
+      <li>并行仿真环境加速（ManiSkill 320 envs）。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>关键结果</h2>
+    <p>成功率（%），<strong>SFT 基线 → πRL 微调后</strong>：</p>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>基准</th><th>π0</th><th>π0.5</th></tr>
+        <tr><td>LIBERO</td><td class="good">57.6 → 97.6</td><td class="good">77.1 → 98.3</td></tr>
+        <tr><td>ManiSkill</td><td class="good">38.4 → 78.8</td><td class="good">40.1 → 90.9</td></tr>
+        <tr><td>MetaWorld MT50</td><td>50.8 → 85.8</td><td>43.8 → 70.7</td></tr>
+        <tr><td>CALVIN-D（子任务数）</td><td>3.77 → 3.94</td><td>3.84 → 4.72</td></tr>
+        <tr><td>SIMPLER</td><td>67.2 → 86.7</td><td>59.2 → 79.1</td></tr>
+      </table>
+    </div>
+    <p><strong>OOD 泛化</strong>：ManiSkill 的 OOD 增益与 ID 相当（说明真的学到了技能，而非过拟合）；MetaWorld 跨任务 OOD 无显著提升（提示收益主要是动作层精修，而非跨任务泛化）。</p>
+  </section>
+
+  <section>
+    <h2>与 RL Token 的对比 <span class="vs">VS</span></h2>
+    <blockquote>
+      <p>两篇都承认「整模型 RL 太贵」，却走了相反方向：πRL <strong>保留并改造 VLA 的生成过程</strong>，在噪声/潜空间里做 RL；RL Token <strong>彻底冻结生成过程</strong>，另起一个轻量头在动作块空间做局部精修。对比读能看清「VLA 在线 RL」这条谱系的两个端点。</p>
+    </blockquote>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>维度</th><th>πRL</th><th>RL Token</th></tr>
+        <tr><td><strong>改什么</strong></td><td>微调 300M 动作专家（冻结 VLM）</td><td>冻结整个 VLA，只训轻量 actor-critic</td></tr>
+        <tr><td><strong>动作空间</strong></td><td>流匹配的噪声 / 潜空间</td><td>动作块空间（以参考动作 ã 为条件）</td></tr>
+        <tr><td><strong>似然处理</strong></td><td>Flow-Noise / Flow-SDE 让 log π 可解</td><td>高斯 actor，无需原模型似然</td></tr>
+        <tr><td><strong>训练环境</strong></td><td>在线 RL，并行仿真（ManiSkill 320 envs）</td><td>真实机器人在线 RL（15min ~ 5h）</td></tr>
+        <tr><td><strong>奖励</strong></td><td>仿真密集 / 任务奖励</td><td>人类稀疏 0/1 标签</td></tr>
+        <tr><td><strong>正则 / 锚定</strong></td><td>从 SFT 初始化继续 RL，无显式 KL</td><td>KL 正则锚定到 VLA 参考动作 + reference dropout</td></tr>
+        <tr><td><strong>成本</strong></td><td>重算力（8×H100）</td><td>轻量、低数据</td></tr>
+        <tr><td><strong>适用</strong></td><td>有仿真器、求大幅提升、可离线批量</td><td>真机、无仿真、需快速、保 VLA 泛化</td></tr>
+      </table>
+    </div>
+    <p>一句话概括：<span class="hl">πRL 的上限可能更高</span>——它能在生成过程内部改变行为模式（LIBERO 单点 +40 个百分点），但依赖仿真器与算力；<span class="hl">RL Token 更便宜、更快、能直接上真机</span>，但只在 VLA 参考动作附近做局部精修，收益被限制在「已有好行为」的邻域内。</p>
+    <p>对比阅读：<a href="RL-Token-论文解读.html">RL Token：用 VLA 做在线强化学习（论文解读）→</a></p>
+  </section>
+
+  <section>
+    <h2>我真正学到的内容</h2>
+    <ul>
+      <li>流模型也能做 RL：<strong>把去噪 ODE / SDE 写成 MDP、让似然可解</strong>，是打通 PPO 的关键一步，也是和「绕开生成过程」路线（RL Token / DSRL）最本质的分野。</li>
+      <li>「冻结主干、只微调动作专家」是 VLA + RL 里性价比很高的折中——既控制显存，又保留 VLM 的视觉语言理解。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>可复用设计</h2>
+    <ul>
+      <li><strong>Flow-Noise / Flow-SDE 的 MDP 化技巧</strong>：可套到任何 flow / diffusion 策略上，作为「让扩散策略可强化学习」的通用件。</li>
+      <li><strong>冻结 VLM 只训动作专家</strong>：显存友好，适合个人或中小团队复现。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>疑问与风险</h2>
+    <ul>
+      <li>高度依赖<strong>高质量仿真器</strong>；MetaWorld OOD 无增益，说明跨任务泛化有限。</li>
+      <li>只微调动作专家，语言 / 视觉理解不更新，上限受冻结骨干制约。</li>
+      <li>重算力（8×H100）个人难以复现，与 RL Token 的「轻量真机」形成鲜明对比。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>后续动作</h2>
+    <ul>
+      <li>把 <a href="RL-Token-论文解读.html">RL Token</a>、<a href="ObjectCentric-RL-论文解读.html">Object-Centric Residual RL</a>、DSRL 放到一起，理清「VLA 在线 RL」从整模型 → 噪声空间 → 冻结 + 残差 → 冻结 + 轻量头 的完整谱系。</li>
+      <li>读 <a href="pi0.6-论文解读.html">π0.6 / RECAP</a>，看 PI 自己的整模型离线 RL 路线与 πRL 的差异。</li>
+      <li>评估在自己机器人上的落点：有仿真器就走 πRL / DSRL 路线，只能上真机就走 RL Token 路线。</li>
+    </ul>
+  </section>
+
+  <footer>
+    <span>精读笔记 · πRL</span>
+    <a href="index.html">返回知识库 →</a>
+  </footer>
+</div>
+<script src="nav.js"></script>
+</body>
+</html>
