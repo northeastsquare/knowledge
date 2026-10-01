@@ -289,6 +289,41 @@ td.num{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
     <p>顺带一个小技巧：虽然按 10 步一块决策，但每 2 步就抽样存一条 transition 进回放池，<b class="hot">1 秒数据能榨出约 25 个训练样本</b>。</p>
   </div>
 
+  <div class="panel tilt-l">
+    <h3>基础补课：actor 和 critic 各是什么</h3>
+    <p>名字很直白：<b class="hot">一个演，一个评</b>。评委不动手，演员不自评。</p>
+    <table>
+      <thead><tr><th></th><th>Actor（演员）</th><th>Critic（评委）</th></tr></thead>
+      <tbody>
+        <tr><td>干什么</td><td><b>决定做什么动作</b></td><td><b>给动作打分</b></td></tr>
+        <tr><td>输入</td><td>状态 x（+ 参考动作 ã）</td><td>状态 x <b>和</b> 动作 a</td></tr>
+        <tr><td>输出</td><td>140 维动作块</td><td><b class="hot">1 个标量</b></td></tr>
+        <tr><td>数学上就是</td><td>策略 π</td><td>价值函数 Q</td></tr>
+        <tr><td>本体</td><td>2 层 MLP（隐层 256）</td><td>2 层 MLP ×2（双 Q）</td></tr>
+      </tbody>
+    </table>
+    <h3>为什么非要两个网络？因为 +1 没有方向感</h3>
+    <p>人类说"这次成了"，给你一个 <kbd>+1</kbd>。它告诉你结果好，但<b>没告诉你该往哪调</b>——手腕该多转 2 度还是少转 2 度？而且 99% 的时刻根本没奖励，梯度处处为 0，连爬都没法爬。</p>
+    <p>critic 就是干这个的：<mark>把稀疏离散的分数，插值成一片光滑的、处处可求导的地形。</mark>关键在于它是个<b class="hot">可微的</b>评委——你可以问它 <kbd>∂Q/∂a</kbd>：「动作往哪改你会给更高分？」这就拿到了方向。actor 顺着挪一步就行。所以 actor 的损失里直接写着 Q：<kbd>L(π) = −Q(x,a) + λ‖a−ã‖²</kbd>，前半项就是"让评委给的分高一点"。</p>
+    <h3>三件最容易忽略的事</h3>
+    <p><b class="hot">① actor 从来没见过 r。</b>回头看流程图：<kbd>r</kbd> 只进 critic 的目标。actor 的损失里没有 <kbd>r</kbd>，只有 <kbd>Q</kbd>。奖励必须<b>先经 critic 翻译一遍</b>才能影响动作——critic 是唯一的信息通道，它烂了 actor 一定跟着烂。</p>
+    <p><b class="hot">② critic 是脚手架，用完就扔。</b>上线跑任务只需要 actor：看状态、出动作。critic 一个字都不参与推理，它存在的唯一目的是训练期间给 actor 指方向。</p>
+    <p><b class="hot">③ 它们互为因果。</b>actor 靠 critic 知道往哪改，critic 靠 actor 产生的数据知道该评价什么。开局两个都是随机胡话，靠终点那些真实 +1 一起被拽准。这也是论文让 <b>critic 更新 2 次、actor 才动 1 次</b>的原因——评委得先比演员靠谱一点，指的方向才有意义。</p>
+  </div>
+
+  <div class="lab">
+    <h4>实验 6：为什么必须有 critic——奖励本身是爬不动的</h4>
+    <p class="hintline">横轴是一维动作（比如手腕角度）。<b style="color:#ff4f18">橙色窄条</b>是真实奖励：只有落进那一小段才给 +1，其他地方全是 0。<b style="color:#00b894">绿曲线</b>是 critic 从采样中学出来的光滑估计。<b style="color:#1b6ef3">蓝点</b>是 actor。点按钮看它怎么找到并爬上去。</p>
+    <div class="ctl">
+      <button id="acStep">采样 + 更新一次</button>
+      <button id="acAuto">自动跑</button>
+      <button class="ghost" id="acReset">重置</button>
+    </div>
+    <canvas id="acCv" height="240"></canvas>
+    <div class="readout" id="acOut"></div>
+    <p class="hintline">注意读数里那两行对比：<kbd>∂r/∂a</kbd> 在几乎所有位置都<b>恒等于 0</b>——直接对奖励做梯度上升，actor 永远不知道该往哪走。而 <kbd>∂Q/∂a</kbd> 一旦 critic 见过几个成功样本就变成非零，<b class="hot">这个斜率就是 actor 唯一的行动依据</b>。这也顺带说明了探索噪声的必要性：绿曲线一开始全平，只有靠随机抖动撞进橙条，critic 才有东西可学。</p>
+  </div>
+
   <div class="panel tilt-r">
     <h3>先把记号钉死：s 和 x 不是一回事</h3>
     <p>这是全篇最容易晕的地方，也正是这篇论文的贡献所在。<b class="hot">s 是物理世界的状态，x 是小网络透过 VLA 这块镜片看到的 s。</b></p>
@@ -351,6 +386,85 @@ td.num{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
     <p class="hintline">要说准确：<b>RLT 不是照搬 TD3</b>。TD3 的 actor 是确定性策略，RLT 的 actor 是高斯策略、还额外吃参考动作 ã。论文说自己建立在 SAC[17] / TD3[19] / SVG[34] 这一系之上，借的主要是 <b>critic 那半边的机械装置</b>。</p>
   </div>
 
+  <div class="panel tilt-l">
+    <h3>插播：bootstrap 到底什么意思（这词在本文有两个意思）</h3>
+    <p>词源就是重点：英文 "pull yourself up by your own <b>bootstraps</b>" ——<b class="hot">提着自己的鞋带把自己拎起来</b>，本来是形容荒谬、不可能的事。用在 RL 里就是自嘲：拿自己的猜测当依据去改进自己的猜测，听着像永动机骗局。</p>
+    <h3>意思一：TD 里的 bootstrap</h3>
+    <p><b>更新一个估计时，把自己另一个估计当成依据用。</b></p>
+    <p><kbd>非 bootstrap（蒙特卡洛）：等回合真结束，用实际总回报来训 → 全是真实数据，但要等完、方差巨大</kbd><br>
+    <kbd>bootstrap（TD）：目标 = r + γ·Q(下一状态)，后半截是自己编的</kbd></p>
+    <p>前面例子里 <kbd>Q_target = 0.50</kbd> 不是测出来的，是<b>同一个网络自己猜的</b>。所谓"99% 的 transition 目标里没有真相"，说的就是这件事。</p>
+    <h3>意思二：论文标题里的 bootstrap（热启动）</h3>
+    <p>论文标题 <b>"Bootstrapping</b> Online RL with VLA Models"、引言"bootstraps fast online RL with representations from a pretrained VLA"，用的是<b class="hot">另一个意思</b>：<b>给一个现成的起点，让系统不必从零开始</b>，中文一般译"热启动/助推"。论文里出现在三处：用 VLA 当起点而非随机初始化、warmup 先用 VLA 填回放池、引用 [23] 掺人类示教数据来"bootstrap 学习"。</p>
+    <p><mark>两个意思毫无关系，纯属撞词。</mark>意思一是技术机制，意思二是"站在巨人肩膀上"。</p>
+    <h3>为什么意思一不是骗局：锚点 + 压缩映射</h3>
+    <p><b class="hot">① 有锚点。</b>终点那格目标是 <kbd>r</kbd>，不含任何猜测。整条链至少有一个点是真的。</p>
+    <p><b class="hot">② γ&lt;1 让它成为压缩映射。</b>每 bootstrap 一跳，误差被乘上 <kbd>γ^C</kbd>：γ=0.97 时 C=1 每跳 ×0.97（误差减半要 23 跳），C=10 每跳 ×0.737（减半只要 2.3 跳）。<b>错误不会原样传下去，每跳都衰减</b>，所以迭代有唯一不动点、必然收敛。折扣因子不只是"未来没那么值钱"的哲学，它是<b>保证 bootstrap 收敛的数学前提</b>。</p>
+    <h3>C 其实是 MC 和 TD 之间的旋钮</h3>
+    <p><kbd>C=1 → 1 个真实 r + 1 个猜测（纯 TD，偏差大方差小）</kbd><br>
+    <kbd>C=10 → 10 个真实 r + 1 个猜测（RLT 在这）</kbd><br>
+    <kbd>C=∞ → 全真实 r，无猜测（纯蒙特卡洛，无偏但方差大）</kbd></p>
+    <p>动作块不只是工程上方便，它在理论上就是 <b>n-step return</b>，是在偏差与方差之间挑位置。RLT 敢往大调，是因为奖励是人给的确定标签，方差本来就小。</p>
+    <h3>但它确实危险：死亡三角</h3>
+    <p>有个专名叫 <b class="hot">deadly triad</b>：bootstrap + 函数逼近（神经网络）+ off-policy。三者齐聚，价值函数可能发散。<b>RLT 三样全占。</b>所以论文那堆看着啰嗦的措施全是给死亡三角上的保险：target 网络（靶子别乱动）、双 Q 取最小（压高估）、BC 正则（别乱探索）、动作块（缩短链条）。</p>
+  </div>
+
+  <div class="panel tilt-r">
+    <h3>插播：target 网络是什么，RLT 里到底有几个网络</h3>
+    <p><b class="hot">target 网络就是 critic 的一份副本</b>——同样结构，另一套参数 <kbd>θ'</kbd>，不靠梯度训练，靠"抄"。</p>
+    <p>为什么要副本：若用正在训练的 critic 自己算目标，<kbd>目标 = r + γ·Q_θ(x',a')</kbd> 而你同时在改 <kbd>θ</kbd>——<b class="hot">朝靶子射一箭，靶子跟着枪口一起动</b>（moving target，DQN 那篇最早点明）。解法很土但有效：<b>把靶子焊死</b>，算目标只用 <kbd>θ'</kbd>，梯度完全不流过它。</p>
+    <p><kbd>θ'</kbd> 怎么更新——不训练，只复制：<b>硬拷贝</b>（每 N 步 <kbd>θ' ← θ</kbd>）或 <b>Polyak 软更新</b>（每步 <kbd>θ' ← τθ + (1−τ)θ'</kbd>，τ 取 0.005 之类，像影子缓慢跟随）。论文只说"follow TD3，θ' 是 target 网络参数"，没写是哪种。</p>
+    <table>
+      <thead><tr><th>网络</th><th>数量</th><th>怎么更新</th></tr></thead>
+      <tbody>
+        <tr><td>π0.6 VLA</td><td class="num">1</td><td><b>永久冻结</b>，准备阶段后再也不动</td></tr>
+        <tr><td>RL Token 的 encoder/decoder</td><td class="num">1</td><td><b>永久冻结</b></td></tr>
+        <tr><td>actor π</td><td class="num">1</td><td>梯度训练</td></tr>
+        <tr><td>online critic Q₁, Q₂</td><td class="num"><b class="hot">2</b></td><td>梯度训练</td></tr>
+        <tr><td>target critic Q₁', Q₂'</td><td class="num"><b class="hot">2</b></td><td>只靠复制 online 参数</td></tr>
+      </tbody>
+    </table>
+    <p>所以算目标那一步实际是：<kbd>Q̂ = r + γ^C · min( Q₁'(x',a'), Q₂'(x',a') )</kbd>——两个 target 副本都算一遍取小的。<mark>双 Q 和 target 网络是两件不同的事，叠在一起用</mark>：双 Q 治高估（取 min），target 网络治靶子乱动（焊死）。四个 critic 里只有 2 个吃梯度。（TD3 原版还有 target actor，论文没提。）</p>
+    <h3>三种"冻"不是一回事</h3>
+    <table>
+      <thead><tr><th></th><th>冻多久</th><th>目的</th></tr></thead>
+      <tbody>
+        <tr><td>VLA / encoder 冻结</td><td>永远</td><td>省算力，保住预训练知识</td></tr>
+        <tr><td>target 网络</td><td>每次更新内冻，之后缓慢跟随</td><td>靶子别乱动</td></tr>
+        <tr><td>detach / stop-gradient</td><td>一个数学操作</td><td>让目标在反向传播里被当成常数</td></tr>
+      </tbody>
+    </table>
+    <p class="hintline">第三个是实现手段，前两个是设计决策。</p>
+  </div>
+
+  <div class="lab">
+    <h4>实验 9：关掉 target 网络，看"靶子跟着枪口动"怎么炸</h4>
+    <p class="hintline">同一个 8 状态环形任务，γ=0.95。纵轴是 V[0] 随更新轮次的轨迹。<kbd>τ</kbd> 是 target 网络的跟随速度：<b class="hot">τ=1.00 等于没有 target 网络</b>（直接用 online 网络算目标），τ 小 = 靶子焊得更死。</p>
+    <div class="ctl">
+      <label>学习率 α <input id="tnA" type="range" min="10" max="190" value="150"> <span id="tnAv">1.50</span></label>
+      <label>τ <input id="tnT" type="range" min="2" max="100" value="100"> <span id="tnTv">1.00</span></label>
+      <button id="tnAuto">自动跑 120 轮</button>
+      <button class="ghost" id="tnReset">重置</button>
+    </div>
+    <canvas id="tnCv" height="220"></canvas>
+    <div class="readout" id="tnOut"></div>
+    <p class="hintline">默认就是炸的配置（α=1.50, τ=1.00）：曲线会<b class="hot">正负交替、幅度越滚越大</b>——这就是靶子跟着枪口动的后果。<b>只把 τ 拖到 0.05 左右，别的都不改</b>，同一个 α 立刻平稳收敛。这里有个能算的临界值：τ=1 时发散门槛是 <kbd>α &gt; 2/(1+γ) ≈ 1.03</kbd>，你可以把 α 拖到 1.0 附近验证它确实卡在边界上。target 网络的作用就是<b>把这个门槛整个挪走</b>。</p>
+  </div>
+
+  <div class="lab">
+    <h4>实验 8：γ&lt;1 是唯一的刹车——把它拧到 1.0 看 bootstrap 真的发散</h4>
+    <p class="hintline">换个场景：机器人绕一个<b>循环</b>任务（8 个状态首尾相接，其中一步给 r=1）。这里<b>没有终点锚点</b>，收敛完全靠 γ&lt;1 的收缩。柱子是各状态的 V 值。</p>
+    <div class="ctl">
+      <label>γ <input id="ctG" type="range" min="80" max="100" value="90"> <span id="ctGv">0.90</span></label>
+      <button id="ctStep">扫一轮</button>
+      <button id="ctAuto">自动扫</button>
+      <button class="ghost" id="ctReset">重置</button>
+    </div>
+    <canvas id="ctCv" height="210"></canvas>
+    <div class="readout" id="ctOut"></div>
+    <p class="hintline">把 γ 拧到 <b class="hot">1.00</b> 再自动扫：V 会<b>无上限地一路涨下去</b>，因为绕一圈又拿 +1、绕一圈又拿 +1，而误差一次都没被衰减。γ=0.90 时它会停在 <kbd>1/(1−γ⁸)</kbd> 附近不动了——<b>这个"停下来"就是压缩映射的全部含义</b>。回到 RLT：它同时用了 bootstrap、神经网络、off-policy 三件套（死亡三角），所以 target 网络和双 Q 取最小不是锦上添花，是防止这种发散的刹车片。</p>
+  </div>
+
   <div class="lab">
     <h4>实验 2：稀疏奖励往回传，块长决定要多久</h4>
     <p class="hintline"><b>先说清"TD 更新"是什么</b>：TD = 时序差分。critic 要估"从这里开始未来能拿多少奖励"，但奖励只在最后给一个 +1。TD 的办法是<b class="hot">不等结局</b>，而是把 <kbd>Q(现在)</kbd> 往 <kbd>即时奖励 + γ·Q(下一步)</kbd> 拉近——用一个猜测去改进另一个猜测（bootstrap）。论文按块版本：<kbd>Q̂ = Σγ^(t'-1)·r_t' + γ^C·Q_target(x')</kbd>，先把块内 C 步的真实奖励加起来，再从 C 步之后的状态借估计。</p>
@@ -382,6 +496,37 @@ td.num{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
     <p>目标是 <kbd>L(π) = −Q(x,a) + λ‖a − ã‖²</kbd>：一边要 critic 打高分，一边被拉住不许离 VLA 太远。λ 就是"允许多大胆"的旋钮，精神上等价于 KL 正则的 RL。</p>
     <h3>但也不能让它变成复印机</h3>
     <p>只要既看着 ã 又被罚着靠近 ã，actor 很容易退化成<b class="hot">直接照抄</b>——尤其是 critic 还没学明白的早期。所以论文加了<mark>参考动作 dropout</mark>：训练时随机把 50% 的 ã 换成全零，逼 actor 保留一条"没有草稿也能作答"的独立通路；推理时 ã 总是给。</p>
+  </div>
+
+  <div class="panel tilt-l">
+    <h3>插播：确定性策略 vs 高斯策略</h3>
+    <p><b class="hot">确定性策略</b>：<kbd>a = μ(x)</kbd>，就是个普通函数。同一状态输进去，<b>每次输出一模一样的动作</b>，一个 bit 都不差，像查表。</p>
+    <p><b class="hot">高斯策略</b>：<kbd>π(a|x) = N(μ(x), σ²I)</kbd>。网络输出的不是动作，而是一个<b>钟形分布的中心</b>；真正执行的动作从这个分布里<b>采样</b>出来。</p>
+    <p><kbd>确定性： x → μ(x) → 就是这个动作　　　　　│ 一根竖线</kbd><br>
+    <kbd>高斯：　 x → μ(x) → 加一点随机扰动 → 动作　│ 一个钟形</kbd></p>
+    <p>同一状态问两次：确定性给你两个相同答案，高斯给你两个略有差异的答案。</p>
+    <h3>差别一：探索</h3>
+    <p>确定性策略<b>自己不会探索</b>——永远重复同一个动作，永远发现不了"稍微换个角度更好"。所以 DDPG/TD3 必须在采集数据时<b class="hot">从外面手动加噪声</b>（<kbd>a = μ(x) + ε</kbd>），用完扔掉。高斯策略把探索<b>写进了定义里</b>，采样本身就是探索。</p>
+    <p class="hintline">RLT 的细节：论文附录写它用<b>固定的小标准差</b>的高斯策略——σ 是手设的、不学的，跟 SAC 那种学 σ 还带熵奖励的做法不同。所以形式上是高斯，精神上介于两者之间。</p>
+    <h3>差别二：ã 是"模态选择器"（这才是论文真正在意的）</h3>
+    <p><kbd>μ(x, ã)</kbd> 和 TD3 的 <kbd>μ(x)</kbd> 就差那个 ã——<b class="hot">钟形的中心会跟着 VLA 的建议走</b>。为什么需要，得从"单峰"说起。</p>
+    <p>高斯分布只有<b>一个峰</b>。但 VLA 的动作分布是<b>多峰</b>的：插网线可能有"从左切入""正面直插""从右绕"三种都能成的做法。这里有个反直觉的陷阱——<mark>两个好策略的平均，往往是个坏策略</mark>。硬用一个高斯拟合三个峰，中心会落在三者的平均位置，而那位置可能正好是"卡在插孔外壳上"的失败区（论文引用 [36]）。</p>
+    <p>RLT 的解法：<b class="hot">让 VLA 先采样决定"这次走哪条路"，高斯只在那条路附近做局部微调。</b>模态选择交给多峰的 VLA，精修交给单峰的高斯。这就是论文说的"参考动作保留了 VLA 多模态分布里的模态信息"。</p>
+  </div>
+
+  <div class="lab">
+    <h4>实验 7：模态平均陷阱——为什么必须把 ã 喂进去</h4>
+    <p class="hintline">橙色三个峰 = VLA 的多峰动作分布（三种都能成功的做法）。峰之间的<b style="color:#ff4f18">红色谷底</b>是失败区（插歪、卡外壳）。切换三种策略形式，看各自把动作放在哪。</p>
+    <div class="ctl">
+      <button id="pmA">① 确定性策略</button>
+      <button id="pmB">② 单个高斯拟合全局</button>
+      <button id="pmC">③ RLT：以 ã 为中心</button>
+      <label>σ <input id="pmS" type="range" min="1" max="30" value="6"> <span id="pmSv">0.06</span></label>
+      <button class="ghost" id="pmRe">重新采样 ã</button>
+    </div>
+    <canvas id="pmCv" height="240"></canvas>
+    <div class="readout" id="pmOut"></div>
+    <p class="hintline">重点看②：它的钟形中心稳稳落在<b class="hot">谷底</b>——三个好答案的平均是个坏答案。而③ 每次点"重新采样 ã"会跳到不同的峰上，但<b>始终待在某个峰里</b>。这就是为什么 actor 的输入里必须有 ã：<b class="hot">让多峰的 VLA 负责选路，单峰的高斯只管在路上微调。</b>拖 σ 还能看到探索与精度的取舍——σ 太大，尾巴会漏进失败区。</p>
   </div>
 
   <div class="lab">
@@ -883,6 +1028,267 @@ td.num{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
   document.getElementById('rqStep').onclick=step;
   document.getElementById('rqReset').onclick=reset;
   document.getElementById('rqAuto').onclick=()=>{clearInterval(timer);timer=setInterval(step,90);};
+  reset();addEventListener('resize',draw);
+})();
+</script>
+<script>
+/* ============ 实验 6：actor 顺着 critic 的斜率爬 ============ */
+(function(){
+  const cv=document.getElementById('acCv'),ctx=cv.getContext('2d'),out=document.getElementById('acOut');
+  let pts=[],actor=0.18,n=0,timer=null;
+  const LO=0,HI=1,BAND=[0.66,0.78],BW=0.05;          // 奖励窄条
+  const rTrue=a=>(a>=BAND[0]&&a<=BAND[1])?1:0;
+  // critic = 对已采样点做核回归（模拟一个光滑的可微网络）
+  function Q(a){
+    if(!pts.length)return 0;
+    let sw=0,sv=0;
+    for(const p of pts){const w=Math.exp(-((a-p.a)**2)/(2*BW*BW));sw+=w;sv+=w*p.r;}
+    return sw<1e-9?0:sv/sw;
+  }
+  const dQ=a=>{const e=0.01;return (Q(a+e)-Q(a-e))/(2*e);};
+  function reset(){clearInterval(timer);pts=[];actor=0.18;n=0;draw();}
+  function step(){
+    const a=Math.max(LO,Math.min(HI,actor+(Math.random()-0.5)*0.34));  // 带探索噪声采样
+    pts.push({a,r:rTrue(a)});if(pts.length>160)pts.shift();
+    actor=Math.max(LO,Math.min(HI,actor+0.09*dQ(actor)));               // 顺着 ∂Q/∂a 爬
+    n++;draw();
+  }
+  function draw(){
+    const W=cv.width=cv.clientWidth*2,H=cv.height=480;cv.style.height='240px';
+    ctx.clearRect(0,0,W,H);const pad=40,gh=H-pad*2;
+    const X=a=>pad+a*(W-pad*2), Y=v=>H-pad-v*gh;
+    ctx.fillStyle='rgba(255,79,24,.30)';
+    ctx.fillRect(X(BAND[0]),pad,X(BAND[1])-X(BAND[0]),gh);
+    ctx.strokeStyle='#ff4f18';ctx.lineWidth=5;
+    ctx.strokeRect(X(BAND[0]),pad,X(BAND[1])-X(BAND[0]),gh);
+    ctx.fillStyle='#ff4f18';ctx.font='700 21px sans-serif';
+    ctx.fillText('真实奖励 r=+1（只有这一小段）',X(BAND[1])+14,pad+28);
+    ctx.strokeStyle='#141210';ctx.lineWidth=4;ctx.beginPath();
+    ctx.moveTo(pad,H-pad);ctx.lineTo(W-pad,H-pad);ctx.stroke();
+    ctx.strokeStyle='#00b894';ctx.lineWidth=7;ctx.beginPath();
+    for(let i=0;i<=220;i++){const a=i/220,v=Q(a);i?ctx.lineTo(X(a),Y(v)):ctx.moveTo(X(a),Y(v));}
+    ctx.stroke();
+    ctx.fillStyle='#00b894';ctx.font='700 21px sans-serif';
+    ctx.fillText('critic 学出的 Q（光滑、可求导）',pad+10,pad+28);
+    pts.forEach(p=>{ctx.fillStyle=p.r?'rgba(255,79,24,.8)':'rgba(120,114,104,.42)';
+      ctx.beginPath();ctx.arc(X(p.a),H-pad-6,7,0,7);ctx.fill();});
+    const AX=X(actor),AY=Y(Q(actor));
+    const g=dQ(actor);
+    if(Math.abs(g)>1e-4){ // 画斜率箭头
+      ctx.strokeStyle='#1b6ef3';ctx.lineWidth=6;ctx.beginPath();
+      const dir=Math.sign(g)*90;ctx.moveTo(AX,AY);ctx.lineTo(AX+dir,AY-Math.sign(g)*0);
+      ctx.stroke();
+      ctx.beginPath();ctx.moveTo(AX+dir,AY);ctx.lineTo(AX+dir-Math.sign(g)*22,AY-13);
+      ctx.lineTo(AX+dir-Math.sign(g)*22,AY+13);ctx.closePath();ctx.fillStyle='#1b6ef3';ctx.fill();
+    }
+    ctx.fillStyle='#1b6ef3';ctx.strokeStyle='#141210';ctx.lineWidth=5;
+    ctx.beginPath();ctx.arc(AX,AY,15,0,7);ctx.fill();ctx.stroke();
+    ctx.fillStyle='#141210';ctx.font='700 20px sans-serif';ctx.fillText('actor',AX-28,AY-26);
+    const succ=pts.filter(p=>p.r).length;
+    out.textContent='采样 '+n+' 次，其中撞进奖励条 '+succ+' 次   actor 位置 a = '+actor.toFixed(3)+'\n'
+      +'∂r/∂a  = '+(rTrue(actor)?'（正在条内，但边缘外仍是 0）':'0.000000')+'   ← 直接对奖励求梯度：没有方向，爬不动\n'
+      +'∂Q/∂a  = '+g.toFixed(4)+'   ← actor 唯一的行动依据'+(Math.abs(g)<1e-4?'（critic 还没见过成功样本，地形全平）':'')+'\n'
+      +(rTrue(actor)?'✅ actor 已经进入奖励区':succ?'⬆ 正顺着 critic 的斜率往上爬':'🎲 还没撞到过成功，只能靠探索噪声乱试');
+  }
+  document.getElementById('acStep').onclick=step;
+  document.getElementById('acReset').onclick=reset;
+  document.getElementById('acAuto').onclick=()=>{clearInterval(timer);timer=setInterval(step,110);};
+  reset();addEventListener('resize',draw);
+})();
+</script>
+<script>
+/* ============ 实验 7：模态平均陷阱 ============ */
+(function(){
+  const cv=document.getElementById('pmCv'),ctx=cv.getContext('2d'),out=document.getElementById('pmOut');
+  const sR=document.getElementById('pmS'),sV=document.getElementById('pmSv');
+  const MODES=[{m:0.20,w:1.0},{m:0.50,w:1.1},{m:0.80,w:0.95}], MS=0.045;
+  let mode='C', ref=MODES[1].m;
+  const vlaPdf=a=>MODES.reduce((s,k)=>s+k.w*Math.exp(-((a-k.m)**2)/(2*MS*MS)),0);
+  const gauss=(a,mu,sd)=>Math.exp(-((a-mu)**2)/(2*sd*sd));
+  // 成功率：峰上高，谷底是失败区
+  const succ=a=>Math.max(0,Math.min(1,vlaPdf(a)/1.1));
+  function centre(){
+    if(mode==='A') return 0.5;                                  // 确定性：拟合出的单点
+    if(mode==='B') return MODES.reduce((s,k)=>s+k.w*k.m,0)/MODES.reduce((s,k)=>s+k.w,0);
+    return ref;                                                  // RLT：跟着 ã
+  }
+  function draw(){
+    const sd=+sR.value/100;sV.textContent=sd.toFixed(2);
+    const W=cv.width=cv.clientWidth*2,H=cv.height=480;cv.style.height='240px';
+    ctx.clearRect(0,0,W,H);const pad=40,gh=H-pad*2;
+    const X=a=>pad+a*(W-pad*2), Y=v=>H-pad-v*gh;
+    // 失败区底色
+    for(let i=0;i<=240;i++){const a=i/240;if(succ(a)<0.35){
+      ctx.fillStyle='rgba(255,79,24,'+(0.30*(1-succ(a)/0.35))+')';
+      ctx.fillRect(X(a),pad,(W-pad*2)/240+1,gh);}}
+    // VLA 多峰分布
+    ctx.strokeStyle='#ff4f18';ctx.lineWidth=6;ctx.beginPath();
+    for(let i=0;i<=240;i++){const a=i/240,v=vlaPdf(a)/1.15;i?ctx.lineTo(X(a),Y(v)):ctx.moveTo(X(a),Y(v));}
+    ctx.stroke();
+    ctx.fillStyle='#ff4f18';ctx.font='700 20px sans-serif';
+    ctx.fillText('VLA 的多峰动作分布',pad+8,pad+26);
+    // 策略
+    const mu=centre();
+    if(mode==='A'){
+      ctx.strokeStyle='#1b6ef3';ctx.lineWidth=9;ctx.beginPath();
+      ctx.moveTo(X(mu),H-pad);ctx.lineTo(X(mu),pad+40);ctx.stroke();
+      ctx.fillStyle='#1b6ef3';ctx.font='700 20px sans-serif';
+      ctx.fillText('确定性：一根竖线，永远同一个动作',X(mu)+14,pad+62);
+    }else{
+      ctx.fillStyle=mode==='C'?'rgba(0,184,148,.42)':'rgba(27,110,243,.42)';
+      ctx.strokeStyle=mode==='C'?'#00b894':'#1b6ef3';ctx.lineWidth=6;
+      ctx.beginPath();ctx.moveTo(X(0),Y(0));
+      for(let i=0;i<=240;i++){const a=i/240;ctx.lineTo(X(a),Y(gauss(a,mu,sd)));}
+      ctx.lineTo(X(1),Y(0));ctx.closePath();ctx.fill();ctx.stroke();
+      ctx.fillStyle=mode==='C'?'#00b894':'#1b6ef3';ctx.font='700 20px sans-serif';
+      ctx.fillText(mode==='C'?'RLT：钟形中心 = ã':'单高斯：中心落在三峰的平均处',X(mu)+14,pad+62);
+    }
+    if(mode==='C'){ctx.setLineDash([8,6]);ctx.strokeStyle='#141210';ctx.lineWidth=4;
+      ctx.beginPath();ctx.moveTo(X(ref),H-pad);ctx.lineTo(X(ref),pad+90);ctx.stroke();ctx.setLineDash([]);
+      ctx.fillStyle='#141210';ctx.fillText('ã',X(ref)-6,pad+84);}
+    ctx.strokeStyle='#141210';ctx.lineWidth=4;ctx.beginPath();
+    ctx.moveTo(pad,H-pad);ctx.lineTo(W-pad,H-pad);ctx.stroke();
+    // 期望成功率
+    let es=0,tw=0;
+    for(let i=0;i<=400;i++){const a=i/400;const w=mode==='A'?(Math.abs(a-mu)<0.0026?1:0):gauss(a,mu,sd);
+      es+=w*succ(a);tw+=w;}
+    es=tw?es/tw:0;
+    out.textContent=
+      ({A:'① 确定性策略  a = μ(x)',B:'② 单个高斯拟合全部模态  N(μ, σ²)',C:'③ RLT  N(μ(x, ã), σ²)'})[mode]
+      +'\n动作中心 = '+mu.toFixed(3)+'   该处成功率 = '+(succ(mu)*100).toFixed(0)+'%'
+      +'\n整个分布的期望成功率 ≈ '+(es*100).toFixed(1)+'%\n'
+      +({A:'没有探索能力：永远重复这一个动作，发现不了更好的做法。TD3 得靠外部加噪声补救。',
+         B:'⚠ 中心掉进谷底——三个好答案的平均是个坏答案（mode averaging）。',
+         C:'✅ 待在某个峰里。点"重新采样 ã"会跳到别的峰，但始终不落谷底。'})[mode];
+  }
+  const btns={A:'pmA',B:'pmB',C:'pmC'};
+  Object.entries(btns).forEach(([k,id])=>{document.getElementById(id).onclick=()=>{
+    mode=k;Object.entries(btns).forEach(([k2,i2])=>{const b=document.getElementById(i2);
+      b.style.background=k2===k?'#ff4f18':'#1b6ef3';});draw();};});
+  document.getElementById('pmRe').onclick=()=>{ // 按权重采样一个模态
+    const tot=MODES.reduce((s,k)=>s+k.w,0);let r=Math.random()*tot;
+    for(const k of MODES){if((r-=k.w)<=0){ref=k.m+(Math.random()-0.5)*0.05;break;}}
+    mode='C';Object.entries(btns).forEach(([k2,i2])=>{document.getElementById(i2).style.background=k2==='C'?'#ff4f18':'#1b6ef3';});
+    draw();};
+  sR.oninput=draw;
+  document.getElementById('pmC').style.background='#ff4f18';
+  draw();addEventListener('resize',draw);
+})();
+</script>
+<script>
+/* ============ 实验 8：压缩映射 / γ=1 发散 ============ */
+(function(){
+  const cv=document.getElementById('ctCv'),ctx=cv.getContext('2d'),out=document.getElementById('ctOut');
+  const gR=document.getElementById('ctG'),gV=document.getElementById('ctGv');
+  const N=8,RW=3;                      // 8 个状态成环，状态 RW 的出边给 r=1
+  let V=new Array(N).fill(0),sweeps=0,timer=null,prevMax=0;
+  function reset(){clearInterval(timer);V=new Array(N).fill(0);sweeps=0;prevMax=0;draw();}
+  function sweep(){
+    const g=+gR.value/100,nv=V.slice();
+    for(let i=0;i<N;i++){const nx=(i+1)%N;nv[i]=(i===RW?1:0)+g*V[nx];}
+    prevMax=Math.max(...V);V=nv;sweeps++;draw();
+  }
+  function draw(){
+    const g=+gR.value/100;gV.textContent=g.toFixed(2);
+    const W=cv.width=cv.clientWidth*2,H=cv.height=420;cv.style.height='210px';
+    ctx.clearRect(0,0,W,H);
+    const pad=34,cw=(W-pad*2)/N,base=H-70;
+    const mx=Math.max(1,...V)*1.12;
+    for(let i=0;i<N;i++){
+      const h=Math.max(2,V[i]/mx*(base-46));
+      ctx.fillStyle=i===RW?'rgba(255,79,24,.72)':'rgba(0,184,148,.55)';
+      ctx.fillRect(pad+i*cw+6,base-h,cw-18,h);
+      ctx.strokeStyle='#141210';ctx.lineWidth=3.5;ctx.strokeRect(pad+i*cw+6,base-h,cw-18,h);
+      ctx.fillStyle='#141210';ctx.font='700 19px ui-monospace,monospace';ctx.textAlign='center';
+      ctx.fillText(V[i].toFixed(2),pad+i*cw+cw/2-3,base-h-12);
+      ctx.font='600 15px sans-serif';ctx.fillStyle=i===RW?'#ff4f18':'#6b6459';
+      ctx.fillText(i===RW?'s'+i+' → r=1':'s'+i,pad+i*cw+cw/2-3,base+26);
+    }
+    ctx.textAlign='left';ctx.strokeStyle='#141210';ctx.lineWidth=4;
+    ctx.beginPath();ctx.moveTo(pad,base);ctx.lineTo(W-pad,base);ctx.stroke();
+    // 环形回边提示
+    ctx.setLineDash([9,7]);ctx.strokeStyle='#9a938a';ctx.lineWidth=3.5;
+    ctx.beginPath();ctx.moveTo(W-pad-cw/2,base+44);ctx.lineTo(W-pad-cw/2,base+62);
+    ctx.lineTo(pad+cw/2,base+62);ctx.lineTo(pad+cw/2,base+44);ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#9a938a';ctx.font='600 16px sans-serif';
+    ctx.fillText('绕回起点（没有终点，没有锚点）',pad+cw/2+14,base+58);
+    const cur=Math.max(...V), fix=g<1?1/(1-Math.pow(g,N)):Infinity;
+    const grow=cur-prevMax;
+    out.textContent='γ = '+g.toFixed(2)+'   已扫 '+sweeps+' 轮   当前最大 V = '+cur.toFixed(3)+'\n'
+      +'每跳误差收缩系数 = γ = '+g.toFixed(2)+'   绕一圈收缩 = γ^8 = '+Math.pow(g,N).toFixed(3)+'\n'
+      +'理论不动点 = 1/(1−γ^8) = '+(g<1?fix.toFixed(3):'∞（不存在）')+'\n'
+      +'本轮增量 = '+grow.toFixed(4)+'   '
+      +(g>=1 ? '💥 γ=1：收缩系数为 1，误差一次都不衰减 → V 无上限发散'
+        : grow<1e-4&&sweeps>2 ? '✅ 已停在不动点：每跳衰减 '+(1-g).toFixed(2)+'，压缩映射把它锁住了'
+        : '⬆ 还在往不动点爬，增量正按 γ^8 逐轮缩小');
+  }
+  document.getElementById('ctStep').onclick=sweep;
+  document.getElementById('ctReset').onclick=reset;
+  document.getElementById('ctAuto').onclick=()=>{clearInterval(timer);timer=setInterval(()=>{
+    if(Math.max(...V)>1e6){clearInterval(timer);return;}sweep();},130);};
+  gR.oninput=()=>{clearInterval(timer);reset();};
+  reset();addEventListener('resize',draw);
+})();
+</script>
+<script>
+/* ============ 实验 9：target 网络 on/off ============ */
+(function(){
+  const cv=document.getElementById('tnCv'),ctx=cv.getContext('2d'),out=document.getElementById('tnOut');
+  const aR=document.getElementById('tnA'),aV=document.getElementById('tnAv');
+  const tR=document.getElementById('tnT'),tV=document.getElementById('tnTv');
+  const N=8,G=0.95,MAXH=120;
+  let Vo=[],Vt=[],hist=[],timer=null;
+  function reset(){clearInterval(timer);
+    Vo=new Array(N).fill(0);Vt=new Array(N).fill(0);hist=[0];draw();}
+  function sweep(){
+    const a=+aR.value/100, tau=+tR.value/100;
+    const nv=Vo.slice();
+    for(let i=0;i<N;i++){                       // 用 target 网络算目标
+      const tgt=(i===3?1:0)+G*Vt[(i+1)%N];
+      nv[i]=Vo[i]+a*(tgt-Vo[i]);                // 梯度步
+    }
+    Vo=nv;
+    for(let i=0;i<N;i++) Vt[i]=tau*Vo[i]+(1-tau)*Vt[i];   // Polyak；tau=1 即无 target
+    hist.push(Vo[0]);if(hist.length>MAXH)hist.shift();
+    draw();
+  }
+  function draw(){
+    aV.textContent=(+aR.value/100).toFixed(2);tV.textContent=(+tR.value/100).toFixed(2);
+    const W=cv.width=cv.clientWidth*2,H=cv.height=440;cv.style.height='220px';
+    ctx.clearRect(0,0,W,H);const pad=46;
+    const fin=hist.filter(v=>isFinite(v));
+    const mx=Math.max(3,...fin.map(Math.abs))*1.15;
+    const X=i=>pad+i*(W-pad*2)/Math.max(1,MAXH-1), Y=v=>H/2-v/mx*(H/2-pad);
+    ctx.strokeStyle='#ddd8cc';ctx.lineWidth=3;ctx.beginPath();
+    ctx.moveTo(pad,H/2);ctx.lineTo(W-pad,H/2);ctx.stroke();
+    const fix=1/(1-Math.pow(G,N));
+    ctx.setLineDash([8,6]);ctx.strokeStyle='#00b894';ctx.lineWidth=4;
+    ctx.beginPath();ctx.moveTo(pad,Y(fix));ctx.lineTo(W-pad,Y(fix));ctx.stroke();ctx.setLineDash([]);
+    ctx.fillStyle='#00b894';ctx.font='700 19px sans-serif';
+    ctx.fillText('正确答案 '+fix.toFixed(2),pad+8,Y(fix)-12);
+    ctx.strokeStyle='#ff4f18';ctx.lineWidth=5;ctx.beginPath();
+    hist.forEach((v,i)=>{const y=isFinite(v)?Y(v):(v>0?0:H);i?ctx.lineTo(X(i),y):ctx.moveTo(X(i),y);});
+    ctx.stroke();
+    ctx.strokeStyle='#141210';ctx.lineWidth=4;ctx.strokeRect(pad,pad-24,W-pad*2,H-pad*2+48);
+    ctx.fillStyle='#141210';ctx.font='700 19px sans-serif';
+    ctx.fillText('V[0] 随更新轮次',pad+8,pad-2);
+    const a=+aR.value/100,tau=+tR.value/100,cur=Vo[0];
+    const thresh=2/(1+G);
+    out.textContent='α = '+a.toFixed(2)+'   τ = '+tau.toFixed(2)
+      +(tau>=0.999?'  ← 等于没有 target 网络':'  ← target 网络已启用')
+      +'\n已扫 '+(hist.length-1)+' 轮   V[0] = '+(isFinite(cur)?cur.toFixed(3):'发散')
+      +'   正确答案 = '+fix.toFixed(3)+'\n'
+      +'τ=1 时的发散门槛：α > 2/(1+γ) = '+thresh.toFixed(3)+'\n'
+      +(!isFinite(cur)||Math.abs(cur)>1e5 ? '💥 已发散：靶子跟着枪口动，误差正负交替、越滚越大'
+        : tau>=0.999&&a>thresh ? '⚠ 配置在门槛之上，正在振荡放大——把 τ 拖到 0.05 试试'
+        : Math.abs(cur-fix)<0.01 ? '✅ 收敛到正确答案：靶子被焊住，更新变成稳定的压缩迭代'
+        : '⬆ 正在收敛中');
+  }
+  document.getElementById('tnReset').onclick=reset;
+  document.getElementById('tnAuto').onclick=()=>{clearInterval(timer);reset();
+    let k=0;timer=setInterval(()=>{if(++k>MAXH){clearInterval(timer);return;}sweep();},45);};
+  aR.oninput=()=>{clearInterval(timer);reset();};
+  tR.oninput=()=>{clearInterval(timer);reset();};
   reset();addEventListener('resize',draw);
 })();
 </script>
