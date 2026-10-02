@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="从概念出发阅读机器人学习知识库：策略梯度、Q值、target网络、双Q、流匹配与VLA，直接跳到已有文章的解释段落。">
+<title>概念索引 · 机器人学习知识库</title>
+<link rel="stylesheet" href="concepts.css">
+<style>
+:root{color-scheme:light;--bg:#f4f1e9;--paper:#fffcf6;--ink:#203039;--muted:#58666b;--accent:#086e76;--line:#cbd0c9}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.75 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+a{color:var(--accent)}a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid var(--accent);outline-offset:4px}main{max-width:1160px;padding:50px 28px 72px;margin:auto}.eyebrow{font:12px/1.5 ui-monospace,Consolas,monospace;letter-spacing:.16em;color:var(--accent)}h1{font-size:clamp(34px,5vw,58px);line-height:1.2;letter-spacing:-.04em;margin:14px 0 18px}h1 small{display:block;font-size:18px;letter-spacing:.02em;font-weight:400;color:var(--muted);margin-top:16px}.intro{max-width:740px;color:var(--muted);margin:0}.route{margin:28px 0;padding:20px 24px;border-left:3px solid var(--accent);background:var(--paper)}.route strong{display:block;margin-bottom:8px}.route p{margin:6px 0}.route a{text-decoration-thickness:1px;text-underline-offset:4px}.search-area{display:flex;align-items:end;gap:14px;flex-wrap:wrap;margin:30px 0 12px}.search-field{flex:1;min-width:200px}.search-field label{display:block;font-size:13px;font-weight:600;margin-bottom:6px}input{display:block;width:100%;font:inherit;border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:7px;padding:12px 14px}button{font:inherit;border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:7px;padding:12px 16px;cursor:pointer}.count{font-size:13px;color:var(--muted);margin:8px 0 28px}.group-heading{display:flex;gap:14px;align-items:baseline;border-bottom:1px solid var(--line);margin:44px 0 18px}.group-heading>span{font:13px ui-monospace,monospace;color:var(--accent)}h2{font-size:22px;margin:0 0 12px}.term-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.term-card{min-width:0;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:21px;scroll-margin-top:84px}.term-card:target{outline:2px solid var(--accent);outline-offset:3px}.term-card h3{font-size:18px;line-height:1.55;margin:0 0 12px}.term-card h3 a{text-decoration:none;color:var(--ink)}.term-card h3 a:hover{color:var(--accent);text-decoration:underline}.term-card h3 span{color:var(--accent);font-weight:400}.term-card p{font-size:14px;color:var(--muted);margin:0 0 16px}.term-source{font-size:11px;overflow-wrap:anywhere;color:var(--muted);margin-bottom:12px}.term-related{display:flex;flex-wrap:wrap;gap:7px;font-size:12px;border-top:1px solid var(--line);padding-top:12px}.term-related>span{flex-basis:100%;color:var(--muted)}.term-related a{border:1px solid var(--line);border-radius:4px;padding:2px 7px;text-decoration:none}.term-related a:hover{border-color:var(--accent)}[hidden]{display:none!important}.empty{padding:32px;background:var(--paper);border:1px dashed var(--line)}footer{margin-top:44px;padding-top:20px;border-top:1px solid var(--line);font-size:13px;color:var(--muted)}footer a{margin-right:18px}
+@media(max-width:950px){.term-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:620px){main{padding:34px 18px 50px}.term-grid{grid-template-columns:1fr}.route{padding:15px}h2{font-size:20px}}
+@media(prefers-color-scheme:dark){:root{color-scheme:dark;--bg:#122028;--paper:#192a34;--ink:#e1e9e9;--muted:#a5b6bc;--accent:#81d2cc;--line:#38505a}}
+</style>
+</head>
+<body>
+<main>
+  <header><div class="eyebrow">ROBOTIC LEARNING / CONCEPT INDEX</div><h1>从一个概念，读懂另一篇。<small>38 个关键概念 · 20 篇研读网页</small></h1><p class="intro">正文里的虚线下划线可以点击，直达相关讲解。这里按问题收录概念：点击标题阅读原文，沿“接着理解”继续串读。</p></header>
+  <aside class="route" aria-label="概念阅读路线"><strong>从你正在问的问题出发</strong><p>“target 和双 Q 是一回事吗？” <a href="#q-value">Q 值</a> → <a href="#target-network">target 副本</a> → <a href="#twin-q">双 Q</a></p><p>“VLA 怎么用 RL 变好？” <a href="#flow-matching">流匹配</a> → <a href="#denoising-mdp">去噪链 MDP</a> / <a href="#rl-token">RL Token</a> → <a href="#recap">RECAP</a></p></aside>
+  <div class="search-area"><div class="search-field"><label for="concept-search">查找概念或相关问题</label><input id="concept-search" type="search" placeholder="例如：target、双 Q、奖励、动作块" autocomplete="off"></div><button id="clear-search" type="button">清空搜索</button></div>
+  <p class="count" id="result-count" role="status" aria-live="polite">共 38 个概念</p>
+  <p class="empty" id="empty-state" hidden>没有找到匹配概念。试试中文名称、英文缩写，或清空搜索查看全部。</p>
+  <section class="term-group" aria-labelledby="group-0">
+    <div class="group-heading"><span>01</span><h2 id="group-0">价值如何学出来</h2></div>
+    <div class="term-grid">
+      <article class="term-card" id="q-value">
+        <h3><a href="两条主干-拆机手册.html#concept-q-value">Q 值 · 动作价值<span aria-hidden="true"> ↗</span></a></h3>
+        <p>执行某个动作后，未来折扣累计奖励的估计。它是价值判断，不是动作本身。</p>
+        <div class="term-source">讲解位置：两条主干-拆机手册</div>
+        <div class="term-related"><span>接着理解</span> <a href="#bellman">Bellman 关系</a> <a href="#actor-critic">Actor–Critic</a> <a href="#advantage">Advantage</a></div>
+      </article>
+      <article class="term-card" id="bellman">
+        <h3><a href="两条主干-拆机手册.html#concept-bellman">Bellman 关系<span aria-hidden="true"> ↗</span></a></h3>
+        <p>把当前价值与即时奖励、后续价值联系起来，是时序差分学习的出发点。</p>
+        <div class="term-source">讲解位置：两条主干-拆机手册</div>
+        <div class="term-related"><span>接着理解</span> <a href="#q-value">Q 值</a> <a href="#bootstrap">Bootstrap</a> <a href="#off-policy">Off-policy</a></div>
+      </article>
+      <article class="term-card" id="bootstrap">
+        <h3><a href="RLToken-漫画分镜解读.html#concept-bootstrap">Bootstrap · TD 自举<span aria-hidden="true"> ↗</span></a></h3>
+        <p>更新一个价值估计时，借用后续状态的估计。本条指 TD 自举，与“用预训练模型热启动”分开理解。</p>
+        <div class="term-source">讲解位置：RLToken-漫画分镜解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#bellman">Bellman 关系</a> <a href="#target-network">Target 网络</a> <a href="#sparse-reward">稀疏奖励</a></div>
+      </article>
+      <article class="term-card" id="sparse-reward">
+        <h3><a href="RLToken-漫画分镜解读.html#concept-sparse-reward">稀疏奖励<span aria-hidden="true"> ↗</span></a></h3>
+        <p>奖励只在少数时刻出现，学习需要把结果反馈传回之前的动作。</p>
+        <div class="term-source">讲解位置：RLToken-漫画分镜解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#bootstrap">Bootstrap</a> <a href="#action-chunk">Action chunk</a> <a href="#replay-buffer">Replay buffer</a></div>
+      </article>
+      <article class="term-card" id="target-network">
+        <h3><a href="RLToken-漫画分镜解读.html#concept-target-network">Target network · 目标网络<span aria-hidden="true"> ↗</span></a></h3>
+        <p>主网络的一份延迟更新副本，参与计算较稳定的训练目标；不是额外独立训练的第二个评价员。</p>
+        <div class="term-source">讲解位置：RLToken-漫画分镜解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#q-value">Q 值</a> <a href="#twin-q">双 Q</a> <a href="#td3">TD3</a></div>
+      </article>
+      <article class="term-card" id="twin-q">
+        <h3><a href="RLToken-漫画分镜解读.html#concept-twin-q">双 Q · 两个 critic<span aria-hidden="true"> ↗</span></a></h3>
+        <p>同时训练两套 Q 估计。在本文的 SAC / TD3 语境中，目标取较小值以减轻高估；每套 Q 又可有自己的 target 副本。</p>
+        <div class="term-source">讲解位置：RLToken-漫画分镜解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#overestimation">Q 值高估</a> <a href="#target-network">Target 网络</a> <a href="#sac">SAC</a></div>
+      </article>
+      <article class="term-card" id="overestimation">
+        <h3><a href="两条主干-拆机手册.html#concept-overestimation">Q 值高估<span aria-hidden="true"> ↗</span></a></h3>
+        <p>当估计有误差时，选择看起来最好的动作会偏向高估的值，误差可能被后续更新放大。</p>
+        <div class="term-source">讲解位置：两条主干-拆机手册</div>
+        <div class="term-related"><span>接着理解</span> <a href="#twin-q">双 Q</a> <a href="#td3">TD3</a> <a href="#bellman">Bellman 关系</a></div>
+      </article>
+      <article class="term-card" id="off-policy">
+        <h3><a href="两条主干-拆机手册.html#concept-off-policy">Off-policy · 异策略<span aria-hidden="true"> ↗</span></a></h3>
+        <p>学习的目标策略可以不同于产生数据的行为策略，因此旧经验和其他策略的数据也可能被复用。</p>
+        <div class="term-source">讲解位置：两条主干-拆机手册</div>
+        <div class="term-related"><span>接着理解</span> <a href="#replay-buffer">Replay buffer</a> <a href="#sac">SAC</a> <a href="#iql">IQL</a></div>
+      </article>
+      <article class="term-card" id="replay-buffer">
+        <h3><a href="RLToken-漫画分镜解读.html#concept-replay-buffer">Replay buffer · 经验回放池<span aria-hidden="true"> ↗</span></a></h3>
+        <p>存储交互经验，训练时再抽样使用，把数据收集与参数更新分开。</p>
+        <div class="term-source">讲解位置：RLToken-漫画分镜解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#off-policy">Off-policy</a> <a href="#actor-critic">Actor–Critic</a> <a href="#sparse-reward">稀疏奖励</a></div>
+      </article>
+    </div>
+  </section>
+  <section class="term-group" aria-labelledby="group-1">
+    <div class="group-heading"><span>02</span><h2 id="group-1">策略如何改进</h2></div>
+    <div class="term-grid">
+      <article class="term-card" id="policy-gradient">
+        <h3><a href="为什么取log.html#concept-policy-gradient">策略梯度<span aria-hidden="true"> ↗</span></a></h3>
+        <p>直接调整策略参数，让获得较好回报的动作或轨迹更可能发生。</p>
+        <div class="term-source">讲解位置：为什么取log</div>
+        <div class="term-related"><span>接着理解</span> <a href="#log-trick">Log 技巧</a> <a href="#advantage">Advantage</a> <a href="#ppo">PPO</a></div>
+      </article>
+      <article class="term-card" id="log-trick">
+        <h3><a href="为什么取log.html#concept-log-trick">Log 技巧 · 对数导数<span aria-hidden="true"> ↗</span></a></h3>
+        <p>利用 ∇P = P∇log P，把概率分布的导数改写成可用采样估计的形式。</p>
+        <div class="term-source">讲解位置：为什么取log</div>
+        <div class="term-related"><span>接着理解</span> <a href="#policy-gradient">策略梯度</a> <a href="#advantage">Advantage</a> <a href="#denoising-mdp">去噪链 MDP</a></div>
+      </article>
+      <article class="term-card" id="advantage">
+        <h3><a href="两条主干-拆机手册.html#concept-advantage">Advantage · 优势<span aria-hidden="true"> ↗</span></a></h3>
+        <p>衡量一个动作相对基线好多少；在策略更新中提供方向与权重。</p>
+        <div class="term-source">讲解位置：两条主干-拆机手册</div>
+        <div class="term-related"><span>接着理解</span> <a href="#q-value">Q 值</a> <a href="#policy-gradient">策略梯度</a> <a href="#recap">RECAP</a></div>
+      </article>
+      <article class="term-card" id="actor-critic">
+        <h3><a href="RLToken-漫画分镜解读.html#concept-actor-critic">Actor–Critic<span aria-hidden="true"> ↗</span></a></h3>
+        <p>Actor 产生动作，critic 估计价值，为策略改进提供学习信号。两者的任务不同于“双 Q”。</p>
+        <div class="term-source">讲解位置：RLToken-漫画分镜解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#q-value">Q 值</a> <a href="#advantage">Advantage</a> <a href="#twin-q">双 Q</a></div>
+      </article>
+      <article class="term-card" id="behavior-cloning">
+        <h3><a href="RLToken-漫画分镜解读.html#concept-behavior-cloning">BC · 行为克隆与正则<span aria-hidden="true"> ↗</span></a></h3>
+        <p>从示范动作学习策略。RL Token 还用接近参考动作的正则约束策略，降低偏离已有技能的幅度。</p>
+        <div class="term-source">讲解位置：RLToken-漫画分镜解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#actor-critic">Actor–Critic</a> <a href="#residual-rl">Residual RL</a> <a href="#recap">RECAP</a></div>
+      </article>
+      <article class="term-card" id="ppo">
+        <h3><a href="RLinf-RL原理对比.html#concept-ppo">PPO · 裁剪策略更新<span aria-hidden="true"> ↗</span></a></h3>
+        <p>用新旧策略概率比和裁剪目标限制更新幅度；在本库中还可接着看 πRL 如何为动作生成链构造概率。</p>
+        <div class="term-source">讲解位置：RLinf-RL原理对比</div>
+        <div class="term-related"><span>接着理解</span> <a href="#policy-gradient">策略梯度</a> <a href="#advantage">Advantage</a> <a href="#denoising-mdp">去噪链 MDP</a></div>
+      </article>
+      <article class="term-card" id="grpo">
+        <h3><a href="RLinf-RL原理对比.html#concept-grpo">GRPO · 组内比较<span aria-hidden="true"> ↗</span></a></h3>
+        <p>利用同一组样本的相对奖励构造优势信号，比较它与学习 critic 的路线有何不同。</p>
+        <div class="term-source">讲解位置：RLinf-RL原理对比</div>
+        <div class="term-related"><span>接着理解</span> <a href="#advantage">Advantage</a> <a href="#ppo">PPO</a> <a href="#actor-critic">Actor–Critic</a></div>
+      </article>
+      <article class="term-card" id="sac">
+        <h3><a href="RLinf-RL原理对比.html#concept-sac">SAC · 最大熵强化学习<span aria-hidden="true"> ↗</span></a></h3>
+        <p>同时考虑回报与策略熵的 off-policy actor-critic 方法，本库从双 Q 和 target 机制解释其稳定性设计。</p>
+        <div class="term-source">讲解位置：RLinf-RL原理对比</div>
+        <div class="term-related"><span>接着理解</span> <a href="#off-policy">Off-policy</a> <a href="#twin-q">双 Q</a> <a href="#target-network">Target 网络</a></div>
+      </article>
+      <article class="term-card" id="td3">
+        <h3><a href="RLToken-漫画分镜解读.html#concept-td3">TD3 · 双 Q 与延迟更新<span aria-hidden="true"> ↗</span></a></h3>
+        <p>围绕价值高估和策略更新稳定性设计的算法。RLT 借用其中部分机制，并非照搬整个 TD3。</p>
+        <div class="term-source">讲解位置：RLToken-漫画分镜解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#twin-q">双 Q</a> <a href="#target-network">Target 网络</a> <a href="#actor-critic">Actor–Critic</a></div>
+      </article>
+      <article class="term-card" id="iql">
+        <h3><a href="RLinf-RL原理对比.html#concept-iql">IQL · 离线价值学习<span aria-hidden="true"> ↗</span></a></h3>
+        <p>从已有数据提取策略，避免直接对数据集之外的动作取最大 Q。</p>
+        <div class="term-source">讲解位置：RLinf-RL原理对比</div>
+        <div class="term-related"><span>接着理解</span> <a href="#off-policy">Off-policy</a> <a href="#q-value">Q 值</a> <a href="#advantage">Advantage</a></div>
+      </article>
+      <article class="term-card" id="recap">
+        <h3><a href="pi0.6-论文解读.html#concept-recap">RECAP · 优势条件化策略<span aria-hidden="true"> ↗</span></a></h3>
+        <p>把示范、自主经验和人类纠错接入循环，并用优势条件化提取改进后的策略。</p>
+        <div class="term-source">讲解位置：pi0.6-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#advantage">Advantage</a> <a href="#behavior-cloning">BC</a> <a href="#prompt-conditioning">Prompt conditioning</a></div>
+      </article>
+      <article class="term-card" id="residual-rl">
+        <h3><a href="ObjectCentric-RL-论文解读.html#concept-residual-rl">Residual RL · 残差强化学习<span aria-hidden="true"> ↗</span></a></h3>
+        <p>在基础策略动作上学习修正量；对照整模型微调和 RL Token，可看清“到底更新哪里”。</p>
+        <div class="term-source">讲解位置：ObjectCentric-RL-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#behavior-cloning">BC</a> <a href="#sim-to-real">Sim-to-Real</a> <a href="#rl-token">RL Token</a></div>
+      </article>
+    </div>
+  </section>
+  <section class="term-group" aria-labelledby="group-2">
+    <div class="group-heading"><span>03</span><h2 id="group-2">VLA 如何生成动作</h2></div>
+    <div class="term-grid">
+      <article class="term-card" id="vla">
+        <h3><a href="VLA-发展历程.html#concept-vla">VLA · 视觉—语言—动作<span aria-hidden="true"> ↗</span></a></h3>
+        <p>把视觉观测与语言目标连接到机器人动作；用发展历程页定位数据、动作生成和反馈各自解决的问题。</p>
+        <div class="term-source">讲解位置：VLA-发展历程</div>
+        <div class="term-related"><span>接着理解</span> <a href="#flow-matching">Flow Matching</a> <a href="#cross-embodiment">Cross-embodiment</a> <a href="#recap">RECAP</a></div>
+      </article>
+      <article class="term-card" id="flow-matching">
+        <h3><a href="pi0-论文解读.html#concept-flow-matching">Flow Matching · 流匹配<span aria-hidden="true"> ↗</span></a></h3>
+        <p>学习连续速度场，将噪声逐步变换为动作；在 π0 中由动作专家生成连续动作块。</p>
+        <div class="term-source">讲解位置：pi0-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#action-expert">Action expert</a> <a href="#action-chunk">Action chunk</a> <a href="#denoising-mdp">去噪链 MDP</a></div>
+      </article>
+      <article class="term-card" id="action-expert">
+        <h3><a href="pi0-论文解读.html#concept-action-expert">Action expert · 动作专家<span aria-hidden="true"> ↗</span></a></h3>
+        <p>负责处理机器人状态和动作生成的一组参数，与视觉语言主干交互。</p>
+        <div class="term-source">讲解位置：pi0-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#vla">VLA</a> <a href="#flow-matching">Flow Matching</a> <a href="#fast">FAST</a></div>
+      </article>
+      <article class="term-card" id="action-chunk">
+        <h3><a href="RLToken-漫画分镜解读.html#concept-action-chunk">Action chunk · 动作块<span aria-hidden="true"> ↗</span></a></h3>
+        <p>一次预测一段连续动作。动作块影响执行延迟，也改变 RL 的时间尺度和信用分配。</p>
+        <div class="term-source">讲解位置：RLToken-漫画分镜解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#flow-matching">Flow Matching</a> <a href="#sparse-reward">稀疏奖励</a> <a href="#latency">感知—执行时延</a></div>
+      </article>
+      <article class="term-card" id="fast">
+        <h3><a href="pi0.5_论文测验_精美版.html#concept-fast">FAST · 动作分词<span aria-hidden="true"> ↗</span></a></h3>
+        <p>把连续动作序列压缩成离散 token 的表示方式；对照连续流匹配动作头理解两者分工。</p>
+        <div class="term-source">讲解位置：pi0.5 · 精读测验</div>
+        <div class="term-related"><span>接着理解</span> <a href="#action-expert">Action expert</a> <a href="#flow-matching">Flow Matching</a> <a href="#action-chunk">Action chunk</a></div>
+      </article>
+      <article class="term-card" id="rl-token">
+        <h3><a href="RLToken-漫画分镜解读.html#concept-rl-token">RL Token · 状态表征<span aria-hidden="true"> ↗</span></a></h3>
+        <p>从冻结 VLA 的内部信息提取紧凑表征，让轻量 actor-critic 在其上学习。</p>
+        <div class="term-source">讲解位置：RLToken-漫画分镜解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#actor-critic">Actor–Critic</a> <a href="#action-chunk">Action chunk</a> <a href="#residual-rl">Residual RL</a></div>
+      </article>
+      <article class="term-card" id="denoising-mdp">
+        <h3><a href="piRL-论文解读.html#concept-denoising-mdp">去噪链 MDP<span aria-hidden="true"> ↗</span></a></h3>
+        <p>把动作生成过程的多个去噪步骤纳入策略学习，为流匹配 VLA 接入在线强化学习。</p>
+        <div class="term-source">讲解位置：piRL-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#flow-matching">Flow Matching</a> <a href="#ppo">PPO</a> <a href="#log-trick">Log 技巧</a></div>
+      </article>
+      <article class="term-card" id="prompt-conditioning">
+        <h3><a href="pi0.7_问答学习卡.html#concept-prompt-conditioning">Prompt conditioning · 提示条件<span aria-hidden="true"> ↗</span></a></h3>
+        <p>除任务文字外，用子目标、价值、示范等提示条件引导策略，理解 π0.7 的多样化 prompting。</p>
+        <div class="term-source">讲解位置：pi0.7 · 问答卡</div>
+        <div class="term-related"><span>接着理解</span> <a href="#world-model">World model</a> <a href="#recap">RECAP</a> <a href="#vla">VLA</a></div>
+      </article>
+      <article class="term-card" id="world-model">
+        <h3><a href="pi0.7_问答学习卡.html#concept-world-model">World model · 世界模型<span aria-hidden="true"> ↗</span></a></h3>
+        <p>在 π0.7 的具体语境中，利用预测的未来子目标图像辅助动作生成；不把它与所有价值模型混为一谈。</p>
+        <div class="term-source">讲解位置：pi0.7 · 问答卡</div>
+        <div class="term-related"><span>接着理解</span> <a href="#prompt-conditioning">Prompt conditioning</a> <a href="#motion-perception">运动感知与未来预测</a> <a href="#vla">VLA</a></div>
+      </article>
+    </div>
+  </section>
+  <section class="term-group" aria-labelledby="group-3">
+    <div class="group-heading"><span>04</span><h2 id="group-3">数据、感知与实时执行</h2></div>
+    <div class="term-grid">
+      <article class="term-card" id="sim-to-real">
+        <h3><a href="ObjectCentric-RL-论文解读.html#concept-sim-to-real">Sim-to-Real · 仿真到现实<span aria-hidden="true"> ↗</span></a></h3>
+        <p>把仿真中训练的策略迁移到真实机器人，核心难点之一是两种环境的观测和动力学差异。</p>
+        <div class="term-source">讲解位置：ObjectCentric-RL-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#residual-rl">Residual RL</a> <a href="#synthetic-data">合成数据</a> <a href="#cross-embodiment">Cross-embodiment</a></div>
+      </article>
+      <article class="term-card" id="synthetic-data">
+        <h3><a href="InternData-A1-论文解读.html#concept-synthetic-data">合成数据<span aria-hidden="true"> ↗</span></a></h3>
+        <p>借助仿真和自动化流程生成机器人训练数据，研究覆盖面、质量与真实任务泛化的关系。</p>
+        <div class="term-source">讲解位置：InternData-A1-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#sim-to-real">Sim-to-Real</a> <a href="#vla">VLA</a> <a href="#cross-embodiment">Cross-embodiment</a></div>
+      </article>
+      <article class="term-card" id="cross-embodiment">
+        <h3><a href="Qwen-VLA-论文解读.html#concept-cross-embodiment">Cross-embodiment · 跨本体<span aria-hidden="true"> ↗</span></a></h3>
+        <p>让策略处理不同机器人的形态、状态和动作空间；这是跨身体泛化，与仿真到现实的迁移维度不同。</p>
+        <div class="term-source">讲解位置：Qwen-VLA-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#vla">VLA</a> <a href="#synthetic-data">合成数据</a> <a href="#action-expert">Action expert</a></div>
+      </article>
+      <article class="term-card" id="latency">
+        <h3><a href="DynamicVLA-论文解读.html#concept-latency">感知—执行时延<span aria-hidden="true"> ↗</span></a></h3>
+        <p>推理期间物体继续运动，旧观测对应的动作可能已经过时；需要同时考虑模型速度和动作执行调度。</p>
+        <div class="term-source">讲解位置：DynamicVLA-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#action-chunk">Action chunk</a> <a href="#speculative-inference">投机推理</a> <a href="#motion-perception">运动感知与未来预测</a></div>
+      </article>
+      <article class="term-card" id="speculative-inference">
+        <h3><a href="Realtime-VLA-论文解读.html#concept-speculative-inference">投机推理<span aria-hidden="true"> ↗</span></a></h3>
+        <p>先产生候选动作，再验证和接收可用结果，以减少生成延迟；不等同于单纯复用 KV 缓存。</p>
+        <div class="term-source">讲解位置：Realtime-VLA-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#latency">感知—执行时延</a> <a href="#kv-cache">KV Cache</a> <a href="#flow-matching">Flow Matching</a></div>
+      </article>
+      <article class="term-card" id="kv-cache">
+        <h3><a href="Realtime-VLA-论文解读.html#concept-kv-cache">KV Cache · 注意力缓存<span aria-hidden="true"> ↗</span></a></h3>
+        <p>缓存并复用注意力中的 key/value，减少重复计算；与 PUMA 的光流、掩码数据预计算缓存不同。</p>
+        <div class="term-source">讲解位置：Realtime-VLA-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#speculative-inference">投机推理</a> <a href="#action-expert">Action expert</a> <a href="#latency">感知—执行时延</a></div>
+      </article>
+      <article class="term-card" id="motion-perception">
+        <h3><a href="PUMA-论文解读.html#concept-motion-perception">运动感知与未来预测<span aria-hidden="true"> ↗</span></a></h3>
+        <p>把历史运动线索与未来预测引入操作策略，帮助处理动态环境。</p>
+        <div class="term-source">讲解位置：PUMA-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#latency">感知—执行时延</a> <a href="#4d-reconstruction">4D 重建</a> <a href="#world-model">World model</a></div>
+      </article>
+      <article class="term-card" id="4d-reconstruction">
+        <h3><a href="D4RT_study_cards.html#concept-4d-reconstruction">4D 重建 · 时空几何<span aria-hidden="true"> ↗</span></a></h3>
+        <p>从视频联合推理几何、时空对应和相机信息，把静态三维结构扩展到随时间变化的场景。</p>
+        <div class="term-source">讲解位置：D4RT_study_cards</div>
+        <div class="term-related"><span>接着理解</span> <a href="#motion-perception">运动感知与未来预测</a> <a href="#world-model">World model</a> <a href="#vla">VLA</a></div>
+      </article>
+    </div>
+  </section>
+  <footer><a href="index.html">← 知识库首页</a><a href="VLA-发展历程.html">VLA 发展历程</a>概念摘要用于定位；公式、例子与具体方法见链接中的原文段落。</footer>
+</main>
+<script>
+(function () {
+  'use strict';
+  var input = document.getElementById('concept-search');
+  var cards = Array.from(document.querySelectorAll('.term-card'));
+  var groups = Array.from(document.querySelectorAll('.term-group'));
+  function normalize(value) { return value.toLowerCase().replace(/[\s—–-]+/g, ''); }
+  function filter() {
+    var query = normalize(input.value);
+    var shown = 0;
+    cards.forEach(function (card) {
+      card.hidden = query !== '' && normalize(card.textContent).indexOf(query) === -1;
+      if (!card.hidden) shown++;
+    });
+    groups.forEach(function (group) { group.hidden = !group.querySelector('.term-card:not([hidden])'); });
+    document.getElementById('result-count').textContent = query ? '找到 ' + shown + ' 个概念 / 共 ' + cards.length + ' 个' : '共 ' + cards.length + ' 个概念';
+    document.getElementById('empty-state').hidden = shown !== 0;
+  }
+  function revealHash() {
+    var id;
+    try { id = decodeURIComponent(location.hash.slice(1)); } catch (error) { return; }
+    var card = document.getElementById(id);
+    if (card && card.classList.contains('term-card')) {
+      if (input.value) { input.value = ''; filter(); }
+      card.scrollIntoView({block:'start'});
+    }
+  }
+  input.addEventListener('input', filter);
+  document.getElementById('clear-search').addEventListener('click', function () { input.value = ''; filter(); input.focus(); });
+  window.addEventListener('hashchange', revealHash);
+  document.querySelector('main').addEventListener('click', function (event) {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    var link = event.target.closest('a[href^="#"]');
+    if (link && link.getAttribute('href') === location.hash) revealHash();
+  });
+  revealHash();
+})();
+</script>
+<script src="nav.js"></script>
+</body>
+</html>

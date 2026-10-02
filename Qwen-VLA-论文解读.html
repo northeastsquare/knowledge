@@ -153,6 +153,7 @@
   footer a{color:var(--accent); text-decoration:none;}
   footer a:hover{text-decoration:underline;}
 </style>
+<link rel="stylesheet" href="concepts.css">
 </head>
 <body>
 <div class="grid" aria-hidden="true"></div>
@@ -167,7 +168,7 @@
   <section class="hero">
     <div class="eyebrow">精读笔记 · VLA</div>
     <h1>Qwen-VLA：统一任务、环境与机器人构型的视觉-语言-动作建模</h1>
-    <p class="summary">统一任务、环境与机器人构型的 VLA，实现跨形态泛化。</p>
+    <p class="summary">统一任务、环境与机器人构型的 <a class="concept-link" href="VLA-发展历程.html#concept-vla">VLA</a>，实现跨形态泛化。</p>
     <div class="meta">
       <div class="m"><span class="k">论文</span><span class="v">Qwen-VLA: Unifying Vision-Language-Action Modeling across Tasks, Environments, and Robot Embodiments</span></div>
       <div class="m"><span class="k">机构</span><span class="v">Qwen（阿里巴巴）</span></div>
@@ -193,10 +194,10 @@
 
   <section>
     <h2>方法主线</h2>
-    <p>五步把异构具身任务收进一个模型：</p>
+    <p id="concept-cross-embodiment" class="concept-anchor"><strong>跨本体（cross-embodiment）</strong>指同一模型适应不同机器人构型及其控制语义，例如不同臂型、关节维度或控制频率。这里用构型提示和统一动作表征实现；它与“仿真到真机”的域迁移是不同的维度。五步把异构具身任务收进一个模型：</p>
     <ol>
       <li><strong>统一问题形式化</strong>：所有任务写成 <code>p(y<sub>t:t+H-1</sub> | o<sub>t</sub>, x, e, z)</code>——给定视觉 <code>o<sub>t</sub></code>、指令 <code>x</code>、构型描述 <code>e</code>、任务 id <code>z</code>，预测未来 <code>H</code> 步动作/轨迹序列。</li>
-      <li><strong>双模块架构</strong>：<span class="hl">Qwen3.5-4B</span> 原生多模态骨干（ViT 空间合并 + 混合注意力）负责理解与推理；外挂一个 <span class="hl">DiT 流匹配动作专家</span>（约 1.15B 参数）负责细粒度连续动作生成。</li>
+      <li><strong>双模块架构</strong>：<span class="hl">Qwen3.5-4B</span> 原生多模态骨干（ViT 空间合并 + 混合注意力）负责理解与推理；外挂一个 <span class="hl">DiT <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">流匹配</a><a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a></span>（约 1.15B 参数）负责细粒度连续动作生成。</li>
       <li><strong>构型感知提示（embodiment-aware prompt）</strong>：每个样本前拼一段文本，描述「机器人平台、臂型、控制频率、预测视野」。这是模型获知控制语义的<strong>唯一接口</strong>，换机器人只换文本，不动架构。</li>
       <li><strong>统一动作/轨迹表征</strong>：用 <code>H×K</code> 张量 + 二值掩码把不同控制模式（末端/关节/夹爪/灵巧手/导航 waypoint）塞进同一套 DiT，各数据集保留原生控制约定。</li>
       <li><strong>四阶段渐进训练</strong>：<code>T2A</code>（纯文本训动作解码器）→ <code>CPT</code>（解冻双模块、视觉接地）→ <code>SFT</code>（双分支对齐）→ <code>RL</code>（PPO+GAE 直接优化闭环成功率）。</li>
@@ -290,11 +291,11 @@
       <li><strong>Stage I · T2A（text-to-action DiT 预训练）</strong>：冻结 VLM，只训 DiT，输入仅文本 + 构型提示，<span class="hl">刻意不给图像</span>。让解码器先学会「语言→动作」解压、建立结构化动作先验，避免一开始就为无视觉无关的解码器学习浪费算力。</li>
       <li><strong>Stage II · CPT（续训）</strong>：解冻两个模块，在异构混合数据（真实 + 仿真 + 导航 + 人类自我中心 + 视觉语言）上联合训练，把动作先验接地到视觉观测。</li>
       <li><strong>Stage III · SFT（监督微调）</strong>：从 CPT 分两条支路——① 多任务 SFT（VQA + 空间接地 + 操作 + 导航，构型/任务均衡采样）；② 真机遥操作 SFT（ALOHA），验证跨域先验能否迁移到物理硬件。</li>
-      <li><strong>Stage IV · RL（强化学习）</strong>：从 SFT 出发，PPO + GAE，稀疏二值成功奖励，<span class="hl">只在 SimplerEnv 单个仿真环境</span>采样，产出最终模型 <code>Qwen-VLA-Instruct</code>。</li>
+      <li><strong>Stage IV · RL（强化学习）</strong>：从 SFT 出发，<a class="concept-link" href="RLinf-RL原理对比.html#concept-ppo">PPO</a> + GAE，<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-sparse-reward">稀疏二值成功奖励</a>，<span class="hl">只在 SimplerEnv 单个仿真环境</span>采样，产出最终模型 <code>Qwen-VLA-Instruct</code>。</li>
     </ul>
     <p>训练目标 = 流匹配动作损失 + 视觉语言下一 token 损失加权（<code>L = α<sub>act</sub>L<sub>act</sub> + α<sub>vl</sub>L<sub>vl</sub></code>），每个 mini-batch 按固定比例混合所有任务族。RL 阶段关键细节：</p>
     <ul>
-      <li>动作块 <code>H=16</code>；128 个并行环境；每次迭代 8×128 步 → 8192 个 transition chunk；rollout 温度 τ=1.0，评测降到 0.6。</li>
+      <li><a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块</a> <code>H=16</code>；128 个并行环境；每次迭代 8×128 步 → 8192 个 transition chunk；rollout 温度 τ=1.0，评测降到 0.6。</li>
       <li>价值头直接挂在 VLM 骨干上（mean-pool + 线性），<strong>对 VLM hidden states 做 stop-gradient</strong>，价值头用独立学习率 1e-4（约为 actor 的 20 倍），快速收敛而策略更新保守。</li>
       <li>流匹配的 log-prob：把确定性概率流 ODE 转成 SDE（每个 Euler 步注入受控噪声），使每步转移成为显式高斯，可解析算重要性比，无需数值积分。</li>
     </ul>
@@ -389,6 +390,13 @@
       <li>复现 T2A：先文本后视觉的预训练能否带来可测量的稳定性/样本效率提升。</li>
     </ul>
   </section>
+
+  <aside class="concept-related" aria-label="相关概念">
+    <strong>相关概念</strong>
+    <a href="pi0.7_问答学习卡.html#concept-prompt-conditioning">提示条件如何影响动作生成</a>
+    <a href="piRL-论文解读.html#concept-denoising-mdp">流匹配策略怎样用于强化学习</a>
+    <a href="concepts.html">全部概念 →</a>
+  </aside>
 
   <footer>
     <span>精读笔记 · Qwen-VLA：统一任务、环境与机器人构型的视觉-语言-动作建模</span>

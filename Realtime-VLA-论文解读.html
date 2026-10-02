@@ -153,6 +153,7 @@
   footer a{color:var(--accent); text-decoration:none;}
   footer a:hover{text-decoration:underline;}
 </style>
+<link rel="stylesheet" href="concepts.css">
 </head>
 <body>
 <div class="grid" aria-hidden="true"></div>
@@ -179,12 +180,12 @@
   <!-- 以下每节：替换占位内容为真实内容，可加 ul/ol/table/blockquote/mermaid 图；保留 h2 标题与整体结构不变 -->
   <section>
     <h2>它解决的问题</h2>
-    <p>扩散式视觉-语言-动作模型（dVLA，代表是 π0）能捕捉<strong>多模态的动作分布</strong>，在复杂操作任务上表现很强，但要在真实机器人上实时部署，<span class="hl">全量推理的高延迟是硬约束</span>。</p>
+    <p>扩散式视觉-语言-动作模型（dVLA，代表是 π0）能捕捉<strong>多模态的动作分布</strong>，在复杂操作任务上表现很强，但要在真实机器人上实时部署，<span class="hl">全量推理的<a class="concept-link" href="DynamicVLA-论文解读.html#concept-latency">高延迟</a>是硬约束</span>。</p>
     <ul>
-      <li>机器人控制频率远高于模型推理频率，现有系统只能靠<strong>开环动作分块（open-loop action chunking）</strong>来桥接这个速度差：一次预测未来一整段动作，先执行几步，等执行到一半才触发下一次重规划（replanning）。</li>
+      <li>机器人控制频率远高于模型推理频率，现有系统只能靠<strong>开环<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作分块（open-loop action chunking）</a></strong>来桥接这个速度差：一次预测未来一整段动作，先执行几步，等执行到一半才触发下一次重规划（replanning）。</li>
       <li>问题在于：虽然重规划频率被降低了，<strong>每一轮重规划仍然要跑同样昂贵的全量推理管线</strong>（图像编码 → VLM prefill → 多步动作去噪）。端到端推理延迟依旧是最主要的瓶颈，直接限制了 dVLA 用在需要快速反应的、延迟敏感的任务上。</li>
     </ul>
-    <p>作者想借用的工具是<span class="hl">投机推理（Speculative Inference）</span>——它在 LLM 和自回归 VLA 上已经被证明有效：让一个轻量草稿模型先提出候选，主模型并行验证，从而省掉昂贵的主模型生成。但这套东西在 dVLA 上<span class="hl">没法直接搬</span>：</p>
+    <p id="concept-speculative-inference" class="concept-anchor">作者想借用的工具是<span class="hl">投机推理（Speculative Inference）</span>——它在 LLM 和自回归 VLA 上已经被证明有效：让一个轻量草稿模型先提出候选，主模型并行验证，从而省掉昂贵的主模型生成。但这套东西在 dVLA 上<span class="hl">没法直接搬</span>：</p>
     <div class="card">
       <h3>投机推理的三要素在 dVLA 上全部失效</h3>
       <table>
@@ -202,10 +203,10 @@
     <h2>方法主线</h2>
     <p>作者先用<span class="hl">roofline 剖析</span>找瓶颈，再据此设计一条"闪电路径（Flash Path）"替代大部分全量推理，一共五步。</p>
     <ol>
-      <li><strong>延迟剖析定位闲置算力</strong>：在 RTX 4090D 上把 π0 全量推理拆成三段——图像编码 11.3 ms、VLM prefill 26.7 ms、动作去噪 20.0 ms（合计 58.0 ms）。roofline 分析显示图像编码与 prefill 是<strong>算力受限</strong>（应消除冗余计算 → 复用 KV Cache），而动作去噪是<strong>访存受限</strong>（每步反复读 cache 又无法跨步并行 → 算力闲置，适合改做并行验证）。</li>
+      <li><strong>延迟剖析定位闲置算力</strong>：在 RTX 4090D 上把 π0 全量推理拆成三段——图像编码 11.3 ms、VLM prefill 26.7 ms、动作去噪 20.0 ms（合计 58.0 ms）。roofline 分析显示图像编码与 prefill 是<strong>算力受限</strong>（应消除冗余计算 → 复用 <a class="concept-link" href="#concept-kv-cache">KV Cache</a>），而动作去噪是<strong>访存受限</strong>（每步反复读 cache 又无法跨步并行 → 算力闲置，适合改做并行验证）。</li>
       <li><strong>双路径运行时</strong>：保留原始全量路径（Full Path）作兜底，新增一条轻量闪电路径（Flash Path）。绝大多数重规划轮走 flash path，只有验证失败或进入精细调节阶段才回落到 full path 校正轨迹。</li>
       <li><strong>轻量草稿模型出候选</strong>：flash path 仍编码当前图像，但<strong>跳过 VLM prefill</strong>，把视觉特征喂给一个只有约 110M 参数的草稿模型（单个 Gemma block + 线性动作头，对比 VLM 约 2.7B），一次性并行预测整段候选动作块。</li>
-      <li><strong>多步并行验证</strong>：利用 flow matching 的线性插值路径——把草稿终点与高斯噪声插值出中间去噪状态，在<strong>选定的几个去噪时刻并行</strong>调用主模型的 Action Expert 重构终点，逐动作比较距离，返回<strong>最长一致前缀</strong>作为可执行动作。</li>
+      <li><strong>多步并行验证</strong>：利用 <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">flow matching</a> 的线性插值路径——把草稿终点与高斯噪声插值出中间去噪状态，在<strong>选定的几个去噪时刻并行</strong>调用主模型的 <a class="concept-link" href="pi0-论文解读.html#concept-action-expert">Action Expert</a> 重构终点，逐动作比较距离，返回<strong>最长一致前缀</strong>作为可执行动作。</li>
       <li><strong>相位感知回退</strong>：用夹爪开合（gripper switch）作为"即将进入精细调节阶段"的启发式信号，主动回退全量路径；再加<strong>周期性全量刷新（PF）</strong>纠正长期漂移。两者叠加才是最优的成功率-延迟权衡。</li>
     </ol>
   </section>
@@ -222,6 +223,7 @@
     </div>
     <div class="card">
       <h3>一轮推理的数据流（对比两路径）</h3>
+      <p id="concept-kv-cache" class="concept-anchor"><strong>KV Cache</strong> 保存注意力层已算出的 Key / Value 表示，让后续计算复用上下文，避免重复编码。本文进一步跨重规划轮复用最近一次全量路径的缓存；新观测可能让缓存过时，因此还需要周期刷新与回退。它与“草稿提出、主模型验证”的投机推理是配合使用的两种机制。</p>
       <div class="tbl-wrap">
         <table>
           <tr><th>阶段</th><th>Full Path（全量）</th><th>Flash Path（投机）</th></tr>
@@ -346,6 +348,13 @@
       <li><strong>追方向</strong>：关注边缘部署（VLA-Perf 2602.18397 指出边缘设备更偏访存受限、功耗/散热更紧），FLASH 减少重复全量推理的思路在边缘可能收益更大。</li>
     </ul>
   </section>
+
+  <aside class="concept-related" aria-label="相关概念">
+    <strong>相关概念</strong>
+    <a href="DynamicVLA-论文解读.html#concept-latency">动态操作中的感知与执行时延</a>
+    <a href="pi0-论文解读.html#concept-action-expert">动作专家如何生成连续动作</a>
+    <a href="concepts.html">全部概念 →</a>
+  </aside>
 
   <footer>
     <span>精读笔记 · Realtime-VLA FLASH：扩散 VLA 的投机推理框架</span>

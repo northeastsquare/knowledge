@@ -146,6 +146,7 @@
     .page{padding:18px 16px 72px}.hero{padding:38px 0 38px}.hero-copy{font-size:16px}.section{margin-top:56px}.section-head{display:block}.section-head p{text-align:left;margin-top:10px}.timeline::before{left:22px}.era{grid-template-columns:46px minmax(0,1fr);gap:12px}.era-marker{width:46px;height:58px;border-radius:14px;font-size:10px}.era-top,.era-body{padding-left:18px;padding-right:18px}.era-top{display:block}.era-index{display:block;margin-bottom:10px}.era-top h3{font-size:22px}.flows{grid-template-columns:1fr}.flow::after{content:"↓";right:auto;top:auto;bottom:-17px;left:50%;transform:translateX(-50%)}.flow:last-child::after{display:none}.library{grid-template-columns:1fr 1fr;gap:8px}.library-card{padding:15px;min-height:190px}.library-card h3{font-size:16px}.reading{gap:10px}.read-main,.read-side,.map{padding:18px}.sources{display:block}.sources .source-list{margin-top:10px}
   }
 </style>
+<link rel="stylesheet" href="concepts.css">
 </head>
 <body>
 <main class="page">
@@ -209,7 +210,7 @@
         <div class="era-marker">2012<br>—16</div>
         <div class="era-card">
           <div class="era-top"><div><div class="eyebrow">阶段 02 · 深度视觉 + 端到端尝试</div><h3>让像素直接长出策略</h3><p>深度网络开始把图像、状态和动作放到同一条可学习的路径上，机器人第一次有机会自己发现“看哪里、怎么动”。</p></div><span class="era-index">LEARNED POLICY</span></div>
-          <div class="era-body"><div class="era-grid"><div class="era-block"><div class="label">当时的问题</div><p>手工特征太脆弱，复杂接触和视觉变化很难写成规则。</p></div><div class="era-block"><div class="label">关键突破</div><p>CNN、行为克隆与早期策略梯度把感知到控制连起来，像素到动作成为可训练对象。</p></div><div class="era-block"><div class="label">留下的代价</div><p>数据量小、示范贵；策略往往绑定单台机器人和单个任务，遇到分布外状态就会漂移。</p></div></div><div class="era-foot"><div class="chips"><span class="chip">深度策略</span><span class="chip">行为克隆</span><span class="chip">策略梯度</span></div><span class="era-next">下一问：如何让一个策略学会很多事？ ↓</span></div></div>
+          <div class="era-body"><div class="era-grid"><div class="era-block"><div class="label">当时的问题</div><p>手工特征太脆弱，复杂接触和视觉变化很难写成规则。</p></div><div class="era-block"><div class="label">关键突破</div><p>CNN、<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-behavior-cloning">行为克隆</a>与早期<a class="concept-link" href="为什么取log.html#concept-policy-gradient">策略梯度</a>把感知到控制连起来，像素到动作成为可训练对象。</p></div><div class="era-block"><div class="label">留下的代价</div><p>数据量小、示范贵；策略往往绑定单台机器人和单个任务，遇到分布外状态就会漂移。</p></div></div><div class="era-foot"><div class="chips"><span class="chip">深度策略</span><span class="chip">行为克隆</span><span class="chip">策略梯度</span></div><span class="era-next">下一问：如何让一个策略学会很多事？ ↓</span></div></div>
         </div>
       </article>
 
@@ -233,14 +234,14 @@
         <div class="era-marker">2023</div>
         <div class="era-card">
           <div class="era-top"><div><div class="eyebrow">阶段 05 · 多模态基础模型进入闭环</div><h3>让 VLM 的世界知识落到机器人动作</h3><p>PaLM-E、RT-2 与 Open X-Embodiment 让“理解语言”“迁移常识”“跨机器人学习”第一次在同一张图上相遇。</p></div><span class="era-index">SCALE</span></div>
-          <div class="era-body"><div class="era-grid"><div class="era-block"><div class="label">当时的问题</div><p>机器人看过的世界太少，单一平台的数据无法支撑开放世界泛化。</p></div><div class="era-block"><div class="label">关键突破</div><p>RT-2 将动作写成文本 token；Open X-Embodiment 把 22 种机器人、527 项技能放进统一数据视角。</p></div><div class="era-block"><div class="label">留下的代价</div><p>语义推理变强了，但低级动作的平滑性、延迟、接触安全与数据标准仍是瓶颈。</p></div></div><div class="era-foot"><div class="chips"><a class="chip" href="https://arxiv.org/abs/2303.03378" target="_blank" rel="noreferrer">PaLM-E</a><a class="chip" href="https://arxiv.org/abs/2307.15818" target="_blank" rel="noreferrer">RT-2 原论文</a><a class="chip" href="https://arxiv.org/abs/2310.08864" target="_blank" rel="noreferrer">Open X-Embodiment</a><span class="chip">跨本体</span></div><span class="era-next">下一问：连续动作能不能也像生成文本一样生成？ ↓</span></div></div>
+          <div class="era-body"><div class="era-grid"><div class="era-block"><div class="label">当时的问题</div><p>机器人看过的世界太少，单一平台的数据无法支撑开放世界泛化。</p></div><div class="era-block"><div class="label">关键突破</div><p>RT-2 将动作写成文本 token；Open X-Embodiment 把 22 种机器人、527 项技能放进统一数据视角。</p></div><div class="era-block"><div class="label">留下的代价</div><p>语义推理变强了，但低级动作的平滑性、延迟、接触安全与数据标准仍是瓶颈。</p></div></div><div class="era-foot"><div class="chips"><a class="chip" href="https://arxiv.org/abs/2303.03378" target="_blank" rel="noreferrer">PaLM-E</a><a class="chip" href="https://arxiv.org/abs/2307.15818" target="_blank" rel="noreferrer">RT-2 原论文</a><a class="chip" href="https://arxiv.org/abs/2310.08864" target="_blank" rel="noreferrer">Open X-Embodiment</a><a class="chip concept-link" href="Qwen-VLA-论文解读.html#concept-cross-embodiment">跨本体</a></div><span class="era-next">下一问：连续动作能不能也像生成文本一样生成？ ↓</span></div></div>
         </div>
       </article>
 
       <article class="era" id="era-6" data-lanes="action embodiment data language">
         <div class="era-marker">2024</div>
         <div class="era-card">
-          <div class="era-top"><div><div class="eyebrow">阶段 06 · 开放、通用、生成式策略</div><h3>从“一个 token”走向“一段动作”</h3><p>开放数据与大模型骨干汇合，扩散 / flow matching 让策略可以直接生成连续动作块，VLA 开始拥有真正的运动表达力。</p></div><span class="era-index">GENERATIVE VLA</span></div>
+          <div class="era-top"><div><div class="eyebrow">阶段 06 · 开放、通用、生成式策略</div><h3>从“一个 token”走向“一段动作”</h3><p>开放数据与大模型骨干汇合，扩散 / <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">flow matching</a> 让策略可以直接生成连续<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块</a>，VLA 开始拥有真正的运动表达力。</p></div><span class="era-index">GENERATIVE VLA</span></div>
           <div class="era-body"><div class="era-grid"><div class="era-block"><div class="label">当时的问题</div><p>离散动作难以表达灵巧、连续、长时程操作；不同机器人又有不同的身体语言。</p></div><div class="era-block"><div class="label">关键突破</div><p>Octo、OpenVLA 与 π0 把开源 VLA、跨本体数据、扩散 / flow 动作头连在一起。</p></div><div class="era-block"><div class="label">留下的代价</div><p>生成得更像动作了，却更难直接算清策略概率、实时推理和在线探索的代价。</p></div></div><div class="era-foot"><div class="chips"><a class="chip" href="https://arxiv.org/abs/2405.12213" target="_blank" rel="noreferrer">Octo</a><a class="chip" href="https://arxiv.org/abs/2406.09246" target="_blank" rel="noreferrer">OpenVLA</a><a class="chip" href="https://arxiv.org/abs/2410.24164" target="_blank" rel="noreferrer">π0 原论文</a><a class="chip" href="pi0-论文解读.html">本库：π0</a><span class="chip">diffusion / flow</span></div><span class="era-next">下一问：模型如何在真实世界里自己变好？ ↓</span></div></div>
         </div>
       </article>
@@ -249,7 +250,7 @@
         <div class="era-marker">2025<br>—26</div>
         <div class="era-card">
           <div class="era-top"><div><div class="eyebrow">阶段 07 · 闭环具身智能（进行中）</div><h3>把经验、奖励与身体差异接回模型</h3><p>VLA 不再只是一次性推理器，而是一个能被数据、仿真、奖励和人类反馈持续校正的行动系统。</p></div><span class="era-index">CLOSED LOOP</span></div>
-          <div class="era-body"><div class="era-grid"><div class="era-block"><div class="label">正在解决</div><p>长时程任务、动态目标、精细接触、跨本体迁移与真实时间尺度的适应。</p></div><div class="era-block"><div class="label">正在汇合</div><p>π0.5/π0.6 的泛化与 RECAP、πRL / RL Token、残差 RL、合成数据和实时推理。</p></div><div class="era-block"><div class="label">仍然卡住</div><p>奖励稀疏、探索昂贵、安全难验证；“会做一次”距离“可靠地做一小时”还有很远。</p></div></div><div class="era-foot"><div class="chips"><a class="chip" href="pi0.5_论文测验_精美版.html">π0.5：开放世界</a><a class="chip" href="pi0.6-论文解读.html">π0.6：RECAP</a><a class="chip" href="pi0.7_问答学习卡.html">π0.7：prompt</a><a class="chip" href="piRL-论文解读.html">πRL</a><a class="chip" href="RL-Token-论文解读.html">RL Token</a><a class="chip" href="ObjectCentric-RL-论文解读.html">Object-Centric RL</a><a class="chip" href="DynamicVLA-论文解读.html">DynamicVLA</a><a class="chip" href="PUMA-论文解读.html">PUMA</a><a class="chip" href="Qwen-VLA-论文解读.html">Qwen-VLA</a><a class="chip" href="Realtime-VLA-论文解读.html">Realtime-VLA</a><a class="chip" href="InternData-A1-论文解读.html">InternData-A1</a><a class="chip" href="VLA-RL-方法全景对比.html">RL 方法全景</a></div><span class="era-next">下一问：如何把“行动系统”变成可复用的知识？ ↓</span></div></div>
+          <div class="era-body"><div class="era-grid"><div class="era-block"><div class="label">正在解决</div><p>长时程任务、动态目标、精细接触、跨本体迁移与真实时间尺度的适应。</p></div><div class="era-block"><div class="label">正在汇合</div><p>π0.5/π0.6 的泛化与 <a class="concept-link" href="pi0.6-论文解读.html#concept-recap">RECAP</a>、πRL / <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-rl-token">RL Token</a>、<a class="concept-link" href="ObjectCentric-RL-论文解读.html#concept-residual-rl">残差 RL</a>、<a class="concept-link" href="InternData-A1-论文解读.html#concept-synthetic-data">合成数据</a>和实时推理。</p></div><div class="era-block"><div class="label">仍然卡住</div><p><a class="concept-link" href="RLToken-漫画分镜解读.html#concept-sparse-reward">奖励稀疏</a>、探索昂贵、安全难验证；“会做一次”距离“可靠地做一小时”还有很远。</p></div></div><div class="era-foot"><div class="chips"><a class="chip" href="pi0.5_论文测验_精美版.html">π0.5：开放世界</a><a class="chip" href="pi0.6-论文解读.html">π0.6：RECAP</a><a class="chip" href="pi0.7_问答学习卡.html">π0.7：prompt</a><a class="chip" href="piRL-论文解读.html">πRL</a><a class="chip" href="RL-Token-论文解读.html">RL Token</a><a class="chip" href="ObjectCentric-RL-论文解读.html">Object-Centric RL</a><a class="chip" href="DynamicVLA-论文解读.html">DynamicVLA</a><a class="chip" href="PUMA-论文解读.html">PUMA</a><a class="chip" href="Qwen-VLA-论文解读.html">Qwen-VLA</a><a class="chip" href="Realtime-VLA-论文解读.html">Realtime-VLA</a><a class="chip" href="InternData-A1-论文解读.html">InternData-A1</a><a class="chip" href="VLA-RL-方法全景对比.html">RL 方法全景</a></div><span class="era-next">下一问：如何把“行动系统”变成可复用的知识？ ↓</span></div></div>
         </div>
       </article>
     </div>
@@ -267,9 +268,9 @@
   <section class="section" aria-labelledby="map-title">
     <div class="section-head"><div><div class="eyebrow">04 / 现在的系统</div><h2 id="map-title">把一篇论文放回完整回路</h2></div><p>判断一项工作的位置，不要只看模型名字；看它改变了回路中的哪一个环节。</p></div>
     <div class="map">
-      <div class="map-intro"><p>VLA 的最小闭环是：<strong>看见观测 → 对齐目标 → 生成动作 → 适配身体 → 执行并得到反馈</strong>。强化学习、合成数据和记忆机制，都是在这条回路上加速“下一次做得更好”。</p><span class="map-note mono">OBSERVATION → ACTION → FEEDBACK</span></div>
+      <div class="map-intro"><p id="concept-vla" class="concept-anchor">VLA 的最小闭环是：<strong>看见观测 → 对齐目标 → 生成动作 → 适配身体 → 执行并得到反馈</strong>。强化学习、合成数据和记忆机制，都是在这条回路上加速“下一次做得更好”。</p><span class="map-note mono">OBSERVATION → ACTION → FEEDBACK</span></div>
       <div class="pipeline">
-        <div class="node"><span class="num">01 / 看</span><h3>感知</h3><p>图像、视频、深度、触觉</p><span class="mini">VLM / 3D</span></div>
+        <div class="node"><span class="num">01 / 看</span><h3>感知</h3><p>图像、视频、<a class="concept-link" href="D4RT_study_cards.html#concept-4d-reconstruction">深度</a>、触觉</p><span class="mini">VLM / 3D</span></div>
         <div class="node"><span class="num">02 / 懂</span><h3>语言 grounding</h3><p>把“拿红杯子”变成可执行目标</p><span class="mini">语义先验</span></div>
         <div class="node"><span class="num">03 / 做</span><h3>动作生成</h3><p>token、chunk、diffusion、flow</p><span class="mini">策略头</span></div>
         <div class="node"><span class="num">04 / 换</span><h3>身体适配</h3><p>不同手臂、夹爪、移动底盘</p><span class="mini">embodiment</span></div>
@@ -297,6 +298,7 @@
     </div>
   </section>
 
+  <aside class="concept-related" aria-label="相关概念"><strong>相关概念 · 把历史接到方法</strong><a href="pi0-论文解读.html#concept-flow-matching">动作怎么生成：流匹配</a><a href="RLToken-漫画分镜解读.html#concept-actor-critic">策略怎么改进：Actor–Critic</a><a href="Qwen-VLA-论文解读.html#concept-cross-embodiment">怎么换身体：跨本体</a><a href="DynamicVLA-论文解读.html#concept-latency">怎么赶上变化：感知—执行时延</a><a href="concepts.html">全部概念 →</a></aside>
   <footer class="sources"><span>VLA 发展历程 · 作为机器人学习知识库的总览地图</span><span class="source-list"><a href="https://arxiv.org/abs/2212.06817" target="_blank" rel="noreferrer">RT-1</a><a href="https://arxiv.org/abs/2307.15818" target="_blank" rel="noreferrer">RT-2</a><a href="https://arxiv.org/abs/2310.08864" target="_blank" rel="noreferrer">Open X-Embodiment</a><a href="https://arxiv.org/abs/2410.24164" target="_blank" rel="noreferrer">π0</a></span></footer>
 </main>
 <script>

@@ -166,6 +166,7 @@
     .master-btn{right:20px} .pbar{width:84px}
   }
 </style>
+<link rel="stylesheet" href="concepts.css">
 </head>
 <body>
 <div class="wrap">
@@ -175,7 +176,8 @@
       <span class="badge">Best Paper</span>
     </div>
     <h1>D4RT</h1>
-    <p class="subtitle"><b>Efficiently Reconstructing Dynamic Scenes One D4RT at a Time</b> — 用统一的可查询解码接口，从单段视频里联合恢复深度、时空对应与相机参数的前馈式 4D 重建模型。</p>
+    <p id="concept-4d-reconstruction" class="subtitle concept-anchor"><b>Efficiently Reconstructing Dynamic Scenes One D4RT at a Time</b> — 用统一的可查询解码接口，从单段视频里联合恢复深度、时空对应与相机参数的前馈式 4D 重建模型。“4D”指三维空间随时间的变化：不仅恢复场景几何，还追踪点在不同时间的位置。</p>
+    <p class="subtitle">把动态场景理解延伸到机器人操作，可对照 PUMA 的<a class="concept-link" href="PUMA-论文解读.html#concept-motion-perception">运动感知</a>与 DynamicVLA 的<a class="concept-link" href="DynamicVLA-论文解读.html#concept-latency">感知—执行时延</a>。这些方法分别研究重建、策略输入和实时控制，目标并不相同。</p>
     <div class="meta-row">
       <span>Google DeepMind · UCL · Oxford</span>
       <span>arXiv <b>2512.08924</b></span>
@@ -228,6 +230,13 @@
 
   <!-- LIST MODE -->
   <div id="listView"></div>
+
+  <aside class="concept-related" aria-label="相关概念">
+    <strong>相关概念</strong>
+    <a href="PUMA-论文解读.html#concept-motion-perception">历史光流与目标未来预测</a>
+    <a href="VLA-发展历程.html#concept-vla">VLA：从视觉和语言到动作</a>
+    <a href="concepts.html">全部概念 →</a>
+  </aside>
 
   <footer>
     内容整理自 D4RT 论文全文（正文 + 消融 + 附录）· 仅供学习<br>

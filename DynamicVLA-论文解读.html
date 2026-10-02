@@ -153,6 +153,7 @@
   footer a{color:var(--accent); text-decoration:none;}
   footer a:hover{text-decoration:underline;}
 </style>
+<link rel="stylesheet" href="concepts.css">
 </head>
 <body>
 <div class="grid" aria-hidden="true"></div>
@@ -179,8 +180,8 @@
   <!-- 1 -->
   <section>
     <h2>它解决的问题</h2>
-    <p>VLA 模型在<span class="hl">静态</span>操作上泛化已经很强，但一到<span class="hl">动态</span>物体（移动、翻滚、被抛出的目标）就掉链子：这类任务需要快速感知、时间预测和连续闭环控制，而传统 VLA 的推理时延会直接导致失败。</p>
-    <p>作者把问题归结为一个被静态操作掩盖、在动态操作里致命的因素——<strong>观察与动作执行之间的时序错位（temporal misalignment）</strong>，具体表现为两个缺口：</p>
+    <p><a class="concept-link" href="VLA-发展历程.html#concept-vla">VLA</a> 模型在<span class="hl">静态</span>操作上泛化已经很强，但一到<span class="hl">动态</span>物体（移动、翻滚、被抛出的目标）就掉链子：这类任务需要快速感知、时间预测和连续闭环控制，而传统 VLA 的推理时延会直接导致失败。</p>
+    <p id="concept-latency" class="concept-anchor">作者把问题归结为一个被静态操作掩盖、在动态操作里致命的因素——<strong>观察与动作执行之间的时序错位（temporal misalignment）</strong>，具体表现为两个缺口：</p>
     <ul>
       <li><strong>感知-执行缺口（Perception–Execution gap）</strong>：模型在时刻 <code>t</code> 基于观测 <code>Ot</code> 推理，但推理要花 <code>m</code> 步时延，动作在 <code>t+m</code> 才可用，此时物体已经从 <code>st</code> 运动到了 <code>st+m</code>——预测的动作已对不上当前环境。</li>
       <li><strong>块间等待（inter-chunk waiting）</strong>：现有 VLA 要等上一个动作序列<em>完整执行完</em>才触发下一次推理，推理与执行被串行化，控制流被卡住。</li>
@@ -200,7 +201,7 @@
     <h2>方法主线</h2>
     <p>DynamicVLA 的思路不是堆大模型，而是"<span class="hl">把时延当成首要敌人来打</span>"，主线四步：</p>
     <ol>
-      <li><strong>造一个足够快的 0.4B VLA</strong>：用卷积视觉编码器 <code>FastViT</code>（高效空间压缩、结构保真、避免多帧输入下 token 二次增长）+ 截断到前 16 层的 <code>SmolLM2-360M</code> 语言骨干 + Flow Matching 动作专家，把推理压到 <span class="hl">~88Hz</span>（1.8GB 显存）。</li>
+      <li><strong>造一个足够快的 0.4B VLA</strong>：用卷积视觉编码器 <code>FastViT</code>（高效空间压缩、结构保真、避免多帧输入下 token 二次增长）+ 截断到前 16 层的 <code>SmolLM2-360M</code> 语言骨干 + <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">Flow Matching</a> <a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a>，把推理压到 <span class="hl">~88Hz</span>（1.8GB 显存）。</li>
       <li><strong>Continuous Inference（CI）</strong>：推理与执行重叠的流水线——上一次推理一完成就立刻触发下一次，不等动作序列执行完，消除块间等待。</li>
       <li><strong>Latent-aware Action Streaming（LAAS）</strong>：一个显式的执行策略，丢弃过时动作、优先最新预测，恢复"感知-执行"的时间对齐。</li>
       <li><strong>补上数据地基 DOM benchmark</strong>：用自动化管线（仿真 200K 集 + 真实世界 2K 集，无需遥操作）训练并评测，覆盖多本体（Franka、PiPER）。</li>
@@ -211,14 +212,14 @@
   <!-- 3 -->
   <section>
     <h2>输入、输出与数据流</h2>
-    <p>模型在时刻 <code>t</code> 接收三路输入，输出一个动作块；执行阶段靠 CI + LAAS 保证时序一致：</p>
+    <p>模型在时刻 <code>t</code> 接收三路输入，输出一个<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块</a>；执行阶段靠 CI + LAAS 保证时序一致：</p>
     <div class="card">
       <table>
         <tr><th>环节</th><th>内容</th></tr>
         <tr><td><strong>输入 · 观测</strong></td><td>时间窗口 <code>Ot = {ot-2, ot}</code>（默认稀疏两帧，多视角 RGB 按通道拼接，用于隐式感知速度）</td></tr>
         <tr><td><strong>输入 · 语言</strong></td><td>指令 <code>Lt</code>，按长度 token 化</td></tr>
         <tr><td><strong>输入 · 本体</strong></td><td>32 维本体状态 <code>Pt</code>（末端笛卡尔位姿，未用项零填充），线性投影成单个 960 维 token</td></tr>
-        <tr><td><strong>编码</strong></td><td>FastViT 输出 <span class="hl">36 个 960 维视觉 token</span>；三路 token 拼接后交给 SmolLM2-360M 前 16 层，KV 表示缓存复用</td></tr>
+        <tr><td><strong>编码</strong></td><td>FastViT 输出 <span class="hl">36 个 960 维视觉 token</span>；三路 token 拼接后交给 SmolLM2-360M 前 16 层，<a class="concept-link" href="Realtime-VLA-论文解读.html#concept-kv-cache">KV 表示缓存复用</a></td></tr>
         <tr><td><strong>动作专家</strong></td><td>Flow Matching Transformer（隐维 720 = 0.75× 语言嵌入），去噪时查询缓存的 KV，不重编码感知输入</td></tr>
         <tr><td><strong>输出</strong></td><td>动作块 <code>At</code>，horizon <code>n=20</code> 步，每步 32 维（末端位姿 + 夹爪状态）</td></tr>
         <tr><td><strong>执行</strong></td><td>CI 在 <code>t, t+m, t+2m…</code> 连续触发；LAAS 丢弃早于 <code>t+m</code> 的过时动作、重叠处新块覆盖旧块</td></tr>
@@ -418,6 +419,13 @@
       <li><strong>做实验</strong>：在本项目的移动/动态抓取场景上验证"丢弃过时动作 + 最新预测覆盖"是否同样带来时序对齐收益；评估是否要复刻其真实世界"仿真器"采集管线。</li>
     </ul>
   </section>
+
+  <aside class="concept-related" aria-label="相关概念">
+    <strong>相关概念</strong>
+    <a href="Realtime-VLA-论文解读.html#concept-speculative-inference">投机推理：另一种降低推理时延的路线</a>
+    <a href="PUMA-论文解读.html#concept-motion-perception">运动感知：历史光流与未来预测</a>
+    <a href="concepts.html">全部概念 →</a>
+  </aside>
 
   <footer>
     <span>精读笔记 · DynamicVLA：面向动态物体操作的 VLA</span>

@@ -154,6 +154,7 @@
   footer a{color:var(--accent); text-decoration:none;}
   footer a:hover{text-decoration:underline;}
 </style>
+<link rel="stylesheet" href="concepts.css">
 </head>
 <body>
 <div class="grid" aria-hidden="true"></div>
@@ -168,7 +169,7 @@
   <section class="hero">
     <div class="eyebrow">精读笔记 · VLA</div>
     <h1>π0：通用机器人控制的视觉-语言-动作流模型</h1>
-    <p class="summary">基于流匹配的通用 VLA 开山之作，把大规模互联网视觉-语言先验带入机器人控制</p>
+    <p class="summary">基于流匹配的通用 <a class="concept-link" href="VLA-发展历程.html#concept-vla">VLA</a> 开山之作，把大规模互联网视觉-语言先验带入机器人控制</p>
     <div class="meta">
       <div class="m"><span class="k">论文</span><span class="v">π0: A Vision-Language-Action Flow Model for General Robot Control</span></div>
       <div class="m"><span class="k">机构</span><span class="v">Physical Intelligence</span></div>
@@ -179,20 +180,20 @@
 
   <section>
     <h2>它解决的问题</h2>
-    <p>机器人学习要走向"通用"，横着三道坎：<strong>数据稀缺、泛化差、鲁棒性不足</strong>。想靠每个任务单独采数据、单独训小模型，永远追不上通用智能。π0 的思路是把大模型预训练的逻辑搬进机器人：先在<b>海量、多样的跨本体数据</b>上预训练一个"机器人基础模型"，再用高质量数据微调出想要的技能。</p>
+    <p>机器人学习要走向"通用"，横着三道坎：<strong>数据稀缺、泛化差、鲁棒性不足</strong>。想靠每个任务单独采数据、单独训小模型，永远追不上通用智能。π0 的思路是把大模型预训练的逻辑搬进机器人：先在<b>海量、多样的<a class="concept-link" href="Qwen-VLA-论文解读.html#concept-cross-embodiment">跨本体数据</a></b>上预训练一个"机器人基础模型"，再用高质量数据微调出想要的技能。</p>
     <p>但直接照搬这条路会撞上两个技术硬伤：</p>
     <ul>
-      <li><strong>自回归 VLA 的离散化瓶颈</strong>：RT-2 / OpenVLA 这类模型把动作离散成 token 自回归生成，既难以表示高维连续动作，也不支持高频率的动作块（action chunk），做不了 50Hz 级别的精细灵巧操作——实验里 OpenVLA 在这些任务上明显吃亏。</li>
+      <li><strong>自回归 VLA 的离散化瓶颈</strong>：RT-2 / OpenVLA 这类模型把动作离散成 token 自回归生成，既难以表示高维连续动作，也不支持高频率的<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块（action chunk）</a>，做不了 50Hz 级别的精细灵巧操作——实验里 OpenVLA 在这些任务上明显吃亏。</li>
       <li><strong>专精小模型丢了先验</strong>：ACT / Diffusion Policy 能处理连续动作和灵巧任务，但没有语言理解，也没有互联网规模先验，换任务基本要从零再来。</li>
     </ul>
-    <p>于是本文的核心命题是：<span class="hl">能不能既继承预训练 VLM 的语义知识，又能输出高频率、高精度的连续动作块？</span>π0 的回答是"能"——用流匹配（flow matching，扩散的一种变体）当动作头，用 PaliGemma 当底座。</p>
+    <p>于是本文的核心命题是：<span class="hl">能不能既继承预训练 VLM 的语义知识，又能输出高频率、高精度的连续动作块？</span>π0 的回答是"能"——用<a class="concept-link" href="#concept-flow-matching">流匹配（flow matching）</a>当动作头，学习把噪声逐步变成动作的连续向量场，用 PaliGemma 当底座。流匹配与扩散模型有关联，但两者不是同一个训练目标。</p>
   </section>
 
   <section>
     <h2>方法主线</h2>
     <ol>
       <li><strong>底座选 VLM</strong>：以开源的 PaliGemma（3B 视觉-语言模型）为视觉-语言主干，直接继承互联网规模预训练的语义知识与推理能力。</li>
-      <li><strong>挂一个"动作专家"</strong>：另起一套 <code>300M</code> 参数的独立权重（action expert），用<span class="hl">流匹配</span>把动作建模成连续分布，一次输出 <code>H=50</code> 步的动作块。</li>
+      <li id="concept-action-expert" class="concept-anchor"><strong>挂一个"动作专家"</strong>：另起一套 <code>300M</code> 参数的独立权重（action expert），用<span class="hl">流匹配</span>把动作建模成连续分布，一次输出 <code>H=50</code> 步的动作块。</li>
       <li><strong>统一 token 流 + 块状因果注意力</strong>：图像、语言、本体状态、动作全部投进同一个 transformer；注意力分成三块 <code>[图像+语言] | [状态] | [动作]</code>，动作块内部双向、只允许向后看。</li>
       <li><strong>预训练 + 后训练两阶段</strong>：先在约 <code>1 万小时</code>跨本体数据上预训练打底，再用高质量任务数据微调出"流畅、高效、会纠错"的行为。</li>
       <li><strong>（可选）高层 VLM 策略</strong>：复杂长任务交给高层 VLM 拆解成中间语言指令（类似 SayCan），π0 只负责执行每个子指令。</li>
@@ -259,9 +260,9 @@
   <section>
     <h2>训练或运行方式</h2>
     <p><strong>预训练</strong>：在约 <code>10,000 小时</code>的跨本体数据上训练。自有灵巧操作数据覆盖 <span class="hl">7 种机器人配置、68 个任务</span>，共 <code>903M</code> timesteps（单臂 106M、双臂 797M）；再拼上开源数据（OXE、Bridge v2、DROID，合计占混合的 <code>9.1%</code>）。为了防止过采样任务占大头，每个 task-robot 组合按 <code>n^0.43</code> 降权配平。</p>
-    <p><strong>流匹配损失</strong>：训练时抽噪声 <code>ε ~ N(0, I)</code>，构造"噪声动作" <code>A^τ = τ·A + (1-τ)ε</code>，让网络回归去噪场 <code>u = A - ε</code>。关键细节是时间步 <code>τ</code> 不从均匀分布抽，而是抽自一个 <span class="hl">shift-beta 分布</span>（截断 <code>s=0.999</code>），刻意<b>偏向高噪声段</b>——作者论证动作预测不同于图像生成：低噪声段几乎只是恒等映射，信息都在高噪声段。</p>
+    <p id="concept-flow-matching" class="concept-anchor"><strong>流匹配损失</strong>：训练时抽噪声 <code>ε ~ N(0, I)</code>，构造"噪声动作" <code>A^τ = τ·A + (1-τ)ε</code>，让网络回归去噪场 <code>u = A - ε</code>。关键细节是时间步 <code>τ</code> 不从均匀分布抽，而是抽自一个 <span class="hl">shift-beta 分布</span>（截断 <code>s=0.999</code>），刻意<b>偏向高噪声段</b>——作者论证动作预测不同于图像生成：低噪声段几乎只是恒等映射，信息都在高噪声段。</p>
     <p><strong>后训练微调</strong>：简单任务约 <code>5 小时</code>数据即可，最复杂任务用到 <code>100 小时以上</code>。原则是"低质量多样数据教纠错与恢复，高质量数据教流畅高效"。</p>
-    <p><strong>推理</strong>：从纯噪声出发做 <code>10 步</code>前向欧拉积分（步长 <code>Δτ=0.1</code>），前缀观测的 KV 可缓存。在消费级 RTX 4090 上，单次推理约 <code>73ms</code> 板端延迟（图像编码 14ms + 观测前向 32ms + 10× 动作前向 27ms）。20Hz 的 UR5e/Franka 每 0.8s 推理一次（执行 16 步），50Hz 机器人每 0.5s 一次（执行 25 步），动作块<b>开环执行</b>——作者试过 temporal ensembling，反而更差，于是干脆不做动作聚合。</p>
+    <p><strong>推理</strong>：从纯噪声出发做 <code>10 步</code>前向欧拉积分（步长 <code>Δτ=0.1</code>），前缀观测的 <a class="concept-link" href="Realtime-VLA-论文解读.html#concept-kv-cache">KV 可缓存</a>。在消费级 RTX 4090 上，单次推理约 <code>73ms</code> 板端延迟（图像编码 14ms + 观测前向 32ms + 10× 动作前向 27ms）。20Hz 的 UR5e/Franka 每 0.8s 推理一次（执行 16 步），50Hz 机器人每 0.5s 一次（执行 25 步），动作块<b>开环执行</b>——作者试过 temporal ensembling，反而更差，于是干脆不做动作聚合。</p>
   </section>
 
   <section>
@@ -317,7 +318,7 @@
       <li><strong>指标偏软</strong>：主要用 rubric 平均进度分，缺少闭环成功率、失败恢复率这类更"硬"、可跨论文对比的单一指标，绝对水平难量化。</li>
       <li><strong>数据配比靠"有什么用什么"</strong>：开源数据只占 9.1%、自有 903M，如何科学组合预训练数据仍是开放问题——作者自己也在局限里承认。</li>
       <li><strong>"通用"边界未验证</strong>：正迁移是否延伸到驾驶、导航、足式等更远领域尚未可知，目前主要覆盖桌面与移动机械臂操作。</li>
-      <li><strong>实时性仍有压力</strong>：3.3B 模型 + 10 步积分在 4090 上 73ms，对更严苛的实时闭环仍偏重；开环执行动作块在强扰动下缺少反馈修正。</li>
+      <li><strong><a class="concept-link" href="DynamicVLA-论文解读.html#concept-latency">实时性仍有压力</a></strong>：3.3B 模型 + 10 步积分在 4090 上 73ms，对更严苛的实时闭环仍偏重；开环执行动作块在强扰动下缺少反馈修正。</li>
       <li><strong>可靠性存疑</strong>：作者明确说"不是所有任务都稳定跑通"，且无法预判某个任务到底需要多少、什么样的数据。</li>
     </ul>
   </section>
@@ -330,6 +331,14 @@
       <li><strong>做实验</strong>：复现 π0-small 在小数据集上的微调，对比"离散动作头 vs 流匹配动作头"；把块状因果注意力 + shift-beta 采样接到自己任务的动作头上试效果。</li>
     </ul>
   </section>
+
+  <aside class="concept-related" aria-label="相关概念">
+    <strong>相关概念</strong>
+    <a class="concept-link" href="pi0.5_论文测验_精美版.html#concept-fast">FAST：离散动作表示</a>
+    <a class="concept-link" href="piRL-论文解读.html#concept-denoising-mdp">去噪 MDP：流模型如何做 RL</a>
+    <a class="concept-link" href="pi0.6-论文解读.html#concept-recap">RECAP：优势条件化</a>
+    <a class="concept-link" href="concepts.html">全部概念 →</a>
+  </aside>
 
   <footer>
     <span>精读笔记 · π0：通用机器人控制的视觉-语言-动作流模型</span>

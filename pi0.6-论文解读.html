@@ -153,6 +153,7 @@
   footer a{color:var(--accent); text-decoration:none;}
   footer a:hover{text-decoration:underline;}
 </style>
+<link rel="stylesheet" href="concepts.css">
 </head>
 <body>
 <div class="grid" aria-hidden="true"></div>
@@ -179,19 +180,19 @@
   <!-- 以下每节：替换占位内容为真实内容，可加 ul/ol/table/blockquote/mermaid 图；保留 h2 标题与整体结构不变 -->
   <section>
     <h2>它解决的问题</h2>
-    <p>纯模仿学习训练的 VLA 存在两个天花板：一是<span class="hl">复合误差</span>（compounding errors），策略一跑偏就越滚越远；二是<span class="hl">性能上限被示范数据锁死</span>——最多只能做到和人类遥操作示范一样好，没法更快、更稳、更适应新环境。</p>
+    <p>纯<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-behavior-cloning">模仿学习</a>训练的 VLA 存在两个天花板：一是<span class="hl">复合误差</span>（compounding errors），策略一跑偏就越滚越远；二是<span class="hl">性能上限被示范数据锁死</span>——最多只能做到和人类遥操作示范一样好，没法更快、更稳、更适应新环境。</p>
     <p>自然的答案是"让机器人像人一样<strong>练出来</strong>"——用强化学习（RL）在真实部署中自己收集经验、纠正自己的错误。但把 RL 套到大型 VLA 上，难点集中成三件事：</p>
     <ul>
-      <li><strong>大规模模型上做 RL 要稳定可扩展</strong>：传统策略梯度（PPO/REINFORCE）对 flow-matching / diffusion 这类没有可计算对数似然的动作模型很难直接套；</li>
+      <li><strong>大规模模型上做 RL 要稳定可扩展</strong>：传统<a class="concept-link" href="为什么取log.html#concept-policy-gradient">策略梯度</a>（PPO/REINFORCE）对 <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">flow-matching</a> / diffusion 这类没有可计算对数似然的动作模型很难直接套；</li>
       <li><strong>数据是异质的</strong>：既要示范数据，又要自主 rollout，还要专家遥操作纠错，几路数据得融进同一次学习；</li>
-      <li><strong>真实世界的奖励信号暧昧又随机</strong>：只有"成功/失败"这类稀疏结果反馈，噪声大、延迟高。</li>
+      <li><strong>真实世界的奖励信号暧昧又随机</strong>：只有"成功/失败"这类<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-sparse-reward">稀疏结果反馈</a>，噪声大、延迟高。</li>
     </ul>
     <blockquote><p>本文的贡献是把这三件事打包成一个通用配方 <strong>RECAP</strong>，并证明它能把通用 VLA（π0.6）在叠衣服、做咖啡、装纸盒这些长时程精细任务上练到"实用级"水平。</p></blockquote>
   </section>
 
   <section>
     <h2>方法主线</h2>
-    <p>RECAP = <strong>R</strong>L with <strong>E</strong>xperience and <strong>C</strong>orrections via <strong>A</strong>dvantage-conditioned <strong>P</strong>olicies（通过优势条件化策略，用经验与纠错做 RL）。整条流水线只有三个子程序，反复循环即可：</p>
+    <p id="concept-recap" class="concept-anchor">RECAP = <strong>R</strong>L with <strong>E</strong>xperience and <strong>C</strong>orrections via <strong>A</strong>dvantage-conditioned <strong>P</strong>olicies（通过优势条件化策略，用经验与纠错做 RL）。这里的<a class="concept-link" href="两条主干-拆机手册.html#concept-advantage">优势</a>衡量动作相对参考行为好多少；RECAP 将它作为策略的输入条件，不等同于 PPO 的策略梯度更新。整条流水线只有三个子程序，反复循环即可：</p>
     <ol>
       <li><strong>预训练一个"带优势条件化"的通用 VLA（π0.6）</strong>：在数万小时、多任务多机器人的离线数据集上，先训一个分布式价值函数，再训一个以"二值优势指示 <code>I_t</code>"为输入的策略，用离线 RL 的方式把 RL 能力烙进底座模型；</li>
       <li><strong>任务级监督微调（SFT）</strong>：用目标任务的示范数据微调 π0.6，此阶段把优势指示固定为 <code>True</code>，等价于普通行为克隆，得到初始策略 <code>π0</code>；</li>
@@ -237,7 +238,7 @@
     <div class="card">
       <h3>模型与奖励设计</h3>
       <ul>
-        <li><strong>π0.6 架构</strong>：由 π0.5 进化而来——基础 VLM 换成 <strong>Gemma 3 4B</strong>，动作专家增大到 <strong>860M 参数</strong>，预训练数据加入多个机器人平台；沿用 <strong>KI（Knowledge Insulation）</strong>训练法：flow matching 动作专家用 stop-gradient 隔离，离散动作走 FAST 分词，语言子任务 <code>ŷ</code> 先预测、再条件化动作生成。</li>
+        <li><strong>π0.6 架构</strong>：由 π0.5 进化而来——基础 VLM 换成 <strong>Gemma 3 4B</strong>，<a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a>增大到 <strong>860M 参数</strong>，预训练数据加入多个机器人平台；沿用 <strong>KI（Knowledge Insulation）</strong>训练法：flow matching 动作专家用 stop-gradient 隔离，离散动作走 <a class="concept-link" href="pi0.5_论文测验_精美版.html#concept-fast">FAST 分词</a>，语言子任务 <code>ŷ</code> 先预测、再条件化动作生成。</li>
         <li><strong>价值函数</strong>：与策略同架构、但用更小的 <strong>670M</strong> VLM 骨干（也初始化自 Gemma 3），分布式输出 201 个 bin；为防过拟合还混入少量多模态网页数据联合训练。</li>
         <li><strong>稀疏奖励</strong>：<code>r_t = 0</code>（成功那步）、<code>-C_fail</code>（失败那步）、否则 <code>-1</code>——等价于让价值函数预测"离完成还差多少步"的负值。</li>
       </ul>
@@ -271,7 +272,7 @@
       <h3>与基线 / 消融对比</h3>
       <ul>
         <li><strong>对比基线</strong>：预训练 π0.5、监督预训练 π0.6、RL 预训练 π0.6、π0.6 离线RL+SFT——最终 π0.6（RECAP）在所有任务上显著胜出；</li>
-        <li><strong>策略提取方法对比</strong>：同数据下，<strong>AWR</strong> 成功率尚可但策略更慢、吞吐低；<strong>PPO</strong> 需极小的信任域（ε=0.01）才能稳定，且性能不佳——两者都远逊于优势条件化；</li>
+        <li><strong>策略提取方法对比</strong>：同数据下，<strong>AWR</strong> 成功率尚可但策略更慢、吞吐低；<strong><a class="concept-link" href="RLinf-RL原理对比.html#concept-ppo">PPO</a></strong> 需极小的信任域（ε=0.01）才能稳定，且性能不佳——两者都远逊于优势条件化；</li>
         <li><strong>离线 RL + 高质量 SFT</strong> 本身已优于普通 SFT，是后续在机 RL 的好起点。</li>
       </ul>
     </div>
@@ -305,7 +306,7 @@
       <li><strong>还不是全自主</strong>：奖励标注、专家纠错、环境 reset 都依赖人；作者自己也把"自动化这些环节"列为未来方向；</li>
       <li><strong>探索基本是贪心的</strong>：靠策略随机性和人类介入探索新解，缺乏更精妙的探索机制；</li>
       <li><strong>是"迭代式离线"而非"全在线"RL</strong>：批量收数据再重训，实时性弱；</li>
-      <li><strong>价值函数用的是 on-policy 蒙特卡洛估计</strong>：论文承认比经典 off-policy Q 估计更弱，只是胜在简单可靠；</li>
+      <li><strong>价值函数用的是 on-policy 蒙特卡洛估计</strong>：论文承认比经典 <a class="concept-link" href="两条主干-拆机手册.html#concept-off-policy">off-policy</a> Q 估计更弱，只是胜在简单可靠；</li>
       <li><strong>阈值 τ 是逐任务的启发式</strong>（30% / 40% / 10%），迁移到新任务可能要重新调。</li>
     </ul>
   </section>
@@ -320,6 +321,14 @@
       <li>关注 flow matching 与 diffusion 的对数似然下界等价性（附录 C/D），判断能否套到现有扩散策略上。</li>
     </ul>
   </section>
+
+  <aside class="concept-related" aria-label="相关概念">
+    <strong>相关概念</strong>
+    <a class="concept-link" href="pi0.7_问答学习卡.html#concept-prompt-conditioning">从优势条件到多样化 prompt</a>
+    <a class="concept-link" href="piRL-论文解读.html#concept-denoising-mdp">另一条路线：去噪 MDP + PPO</a>
+    <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-rl-token">RL Token：冻结 VLA 的路线</a>
+    <a class="concept-link" href="concepts.html">全部概念 →</a>
+  </aside>
 
   <footer>
     <span>精读笔记 · π0.6：会从经验中学习的 VLA</span>

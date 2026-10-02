@@ -153,6 +153,7 @@
   footer a{color:var(--accent); text-decoration:none;}
   footer a:hover{text-decoration:underline;}
 </style>
+<link rel="stylesheet" href="concepts.css">
 </head>
 <body>
 <div class="grid" aria-hidden="true"></div>
@@ -167,7 +168,7 @@
   <section class="hero">
     <div class="eyebrow">精读笔记 · 数据</div>
     <h1>InternData-A1：高保真合成数据预训练通用策略</h1>
-    <p class="summary">首个证明「纯合成数据」可以媲美最强真实数据集（π 数据集）的 VLA 预训练：630k 轨迹 / 7,433 小时 / 4 构型 / 18 技能 / 70 任务 / 227 场景，并在多个挑战性任务上实现零样本 sim-to-real。</p>
+    <p class="summary">首个证明「纯合成数据」可以媲美最强真实数据集（π 数据集）的 VLA 预训练：630k 轨迹 / 7,433 小时 / 4 构型 / 18 技能 / 70 任务 / 227 场景，并在多个挑战性任务上实现零样本 <a class="concept-link" href="ObjectCentric-RL-论文解读.html#concept-sim-to-real">sim-to-real</a>。</p>
     <div class="meta">
       <div class="m"><span class="k">论文</span><span class="v">InternData-A1: Pioneering High-Fidelity Synthetic Data for Pre-training Generalist Policy</span></div>
       <div class="m"><span class="k">机构</span><span class="v">上海人工智能实验室 · 北京大学</span></div>
@@ -178,7 +179,7 @@
 
   <section>
     <h2>它解决的问题</h2>
-    <p>VLA（视觉-语言-动作）模型的泛化能力，主要来自预训练数据的<strong>规模、多样性与来源</strong>。真实机器人数据效果好，但采集成本极高——遥操作需要熟练操作员、专用硬件和大量人力，大规模、多样化的真实数据集对多数研究组来说「不可负担」，整个社区也因此缺乏系统研究「预训练到底需要什么数据」的能力。</p>
+    <p><a class="concept-link" href="VLA-发展历程.html#concept-vla">VLA（视觉-语言-动作）</a>模型的泛化能力，主要来自预训练数据的<strong>规模、多样性与来源</strong>。真实机器人数据效果好，但采集成本极高——遥操作需要熟练操作员、专用硬件和大量人力，大规模、多样化的真实数据集对多数研究组来说「不可负担」，整个社区也因此缺乏系统研究「预训练到底需要什么数据」的能力。</p>
     <p>仿真本是一条互补路径：资产库丰富、场景可控、生成可自动化。但已有的合成数据集普遍有四个硬伤：</p>
     <ul>
       <li><strong>技能面窄</strong>：以 pick-and-place（抓取-放置）为主，覆盖不了折叠、倒液体、关节操作等日常技能；</li>
@@ -193,7 +194,7 @@
 
   <section>
     <h2>方法主线</h2>
-    <p>核心是一个「<span class="hl">高度自主、完全解耦、可组合</span>」的仿真数据流水线，再用与 π0 完全相同的架构去验证数据本身的价值。分五步：</p>
+    <p id="concept-synthetic-data" class="concept-anchor">这里的合成数据，是由仿真环境、技能脚本与运动规划生成的机器人观测和动作轨迹。核心是一个「<span class="hl">高度自主、完全解耦、可组合</span>」的仿真数据流水线，再用与 π0 完全相同的架构去验证数据本身的价值。分五步：</p>
     <ol>
       <li><strong>建资产库与环境</strong>：统一管理 4 种机器人构型、227 个室内场景、3,185 个刚体、321 个关节物体、20 件衣物与流体，全部带功能标注（关节轴、抓取位姿、物理参数）。</li>
       <li><strong>技能组合成任务</strong>：把折叠、倒液体、旋转、堆叠等 18 个原子技能做成模块化脚本，每个技能是「状态 → waypoint」的自动映射；像搭积木一样串行/并行组合出 70 个任务（含 18 个至少 3 步的长程任务）。</li>
@@ -234,7 +235,7 @@ flowchart LR
 
   <section>
     <h2>训练或运行方式</h2>
-    <p>论文<strong>不改模型、只换数据</strong>：直接采用 π0 的架构——视觉语言模型 Paligemma（约 3B）+ 基于 flow matching 的动作专家，从 Paligemma 权重 + 随机初始化的动作专家开始预训练（与官方 π0 用闭源 π 数据集的 700k 步对齐，本文训 680k 步）。</p>
+    <p>论文<strong>不改模型、只换数据</strong>：直接采用 π0 的架构——视觉语言模型 Paligemma（约 3B）+ 基于 <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">flow matching</a> 的<a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a>，从 Paligemma 权重 + 随机初始化的动作专家开始预训练（与官方 π0 用闭源 π 数据集的 700k 步对齐，本文训 680k 步）。</p>
     <div class="tbl-wrap">
     <table>
       <tr><th>阶段</th><th>步数</th><th>算力</th><th>Batch</th><th>学习率</th><th>调度</th></tr>
@@ -358,6 +359,13 @@ flowchart LR
       <li>跟踪 InternData-A1 数据集与生成流水线的开源发布（论文承诺 open-source）。</li>
     </ul>
   </section>
+
+  <aside class="concept-related" aria-label="相关概念">
+    <strong>相关概念</strong>
+    <a href="ObjectCentric-RL-论文解读.html#concept-sim-to-real">Sim-to-Real：从仿真到真机</a>
+    <a href="Qwen-VLA-论文解读.html#concept-cross-embodiment">跨本体：适应不同机器人构型</a>
+    <a href="concepts.html">全部概念 →</a>
+  </aside>
 
   <footer>
     <span>精读笔记 · InternData-A1：高保真合成数据预训练通用策略</span>

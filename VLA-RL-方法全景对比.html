@@ -123,6 +123,7 @@
     table{min-width:780px;}
   }
 </style>
+<link rel="stylesheet" href="concepts.css">
 </head>
 <body>
 <div class="grid" aria-hidden="true"></div>
@@ -155,7 +156,7 @@
       <div class="leg"><span class="dot" style="background:var(--c-rlt)"></span>RL token（1）</div>
       <div class="leg"><span class="dot" style="background:var(--c-zero)"></span>从零小模型（1）</div>
     </div>
-    <p class="note">第二条坐标轴是<strong>训练环境</strong>：仿真的（πRL、DPPO、Policy Decorator、Object-Centric）能大批量、靠密集奖励；真机的（RLT、SERL、RECAP、DSRL、GR-RL）数据贵，靠稀疏奖励 + 人类干预。</p>
+    <p class="note">第二条坐标轴是<strong>训练环境</strong>：仿真的（πRL、DPPO、Policy Decorator、Object-Centric）能大批量、靠密集奖励；真机的（RLT、SERL、RECAP、DSRL、GR-RL）数据贵，靠<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-sparse-reward">稀疏奖励</a> + 人类干预。</p>
   </section>
 
   <section>
@@ -166,11 +167,11 @@
           <tr><th>方法</th><th>更新什么</th><th>RL 方式</th><th>动作表示</th><th>训练环境</th><th>核心机制 / 锚定</th></tr>
         </thead>
         <tbody>
-          <tr><td class="mname">RECAP（π0.6）<span class="tag" style="background:var(--c-full)">整模型</span></td><td>整个 π0.6 端到端</td><td>offline RL（优势条件）</td><td>VLA 原生动作块</td><td>真机收集 → 离线更新</td><td>分布价值函数估每步优势，optimality 指示器加权高优势动作</td></tr>
-          <tr><td class="mname">SimpleVLA-RL<span class="tag" style="background:var(--c-full)">整模型</span></td><td>整个 VLA</td><td>online（PPO 类）</td><td>VLA 原生</td><td>仿真（大规模）</td><td>规模化 VLA RL 训练</td></tr>
+          <tr><td class="mname">RECAP（π0.6）<span class="tag" style="background:var(--c-full)">整模型</span></td><td>整个 π0.6 端到端</td><td>offline RL（<a class="concept-link" href="两条主干-拆机手册.html#concept-advantage">优势</a>条件）</td><td>VLA 原生动作块</td><td>真机收集 → 离线更新</td><td>分布价值函数估每步优势，optimality 指示器加权高优势动作</td></tr>
+          <tr><td class="mname">SimpleVLA-RL<span class="tag" style="background:var(--c-full)">整模型</span></td><td>整个 VLA</td><td>online（<a class="concept-link" href="RLinf-RL原理对比.html#concept-ppo">PPO</a> 类）</td><td>VLA 原生</td><td>仿真（大规模）</td><td>规模化 VLA RL 训练</td></tr>
           <tr><td class="mname">DPPO<span class="tag" style="background:var(--c-full)">整模型</span></td><td>扩散策略</td><td>online（PPO）</td><td>扩散去噪</td><td>仿真</td><td>对扩散策略做 PPO 优化</td></tr>
           <tr><td class="mname">πRL<span class="tag" style="background:var(--c-noise)">噪声空间</span></td><td>动作专家（冻结 VLM）</td><td>online（PPO + GAE）</td><td>flow 去噪 / 噪声</td><td>仿真（320 envs）</td><td>Flow-Noise / Flow-SDE 让 log π 可解</td></tr>
-          <tr><td class="mname">DSRL<span class="tag" style="background:var(--c-noise)">噪声空间</span></td><td>潜噪声策略（冻结 VLA）</td><td>online（off-policy）</td><td>扩散噪声空间</td><td>真机</td><td>选噪声 steer 冻结生成器，隐式约束探索</td></tr>
+          <tr><td class="mname">DSRL<span class="tag" style="background:var(--c-noise)">噪声空间</span></td><td>潜噪声策略（冻结 VLA）</td><td>online（<a class="concept-link" href="两条主干-拆机手册.html#concept-off-policy">off-policy</a>）</td><td>扩散噪声空间</td><td>真机</td><td>选噪声 steer 冻结生成器，隐式约束探索</td></tr>
           <tr><td class="mname">GR-RL<span class="tag" style="background:var(--c-noise)">噪声空间</span></td><td>噪声预测器（冻结 VLA）</td><td>offline BC → online RL</td><td>扩散潜空间</td><td>真机</td><td>多阶段：过滤 BC 后，噪声预测器 steer 潜空间</td></tr>
           <tr><td class="mname">Policy Decorator<span class="tag" style="background:var(--c-resid)">残差</span></td><td>残差策略（冻结 VLA）</td><td>online</td><td>单步残差</td><td>仿真（百万级步）</td><td>残差 × 手工超参 加到 VLA 预测</td></tr>
           <tr><td class="mname">PLD<span class="tag" style="background:var(--c-resid)">残差</span></td><td>残差策略（冻结 VLA）</td><td>Cal-QL 预训 critic → 残差</td><td>单步残差</td><td>真机</td><td>Cal-QL 预训 critic，可选蒸馏回 VLA</td></tr>
@@ -187,7 +188,7 @@
     <div class="camp-head"><span class="bar" style="background:var(--c-full)"></span><h2>① 整模型 RL</h2><span class="cnt">3 个</span></div>
     <div class="camp-body">
       <p class="desc">直接更新整个 VLA。上限最高、能真正改变行为模式，但计算和样本成本最贵，on-policy 方法尤其难上真机。RECAP 用<strong>离线 RL</strong>绕开在线探索，是这一类的实用代表。</p>
-      <div class="mcard"><div class="mt"><a href="pi0.6-论文解读.html">RECAP（π0.6）</a></div><div class="md">优势条件策略抽取：价值函数估每步优势，把「演示 + 自主 rollout + 人类干预」全喂给模型，吞吐 >2×。</div></div>
+      <div class="mcard"><div class="mt"><a class="concept-link" href="pi0.6-论文解读.html#concept-recap">RECAP（π0.6）</a></div><div class="md">优势条件策略抽取：价值函数估每步优势，把「演示 + 自主 rollout + 人类干预」全喂给模型，吞吐 >2×。</div></div>
       <div class="mcard"><div class="mt">SimpleVLA-RL</div><div class="md">PPO 类整模型 RL，面向规模化 VLA 训练。</div></div>
       <div class="mcard"><div class="mt">DPPO</div><div class="md">Diffusion Policy 上的 PPO，把策略梯度用到扩散策略。</div></div>
     </div>
@@ -197,7 +198,7 @@
     <div class="camp-head"><span class="bar" style="background:var(--c-noise)"></span><h2>② 噪声 / 潜空间 RL</h2><span class="cnt">3 个</span></div>
     <div class="camp-body">
       <p class="desc">冻结 VLA，但<strong>在生成过程内部</strong>做 RL——要么微调动作专家（πRL），要么学一个「选噪声 / steer 去噪」的小策略（DSRL、GR-RL）。好处是保留 VLA 的生成能力，探索天然被约束在 VLA 能产出的动作内。</p>
-      <div class="mcard"><div class="mt"><a href="piRL-论文解读.html">πRL（Flow-Noise / Flow-SDE）</a></div><div class="md">把流去噪 MDP 化让 log π 可解；冻结 VLM 只微调 300M 动作专家；LIBERO 57.6→97.6。</div></div>
+      <div class="mcard"><div class="mt"><a class="concept-link" href="piRL-论文解读.html#concept-denoising-mdp">πRL（Flow-Noise / Flow-SDE）</a></div><div class="md">把流去噪 MDP 化让 log π 可解；冻结 VLM 只微调 300M 动作专家；LIBERO 57.6→97.6。</div></div>
       <div class="mcard"><div class="mt">DSRL</div><div class="md">在 flow VLA 的潜噪声空间学策略，选噪声喂给冻结生成器。</div></div>
       <div class="mcard"><div class="mt">GR-RL</div><div class="md">多阶段长程任务（系鞋带）：先过滤 BC，再在线学噪声预测器 steer 潜空间。</div></div>
     </div>
@@ -207,7 +208,7 @@
     <div class="camp-head"><span class="bar" style="background:var(--c-resid)"></span><h2>③ 残差策略（冻结 VLA）</h2><span class="cnt">4 个</span></div>
     <div class="camp-body">
       <p class="desc">冻结 VLA，学一个<strong>对 VLA 动作做修正的残差</strong>。最简单、最省算力，但大多局限在<strong>单步动作</strong>（PLD、ConRFT、Policy Decorator），信用分配链更长；Object-Centric 用物体位姿缩小观测空间做到零样本 sim-to-real。</p>
-      <div class="mcard"><div class="mt"><a href="ObjectCentric-RL-论文解读.html">Object-Centric Residual RL</a></div><div class="md">物体位姿观测 + 仿真噪声注入，纯仿真训练零样本上真机，42%→76%。</div></div>
+      <div class="mcard"><div class="mt"><a class="concept-link" href="ObjectCentric-RL-论文解读.html#concept-residual-rl">Object-Centric Residual RL</a></div><div class="md">物体位姿观测 + 仿真噪声注入，纯仿真训练零样本上真机，42%→76%。</div></div>
       <div class="mcard"><div class="mt">PLD（Probe-Learn-Distill）</div><div class="md">Cal-QL 预训 critic，再学单步残差，可选蒸馏回 VLA。</div></div>
       <div class="mcard"><div class="mt">ConRFT</div><div class="md">冻结 encoder 微调 action head，一致性目标 + 二值奖励分类器。</div></div>
       <div class="mcard"><div class="mt">Policy Decorator</div><div class="md">残差 × 手工超参加到 VLA 预测；仅仿真、需百万级步。</div></div>
@@ -217,7 +218,7 @@
   <div class="camp">
     <div class="camp-head"><span class="bar" style="background:var(--c-rlt)"></span><h2>④ RL token（本文路线）</h2><span class="cnt">1 个</span></div>
     <div class="camp-body">
-      <p class="desc">在「残差 / 轻量头」之上更进一步：不直接拿 VLA 高维特征，而是<strong>先抽一个紧凑表示（RL token）</strong>，再训轻量 actor-critic，并且用<strong>参考动作 + KL 正则</strong>锚定、用<strong>动作块</strong>缩短信用分配。是「冻结 VLA + 轻量 RL」里数据效率最极致的做法。</p>
+      <p class="desc">在「残差 / 轻量头」之上更进一步：不直接拿 VLA 高维特征，而是<strong>先抽一个紧凑表示（RL token）</strong>，再训轻量 <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-actor-critic">actor-critic</a>，并且用<strong>参考动作 + KL 正则</strong>锚定、用<strong><a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块</a></strong>缩短信用分配。是「冻结 VLA + 轻量 RL」里数据效率最极致的做法。</p>
       <div class="mcard"><div class="mt"><a href="RL-Token-论文解读.html">RLT（RL Token）</a></div><div class="md">RL token（信息瓶颈表示）+ actor 以参考动作 ã 为条件 + KL 正则 + reference dropout；真机几分钟~几小时，关键阶段提速最高 3×。</div></div>
     </div>
   </div>
@@ -240,6 +241,13 @@
       <li><strong>连 VLA 都没有 / 只想做个对照</strong>：⑤ SERL 类。</li>
     </ul>
   </div>
+
+  <aside class="concept-related" aria-label="相关概念">
+    <strong>相关概念</strong>
+    <a href="RLinf-RL原理对比.html#concept-ppo">PPO：更新完整策略的一条路线</a>
+    <a href="RLToken-漫画分镜解读.html#concept-td3">TD3：轻量 actor-critic 的训练方法</a>
+    <a href="concepts.html">全部概念 →</a>
+  </aside>
 
   <footer>
     <span>专题对比 · VLA + RL 方法 · 另见 <a href="RLinf-RL方法对比.html">RLinf 框架内 15 种算法</a> / <a href="RLinf-RL原理对比.html">原理视角推导</a></span>

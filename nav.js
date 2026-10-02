@@ -58,6 +58,9 @@
     '.kb-brand b{color:#3fb0d0;font-weight:600;}',
     '.kb-brand:hover b{color:#8fd3e6;}',
     '.kb-cur{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#9db0bd;font-size:12.5px;letter-spacing:.02em;}',
+    '.kb-concepts{color:#8fd3e6;text-decoration:none;white-space:nowrap;font-size:13px;}',
+    '.kb-concepts:hover,.kb-concepts:focus-visible{text-decoration:underline;text-underline-offset:4px;}',
+    '@media(max-width:560px){.kb-brand-label{display:none}.kb-navbar{gap:10px;padding:0 12px}.kb-menu,.kb-concepts{flex-shrink:0}}',
     '.kb-menu{display:inline-flex;align-items:center;gap:8px;background:transparent;color:#c7d4de;border:1px solid rgba(255,255,255,.22);border-radius:999px;padding:6px 13px;cursor:pointer;font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;font-size:12px;letter-spacing:.06em;transition:border-color .15s ease,color .15s ease,background .15s ease;}',
     '.kb-menu:hover{border-color:#3fb0d0;color:#fff;background:rgba(63,176,208,.12);}',
     '.kb-menu svg{width:14px;height:14px;flex:none;}',
@@ -105,8 +108,9 @@
 
     root.innerHTML =
       '<nav class="kb-navbar">' +
-        '<a class="kb-brand" href="' + HOME.href + '"><b>KB</b>/ ROBOTIC LEARNING</a>' +
-        '<span class="kb-cur">' + (isHome ? HOME.title : '研读档案') + '</span>' +
+        '<a class="kb-brand" href="' + HOME.href + '" aria-label="机器人学习知识库首页"><b>KB</b><span class="kb-brand-label">/ ROBOTIC LEARNING</span></a>' +
+        '<span class="kb-cur">' + (isHome ? HOME.title : (cur === 'concepts.html' ? '关键概念索引' : '研读档案')) + '</span>' +
+        '<a class="kb-concepts" href="concepts.html">概念索引</a>' +
         '<button class="kb-menu" type="button" aria-label="打开目录">' +
           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>目录' +
         '</button>' +
@@ -116,6 +120,7 @@
         '<div class="kb-drawer-head"><span class="t">知识库目录</span><button class="close" type="button" aria-label="关闭">×</button></div>' +
         '<div class="kb-scroll">' +
           '<a class="kb-home' + (isHome ? ' on' : '') + '" href="' + HOME.href + '">← 返回首页</a>' +
+          '<a class="kb-home' + (cur === 'concepts.html' ? ' on' : '') + '" href="concepts.html">按概念串读 →</a>' +
           itemsHtml +
         '</div>' +
       '</aside>';

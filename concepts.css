@@ -1,0 +1,45 @@
+/* Shared concept links: native anchors also work without JavaScript. */
+.concept-anchor, [id^="concept-"] { scroll-margin-top: 76px; }
+a.concept-link {
+  color: inherit;
+  text-decoration-line: underline;
+  text-decoration-style: dotted;
+  text-decoration-thickness: 1px;
+  text-underline-offset: .22em;
+  border-bottom: 0;
+}
+a.concept-link:hover { text-decoration-style: solid; background: color-mix(in srgb, currentColor 8%, transparent); }
+a.concept-link:focus-visible, .concept-related a:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 4px;
+}
+.concept-anchor:target, [id^="concept-"]:target {
+  outline: 2px solid #3095a4;
+  outline-offset: 6px;
+}
+.concept-related {
+  box-sizing: border-box;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 10px;
+  width: calc(100% - 32px);
+  max-width: 1100px;
+  margin: 32px auto;
+  padding: 20px;
+  border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+  border-radius: 10px;
+  font: 14px/1.65 -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+}
+.concept-related > strong { flex-basis: 100%; font-size: 15px; }
+.concept-related > p { flex-basis: 100%; margin: 0; }
+.concept-related a {
+  display: inline-block;
+  color: inherit;
+  padding: 5px 11px;
+  border: 1px solid color-mix(in srgb, currentColor 22%, transparent);
+  border-radius: 6px;
+  text-decoration: none;
+}
+.concept-related a:hover { border-color: currentColor; text-decoration: underline; text-underline-offset: 3px; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto !important; } }

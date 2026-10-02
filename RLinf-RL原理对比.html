@@ -147,6 +147,7 @@
   .ax .d{font-size:13px; color:var(--ink-2); line-height:1.65;}
   .lede{font-size:15px; color:var(--ink-2); border-left:3px solid var(--line-strong); padding-left:14px; margin:0 0 18px;}
 </style>
+<link rel="stylesheet" href="concepts.css">
 </head>
 <body>
 <div class="grid" aria-hidden="true"></div>
@@ -171,14 +172,14 @@
   <section style="margin-top:44px">
     <h2>起点：两条主干</h2>
     <p class="lede">所有 on-policy 方法来自策略梯度定理，所有 off-policy / 离线方法来自 Bellman 方程。这是整张图的分水岭。</p>
-    <p><strong>主干 A · 策略梯度定理。</strong>要最大化期望回报 J(θ)=E[Σγᵗr]，梯度形式是：</p>
+    <p><strong>主干 A · <a class="concept-link" href="为什么取log.html#concept-policy-gradient">策略梯度定理</a>。</strong>要最大化期望回报 J(θ)=E[Σγᵗr]，梯度形式是：</p>
     <div class="fml">∇J(θ) = E[ ∇log π_θ(a|s) · <span class="h">A(s,a)</span> ]
          <span class="c">└─ 唯一需要"猜"的东西，就是这个 A</span></div>
-    <p>这个式子里 <code>∇log π</code> 是自动微分白给的，<strong>全部的算法设计都花在 A 上</strong>：A 怎么估，方差多大，偏差多大，要不要 critic。顺带一个前提——你得能算出 <code>log π</code>，这对高斯策略是白给的，对流匹配 / 扩散策略<strong>不是</strong>，于是有了家族 ③。</p>
-    <p><strong>主干 B · Bellman 方程。</strong>不走梯度，走不动点迭代。学一个 Q 满足自一致性，再让策略去贪 Q：</p>
+    <p>这个式子里 <a class="concept-link" href="为什么取log.html#concept-log-trick"><code>∇log π</code></a> 是自动微分白给的，<strong>全部的算法设计都花在 <a class="concept-link" href="两条主干-拆机手册.html#concept-advantage">A</a> 上</strong>：A 怎么估，方差多大，偏差多大，要不要 critic。顺带一个前提——你得能算出 <code>log π</code>，这对高斯策略是白给的，对流匹配 / 扩散策略<strong>不是</strong>，于是有了家族 ③。</p>
+    <p><strong>主干 B · <a class="concept-link" href="两条主干-拆机手册.html#concept-bellman">Bellman 方程</a>。</strong>不走梯度，走不动点迭代。学一个 Q 满足自一致性，再让策略去贪 Q：</p>
     <div class="fml">Q(s,a) = r + γ·E[ <span class="h">max</span> Q(s',a') ]     <span class="c">← 这个 max 是万恶之源</span>
 π ← argmax Q                        <span class="c">（最大熵版本：加 −α log π）</span></div>
-    <p>好处是数据可以反复用（off-policy），样本效率高一个量级。坏处全在那个 <code>max</code> 上：它<strong>专挑估计误差最大的动作</strong>，于是误差被系统性放大 —— 这就是价值高估。家族 ② 和 ⑤ 的所有花招，本质都是在跟这个 max 搏斗。</p>
+    <p>好处是数据可以反复用（off-policy），样本效率高一个量级。坏处全在那个 <code>max</code> 上：它<strong>专挑估计误差最大的动作</strong>，于是误差被系统性放大 —— 这就是<a class="concept-link" href="两条主干-拆机手册.html#concept-overestimation">价值高估</a>。家族 ② 和 ⑤ 的所有花招，本质都是在跟这个 max 搏斗。</p>
   </section>
 
   <section style="margin-top:44px">
@@ -195,7 +196,7 @@
     <div class="camp-body">
       <p class="desc">这一族的共同软肋是<strong>数据用一次就废</strong>——因为策略一更新，旧数据的分布就不对了。所以它们全部要回答同一个问题：能走多远？</p>
 
-      <h3 style="margin-top:16px">PPO：用裁剪代替信任域</h3>
+      <h3 id="concept-ppo" class="concept-anchor" style="margin-top:16px">PPO：用裁剪代替信任域</h3>
       <p>理论上该约束 KL(π_new‖π_old) ≤ δ，但那要解带约束优化。PPO 的做法是把约束<strong>换成一个不再奖励越界的目标函数</strong>：</p>
       <div class="fml">L = E[ min( r·A , clip(r, 1−ε, 1+ε)·A ) ]      r = π_θ/π_old</div>
       <p>关键在这个 <code>min</code> 的非对称性：A&gt;0 时上界被 1+ε 截住，再增大 r 也没有额外收益；A&lt;0 时下界被 1−ε 截住。所以梯度在越界后<strong>直接归零</strong>，而不是变成惩罚。优势用 GAE 估：</p>
@@ -203,7 +204,7 @@
       <span class="c">λ→0：单步 TD，低方差高偏差    λ→1：蒙特卡洛，高方差低偏差</span></div>
       <p>代价很实在：<strong>必须养一个 critic</strong>。对 VLA 这意味着第二个几十亿参数的网络，所以 RLinf 让它跟语言主干共享参数、只挂个 value head。</p>
 
-      <h3 style="margin-top:20px">GRPO：用组内比较替掉 critic</h3>
+      <h3 id="concept-grpo" class="concept-anchor" style="margin-top:20px">GRPO：用组内比较替掉 critic</h3>
       <p>一个观察：A(s,a) 本质是「这个动作比该状态的平均水平好多少」。既然 V(s) 就是个 baseline，那<strong>为什么不直接采一组样本、用组内均值当 baseline</strong>？</p>
       <div class="fml">A_i = ( R_i − mean(R_1..R_G) ) / std(R_1..R_G)</div>
       <p>省掉一整个 critic 网络。代价有三个，都是理论上的硬代价：<strong>① 要能从同一状态重复采样</strong>（仿真器行，真机基本不行）；<strong>② 只有轨迹级信号</strong>，组内所有时间步共享一个优势，细粒度信用分配没了；<strong>③ 全成或全败时 std→0、优势恒为 0</strong>，这组样本白采。第③点直接催生了「成功率过滤」。</p>
@@ -220,7 +221,7 @@ A_norm = (A − mean_batch) / std_batch</div>
     </div>
   </div>
   <div class="camp">
-    <div class="camp-head"><span class="bar" style="background:var(--c-resid)"></span><h2>② off-policy 最大熵：跟 max 搏斗</h2><span class="cnt">主干 B</span></div>
+    <div class="camp-head"><span class="bar" style="background:var(--c-resid)"></span><h2 id="concept-sac" class="concept-anchor">② off-policy 最大熵：跟 max 搏斗</h2><span class="cnt">主干 B</span></div>
     <div class="camp-body">
       <p class="desc">SAC 先把 Bellman 里那个硬 <code>max</code> 换成<strong>软的</strong>——在目标里加一个熵项，于是最优策略不再是 argmax 的尖峰，而是一个玻尔兹曼分布：</p>
       <div class="fml">Q(s,a) = r + γ·E[ Q(s',a') <span class="h">− α log π(a'|s')</span> ]      <span class="c">软 Bellman</span>
@@ -229,10 +230,10 @@ A_norm = (A − mean_batch) / std_batch</div>
 
       <h3 style="margin-top:18px">SAC：双 Q 取小 + target 网络</h3>
       <div class="fml">y = r + γ·[ <span class="h">min</span>(Q_θ̄1, Q_θ̄2)(s',a') − α log π(a'|s') ]</div>
-      <p>取小是刻意引入<strong>负偏差</strong>去对冲 max 的正偏差；target 网络 θ̄ 靠滑动平均缓慢跟随，切断「自己的误差立刻喂给自己」的正反馈回路。</p>
+      <p><a class="concept-link" href="RLToken-漫画分镜解读.html#concept-twin-q">取小</a>是刻意引入<strong>负偏差</strong>去对冲 max 的正偏差；<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-target-network">target 网络</a> θ̄ 靠滑动平均缓慢跟随，切断「自己的误差立刻喂给自己」的正反馈回路。</p>
 
       <h3 style="margin-top:18px">CrossQ：反过来，把 target 删掉</h3>
-      <p>一个反直觉的论断：target 网络虽然稳住了训练，但它<strong>人为延迟了价值传播</strong>，这是样本效率的隐形税。CrossQ 直接用当前参数算 bootstrap 目标：</p>
+      <p>一个反直觉的论断：target 网络虽然稳住了训练，但它<strong>人为延迟了价值传播</strong>，这是样本效率的隐形税。CrossQ 直接用当前参数算 <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-bootstrap">bootstrap</a> 目标：</p>
       <div class="fml">y = r + γ·[ min Q_<span class="h">φ</span>(s',a') − α log π ]     <span class="c">φ 是当前参数，不是 θ̄</span></div>
       <p>那稳定性从哪来？—— 从 <strong>Batch Renormalization</strong>。关键技巧是把当前状态和后继状态<strong>拼成一个 batch 做联合前向</strong>，这样 BRN 的统计量覆盖两个分布，修正了 s 和 s' 分布不一致带来的偏移（这正是以往 BN 在 RL 里失败的原因）。再把 critic 加宽到 2048 补表达力。结果：UTD=1 就追平 REDQ/DroQ 的样本效率，算力省一个数量级。</p>
 
@@ -248,7 +249,7 @@ critic: E=10 集成 + 随机子集              <span class="c">支撑高 UTD / 
   <div class="camp">
     <div class="camp-head"><span class="bar" style="background:var(--c-noise)"></span><h2>③ 流 / 噪声空间：log π 算不出来怎么办</h2><span class="cnt">Axis 2</span></div>
     <div class="camp-body">
-      <p class="desc">这一族解决的是一个纯粹的<strong>理论障碍</strong>。流匹配 / 扩散策略生成动作靠解 ODE：</p>
+      <p class="desc">这一族解决的是一个纯粹的<strong>理论障碍</strong>。<a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">流匹配</a> / 扩散策略生成动作靠解 ODE：</p>
       <div class="fml">A^0 ~ N(0,I)  →  dA/dτ = v_θ(A^τ, s)  →  A^1 = 最终动作</div>
       <p>它是<strong>确定性映射</strong>：给定初始噪声，输出唯一。这意味着 log π(a|s) 需要沿轨迹积分 divergence，算不动也不可导。而主干 A 和主干 B 都需要 log π。三条解法：</p>
 
@@ -264,7 +265,7 @@ critic: E=10 集成 + 随机子集              <span class="c">支撑高 UTD / 
       <p>在这个新 MDP 上跑标准 SAC 就行，~500K 参数。理论代价是<strong>动作空间被冻结策略的像集限制住</strong>——只能在 VLA 能生成的动作里挑，出不了它的分布。这既是安全网（泛化不损），也是天花板。</p>
 
       <h3 style="margin-top:18px">πRL：把 ODE 转成 SDE</h3>
-      <p>第三种思路，见 <a href="piRL-论文解读.html">πRL 精读</a>：<strong>Flow-Noise</strong> 学一个噪声网络把采样过程变成可算似然的高斯链；<strong>Flow-SDE</strong> 做 ODE→SDE 转换（保持边缘分布不变）并配两层 MDP，然后照常上 PPO。和 SAC-Flow 殊途同归，都是「让路径随机化以换取可分解的密度」。</p>
+      <p>第三种思路，见 <a class="concept-link" href="piRL-论文解读.html#concept-denoising-mdp">πRL 精读</a>：<strong>Flow-Noise</strong> 学一个噪声网络把采样过程变成可算似然的高斯链；<strong>Flow-SDE</strong> 做 ODE→SDE 转换（保持边缘分布不变）并配两层 MDP，然后照常上 PPO。和 SAC-Flow 殊途同归，都是「让路径随机化以换取可分解的密度」。</p>
     </div>
   </div>
   <div class="camp">
@@ -272,7 +273,7 @@ critic: E=10 集成 + 随机子集              <span class="c">支撑高 UTD / 
     <div class="camp-body">
       <p class="desc">纯离线时，那个 <code>max Q(s',a')</code> 会去问「数据里从没出现过的动作」值多少 —— 而网络对这些动作的输出纯属幻觉，且幻觉一定是<strong>偏高</strong>的（否则不会被 max 选中）。这个误差还会沿 Bellman 迭代累积放大。三种回避方式：</p>
 
-      <h3 style="margin-top:18px">IQL：干脆不取 max</h3>
+      <h3 id="concept-iql" class="concept-anchor" style="margin-top:18px">IQL：干脆不取 max</h3>
       <p>核心招数是用<strong>期望回归</strong>估计 V。把 τ 设成 0.7 这类大于 0.5 的值，非对称地加权正负残差：</p>
       <div class="fml">L_V = E[ ρ_τ( Q(s,a) − V(s) ) ]        ρ_τ(u) = |τ − 1(u&lt;0)|·u²
       <span class="c">τ&gt;0.5 时更重罚"低估"，于是 V 逼近数据内动作的高分位，近似 max 的效果</span>
@@ -280,7 +281,7 @@ L_Q = E[ (Q(s,a) − (r + γV(s')))² ]   <span class="c">目标只用 V，从�
 L_π = −E[ exp((Q−V)/β) · log π(a|s) ] <span class="c">优势加权 BC：只重加权数据内动作</span></div>
       <p>整套流程<strong>从头到尾没有任何一处对未见动作求值</strong>。这是它稳的全部原因。策略提升由「优势高的样本权重指数级更大」隐式完成。</p>
 
-      <h3 style="margin-top:18px">RECAP：把优势变成 CFG 的条件</h3>
+      <h3 style="margin-top:18px"><a class="concept-link" href="pi0.6-论文解读.html#concept-recap">RECAP</a>：把优势变成 CFG 的条件</h3>
       <p>对扩散 / 流策略，优势加权 BC 不好做。RECAP 换一个机制：<strong>把「优势高低」当成一个可以被条件化的属性</strong>。</p>
       <div class="fml">算折扣回报 G_t → 训价值模型 V → 优势 A_t = G_t − V(s_t)
 A_t 高 → 当作<span class="h">条件</span>输入训练      A_t 低 → 当作<span class="h">无条件</span>输入训练
@@ -305,7 +306,7 @@ A_t 高 → 当作<span class="h">条件</span>输入训练      A_t 低 → 当
       <div class="fml">冻结 VLA → encoder-decoder（自回归重建损失）→ <span class="h">z_rl</span>（紧凑表示）
 actor(z_rl, 本体感觉, <span class="h">ã</span>) → a          ã = VLA 参考动作块
 损失 + λ‖a − ã‖²                        <span class="c">锚定：不许跑离 VLA 先验太远</span></div>
-      <p>三件事一起发生：状态降维（样本效率）、<strong>以参考动作为条件</strong>（探索的起点不是随机而是 VLA 的行为先验，这是 Axis 4）、正则锚定（防止灾难性遗忘）。动作块还顺手缩短了信用分配链。详见 <a href="RL-Token-论文解读.html">RL Token 精读</a>。</p>
+      <p>三件事一起发生：状态降维（样本效率）、<strong>以参考动作为条件</strong>（探索的起点不是随机而是 VLA 的行为先验，这是 Axis 4）、正则锚定（防止灾难性遗忘）。<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块</a>还顺手缩短了信用分配链。详见 <a href="RL-Token-论文解读.html">RL Token 精读</a>。</p>
 
       <h3 style="margin-top:20px">OPD：优势不是学来的，是老师给的</h3>
       <p>如果已经有一个更强的同架构模型，那根本不必从奖励里辛苦提取信号。直接把<strong>师生 logprob 之差当优势</strong>：</p>
@@ -359,6 +360,14 @@ token-level:  细到每个 token（仅 logprob）</div>
       <li><strong>探索的起点比探索的策略更重要。</strong>RLT 和 RECAP 都不靠更聪明的探索，而是靠<strong>预训练先验提供一个已经不错的起点</strong>，再小步修正。这是具身 RL 和游戏 RL 最根本的分野 —— 真机上你没有一亿次试错的预算。</li>
     </ul>
   </div>
+
+  <aside class="concept-related" aria-label="相关概念">
+    <strong>相关概念</strong>
+    <a href="两条主干-拆机手册.html#concept-bellman">Bellman 与价值传播</a>
+    <a href="RLToken-漫画分镜解读.html#concept-target-network">Target 网络为什么要延迟</a>
+    <a href="RLToken-漫画分镜解读.html#concept-rl-token">RL Token 状态表示</a>
+    <a href="concepts.html">全部概念</a>
+  </aside>
 
   <footer>
     <span>原理视角 · RLinf 内 15 种 RL 算法 · 看不懂第一行公式？读 <a href="为什么取log.html">为什么要取 log</a></span>

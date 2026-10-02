@@ -153,6 +153,7 @@
   footer a{color:var(--accent); text-decoration:none;}
   footer a:hover{text-decoration:underline;}
 </style>
+<link rel="stylesheet" href="concepts.css">
 </head>
 <body>
 <div class="grid" aria-hidden="true"></div>
@@ -179,8 +180,8 @@
   <!-- 以下每节：替换占位内容为真实内容，可加 ul/ol/table/blockquote/mermaid 图；保留 h2 标题与整体结构不变 -->
   <section>
     <h2>它解决的问题</h2>
-    <p>VLA（视觉-语言-动作）模型靠海量遥操作演示做模仿学习，泛化能力强，但在需要<strong>精确物理交互</strong>的任务上很脆弱：模仿学习的小误差会随时间<strong>累积</strong>，一碰到没见过的状态就失败。强化学习（RL）本可以通过在线交互来恢复，但直接给现代 VLA 上 RL 很难——很多 VLA 用扩散（diffusion）或流匹配（flow matching）生成动作，其<strong>迭代去噪过程无法直接用标准策略梯度求导</strong>。</p>
-    <p>残差 RL（在冻结的 VLA 之上学一个轻量修正策略）是一条自然的路，但现有做法都卡在同一个 Sim-to-Real 困境上：</p>
+    <p><a class="concept-link" href="VLA-发展历程.html#concept-vla">VLA（视觉-语言-动作）</a>模型靠海量遥操作演示做模仿学习，泛化能力强，但在需要<strong>精确物理交互</strong>的任务上很脆弱：模仿学习的小误差会随时间<strong>累积</strong>，一碰到没见过的状态就失败。强化学习（RL）本可以通过在线交互来恢复，但直接给现代 VLA 上 RL 很难——很多 VLA 用扩散（diffusion）或<a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">流匹配（flow matching）</a>生成动作，其<strong>迭代去噪过程无法直接用标准<a class="concept-link" href="为什么取log.html#concept-policy-gradient">策略梯度</a>求导</strong>。</p>
+    <p id="concept-residual-rl" class="concept-anchor">残差 RL（在冻结的 VLA 之上学一个轻量修正策略）是一条自然的路，但现有做法都卡在同一个 <span id="concept-sim-to-real" class="concept-anchor">Sim-to-Real（把仿真中训练的策略迁移到真实机器人）</span>困境上：</p>
     <div class="tbl-wrap"><table>
       <tr><th>路线</th><th>代表</th><th>失败原因</th></tr>
       <tr><td><strong>特权状态蒸馏</strong></td><td>ResiP</td><td>仿真里用接触力等特权状态，部署时必须蒸馏成图像策略，蒸馏过程损失性能</td></tr>
@@ -198,7 +199,7 @@
     <p>整体是一条「真机演示 → 仿真孪生 → 仿真残差 RL → 零样本部署 → 反哺 VLA」的三阶段流水线，核心是<strong>让残差策略只观测跨域一致的物体位姿</strong>。</p>
     <ol>
       <li><strong>Stage 1 · 遥操作回放，构建成对的仿真/真机 VLA</strong>：常规流程是在真机上采集遥操作演示、用 (RGB, 动作) 微调真机 VLA <code>V_real</code>；作者额外把<strong>同一批遥操作动作在 MuJoCo 里回放</strong>，渲染出平行仿真数据集，训练一个仿真 VLA <code>V_sim</code>。两个 VLA 被完全相同的动作监督，虽然视觉域不同，但<strong>动作分布是对齐的</strong>——这为「仿真里训练、真机上部署」埋下伏笔。</li>
-      <li><strong>Stage 2 · 物体中心残差 RL</strong>：残差策略 <code>π_res</code> 的观测定义为 <code>s_t = [s_obj, s_prop, a_base]</code>——任务相关物体的 6-DoF 位姿、本体感受（末端位姿 + 夹爪）、当前 VLA 基础动作。用 <strong>TD3</strong> 训练一个 2 层 MLP 残差网络，并用<strong>位姿噪声注入 + 位姿 dropout</strong> 增强鲁棒性。</li>
+      <li><strong>Stage 2 · 物体中心残差 RL</strong>：残差策略 <code>π_res</code> 的观测定义为 <code>s_t = [s_obj, s_prop, a_base]</code>——任务相关物体的 6-DoF 位姿、本体感受（末端位姿 + 夹爪）、当前 VLA 基础动作。用 <strong><a class="concept-link" href="RLToken-漫画分镜解读.html#concept-td3">TD3</a></strong> 训练一个 2 层 MLP 残差网络，并用<strong>位姿噪声注入 + 位姿 dropout</strong> 增强鲁棒性。</li>
       <li><strong>Stage 3 · 零样本真机部署</strong>：部署时 <code>V_real</code> 和 <code>π_res</code> 都<strong>冻结</strong>，无任何训练或适配。每个时间步用 FoundationPose + SAM2 估计物体位姿和跟踪置信度 <code>c_t</code>；当 <code>c_t</code> 低于阈值 0.5 时把位姿输入<strong>置零</strong>，触发训练时学到的 dropout 回退策略。</li>
       <li><strong>（附加）VLA 自我改进</strong>：把残差修正后成功跑通的真机轨迹，与原始演示合并，用来对基础 VLA 做监督微调（SFT），<strong>不需要额外的遥操作</strong>就能让 VLA 自我提升。</li>
     </ol>
@@ -207,7 +208,7 @@
 
   <section>
     <h2>输入、输出与数据流</h2>
-    <p>整个系统里有两条并行的信息流：<strong>基础 VLA</strong>（看图、低频出动作块）和<strong>残差策略</strong>（看位姿、高频做修正），最后在动作层面合成。</p>
+    <p>整个系统里有两条并行的信息流：<strong>基础 VLA</strong>（看图、低频出<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块</a>）和<strong>残差策略</strong>（看位姿、高频做修正），最后在动作层面合成。</p>
     <div class="tbl-wrap"><table>
       <tr><th>组件</th><th>输入</th><th>输出</th><th>频率 / 说明</th></tr>
       <tr><td><strong>基础 VLA</strong><br><code>V_sim</code> / <code>V_real</code></td><td>RGB 图像 <code>o</code> + 本体感受 <code>s_prop</code> + 语言指令 <code>l</code></td><td>长度 H=16 的动作块 <code>A</code>，读 <code>a_base = A[t mod H]</code></td><td>每 H 步查询一次（低频）</td></tr>
@@ -322,6 +323,13 @@
       <li><strong>找改进方向</strong>：加 VLM 语义校验或多假设位姿估计，挡住「看着对其实错」的感知错误；尝试从 VLA 注意力图自动识别任务物体。</li>
     </ul>
   </section>
+
+  <aside class="concept-related" aria-label="相关概念">
+    <strong>相关概念</strong>
+    <a href="RLToken-漫画分镜解读.html#concept-td3">TD3 如何训练残差策略</a>
+    <a href="InternData-A1-论文解读.html#concept-synthetic-data">合成数据的另一条迁移路线</a>
+    <a href="concepts.html">全部概念 →</a>
+  </aside>
 
   <footer>
     <span>精读笔记 · 物体中心残差 RL：零样本 Sim-to-Real 增强 VLA</span>

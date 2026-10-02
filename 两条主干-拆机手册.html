@@ -213,6 +213,7 @@
     .bars{height:150px;}
   }
 </style>
+<link rel="stylesheet" href="concepts.css">
 </head>
 <body>
 <div class="wrap">
@@ -298,7 +299,7 @@
       <p style="margin:6px 0 0">梯度 = <b>方向（送来的）</b> × <b>力度（要自己估的）</b>。所以 PPO / GRPO / DAPO / Reinforce++ 这些名字，<strong>全都不是不同的理论，只是同一台机器上换了「力度表」的不同型号</strong>。</p>
     </div>
 
-    <h3>力度为什么不能直接用「总回报 R」？</h3>
+    <h3 id="concept-advantage" class="concept-anchor">力度为什么不能直接用「总回报 R」？</h3>
     <p>最原始的想法（REINFORCE）就是拿 R 当力度。问题用三个数就能看出来。假设某状态下三个动作，跑完拿到的回报分别是 10、11、12：</p>
     <div class="fml">用 R 当力度:   a₁ ← +10 踩油门    a₂ ← +11 踩油门    a₃ ← +12 踩油门
               <span class="c">三个动作的概率<span class="r">全都被推高</span> —— 可它们的概率加起来必须是 1！</span>
@@ -306,9 +307,9 @@
 
 减掉平均 11:   a₁ ← <span class="r">−1 刹车</span>       a₂ ←  0 不动       a₃ ← <span class="g">+1 油门</span>
               <span class="c">「比平均好多少」才是有效信号。这就是<span class="b">优势 A</span>，减掉的那个数叫 baseline。</span></div>
-    <p>关键性质：<strong>减 baseline 不改变梯度的期望（无偏），只减小方差</strong>。所以它是纯白赚的。整条主干 A 的全部工程量，就是「baseline / 优势用什么算」：</p>
-    <div class="fml">PPO        → 养一个 critic 学 V(s)，用 GAE 算 A        <span class="c">准，但要多一个几十亿参数的网络</span>
-GRPO       → 同一状态采一组，用<span class="b">组内均值</span>当 baseline    <span class="c">省掉 critic，但要求能重复采样</span>
+    <p>关键性质：<strong>减 baseline 不改变<a class="concept-link" href="为什么取log.html#concept-policy-gradient">梯度的期望</a>（无偏），只减小方差</strong>。所以它是纯白赚的。整条主干 A 的全部工程量，就是「baseline / 优势用什么算」：</p>
+    <div class="fml"><a class="concept-link" href="RLinf-RL原理对比.html#concept-ppo">PPO</a>        → 养一个 critic 学 V(s)，用 GAE 算 A        <span class="c">准，但要多一个几十亿参数的网络</span>
+<a class="concept-link" href="RLinf-RL原理对比.html#concept-grpo">GRPO</a>       → 同一状态采一组，用<span class="b">组内均值</span>当 baseline    <span class="c">省掉 critic，但要求能重复采样</span>
 Reinforce++→ 回报里再减掉 KL 累积，然后全局归一化      <span class="c">不裁剪，方差更大</span>
 OPD        → 直接用 <span class="b">teacher 的 logprob 之差</span>当 A         <span class="c">连奖励都不要了</span>
 STEAM      → 从演示的<span class="b">时间顺序</span>自监督出 A               <span class="c">连奖励都不存在</span></div>
@@ -330,7 +331,7 @@ STEAM      → 从演示的<span class="b">时间顺序</span>自监督出 A    
     <h3>这台机器有两个死穴</h3>
     <div class="aside">
       <p style="margin:0 0 8px"><b>死穴 1 · 数据用一次就废（on-policy）。</b>那个期望 E[·] 是<strong>在当前策略 π_θ 下</strong>取的。策略一更新，旧数据就来自「另一个策略」，统计上不再算数。所以每批 rollout 只能训一两步就得扔——样本效率的天花板就在这里。裁剪（PPO）、KL 惩罚都是在回答同一个问题：<em>在数据还没完全作废之前，最多能走多远</em>。</p>
-      <p style="margin:0"><b>死穴 2 · 必须能算出 log π。</b>高斯策略白给。但流匹配 / 扩散策略是「噪声→动作」的确定性 ODE，<strong>log π 根本写不出来</strong>。主干 A 直接卡死——这就是原理页里家族 ③（SAC-Flow / DSRL / πRL）存在的全部理由。</p>
+      <p style="margin:0"><b>死穴 2 · 必须能算出 <a class="concept-link" href="为什么取log.html#concept-log-trick">log π</a>。</b>高斯策略白给。但<a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">流匹配</a> / 扩散策略是「噪声→动作」的确定性 ODE，<strong>log π 根本写不出来</strong>。主干 A 直接卡死——这就是原理页里家族 ③（SAC-Flow / DSRL / πRL）存在的全部理由。</p>
     </div>
   </section>
   <!-- ==================== 2. 主干 B ==================== -->
@@ -338,7 +339,7 @@ STEAM      → 从演示的<span class="b">时间顺序</span>自监督出 A    
   <section class="sheet tilt">
     <span class="plate">§2 · 主干 B · Bellman 方程</span>
     <h2>一台「标价目表」的机器</h2>
-    <p class="lead">这台机器<em>完全不走梯度上升</em>。它先学一张价目表 Q(s,a)：在状态 s 下做动作 a，往后一共能赚多少。表准了，策略就免费了——<strong>查表，挑最贵的那个动作</strong>。</p>
+    <p id="concept-q-value" class="lead concept-anchor">这台机器<em>完全不走梯度上升</em>。它先学一张价目表 Q(s,a)：在状态 s 下做动作 a，往后一共能赚多少。表准了，策略就免费了——<strong>查表，挑最贵的那个动作</strong>。</p>
 
     <div class="flow">
       <span class="node">经验 (s,a,r,s')</span>
@@ -348,10 +349,10 @@ STEAM      → 从演示的<span class="b">时间顺序</span>自监督出 A    
       <span class="node dark">π = argmax Q</span>
     </div>
 
-    <h3>价目表必须自己跟自己对得上</h3>
+    <h3 id="concept-bellman" class="concept-anchor">价目表必须自己跟自己对得上</h3>
     <p>怎么学这张表？不需要跑完整条轨迹。因为一张<strong>正确</strong>的价目表必然满足一条自洽条件——今天的价，等于今天的钱加上明天最好的价（打个折）：</p>
     <div class="fml big">Q(s,a) = r + γ · <span class="r">max</span><sub>a'</sub> Q(s', a')</div>
-    <p>于是训练方式变成：<em>把右边算出来当「标准答案」，让左边去拟合它</em>。反复迭代直到不动为止（不动点迭代）。这个「用自己算出的答案训练自己」的把戏叫 <strong>bootstrapping</strong>，是主干 B 的心脏。</p>
+    <p>于是训练方式变成：<em>把右边算出来当「标准答案」，让左边去拟合它</em>。反复迭代直到不动为止（不动点迭代）。这个「用自己算出的答案训练自己」的把戏叫 <strong><a class="concept-link" href="RLToken-漫画分镜解读.html#concept-bootstrap">bootstrapping</a></strong>，是主干 B 的心脏。</p>
 
     <!-- 实验 2 -->
     <div class="lab">
@@ -372,13 +373,13 @@ STEAM      → 从演示的<span class="b">时间顺序</span>自监督出 A    
       <p style="margin:6px 0 0">信息是<strong>每轮只往回传一格</strong>的。所以主干 B 的「收敛慢」不是玄学，而是结构性的。也正因如此，CrossQ 才会说 <em>target 网络虽然稳，但它人为延迟了价值传播，是样本效率的隐形税</em>——它拖慢的就是这个渗透过程。</p>
     </div>
 
-    <h3>回报：数据可以永久复用</h3>
+    <h3 id="concept-off-policy" class="concept-anchor">回报：数据可以永久复用</h3>
     <p>看那条自洽式子的右边：<code>r + γ max Q(s',a')</code>。它只用到 <strong>(s, a, r, s')</strong> —— <em>完全不在乎这条经验是谁采的</em>。</p>
     <div class="fml">主干 A: E[...] 必须在<span class="b">当前 π</span>下取  →  换了策略，旧数据作废   <span class="c">on-policy</span>
-主干 B: 自洽条件<span class="r">与采集者无关</span>       →  旧数据永远有效，塞进 replay buffer 反复用  <span class="c">off-policy</span></div>
+主干 B: 自洽条件<span class="r">与采集者无关</span>       →  旧数据永远有效，塞进 <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-replay-buffer">replay buffer</a> 反复用  <span class="c">off-policy</span></div>
     <p>这就是样本效率差一个量级的来源，也是真机实验几乎只能走主干 B 的原因：<strong>你没有一亿次试错的预算</strong>。顺带还能直接吃别人采的数据（离线数据集、人类演示）。</p>
 
-    <h3>代价：那个 max 是万恶之源</h3>
+    <h3 id="concept-overestimation" class="concept-anchor">代价：那个 max 是万恶之源</h3>
     <p>表是<strong>估</strong>出来的，必然带噪声。而 <code>max</code> 干的事情是——<em>在一堆带噪的数字里挑最大的那个</em>。它不是在挑最好的动作，它是在<strong>挑运气最好的误差</strong>。</p>
 
     <!-- 实验 3 -->
@@ -407,12 +408,12 @@ STEAM      → 从演示的<span class="b">时间顺序</span>自监督出 A    
     </div>
 
     <h3>于是有了一整排「反乐观」补丁</h3>
-    <div class="fml">SAC    → 双 Q <span class="r">取小</span>            <span class="c">故意制造负偏差，对冲正偏差</span>
-SAC    → target 网络缓慢跟随    <span class="c">切断「自己的误差立刻喂给自己」的回路</span>
+    <div class="fml">SAC    → <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-twin-q">双 Q <span class="r">取小</span></a>            <span class="c">故意制造负偏差，对冲正偏差</span>
+SAC    → <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-target-network">target 网络</a>缓慢跟随    <span class="c">切断「自己的误差立刻喂给自己」的回路</span>
 SAC    → 加熵项把 max 变「软」   <span class="c">最优策略从尖峰变成玻尔兹曼分布</span>
 RLPD   → critic 上加 LayerNorm  <span class="c">限制网络在没见过的动作上输出任意大的值</span>
 STEAM  → 集成取 <span class="r">worst-of-N</span>        <span class="c">和双 Q 取小是同一个思想</span>
-IQL    → <span class="r">干脆不取 max</span>            <span class="c">用期望回归逼近高分位，全程不问 OOD 动作</span></div>
+<a class="concept-link" href="RLinf-RL原理对比.html#concept-iql">IQL</a>    → <span class="r">干脆不取 max</span>            <span class="c">用期望回归逼近高分位，全程不问 OOD 动作</span></div>
     <p class="sub">原理页里那句「家族 ② 和 ⑤ 的所有花招，本质都是在跟这个 max 搏斗」，说的就是上面这六行。</p>
   </section>
   <!-- ==================== 3. 对照 ==================== -->
@@ -471,6 +472,14 @@ IQL    → <span class="r">干脆不取 max</span>            <span class="c">�
       你在 RLinf 里看到的 15 个算法，没有第三条路，全是这两台机器换零件。</p>
     </div>
   </section>
+
+  <aside class="concept-related" aria-label="相关概念">
+    <strong>相关概念</strong>
+    <a href="为什么取log.html#concept-log-trick">策略梯度为什么取 log</a>
+    <a href="RLToken-漫画分镜解读.html#concept-actor-critic">Actor 与 Critic 如何配合</a>
+    <a href="RLinf-RL原理对比.html#concept-sac">SAC 的最大熵目标</a>
+    <a href="concepts.html">全部概念</a>
+  </aside>
 
   <footer>
     <span>TEARDOWN 002 · 主干 A / 主干 B</span>

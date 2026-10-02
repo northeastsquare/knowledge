@@ -134,6 +134,7 @@
     .stats{grid-template-columns:repeat(2,1fr);}
   }
 </style>
+<link rel="stylesheet" href="concepts.css">
 </head>
 <body>
 
@@ -170,7 +171,7 @@
     <h2><span class="no">1</span>要解决什么问题</h2>
     <p class="lead">VLA 模型"什么都会一点"，但在最后一步毫米级的精细操作上容易掉链子。</p>
     <div class="card">
-      <p>VLA（视觉-语言-动作）模型从海量人类遥操作数据里学到了多样化的操作技能，但往往在<span class="hl-orange">"最后一毫米"</span>的执行上出问题：</p>
+      <p><a class="concept-link" href="VLA-发展历程.html#concept-vla">VLA（视觉-语言-动作）</a>模型从海量人类遥操作数据里学到了多样化的操作技能，但往往在<span class="hl-orange">"最后一毫米"</span>的执行上出问题：</p>
       <ul>
         <li>动作慢、犹豫、反复"试探"（probing）；</li>
         <li>关键时刻一点点小误差会累积成失败。</li>
@@ -182,7 +183,7 @@
       <h3>于是陷入两难</h3>
       <table>
         <tr><th>方案</th><th>优点</th><th>缺点</th></tr>
-        <tr><td><strong>直接微调整个 VLA</strong><br><span style="color:var(--faint)">RECAP / PPO 类</span></td><td>保留泛化能力</td><td>计算贵、样本效率低，几小时练不出来</td></tr>
+        <tr><td><strong>直接微调整个 VLA</strong><br><span style="color:var(--faint)"><a class="concept-link" href="pi0.6-论文解读.html#concept-recap">RECAP</a> / <a class="concept-link" href="RLinf-RL原理对比.html#concept-ppo">PPO</a> 类</span></td><td>保留泛化能力</td><td>计算贵、样本效率低，几小时练不出来</td></tr>
         <tr><td><strong>训练小模型做 RL</strong><br><span style="color:var(--faint)">SERL / RL100 类</span></td><td>快、样本高效</td><td>丢掉 VLA 的泛化与视觉先验，从零学</td></tr>
       </table>
       <p style="margin-top:12px;"><strong>核心问题</strong>：怎么"鱼与熊掌兼得"——既拿到 VLA 的泛化，又拿到小模型 RL 的速度？</p>
@@ -195,7 +196,7 @@
     <p class="lead">别去动那个笨重的 VLA，让它"吐"出一个好用又小的表示 + 一组参考动作，交给轻量网络快速精修。</p>
     <div class="callout">
       <div class="ttl">一句话总结</div>
-      <p>冻结 VLA，让它提供<strong>① 压缩状态表示（RL token）</strong>和<strong>② 参考动作块</strong>；只训练一个轻量 actor-critic，用它做<strong>局部精修</strong>，而不是从零搜索。</p>
+      <p>冻结 VLA，让它提供<strong>① 压缩状态表示（RL token）</strong>和<strong>② 参考动作块</strong>；只训练一个轻量 <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-actor-critic">actor-critic</a>，用它做<strong>局部精修</strong>，而不是从零搜索。</p>
     </div>
     <div class="card">
       <ul>
@@ -211,7 +212,7 @@
     <h2><span class="no">3</span>三个关键设计</h2>
 
     <div class="card">
-      <h3><span class="tag">设计一</span>RL Token：给 VLA 装一个"压缩接口"</h3>
+      <h3><span class="tag">设计一</span><a class="concept-link" href="RLToken-漫画分镜解读.html#concept-rl-token">RL Token</a>：给 VLA 装一个"压缩接口"</h3>
       <p>VLA 内部 transformer 特征很高维，直接拿去 RL 又贵又慢，也不清楚哪层特征是"好表示"。作者的做法：</p>
       <ul>
         <li>在冻结 VLA 后面<strong>加一个小 encoder-decoder transformer</strong>；</li>
@@ -226,16 +227,16 @@
     </div>
 
     <div class="card">
-      <h3><span class="tag">设计二</span>动作块（Action Chunk），而非单步</h3>
+      <h3><span class="tag">设计二</span><a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块（Action Chunk）</a>，而非单步</h3>
       <p>VLA 原生一次预测 <strong>H=50 步</strong>（1 秒）动作；RL 用它一个子块 <strong>C=10 步</strong>。</p>
-      <p>好处：<strong>缩短"信用分配"的时间跨度</strong>。在稀疏奖励（只有成功/失败一个 0/1 信号）下，单步决策会让价值函数跨超长 horizon 才能搞清楚哪步做对了；用动作块后有效决策周期变短，学习容易得多。</p>
+      <p>好处：<strong>缩短"信用分配"的时间跨度</strong>。在<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-sparse-reward">稀疏奖励</a>（只有成功/失败一个 0/1 信号）下，单步决策会让价值函数跨超长 horizon 才能搞清楚哪步做对了；用动作块后有效决策周期变短，学习容易得多。</p>
     </div>
 
     <div class="card">
       <h3><span class="tag">设计三</span>参考动作条件 + 正则化</h3>
       <ul>
         <li>actor 输入除了 RL token，还包含 VLA 采样的<strong>参考动作块 <code>ã</code></strong>，输出对它的修正；</li>
-        <li>训练目标里除了最大化 Q 值，还加一项 <code>λ‖a − ã‖²</code>（把动作拉近参考动作，类似 KL 正则）。</li>
+        <li>训练目标里除了最大化 <a class="concept-link" href="两条主干-拆机手册.html#concept-q-value">Q 值</a>，还加一项 <code>λ‖a − ã‖²</code>（把动作拉近参考动作，类似 KL 正则）。</li>
       </ul>
       <p>两个好处：① RL 在"好初始动作"上精修，而非高维空间乱搜；② 保留了 VLA 多峰动作分布中的"模式信息"（单峰高斯 actor 自己很难恢复多峰分布）。</p>
       <div class="callout">
@@ -328,8 +329,8 @@
       <ol>
         <li><strong>适配</strong>：用少量任务演示数据，微调 VLA + 训练 RL token（重建损失）。</li>
         <li><strong>冻结</strong> VLA 和 RL token。</li>
-        <li><strong>预热</strong>：先用 VLA 跑几十集填满 replay buffer，给 critic 一个初始信号。</li>
-        <li><strong>在线 RL</strong>：机器人边跑边 off-policy 更新 critic 和 actor；replay buffer 混合 VLA 数据、RL 数据、人类干预数据；高更新比（update-to-data = 5）。</li>
+        <li><strong>预热</strong>：先用 VLA 跑几十集填满 <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-replay-buffer">replay buffer</a>，给 critic 一个初始信号。</li>
+        <li><strong>在线 RL</strong>：机器人边跑边 <a class="concept-link" href="两条主干-拆机手册.html#concept-off-policy">off-policy</a> 更新 critic 和 actor；replay buffer 混合 VLA 数据、RL 数据、人类干预数据；高更新比（update-to-data = 5）。</li>
         <li><strong>关键阶段专注</strong>：简单部分（抓取/搬运）让基础 VLA 做，到精度要求最高的插入/紧固段切换到 RL 策略；测试时训练 VLA 学会预测"何时交接"。</li>
       </ol>
     </div>
@@ -356,7 +357,7 @@
         <tr><th>去掉的组件</th><th>影响</th></tr>
         <tr><td>RL token（换成 ResNet）</td><td>吞吐掉 ~50%，说明 token 编码了操纵相关的结构</td></tr>
         <tr><td>动作块（改成单步 C=1）</td><td>基本追不上基础策略，horizon 变长导致信用分配困难</td></tr>
-        <tr><td>BC 正则项（λ=0）</td><td class="warn">性能掉得最多——被迫在整个动作空间里只靠 Q 梯度探索</td></tr>
+        <tr><td><a class="concept-link" href="RLToken-漫画分镜解读.html#concept-behavior-cloning">BC 正则项</a>（λ=0）</td><td class="warn">性能掉得最多——被迫在整个动作空间里只靠 Q 梯度探索</td></tr>
         <tr><td>参考动作直通（去掉 ã）</td><td>学习变慢、早期漂移、训练中失败更多（最终也能追上，但更费数据）</td></tr>
       </table>
     </div>
@@ -402,6 +403,14 @@
       <p>别去动那个笨重的 VLA，而是让它"吐"出一个又好用又小的表示（RL token）和一组参考动作，再让轻量 actor-critic 拿着这些"小抄"在真实机器人上快速精修——既保住大模型的泛化，又拿到小模型 RL 的样本效率。</p>
     </div>
   </section>
+
+  <aside class="concept-related" aria-label="相关概念">
+    <strong>相关概念</strong>
+    <a href="RLToken-漫画分镜解读.html#concept-target-network">Target 网络与训练目标</a>
+    <a href="RLToken-漫画分镜解读.html#concept-twin-q">双 Q 如何减轻高估</a>
+    <a href="piRL-论文解读.html#concept-denoising-mdp">πRL 的去噪 MDP</a>
+    <a href="concepts.html">全部概念</a>
+  </aside>
 
   <div class="foot">
     论文：RL Token: Bootstrapping Online RL with Vision-Language-Action Models · arXiv:2604.23073v2 · Physical Intelligence<br>

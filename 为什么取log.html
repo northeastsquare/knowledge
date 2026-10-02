@@ -194,6 +194,7 @@
     .rise{opacity:1; transform:none;}
   }
 </style>
+<link rel="stylesheet" href="concepts.css">
 </head>
 <body>
 <div class="aurora" aria-hidden="true"><span class="blob b1"></span><span class="blob b2"></span><span class="blob b3"></span></div>
@@ -210,7 +211,7 @@
 <section class="act rise">
   <div class="act-no">01</div>
   <div class="tag">Act I · 我们到底想要什么</div>
-  <h2>目标：让"好轨迹"的概率变大</h2>
+  <h2 id="concept-policy-gradient" class="concept-anchor">目标：让"好轨迹"的概率变大</h2>
   <p class="big">机器人跑一遍任务，产生一条轨迹。有的轨迹成功、有的失败。
      我们想要的东西朴素到不像数学：<em>让成功的轨迹更容易被跑出来</em>。</p>
   <p>把它写成式子，就是"所有可能轨迹的回报，按它们出现的概率加权平均"——</p>
@@ -309,7 +310,7 @@
 <section class="act rise">
   <div class="act-no">03</div>
   <div class="tag">Act III · 突破</div>
-  <h2>把 P 硬塞回去</h2>
+  <h2 id="concept-log-trick" class="concept-anchor">把 P 硬塞回去</h2>
   <p>既然缺一个 <span class="cy">P<sub>θ</sub></span> 当采样权重，那就<strong>无中生有造一个</strong>——
      乘一个 P 再除一个 P，值不变，这是合法的废话：</p>
 
@@ -340,7 +341,7 @@
 
   <p class="big">换句话说：<em>我们不是想取 log，我们是被迫造出了 ∇P/P 这个形状，
      而它恰好就是 log 的导数。</em>数学家给这一步起了个名字，叫
-     <span class="vi">log-derivative trick</span>（对数导数技巧），也叫 score function。</p>
+     <a class="concept-link" href="#concept-log-trick"><span class="vi">log-derivative trick</span>（对数导数技巧）</a>，也叫 score function。</p>
 
   <div class="stage good">
     <span class="badge">合起来 · 活了</span>
@@ -424,7 +425,7 @@
       ∇J(θ) = E[ <span class="lm">Σ<sub>t</sub> ∇log π<sub>θ</sub>(a<sub>t</sub>|s<sub>t</sub>)</span> ·
       <span class="sym am" data-t="A(s,a)：优势函数。这个动作比该状态下的平均水平好多少。它是 R(τ) 经过各种方差削减手段之后的替身——RLinf 里 15 种算法的分歧，基本都在这一项上。">A(s,a)</span> ]
     </div>
-    <div class="cap lm">这就是你在 RLinf-RL原理对比 那页看到的第一行公式</div>
+    <div class="cap lm">这就是你在 <a href="RLinf-RL原理对比.html">RLinf-RL原理对比</a> 那页看到的第一行公式</div>
   </div>
 
   <div class="analogy">
@@ -445,7 +446,7 @@
      如果按出现次数累加，<span class="hot">常做的动作光靠"刷脸次数多"就把梯度占满了</span>——
      哪怕它其实一般。</p>
   <p>而 1/π 恰好把"出现次数多"这件事<strong>除掉</strong>：出现得越频繁，每次的权重就越小，
-     乘起来正好抵消。<em>最后决定一个动作被推多用力的，只剩 A——它到底好不好。</em></p>
+     乘起来正好抵消。<em>最后决定一个动作被推多用力的，只剩 <a class="concept-link" href="两条主干-拆机手册.html#concept-advantage">A——它到底好不好</a>。</em></p>
 
   <details class="fold">
     <summary>掀开看具体数字：为什么正好抵消</summary>
@@ -484,14 +485,14 @@
   <div class="act-no">06</div>
   <div class="tag">收尾 · 一句话记住</div>
   <h2>RL 就是"带权重的模仿学习"</h2>
-  <p>把这个梯度和你熟悉的行为克隆放在一起看，两件事会突然变成同一件事：</p>
+  <p>把这个梯度和你熟悉的<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-behavior-cloning">行为克隆</a>放在一起看，两件事会突然变成同一件事：</p>
 
   <div class="final">
     <div class="l1">
       <span class="dim">模仿学习（BC）</span>&nbsp;&nbsp;
       L = − log π<sub>θ</sub>(<span class="cy">a<sub>专家</sub></span> | s)
       <br>
-      <span class="dim">强化学习（PG）</span>&nbsp;&nbsp;
+      <a class="concept-link" href="#concept-policy-gradient"><span class="dim">强化学习（PG）</span></a>&nbsp;&nbsp;
       L = − <span class="am">A(s,a)</span> · log π<sub>θ</sub>(<span class="lm">a<sub>自己采样的</sub></span> | s)
     </div>
     <div class="punch">
@@ -511,6 +512,14 @@
     </div>
   </div>
 </section>
+
+<aside class="concept-related" aria-label="相关概念">
+  <strong>相关概念</strong>
+  <a href="两条主干-拆机手册.html#concept-advantage">优势与 baseline</a>
+  <a href="RLinf-RL原理对比.html#concept-ppo">PPO 如何约束更新</a>
+  <a href="RLinf-RL原理对比.html#concept-grpo">GRPO 的组内优势</a>
+  <a href="concepts.html">全部概念</a>
+</aside>
 
 <footer>
   <span>为什么要取 log · 策略梯度的一行魔术</span>

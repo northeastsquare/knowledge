@@ -220,6 +220,7 @@
     .hero h1{-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   }
 </style>
+<link rel="stylesheet" href="concepts.css">
 </head>
 <body>
 
@@ -291,7 +292,7 @@
     <article class="card">
       <div class="q-row"><span class="q-num">Q04</span><span class="q-text">π0.5 的 backbone 是什么 VLM？action expert 多大？</span></div>
       <div class="peek"><button>点击显示答案 ▸</button></div>
-      <div class="answer"><span class="alab">A</span>backbone 是 <b>PaliGemma</b>（SigLIP 400M 视觉编码器 + Gemma 2B）；action expert 约 <span class="num">300M</span> 参数。
+      <div class="answer"><span class="alab">A</span>backbone 是 <b>PaliGemma</b>（SigLIP 400M 视觉编码器 + Gemma 2B）；<a class="concept-link" href="pi0-论文解读.html#concept-action-expert">action expert</a> 约 <span class="num">300M</span> 参数。
       <br><span class="cite">Fig 3 · Appendix E</span></div>
     </article>
 
@@ -316,10 +317,10 @@
       <br><span class="cite">Sec IV-B · Appendix E · Fig 18</span></div>
     </article>
 
-    <article class="card">
+    <article class="card concept-anchor" id="concept-fast">
       <div class="q-row"><span class="q-num">Q08</span><span class="q-text">为什么既用 FAST 离散 token 训练、又用 flow matching？两者各解决什么？</span></div>
       <div class="peek"><button>点击显示答案 ▸</button></div>
-      <div class="answer"><span class="alab">A</span><b>FAST 离散 token</b> 让 VLA 训练更快、更稳，且语言跟随更强，但推理要昂贵的自回归解码、慢；<b>flow matching</b> 适合实时连续动作推理。所以结合两者：训练用离散 token（pre-training），推理用 flow matching 出连续动作，取两者之长。
+      <div class="answer"><span class="alab">A</span><b>FAST 离散 token</b> 把连续动作块编码为离散 token 序列，让 <a class="concept-link" href="VLA-发展历程.html#concept-vla">VLA</a> 训练更快、更稳，且语言跟随更强，但推理要昂贵的自回归解码、慢；<b><a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">flow matching</a></b> 适合实时连续动作推理。所以结合两者：训练用离散 token（pre-training），推理用 flow matching 出连续动作，取两者之长。
       <br><span class="cite">Sec IV-B · p.5</span></div>
     </article>
 
@@ -353,7 +354,7 @@
     <article class="card">
       <div class="q-row"><span class="q-num">Q12</span><span class="q-text">列出 pre-training 的五类数据源及其缩写。</span></div>
       <div class="peek"><button>点击显示答案 ▸</button></div>
-      <div class="answer"><span class="alab">A</span><b>MM</b>（移动机械臂家务）、<b>ME</b>（Multi-Environment 非移动机器人）、<b>CE</b>（Cross-Embodiment 实验室跨本体，含开源 OXE）、<b>HL</b>（High-Level 子任务预测）、<b>WD</b>（multi-modal Web Data：图像描述 / VQA / 物体定位）。
+      <div class="answer"><span class="alab">A</span><b>MM</b>（移动机械臂家务）、<b>ME</b>（Multi-Environment 非移动机器人）、<b>CE</b>（<a class="concept-link" href="Qwen-VLA-论文解读.html#concept-cross-embodiment">Cross-Embodiment 实验室跨本体</a>，含开源 OXE）、<b>HL</b>（High-Level 子任务预测）、<b>WD</b>（multi-modal Web Data：图像描述 / VQA / 物体定位）。
       <br><span class="cite">Sec IV-C · Fig 4</span></div>
     </article>
 
@@ -394,7 +395,7 @@
     <article class="card">
       <div class="q-row"><span class="q-num">Q17</span><span class="q-text">π0.5 的底层控制有多"简单"？有没有轨迹规划/碰撞检测？控制频率多少？</span></div>
       <div class="peek"><button>点击显示答案 ▸</button></div>
-      <div class="answer"><span class="alab">A</span>极其简单：模型直接以 <span class="num">50 Hz</span>（带 action chunking）输出手臂/夹爪/躯干升降目标位姿与底盘目标速度，用<b>简单 PD 控制器</b>跟踪，<span class="hl">没有任何额外的轨迹规划或碰撞检测</span>，操作与导航全程端到端。
+      <div class="answer"><span class="alab">A</span>极其简单：模型直接以 <span class="num">50 Hz</span>（带 <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">action chunking</a>）输出手臂/夹爪/躯干升降目标位姿与底盘目标速度，用<b>简单 PD 控制器</b>跟踪，<span class="hl">没有任何额外的轨迹规划或碰撞检测</span>，操作与导航全程端到端。
       <br><span class="cite">Sec IV-E · p.7</span></div>
     </article>
 
@@ -462,10 +463,18 @@
     <article class="card">
       <div class="q-row"><span class="q-num">Q25</span><span class="q-text">论文自己列了哪些局限？（至少说三个）</span></div>
       <div class="peek"><button>点击显示答案 ▸</button></div>
-      <div class="answer"><span class="alab">A</span>① 某些环境持续困难（不熟悉的抽屉把手、物理上难开的柜子）；② 部分可观测问题（手臂遮挡了该擦的污渍）；③ 高层子任务推理易被干扰（反复开关同一抽屉）；④ 只能处理相对简单的 prompt（复杂度受训练数据限制）；⑤ context 较小、缺乏记忆，跨房间或需记住物体存放位置等场景受限。
+      <div class="answer"><span class="alab">A</span>① 某些环境持续困难（不熟悉的抽屉把手、物理上难开的柜子）；② 部分可观测问题（手臂遮挡了该擦的污渍）；③ 高层子任务推理易被干扰（反复开关同一抽屉）；④ 只能处理相对简单的 prompt（复杂度受训练数据限制，后续可对照 <a class="concept-link" href="pi0.7_问答学习卡.html#concept-prompt-conditioning">π0.7 的多样化条件输入</a>）；⑤ context 较小、缺乏记忆，跨房间或需记住物体存放位置等场景受限。
       <br><span class="cite">Sec VI</span></div>
     </article>
   </section>
+
+  <aside class="concept-related" aria-label="相关概念">
+    <strong>相关概念</strong>
+    <a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a>
+    <a class="concept-link" href="pi0.6-论文解读.html#concept-recap">RECAP：从示范走向经验学习</a>
+    <a class="concept-link" href="pi0.7_问答学习卡.html#concept-world-model">世界模型与视觉子目标</a>
+    <a class="concept-link" href="concepts.html">全部概念 →</a>
+  </aside>
 
   <footer class="foot">
     <b>抓手</b>：⭐ 标的六题（Q02 / Q05 / Q07 / Q14 / Q20 / Q22）是 π0.5 区别于普通 VLA 的精华，反直觉、也最容易看漏。把下面这几点能脱口而出，这篇基本就吃透了：

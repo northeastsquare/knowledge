@@ -179,6 +179,7 @@ td.num{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
   .cover{box-shadow:7px 7px 0 var(--ink)}
 }
 </style>
+<link rel="stylesheet" href="concepts.css">
 </head>
 <body>
 <div class="wrap">
@@ -214,7 +215,7 @@ td.num{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
 
   <div class="panel tilt-l">
     <h3>一句话版本</h3>
-    <p>现在的 VLA（视觉-语言-动作模型）拿来就能干几十种活：抓、放、叠衣服、拧螺丝。但真正决定成败的，往往是<mark>插进去那一下</mark>——网线口对不对正、螺丝刀尖有没有卡进螺丝头、拉链扣能不能穿过那个窄缝。</p>
+    <p>现在的 <a class="concept-link" href="VLA-发展历程.html#concept-vla">VLA（视觉-语言-动作模型）</a>拿来就能干几十种活：抓、放、叠衣服、拧螺丝。但真正决定成败的，往往是<mark>插进去那一下</mark>——网线口对不对正、螺丝刀尖有没有卡进螺丝头、拉链扣能不能穿过那个窄缝。</p>
     <p>模型在这几秒里的表现很典型：<b class="hot">靠近 → 犹豫 → 退回来 → 再试一次</b>，来回磨蹭好几轮才成。论文管这叫 probing（试探）行为。</p>
   </div>
 
@@ -241,7 +242,7 @@ td.num{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
     </div>
     <div class="panel tilt-r">
       <h3>路线 B：抛开 VLA，训个小模型</h3>
-      <p>像 HIL-SERL 那样，ResNet 编码器 + 小 actor-critic。几小时能学会，但：<br>• 丢掉了 VLA 的泛化与常识<br>• 等于从零开始学这个任务</p>
+      <p>像 HIL-SERL 那样，ResNet 编码器 + 小 <a class="concept-link" href="#concept-actor-critic">actor-critic</a>。几小时能学会，但：<br>• 丢掉了 VLA 的泛化与常识<br>• 等于从零开始学这个任务</p>
       <p><span class="sfx blue">白瞎了预训练！</span></p>
     </div>
   </div>
@@ -254,7 +255,7 @@ td.num{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
 
 <section class="strip" id="s3">
   <div class="chap"><div class="no">3</div>
-    <h2>招式一：RL Token，把大模型的理解压成一颗药丸<small>Sec. IV-A</small></h2></div>
+    <h2 id="concept-rl-token" class="concept-anchor">招式一：RL Token，把大模型的理解压成一颗药丸<small>Sec. IV-A</small></h2></div>
 
   <div class="panel tilt-r">
     <h3>问题：VLA 内部的特征太多太杂</h3>
@@ -280,17 +281,17 @@ td.num{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
 
 <section class="strip" id="s4">
   <div class="chap"><div class="no">4</div>
-    <h2>招式二：以"动作块"为单位，把记功距离缩短 10 倍<small>chunked action</small></h2></div>
+    <h2 id="concept-action-chunk" class="concept-anchor">招式二：以"动作块"为单位，把记功距离缩短 10 倍<small>chunked action</small></h2></div>
 
   <div class="panel tilt-l">
     <h3>50Hz 是 RL 的噩梦</h3>
-    <p>机器人以 50Hz 控制，一段"插网线"的关键阶段有 250~1000 步。奖励只在最后给一个 +1。如果 RL 按<b class="hot">单步</b>决策，价值函数得把这一个稀疏奖励沿着几百步一路往回传——这就是<mark>信用分配（credit assignment）</mark>难题，实际上传不动。</p>
+    <p>机器人以 50Hz 控制，一段"插网线"的关键阶段有 250~1000 步。奖励只在最后给一个 +1。如果 RL 按<b class="hot">单步</b>决策，价值函数得把这一个<a class="concept-link" href="#concept-sparse-reward">稀疏奖励</a>沿着几百步一路往回传——这就是<mark>信用分配（credit assignment）</mark>难题，实际上传不动。</p>
     <p>RLT 的做法：actor 一次输出 <kbd>C=10</kbd> 步的动作块（14 维 × 10 = 140 维动作），critic 也按块估值。有效决策步数一下砍到几十步。</p>
-    <p>顺带一个小技巧：虽然按 10 步一块决策，但每 2 步就抽样存一条 transition 进回放池，<b class="hot">1 秒数据能榨出约 25 个训练样本</b>。</p>
+    <p>顺带一个小技巧：虽然按 10 步一块决策，但每 2 步就抽样存一条 transition 进<a class="concept-link" href="#concept-replay-buffer">回放池</a>，<b class="hot">1 秒数据能榨出约 25 个训练样本</b>。</p>
   </div>
 
   <div class="panel tilt-l">
-    <h3>基础补课：actor 和 critic 各是什么</h3>
+    <h3 id="concept-actor-critic" class="concept-anchor">基础补课：actor 和 critic 各是什么</h3>
     <p>名字很直白：<b class="hot">一个演，一个评</b>。评委不动手，演员不自评。</p>
     <table>
       <thead><tr><th></th><th>Actor（演员）</th><th>Critic（评委）</th></tr></thead>
@@ -298,7 +299,7 @@ td.num{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
         <tr><td>干什么</td><td><b>决定做什么动作</b></td><td><b>给动作打分</b></td></tr>
         <tr><td>输入</td><td>状态 x（+ 参考动作 ã）</td><td>状态 x <b>和</b> 动作 a</td></tr>
         <tr><td>输出</td><td>140 维动作块</td><td><b class="hot">1 个标量</b></td></tr>
-        <tr><td>数学上就是</td><td>策略 π</td><td>价值函数 Q</td></tr>
+        <tr><td>数学上就是</td><td>策略 π</td><td><a class="concept-link" href="两条主干-拆机手册.html#concept-q-value">价值函数 Q</a></td></tr>
         <tr><td>本体</td><td>2 层 MLP（隐层 256）</td><td>2 层 MLP ×2（双 Q）</td></tr>
       </tbody>
     </table>
@@ -347,10 +348,10 @@ td.num{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
     <h3>那这个 Q 到底哪来的？</h3>
     <p><b class="hot">Q 就是一个随机初始化的 2 层 MLP</b>，输入 <kbd>(x, a_{1:C})</kbd> 拼接，输出一个标量。论文明确写 actor 和 critic 都 from scratch 初始化。</p>
     <p>所以训练刚开始，减法两边都是<b>彻头彻尾的胡话</b>——一个随机网络说"这状态值 0.37"，另一个说"下个状态值 0.52"，全无根据。它没一直胡话下去，靠两件事：</p>
-    <p><b class="hot">① r 是唯一的真相注入口。</b>终点那格的 +1 是人类给的、真实的，那一格的目标里没有任何猜测成分，所以它第一个被拽准。然后邻居 bootstrap 它、邻居的邻居再 bootstrap 邻居……真相一跳一跳从终点往回扩散（下面那张图画的就是这个过程）。</p>
-    <p><b class="hot">② 目标那侧被冻住</b>（target 网络 + detach）。每次更新里目标是个不动的靶子；若两侧都动，就会互相追着漂到"差值为 0 但全是 0"的退化解。论文还按 TD3 用两个 Q 取最小值，因为 bootstrap 天生倾向高估自己。</p>
+    <p><b class="hot">① r 是唯一的真相注入口。</b>终点那格的 +1 是人类给的、真实的，那一格的目标里没有任何猜测成分，所以它第一个被拽准。然后邻居 <a class="concept-link" href="#concept-bootstrap">bootstrap</a> 它、邻居的邻居再 bootstrap 邻居……真相一跳一跳从终点往回扩散（下面那张图画的就是这个过程）。</p>
+    <p><b class="hot">② 目标那侧被冻住</b>（<a class="concept-link" href="#concept-target-network">target 网络</a> + detach）。每次更新里目标是个不动的靶子；若两侧都动，就会互相追着漂到"差值为 0 但全是 0"的退化解。论文还按 <a class="concept-link" href="#concept-td3">TD3</a> 用<a class="concept-link" href="#concept-twin-q">两个 Q 取最小值</a>，因为 bootstrap 天生倾向高估自己。</p>
     <p>一句话：<mark>Q 不是算出来的，是被真实奖励反复拽出来的。</mark>它的可信度完全来自终点那些 +1。</p>
-    <h3>但要命的是：r 几乎总是 0</h3>
+    <h3 id="concept-sparse-reward" class="concept-anchor">但要命的是：r 几乎总是 0</h3>
     <p>论文的奖励设定极其稀疏——人类只在回合结束时标一次，成功 <kbd>r_T=1</kbd>，否则 0，中间<b>全程没有任何奖励</b>。把目标公式的 10 项展开就看清了（γ=0.97, C=10, 当前 Q=0.30，落点 target 网络给 0.50）：</p>
     <p><kbd>Q̂ = γ⁰·r₁ + γ¹·r₂ + … + γ⁹·r₁₀ + γ¹⁰·Q_target</kbd><br>
     <kbd>&nbsp;&nbsp; = 0 + 0 + … + 0 + 0.7374 × 0.50 = 0.369</kbd> → <kbd>δ = +0.069</kbd>，略微上调</p>
@@ -371,25 +372,25 @@ td.num{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
   </div>
 
   <div class="panel tilt-l">
-    <h3>插播：TD3 是什么，RLT 借了它哪几件装备</h3>
-    <p>TD3 = <b>T</b>win <b>D</b>elayed <b>D</b>eep <b>D</b>eterministic policy gradient（Fujimoto et al. 2018，论文引用 [19]），是 DDPG 的修补版，专治一个顽疾：<b class="hot">critic 系统性高估自己</b>。</p>
+    <h3 id="concept-td3" class="concept-anchor">插播：TD3 是什么，RLT 借了它哪几件装备</h3>
+    <p>TD3 = <b>T</b>win <b>D</b>elayed <b>D</b>eep <b>D</b>eterministic policy gradient（Fujimoto et al. 2018，论文引用 [19]），是 DDPG 的修补版，专治一个顽疾：<b class="hot">critic <a class="concept-link" href="两条主干-拆机手册.html#concept-overestimation">系统性高估自己</a></b>。</p>
     <p>高估怎么来的：你总朝"看起来最好的动作"去 bootstrap，而 Q 是带噪声的网络，<mark>噪声里偏高的那些值会被优先选中、写进目标、下一轮又被 bootstrap</mark>——误差正反馈放大，Q 膨胀到离谱，actor 追着一个虚高指标走，训练崩掉。上面说的"99% 纯 bootstrap"让这个风险更大。</p>
     <table>
       <thead><tr><th>TD3 的招</th><th>做法</th><th>RLT 用了吗</th></tr></thead>
       <tbody>
-        <tr><td>Twin 双 Q</td><td>养两个独立 critic，算目标时<b>取两者最小值</b>。两边高估噪声不一致，取 min 就偏保守——宁可低估（学得慢）也别高估（会崩）</td><td>✅ 附录明说</td></tr>
+        <tr id="concept-twin-q" class="concept-anchor"><td>Twin 双 Q</td><td>养两个独立 critic，算目标时<b>取两者最小值</b>。两边高估噪声不一致，取 min 就偏保守——宁可低估（学得慢）也别高估（会崩）</td><td>✅ 附录明说</td></tr>
         <tr><td>Delayed 延迟更新</td><td>actor 更新频率低于 critic，等 critic 稳了再动</td><td>✅ 2 次 critic 配 1 次 actor</td></tr>
         <tr><td>Target smoothing</td><td>给目标动作加噪声，抹平 Q 的尖峰</td><td>论文未提</td></tr>
       </tbody>
     </table>
     <p>还有个 TD3 之前就有、它也在用的东西：<b>target 网络</b>。上面那个 0.50 就是它给的——一份缓慢跟进的 critic 副本。要副本是因为：若用正在训练的 critic 自己算目标，<b class="hot">靶子会跟着枪口一起动</b>，容易发散。</p>
-    <p class="hintline">要说准确：<b>RLT 不是照搬 TD3</b>。TD3 的 actor 是确定性策略，RLT 的 actor 是高斯策略、还额外吃参考动作 ã。论文说自己建立在 SAC[17] / TD3[19] / SVG[34] 这一系之上，借的主要是 <b>critic 那半边的机械装置</b>。</p>
+    <p class="hintline">要说准确：<b>RLT 不是照搬 TD3</b>。TD3 的 actor 是确定性策略，RLT 的 actor 是高斯策略、还额外吃参考动作 ã。论文说自己建立在 <a class="concept-link" href="RLinf-RL原理对比.html#concept-sac">SAC[17]</a> / TD3[19] / SVG[34] 这一系之上，借的主要是 <b>critic 那半边的机械装置</b>。</p>
   </div>
 
   <div class="panel tilt-l">
     <h3>插播：bootstrap 到底什么意思（这词在本文有两个意思）</h3>
     <p>词源就是重点：英文 "pull yourself up by your own <b>bootstraps</b>" ——<b class="hot">提着自己的鞋带把自己拎起来</b>，本来是形容荒谬、不可能的事。用在 RL 里就是自嘲：拿自己的猜测当依据去改进自己的猜测，听着像永动机骗局。</p>
-    <h3>意思一：TD 里的 bootstrap</h3>
+    <h3 id="concept-bootstrap" class="concept-anchor">意思一：TD 里的 bootstrap</h3>
     <p><b>更新一个估计时，把自己另一个估计当成依据用。</b></p>
     <p><kbd>非 bootstrap（蒙特卡洛）：等回合真结束，用实际总回报来训 → 全是真实数据，但要等完、方差巨大</kbd><br>
     <kbd>bootstrap（TD）：目标 = r + γ·Q(下一状态)，后半截是自己编的</kbd></p>
@@ -410,7 +411,7 @@ td.num{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
   </div>
 
   <div class="panel tilt-r">
-    <h3>插播：target 网络是什么，RLT 里到底有几个网络</h3>
+    <h3 id="concept-target-network" class="concept-anchor">插播：target 网络是什么，RLT 里到底有几个网络</h3>
     <p><b class="hot">target 网络就是 critic 的一份副本</b>——同样结构，另一套参数 <kbd>θ'</kbd>，不靠梯度训练，靠"抄"。</p>
     <p>为什么要副本：若用正在训练的 critic 自己算目标，<kbd>目标 = r + γ·Q_θ(x',a')</kbd> 而你同时在改 <kbd>θ</kbd>——<b class="hot">朝靶子射一箭，靶子跟着枪口一起动</b>（moving target，DQN 那篇最早点明）。解法很土但有效：<b>把靶子焊死</b>，算目标只用 <kbd>θ'</kbd>，梯度完全不流过它。</p>
     <p><kbd>θ'</kbd> 怎么更新——不训练，只复制：<b>硬拷贝</b>（每 N 步 <kbd>θ' ← θ</kbd>）或 <b>Polyak 软更新</b>（每步 <kbd>θ' ← τθ + (1−τ)θ'</kbd>，τ 取 0.005 之类，像影子缓慢跟随）。论文只说"follow TD3，θ' 是 target 网络参数"，没写是哪种。</p>
@@ -424,7 +425,7 @@ td.num{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
         <tr><td>target critic Q₁', Q₂'</td><td class="num"><b class="hot">2</b></td><td>只靠复制 online 参数</td></tr>
       </tbody>
     </table>
-    <p>所以算目标那一步实际是：<kbd>Q̂ = r + γ^C · min( Q₁'(x',a'), Q₂'(x',a') )</kbd>——两个 target 副本都算一遍取小的。<mark>双 Q 和 target 网络是两件不同的事，叠在一起用</mark>：双 Q 治高估（取 min），target 网络治靶子乱动（焊死）。四个 critic 里只有 2 个吃梯度。（TD3 原版还有 target actor，论文没提。）</p>
+    <p>所以算目标那一步实际是：<kbd>Q̂ = r + γ^C · min( Q₁'(x',a'), Q₂'(x',a') )</kbd>——两个 target 副本都算一遍取小的。<mark><a class="concept-link" href="#concept-twin-q">双 Q</a> 和 target 网络是两件不同的事，叠在一起用</mark>：双 Q 治高估（取 min），target 网络治靶子乱动（焊死）。四个 critic 里只有 2 个吃梯度。（TD3 原版还有 target actor，论文没提。）</p>
     <h3>三种"冻"不是一回事</h3>
     <table>
       <thead><tr><th></th><th>冻多久</th><th>目的</th></tr></thead>
@@ -492,7 +493,8 @@ td.num{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
     <h3>actor 的输入里，直接塞进 VLA 的答案</h3>
     <p>RLT 的 actor 是个高斯策略 <kbd>π(a|x, ã)</kbd>：输入不只有状态 <kbd>x =(RL Token, 关节/位姿)</kbd>，<b class="hot">还有 VLA 当前采样出的参考动作块 ã</b>。相当于考试时允许看学霸的草稿，任务从"自己想答案"变成"把这份草稿改得更好"。</p>
     <p>还有个隐藏好处：VLA 的动作分布是<mark>多模态</mark>的（有好几种可行做法），而高斯 actor 是单峰的。把采样出的 ã 传进来，等于顺手保留了"这次打算走哪条路"的模态信息。</p>
-    <h3>损失函数里再拴一根绳</h3>
+    <h3 id="concept-behavior-cloning" class="concept-anchor">损失函数里再拴一根绳</h3>
+    <p><b>行为克隆（Behavior Cloning，BC）</b>通常把示范中的动作当作监督目标，让策略学会模仿。这里借用相近的动作匹配思想：把 VLA 给出的参考动作作为约束，加进 RL 的目标中，而不是只靠模仿来训练策略。</p>
     <p>目标是 <kbd>L(π) = −Q(x,a) + λ‖a − ã‖²</kbd>：一边要 critic 打高分，一边被拉住不许离 VLA 太远。λ 就是"允许多大胆"的旋钮，精神上等价于 KL 正则的 RL。</p>
     <h3>但也不能让它变成复印机</h3>
     <p>只要既看着 ã 又被罚着靠近 ã，actor 很容易退化成<b class="hot">直接照抄</b>——尤其是 critic 还没学明白的早期。所以论文加了<mark>参考动作 dropout</mark>：训练时随机把 50% 的 ã 换成全零，逼 actor 保留一条"没有草稿也能作答"的独立通路；推理时 ã 总是给。</p>
@@ -552,7 +554,7 @@ td.num{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
     <p><b class="hot">② 热身</b>：先用 VLA 自己跑若干回合，把回放池填上，让 critic 有初始信号——RL 一开始就站在"已经会干活"的水平上。</p>
     <p><b class="hot">③ 只练最难那一段</b>：每个回合先由 VLA 执行简单部分，人类在关键阶段前把控制权交给 RL 策略。数据收集和记功都集中在这 5~20 秒。</p>
     <p><b class="hot">④ 人类的两个角色</b>：给稀疏的成功/失败标签（这就是全部奖励信号）；必要时接管遥操作，接管数据会<b>替换掉参考动作</b>存进回放池。</p>
-    <p><b class="hot">⑤ 更新</b>：off-policy，回放池里 VLA 数据、RL 数据、人类接管数据混着用。UTD（更新/数据比）高达 <kbd>5</kbd>，每 2 次 critic 更新配 1 次 actor 更新，采集与训练异步跑。</p>
+    <p id="concept-replay-buffer" class="concept-anchor"><b class="hot">⑤ 更新</b>：<a class="concept-link" href="两条主干-拆机手册.html#concept-off-policy">off-policy</a>，回放池里 VLA 数据、RL 数据、人类接管数据混着用。UTD（更新/数据比）高达 <kbd>5</kbd>，每 2 次 critic 更新配 1 次 actor 更新，采集与训练异步跑。</p>
     <p><b class="hot">⑥ 收尾自动化</b>：最后再微调 VLA，让它学会预测"该交班了"（用人类的接管时机当标签），测试时就能自动切换。</p>
   </div>
 
@@ -783,6 +785,14 @@ td.num{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
   <p>换来的是：四个亚毫米精度任务上，关键阶段最高 <b>3×</b> 提速、螺丝成功率 <b>20%→65%</b>，训练只要几十分钟到几小时真机数据，某些动作比专家遥操作还快。</p>
   <p style="margin-bottom:0">原文：<a href="https://arxiv.org/abs/2604.23073">arXiv:2604.23073</a> · 项目页 <a href="https://pi.website/research/rlt">pi.website/research/rlt</a></p>
 </div>
+
+<aside class="concept-related" aria-label="相关概念">
+  <strong>相关概念</strong>
+  <a href="两条主干-拆机手册.html#concept-bellman">Bellman 方程与价值传播</a>
+  <a href="#concept-behavior-cloning">BC 正则如何拉住动作</a>
+  <a href="pi0.6-论文解读.html#concept-recap">π0.6 与 RECAP</a>
+  <a href="concepts.html">全部概念</a>
+</aside>
 
 <script>
 /* ============ 实验 1：信息瓶颈 ============ */

@@ -212,6 +212,7 @@
     #top{right:14px;bottom:14px}
   }
 </style>
+<link rel="stylesheet" href="concepts.css">
 
 <div id="progress"></div>
 
@@ -229,7 +230,7 @@
 
     <div class="summary anim">
       <div class="lab">一句话总结</div>
-      <p>π0.7 是一个 <strong>5B 参数的可操控(steerable)通用机器人基础模型</strong>,核心创新是在训练时使用<strong>多样化的 context conditioning</strong>——不只告诉模型"做什么(语言指令)",还通过 <strong>episode metadata(质量/速度/是否出错)</strong> 和 <strong>subgoal images</strong> 告诉它"怎么做、做得好不好"。这让模型能从大规模、混合质量、甚至失败的次优数据中学习而不被"平均化",从而涌现出组合泛化、跨本体迁移、复杂语言跟随等能力。</p>
+      <p>π0.7 是一个 <strong>5B 参数的可操控(steerable)通用机器人基础模型</strong>,核心创新是在训练时使用<strong><a class="concept-link" href="#concept-prompt-conditioning">多样化的 context conditioning</a></strong>——不只告诉模型"做什么(语言指令)",还通过 <strong>episode metadata(质量/速度/是否出错)</strong> 和 <strong>subgoal images</strong> 告诉它"怎么做、做得好不好"。这让模型能从大规模、混合质量、甚至失败的次优数据中学习而不被"平均化",从而涌现出组合泛化、跨本体迁移、复杂语言跟随等能力。</p>
     </div>
 
     <div class="keys">
@@ -334,19 +335,19 @@
         <div class="qa">
           <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q6</span>VLA 的基本训练范式?</div></div>
           <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
-          <div class="qa-answer"><div class="badge a">A</div><div class="atext">从预训练 VLM backbone 出发适配机器人控制。数据集 D 包含机器人轨迹(观测 o_t 和动作 a_t 序列)。观测 <code>o_t = [I¹_t,…,Iⁿ_t, q_t]</code>(n 个相机图像 + 关节构型 q_t),动作为关节或末端执行器命令。</div></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext"><a class="concept-link" href="VLA-发展历程.html#concept-vla">VLA</a> 从预训练 VLM backbone 出发适配机器人控制。数据集 D 包含机器人轨迹(观测 o_t 和动作 a_t 序列)。观测 <code>o_t = [I¹_t,…,Iⁿ_t, q_t]</code>(n 个相机图像 + 关节构型 q_t),动作为关节或末端执行器命令。</div></div>
         </div>
 
         <div class="qa">
           <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q7</span>什么是 action chunk?为什么用 action expert?</div></div>
           <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
-          <div class="qa-answer"><div class="badge a">A</div><div class="atext">VLA 通常预测 <mark>action chunk</mark>,即未来一小段动作 <code>a_{t:t+H}</code>(执行时常用更短 horizon Ĥ &lt; H)。action chunk 由 <mark>action expert</mark> 生成——一个更小的 transformer,attend 到 VLM backbone,实现快速推理。它通常用 <mark>flow matching(或 diffusion)</mark> 目标以捕捉动作的多模态性。</div></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">VLA 通常预测 <mark><a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">action chunk</a></mark>,即未来一小段动作 <code>a_{t:t+H}</code>(执行时常用更短 horizon Ĥ &lt; H)。action chunk 由 <mark><a class="concept-link" href="pi0-论文解读.html#concept-action-expert">action expert</a></mark> 生成——一个更小的 transformer,attend 到 VLM backbone,实现快速推理。它通常用 <mark><a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">flow matching</a>(或 diffusion)</mark> 目标以捕捉动作的多模态性。</div></div>
         </div>
 
         <div class="qa">
           <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q8</span>什么是 Knowledge Insulation (KI) 训练配方?</div></div>
           <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
-          <div class="qa-answer"><div class="badge a">A</div><div class="atext">VLM backbone 用 <mark>FAST tokens</mark> 监督;action expert 虽然 attend 到 VLM backbone 的所有 activations,但 <mark>action expert 的梯度不回流到 VLM backbone</mark>。这样 VLM 通过相对稳定的离散 cross-entropy loss 训练,而不被 flow matching 的 noisy 梯度干扰。</div></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">VLM backbone 用 <mark><a class="concept-link" href="pi0.5_论文测验_精美版.html#concept-fast">FAST tokens</a></mark> 监督;action expert 虽然 attend 到 VLM backbone 的所有 activations,但 <mark>action expert 的梯度不回流到 VLM backbone</mark>。这样 VLM 通过相对稳定的离散 cross-entropy loss 训练,而不被 flow matching 的 noisy 梯度干扰。</div></div>
         </div>
 
         <div class="qa">
@@ -370,10 +371,10 @@
           <div class="sec-rule"></div>
         </div>
 
-        <div class="qa">
+        <div class="qa concept-anchor" id="concept-prompt-conditioning">
           <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q11</span>π0.7 的 prompt(context C_t)包含哪几部分?</div></div>
           <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
-          <div class="qa-answer"><div class="badge a">A</div><div class="atext">(1) <mark>Subtask instructions</mark> <code>ℓ̂_t</code>;(2) <mark>Subgoal images</mark> <code>g_t</code>;(3) <mark>Episode metadata</mark> <code>m</code>(speed/quality/mistake);(4) <mark>Control mode</mark> <code>c</code>。训练时每个部分都被随机 dropout,使测试时可用任意子集。</div></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">(1) <mark>Subtask instructions</mark> <code>ℓ̂_t</code>;(2) <mark><a class="concept-link" href="#concept-world-model">Subgoal images</a></mark> <code>g_t</code>;(3) <mark>Episode metadata</mark> <code>m</code>(speed/quality/mistake);(4) <mark>Control mode</mark> <code>c</code>。训练时对子任务指令、子目标图像和 metadata 做随机 dropout,让模型适应这些条件缺省的情况；control mode 保留。</div></div>
         </div>
 
         <div class="qa">
@@ -496,7 +497,7 @@ Speed: 8000. Quality: 5. Mistake: false. Control Mode: joint.
         <div class="qa">
           <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q28</span>什么是 RTC?π0.7 怎么用?</div></div>
           <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
-          <div class="qa-answer"><div class="badge a">A</div><div class="atext"><mark>Real-Time action Chunking</mark>,用于在有推理延迟时生成平滑动作轨迹。π0.7 用 <mark>training-time 版本</mark>:训练时模拟 <mark>0–12 时间步</mark>的延迟,对应 50Hz 机器人最大 <mark>240ms</mark> 推理延迟。training-time RTC <mark>不增加推理时开销</mark>。</div></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext"><mark>Real-Time action Chunking</mark>,用于在有<a class="concept-link" href="DynamicVLA-论文解读.html#concept-latency">推理延迟</a>时生成平滑动作轨迹。π0.7 用 <mark>training-time 版本</mark>:训练时模拟 <mark>0–12 时间步</mark>的延迟,对应 50Hz 机器人最大 <mark>240ms</mark> 推理延迟。training-time RTC <mark>不增加推理时开销</mark>。</div></div>
         </div>
       </section>
 
@@ -508,7 +509,7 @@ Speed: 8000. Quality: 5. Mistake: false. Control Mode: joint.
           <div class="sec-rule"></div>
         </div>
 
-        <div class="qa">
+        <div class="qa concept-anchor" id="concept-world-model">
           <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q29</span>运行时 subgoal images 由什么产生?</div></div>
           <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
           <div class="qa-answer"><div class="badge a">A</div><div class="atext">一个 <mark>lightweight world model g_ψ</mark>,它接受与主模型相同的 subtask instruction ℓ̂_t,但受益于在视频和图像编辑任务上的 web-scale 预训练,能泛化到多样任务和场景。</div></div>
@@ -568,7 +569,7 @@ Speed: 8000. Quality: 5. Mistake: false. Control Mode: joint.
         <div class="qa">
           <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q37</span>π0.7 在数据使用上"显著偏离经典 VLA 流程"的地方?</div></div>
           <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
-          <div class="qa-answer"><div class="badge a">A</div><div class="atext"><mark>大量使用 suboptimal robot data</mark>,包括低质量演示(失败 episode 或含大量错误的成功 episode)和旧模型在评估实验中收集的数据。例如用 <mark>π*₀.₆ 在 RL 训练中收集的数据</mark>作为额外样本,相当于把它们的行为 distill 进 π0.7。</div></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext"><mark>大量使用 suboptimal robot data</mark>,包括低质量演示(失败 episode 或含大量错误的成功 episode)和旧模型在评估实验中收集的数据。例如用 <mark><a class="concept-link" href="pi0.6-论文解读.html#concept-recap">π*₀.₆ 在 RL 训练中收集的数据</a></mark>作为额外样本,相当于把它们的行为 distill 进 π0.7。</div></div>
         </div>
 
         <div class="qa">
@@ -726,7 +727,7 @@ Speed: 8000. Quality: 5. Mistake: false. Control Mode: joint.
         <div class="qa">
           <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q56</span>跨本体迁移实验想回答什么?主要发现?</div></div>
           <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
-          <div class="qa-answer"><div class="badge a">A</div><div class="atext">问:cross-embodiment transfer 是否是 π0.7 的 <mark>emergent property</mark>——能否直接把能力迁移到<mark>从未采集过任务数据</mark>的本体?发现:多个任务上 π0.7 完全开箱即用地在目标本体成功。形态差异较小时 π0.5/π0.6 也有一定 emergent transfer;但<mark>形态差距增大、需要显著改变策略时,π0.7 显著优于前代</mark>。</div></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">问:<a class="concept-link" href="Qwen-VLA-论文解读.html#concept-cross-embodiment">cross-embodiment transfer</a> 是否是 π0.7 的 <mark>emergent property</mark>——能否直接把能力迁移到<mark>从未采集过任务数据</mark>的本体?发现:多个任务上 π0.7 完全开箱即用地在目标本体成功。形态差异较小时 π0.5/π0.6 也有一定 emergent transfer;但<mark>形态差距增大、需要显著改变策略时,π0.7 显著优于前代</mark>。</div></div>
         </div>
 
         <div class="qa">
@@ -881,6 +882,14 @@ Speed: 8000. Quality: 5. Mistake: false. Control Mode: joint.
           </ul></div></div>
         </div>
       </section>
+
+      <aside class="concept-related" aria-label="相关概念">
+        <strong>相关概念</strong>
+        <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">流匹配：从噪声到连续动作</a>
+        <a class="concept-link" href="pi0.6-论文解读.html#concept-recap">RECAP：优势条件化策略</a>
+        <a class="concept-link" href="Realtime-VLA-论文解读.html#concept-speculative-inference">实时推理的另一种方法：投机推理</a>
+        <a class="concept-link" href="concepts.html">全部概念 →</a>
+      </aside>
 
     </main>
   </div>
