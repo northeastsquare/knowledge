@@ -6,6 +6,11 @@
   var HOME = { title: '机器人学习知识库', href: 'index.html' };
   var CATS = [
     {
+      id: 'MAP', name: 'VLA 总览', items: [
+        { t: 'VLA 发展史｜从模块化到闭环具身', h: 'VLA-发展历程.html' }
+      ]
+    },
+    {
       id: '00', name: '专题 · 方法对比', items: [
         { t: '为什么要取 log？（交互推导）', h: '为什么取log.html' },
         { t: '主干 A / 主干 B：两台机器拆开看', h: '两条主干-拆机手册.html' },

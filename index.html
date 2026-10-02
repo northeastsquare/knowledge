@@ -104,6 +104,30 @@
   .toggle.dark .sun{display:none;}
   .toggle.dark .moon{display:block;}
 
+  /* ---------- VLA map teaser ---------- */
+  .origin-map{
+    margin-top:38px; padding:22px 24px 24px;
+    border:1px solid var(--line-strong); border-radius:14px;
+    background:linear-gradient(135deg,var(--surface),var(--surface-2));
+    box-shadow:var(--shadow); position:relative; overflow:hidden;
+  }
+  .origin-map::after{
+    content:""; position:absolute; width:220px; height:220px; right:-70px; top:-90px;
+    border:1px solid var(--line-strong); border-radius:50%; opacity:.65;
+  }
+  .origin-map-head{display:flex; align-items:flex-start; justify-content:space-between; gap:20px; position:relative; z-index:1;}
+  .origin-map-kicker{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:11px; letter-spacing:.16em; color:var(--accent); text-transform:uppercase; margin-bottom:8px;}
+  .origin-map h2{font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif; font-size:23px; margin:0 0 6px; line-height:1.25;}
+  .origin-map p{margin:0; color:var(--ink-2); font-size:14px; max-width:610px;}
+  .origin-map-link{display:inline-flex; align-items:center; gap:8px; flex:none; padding:9px 13px; border-radius:999px; background:var(--accent); color:#fff; text-decoration:none; font-size:13px; font-weight:600; transition:transform .15s ease,background .15s ease;}
+  .origin-map-link:hover{background:var(--accent-strong); transform:translateY(-1px);}
+  .origin-track{display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin-top:22px; position:relative; z-index:1;}
+  .origin-track::before{content:""; position:absolute; left:4%; right:4%; top:10px; height:1px; background:var(--line-strong);}
+  .origin-step{position:relative; padding-top:25px; font-size:12px; color:var(--ink-2);}
+  .origin-step::before{content:""; position:absolute; top:4px; left:0; width:13px; height:13px; border-radius:50%; background:var(--surface); border:3px solid var(--accent); box-shadow:0 0 0 4px var(--surface-2);}
+  .origin-step:nth-child(2)::before{border-color:#3a9e8f}.origin-step:nth-child(3)::before{border-color:#7bb66f}.origin-step:nth-child(4)::before{border-color:#d9a54f}.origin-step:nth-child(5)::before{border-color:#c4572a}
+  .origin-step b{display:block; color:var(--ink); font-size:13px; margin-bottom:2px;}
+
   /* ---------- hero ---------- */
   .hero{
     position:relative;
@@ -264,6 +288,10 @@
     .sheet{position:static; text-align:left; margin-top:20px;}
     .stats{gap:24px;}
     .hero{padding:48px 0 32px;}
+    .origin-map-head{display:block;}
+    .origin-map-link{margin-top:16px;}
+    .origin-track{grid-template-columns:1fr 1fr; gap:14px 10px;}
+    .origin-track::before{display:none;}
   }
 </style>
 </head>
@@ -286,11 +314,29 @@
     <h1>机器人学习知识库</h1>
     <p class="sub">把读过的论文做成一页页精读网页，随时回来温习。每一条索引对应一个独立网页，双击即可打开。</p>
     <div class="stats">
-      <div class="stat"><span class="n">17</span><span class="l">网页</span></div>
+      <div class="stat"><span class="n">20</span><span class="l">网页</span></div>
       <div class="stat"><span class="n">3</span><span class="l">研究方向</span></div>
       <div class="stat"><span class="n">2026.09</span><span class="l">最近更新</span></div>
     </div>
-    <div class="sheet">SHEET 01 / 17<br>SCALE 1:1 · LOCAL</div>
+    <div class="sheet">SHEET 01 / 20<br>SCALE 1:1 · LOCAL</div>
+  </section>
+
+  <section class="origin-map" aria-labelledby="origin-map-title">
+    <div class="origin-map-head">
+      <div>
+        <div class="origin-map-kicker">VLA 发展主线 · 新入口</div>
+        <h2 id="origin-map-title">先看它怎么一路走到今天</h2>
+        <p>把论文放回“问题 → 突破 → 代价”的因果链：从模块化机器人，到语言接口、生成式动作，再到能用反馈持续变好的闭环具身系统。</p>
+      </div>
+      <a class="origin-map-link" href="VLA-发展历程.html">打开历程地图 <span>↗</span></a>
+    </div>
+    <div class="origin-track" aria-hidden="true">
+      <div class="origin-step"><b>模块化</b>感知 / 规划 / 控制</div>
+      <div class="origin-step"><b>端到端</b>像素 → 动作</div>
+      <div class="origin-step"><b>语言接口</b>任务进入策略</div>
+      <div class="origin-step"><b>生成式 VLA</b>连续动作块</div>
+      <div class="origin-step"><b>闭环具身</b>经验回灌</div>
+    </div>
   </section>
 
   <section class="index">
@@ -299,8 +345,18 @@
       <div class="cat-head">
         <span class="no">00</span>
         <h2>专题 · 方法对比</h2>
-        <span class="cnt">4 篇</span>
+        <span class="cnt">6 篇</span>
       </div>
+
+      <a class="entry" href="VLA-发展历程.html">
+        <span class="ref">TIMELINE</span>
+        <span class="body">
+          <span class="title">VLA 发展历程<span class="fmt">总览地图</span></span>
+          <span class="thesis">从模块化机器人、端到端策略、语言接口，到生成式动作与闭环具身智能；每个阶段都按“问题 → 突破 → 代价”串起来。</span>
+        </span>
+        <span class="tags"><span class="tag">VLA</span><span class="tag">发展史</span><span class="tag">知识地图</span></span>
+        <span class="arrow">→</span>
+      </a>
 
       <a class="entry" href="为什么取log.html">
         <span class="ref">WHY-LOG</span>
@@ -319,6 +375,16 @@
           <span class="thesis">从策略梯度与 Bellman 两条主干推导 15 种算法的原理分歧：优势怎么估、似然怎么算、分布偏移怎么修、探索从哪来。</span>
         </span>
         <span class="tags"><span class="tag">强化学习</span><span class="tag">原理推导</span></span>
+        <span class="arrow">→</span>
+      </a>
+
+      <a class="entry" href="两条主干-拆机手册.html">
+        <span class="ref">TWO-ROOTS</span>
+        <span class="body">
+          <span class="title">主干 A / 主干 B：两台机器拆开看<span class="fmt">专题</span></span>
+          <span class="thesis">把策略梯度与 Bellman 两条根系放到同一张图上，理解不同 RL 方法到底在改哪一个环节。</span>
+        </span>
+        <span class="tags"><span class="tag">强化学习</span><span class="tag">原理地图</span></span>
         <span class="arrow">→</span>
       </a>
 
@@ -395,7 +461,7 @@
       <div class="cat-head">
         <span class="no">02</span>
         <h2>VLA 与强化学习</h2>
-        <span class="cnt">7 篇</span>
+        <span class="cnt">8 篇</span>
       </div>
 
       <a class="entry" href="RL-Token-论文解读.html">
@@ -405,6 +471,16 @@
           <span class="thesis">冻结 VLA + 轻量 actor-critic，用 RL token 在几小时内精调毫米级高精度操作。</span>
         </span>
         <span class="tags"><span class="tag">强化学习</span><span class="tag">在线精调</span></span>
+        <span class="arrow">→</span>
+      </a>
+
+      <a class="entry" href="RLToken-漫画分镜解读.html">
+        <span class="ref">RL-TOKEN / COMIC</span>
+        <span class="body">
+          <span class="title">RL Token · 漫画分镜版<span class="fmt">可视化</span></span>
+          <span class="thesis">用一组连续分镜把“冻结 VLA + 轻量 actor-critic + KL 锚定”讲成可以快速回想的动作故事。</span>
+        </span>
+        <span class="tags"><span class="tag">强化学习</span><span class="tag">直觉</span></span>
         <span class="arrow">→</span>
       </a>
 
@@ -503,7 +579,7 @@
     <div class="cat-head">
       <span class="no">PDF</span>
       <h2>原文档案</h2>
-      <span class="cnt">12 份</span>
+      <span class="cnt">10 份</span>
     </div>
     <p class="hint">原始论文 PDF，双击直接打开。放在 <code>pdfs/</code> 目录下，与精读页一一对应。</p>
     <div class="pdf-grid">
@@ -512,8 +588,6 @@
       <a class="pdf-link" href="pdfs/pi0.62511.14759v2.pdf"><span class="ar">2511.14759</span><span class="nm">π0.6</span></a>
       <a class="pdf-link" href="pdfs/pi0.7-2604.15483v2.pdf"><span class="ar">2604.15483</span><span class="nm">π0.7</span></a>
       <a class="pdf-link" href="pdfs/2604.23073v2-RL-Token.pdf"><span class="ar">2604.23073</span><span class="nm">RL Token</span></a>
-      <a class="pdf-link" href="pdfs/2606.18953v1-Object-Centric-rl.pdf"><span class="ar">2606.18953</span><span class="nm">Object-Centric RL</span></a>
-      <a class="pdf-link" href="pdfs/2601.22153v1-dynamic-vla.pdf"><span class="ar">2601.22153</span><span class="nm">DynamicVLA</span></a>
       <a class="pdf-link" href="pdfs/PUMA-2603.15620v2.pdf"><span class="ar">2603.15620</span><span class="nm">PUMA</span></a>
       <a class="pdf-link" href="pdfs/qwen-vla-2605.30280v2.pdf"><span class="ar">2605.30280</span><span class="nm">Qwen-VLA</span></a>
       <a class="pdf-link" href="pdfs/realtime-vla-flash-2605.13778v1.pdf"><span class="ar">2605.13778</span><span class="nm">Realtime-VLA FLASH</span></a>
