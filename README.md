@@ -14,7 +14,7 @@ VLA、强化学习、3D 视觉与数据论文的交互式研读网页。
 4. 在 **Branch** 中选择 **master** 和 **/ (root)**，点击 **Save**。
 5. 等待 [Actions](https://github.com/northeastsquare/knowledge/actions) 中的 **pages build and deployment** 成功，再访问上方网页入口。
 
-注意：当前 GitHub 默认分支是 `main`，网页文件实际在 `master`。发布源应选择 `master`，不需要更改默认分支，也不需要创建 `gh-pages` 分支或个人访问令牌。
+GitHub 默认分支和网页发布分支均为 `master`。发布源选择 `master / (root)`，不需要创建 `gh-pages` 分支或个人访问令牌。
 
 `.nojekyll` 告诉 GitHub Pages 直接发布静态文件，跳过 Jekyll 处理。发布入口是根目录的 `index.html`。
 
