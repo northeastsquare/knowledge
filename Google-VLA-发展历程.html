@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Google / DeepMind 的 VLA 发展史 · 专题</title>
+<meta name="description" content="从 QT-Opt 到 Gemini Robotics：Google 这条主线上每项工作具体怎么做、解决了什么、留下了什么问题。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f1f4f6;
+    --surface:#fbfcfd;
+    --surface-2:#eaf0f4;
+    --ink:#16222e;
+    --ink-2:#51626f;
+    --ink-3:#83919c;
+    --accent:#0e6e8a;
+    --accent-strong:#0a4c60;
+    --signal:#c4572a;
+    --line:#d8e1e7;
+    --line-strong:#c3d0d9;
+    --grid-line:rgba(22,34,46,.05);
+    --shadow:0 1px 2px rgba(22,34,46,.04),0 14px 34px rgba(22,34,46,.07);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+      --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+      --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+      --line:#1e2d3a; --line-strong:#2b3d4b;
+      --grid-line:rgba(231,238,244,.045);
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+    --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+    --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+    --line:#1e2d3a; --line-strong:#2b3d4b;
+    --grid-line:rgba(231,238,244,.045);
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Sans",-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+    line-height:1.78; font-size:16px; -webkit-font-smoothing:antialiased;
+  }
+  .grid{
+    position:fixed; inset:0; z-index:-1; pointer-events:none;
+    background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);
+    background-size:28px 28px;
+  }
+  .wrap{max-width:860px; margin:0 auto; padding:0 24px 96px;}
+
+  .masthead{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px 24px 0; max-width:860px; margin:0 auto;
+  }
+  .back{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:13px; color:var(--accent); text-decoration:none; letter-spacing:.03em;
+  }
+  .back:hover{text-decoration:underline;}
+  .masthead .ref{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12.5px; color:var(--ink-3); letter-spacing:.04em;
+  }
+
+  .hero{padding:52px 0 34px; border-bottom:1px solid var(--line-strong);}
+  .eyebrow{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent);
+    margin-bottom:16px;
+  }
+  .hero h1{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:clamp(28px,4.6vw,42px); font-weight:700; line-height:1.2;
+    margin:0 0 16px; color:var(--ink); text-wrap:balance;
+  }
+  .hero .summary{
+    font-size:17px; color:var(--ink-2); max-width:640px; margin:0 0 22px;
+  }
+  .meta{
+    border:1px solid var(--line); border-radius:12px; background:var(--surface);
+    padding:14px 18px; font-size:13.5px; display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px 24px;
+    box-shadow:var(--shadow);
+  }
+  .meta .m{display:flex; flex-direction:column; gap:1px;}
+  .meta .m .k{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:11px;
+    color:var(--ink-3); letter-spacing:.08em; text-transform:uppercase;
+  }
+  .meta .m .v{color:var(--ink); font-weight:500;}
+
+  section{margin-top:40px;}
+  h2{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:21px; font-weight:600; margin:0 0 14px; color:var(--ink);
+    display:flex; align-items:center; gap:12px;
+  }
+  h2::before{
+    content:""; width:10px; height:10px; flex:none;
+    background:var(--accent); border-radius:2px; transform:rotate(45deg);
+  }
+  p{margin:0 0 12px;}
+  strong{font-weight:700;}
+  .hl{color:var(--accent); font-weight:600;}
+  a{color:var(--accent);}
+
+  ul,ol{margin:0 0 14px; padding-left:22px;}
+  li{margin-bottom:7px;}
+  li::marker{color:var(--accent);}
+
+  blockquote{
+    margin:16px 0; padding:14px 18px; border-left:3px solid var(--accent);
+    background:var(--surface-2); border-radius:0 10px 10px 0; color:var(--ink);
+  }
+  blockquote p{margin:0;}
+
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    padding:20px 22px; box-shadow:var(--shadow); margin:14px 0;
+  }
+  .card h3{font-size:16px; font-weight:700; margin:0 0 10px;}
+
+  table{width:100%; border-collapse:collapse; font-size:14px; margin:12px 0;}
+  th,td{padding:9px 12px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12.5px;
+    color:var(--accent-strong); background:var(--surface-2); letter-spacing:.03em; font-weight:600;
+  }
+  tr:last-child td{border-bottom:none;}
+  .tbl-wrap{overflow-x:auto;}
+
+  code{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:13.5px;
+    background:var(--surface-2); border:1px solid var(--line); border-radius:5px; padding:1px 6px;
+  }
+  pre{overflow-x:auto; background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:16px; font-size:13px; line-height:1.6;}
+  pre code{border:none; background:none; padding:0;}
+
+  .diagram{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px; margin:16px 0; box-shadow:var(--shadow); overflow-x:auto;}
+  .diagram svg{max-width:100%; height:auto; display:block;}
+
+  footer{
+    margin-top:56px; padding-top:20px; border-top:1px solid var(--line-strong);
+    display:flex; justify-content:space-between; gap:12px; font-size:13px; color:var(--ink-3);
+  }
+  footer a{color:var(--accent); text-decoration:none;}
+  footer a:hover{text-decoration:underline;}
+  .era{margin-top:44px}
+  .era-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+  .era-head .yr{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;font-size:12.5px;color:var(--signal);letter-spacing:.06em}
+  .era-lead{color:var(--ink-2);font-size:15px}
+  .work{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 20px;box-shadow:var(--shadow);margin:12px 0}
+  .work .top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .work h3{font-size:16.5px;margin:0}
+  .work .d{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;font-size:12px;color:var(--ink-3)}
+  .work .how{margin:8px 0 6px;padding-left:20px;font-size:14.5px}
+  .work .how li{margin-bottom:4px}
+  .work .why{font-size:14px;color:var(--ink-2);margin:0}
+  .work .why b{color:var(--accent-strong)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0}
+  .chips a{font-size:12.5px;text-decoration:none;border:1px solid var(--line-strong);border-radius:999px;padding:3px 10px;background:var(--surface)}
+</style>
+<link rel="stylesheet" href="concepts.css">
+</head>
+<body>
+<div class="grid" aria-hidden="true"></div>
+
+<header class="masthead">
+  <a class="back" href="VLA-发展历程.html">← VLA 发展史</a>
+  <span class="ref">Google · DeepMind</span>
+</header>
+
+<div class="wrap">
+
+  <section class="hero">
+    <div class="eyebrow">VLA 总览 · 机构线</div>
+    <h1>Google / DeepMind 的 VLA 发展史</h1>
+    <p class="summary">"<a class="concept-link" href="VLA-发展历程.html#concept-vla">VLA</a>"这个词和大多数关键转折都出自 Google。这一页沿着它的主线，把每项工作<strong>具体怎么做</strong>和<strong>解决了什么、留下了什么</strong>各用几句话讲清楚。总体时间线见 <a href="VLA-发展历程.html">VLA 发展史</a>。</p>
+    <div class="meta">
+      <div class="m"><span class="k">时间跨度</span><span class="v">2018 – 2025</span></div>
+      <div class="m"><span class="k">工作数</span><span class="v">21 项</span></div>
+      <div class="m"><span class="k">团队</span><span class="v">Google Brain / Robotics at Google、DeepMind，2023 年合并为 Google DeepMind</span></div>
+      <div class="m"><span class="k">主线</span><span class="v">RL → 语言规划 → RT → VLA → Gemini</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>一段话看懂</h2>
+    <p>Google 先用<strong>大规模真机 RL</strong>（QT-Opt）证明端到端可行，但一个技能要几个月；于是转向<strong>语言</strong>，先让 LLM 在外面规划（SayCan、Code as Policies），再把语言和动作合进<strong>一个 Transformer</strong>（RT-1）；接着直接用 <strong>VLM 输出动作 token</strong>，诞生了 VLA（RT-2），并用 <strong>Open X-Embodiment</strong> 把数据跨机构共享；最后把一切建在 <strong>Gemini</strong> 上，形成"推理模型 + VLA"的双系统（Gemini Robotics）。</p>
+    <div class="chips"><a href="#e1">2018–2021 · 大规模真机 RL</a><a href="#e2">2021–2022 · 语言成为接口</a><a href="#e3">2022–2023 · Robotics Transformer</a><a href="#e4">2023–2024 · VLA 诞生</a><a href="#e5">2025– · Gemini Robotics</a></div>
+  </section>
+
+  <section class="era" id="e1">
+    <div class="era-head"><span class="yr">2018–2021</span><h2>大规模真机 RL：先让机器人自己学会抓</h2></div>
+    <p class="era-lead">Google Brain 机器人组的起点不是语言，而是"用很多台真机器人 + 强化学习把一个技能学扎实"。</p>
+    <article class="work"><div class="top"><h3>QT-Opt</h3><span class="d">2018.06 · <a href="https://arxiv.org/abs/1806.10293" target="_blank" rel="noreferrer">arXiv 1806.10293</a></span></div><ul class="how"><li>7 台机械臂连续数月自主尝试抓取，积累约 58 万次抓取数据。</li><li>离线/异步的 Q-learning：网络输入图像和候选动作，输出成功概率；用交叉熵方法（CEM）在动作空间里搜出 Q 值最高的动作。</li><li>只有稀疏奖励：抓起来记 1，没抓起来记 0。</li></ul><p class="why">证明端到端视觉 RL 能在真机上学到 96% 的陌生物体抓取成功率；<b>代价</b>是一个任务就要几个月的机器人时间。</p></article>
+    <article class="work"><div class="top"><h3>MT-Opt</h3><span class="d">2021.04 · <a href="https://arxiv.org/abs/2104.08212" target="_blank" rel="noreferrer">arXiv 2104.08212</a></span></div><ul class="how"><li>把 QT-Opt 扩展为多任务版：Q 函数以任务 ID 为条件，同时学 12 个任务。</li><li>任务之间共享数据：一条轨迹对别的任务也可能是成功样本，按成功检测器重新打标签。</li><li>新任务可借已有任务的数据快速起步。</li></ul><p class="why">第一次在真机上实现"多任务共享经验"；<b>但</b>任务仍是预先定义的 ID，机器人听不懂人话。</p></article>
+  </section>
+  <section class="era" id="e2">
+    <div class="era-head"><span class="yr">2021–2022</span><h2>语言成为接口：让大模型来"想"，技能库来"做"</h2></div>
+    <p class="era-lead">LLM 爆发后，Google 先把语言放在策略外面：LLM 负责拆任务，底层仍是训练好的技能。</p>
+    <article class="work"><div class="top"><h3>BC-Z</h3><span class="d">2022.02 · <a href="https://arxiv.org/abs/2202.02005" target="_blank" rel="noreferrer">arXiv 2202.02005</a></span></div><ul class="how"><li>用 VR 遥操作采集约 2.6 万条演示，覆盖 100 个任务。</li><li>任务用一句话（句子编码器）或一段人类示范视频来描述，编码成向量后通过 FiLM 调制 ResNet 策略。</li><li>纯行为克隆，没有 RL。</li></ul><p class="why">在没见过的任务上实现零样本泛化（成功率不高但非零），是"用语言条件化策略"的起点。</p></article>
+    <article class="work"><div class="top"><h3>SayCan</h3><span class="d">2022.04 · <a href="https://arxiv.org/abs/2204.01691" target="_blank" rel="noreferrer">arXiv 2204.01691</a></span></div><ul class="how"><li>PaLM 给每个候选技能打"有用分"（Say：这一步对完成指令有没有帮助）。</li><li>每个技能的价值函数给"可行分"（Can：在当前场景下能不能做成）。</li><li>两个分数相乘选出下一步技能，循环执行直到完成；在真实厨房里用 551 个技能做长时程任务。</li></ul><p class="why">LLM 第一次真正驱动机器人做长任务；<b>代价</b>是 LLM 看不到图像，动作上限取决于技能库。</p></article>
+    <article class="work"><div class="top"><h3>Inner Monologue</h3><span class="d">2022.07 · <a href="https://arxiv.org/abs/2207.05608" target="_blank" rel="noreferrer">arXiv 2207.05608</a></span></div><ul class="how"><li>在 SayCan 式规划的基础上，把成功检测、场景描述、人的插话都转成文字，回填到 LLM 的提示里。</li><li>LLM 根据这些反馈随时重新规划。</li></ul><p class="why">让语言规划从开环变成带反馈的闭环；但反馈仍是外部模块写成的文字。</p></article>
+    <article class="work"><div class="top"><h3>Code as Policies</h3><span class="d">2022.09 · <a href="https://arxiv.org/abs/2209.07753" target="_blank" rel="noreferrer">arXiv 2209.07753</a></span></div><ul class="how"><li>LLM 不再从固定技能列表里选，而是直接写 Python 程序，调用感知 API（检测物体位置）和控制 API（移动、抓取）。</li><li>程序里可以有循环、条件判断和数值计算，复杂函数可以递归地再让 LLM 生成。</li></ul><p class="why">把"技能组合"变成"写代码"，表达力大增；但底层控制仍是手写原语。</p></article>
+    <article class="work"><div class="top"><h3>Gato（DeepMind）</h3><span class="d">2022.05 · <a href="https://arxiv.org/abs/2205.06175" target="_blank" rel="noreferrer">arXiv 2205.06175</a></span></div><ul class="how"><li>把文本、图像、游戏操作、机械臂关节动作全部序列化成 token，用同一个 1.2B Transformer 训练 600 多个任务。</li><li>机器人动作离散化后与文字 token 同等对待。</li></ul><p class="why">提出"一个模型通吃所有模态"的通才思路，是"动作也是 token"的先声；但单项能力不强。</p></article>
+  </section>
+  <section class="era" id="e3">
+    <div class="era-head"><span class="yr">2022–2023</span><h2>Robotics Transformer：把语言和动作塞进一个网络</h2></div>
+    <p class="era-lead">这一段开始把策略本身做大：一个网络同时吃图像和指令，直接吐出动作。</p>
+    <article class="work"><div class="top"><h3>RT-1</h3><span class="d">2022.12 · <a href="https://arxiv.org/abs/2212.06817" target="_blank" rel="noreferrer">arXiv 2212.06817</a></span></div><ul class="how"><li>13 台机器人花 17 个月采了约 13 万条演示，覆盖 700 多个指令。</li><li>EfficientNet 处理图像，指令经句子编码器后用 FiLM 注入视觉特征；TokenLearner 压缩成少量 token，再交给 Transformer。</li><li>动作的每个维度（臂、底盘、模式切换）离散为 256 个 bin，以约 3Hz 输出。</li></ul><p class="why">证明"数据多样性 + Transformer"能在真机上规模化，见过的任务成功率约 97%；<b>但</b>没有 VLM 骨干，泛化只来自机器人数据本身。</p></article>
+    <article class="work"><div class="top"><h3>PaLM-E</h3><span class="d">2023.03 · <a href="https://arxiv.org/abs/2303.03378" target="_blank" rel="noreferrer">arXiv 2303.03378</a></span></div><ul class="how"><li>把图像、状态估计等连续观测编码成向量，像词一样插入 PaLM 的输入序列（最大 562B）。</li><li>输出仍是文字：高层计划或回答，交给 RT-1 等底层策略执行。</li></ul><p class="why">证明大语言模型可以"看见"并做具身推理；但它本身不出低层动作。</p></article>
+    <article class="work"><div class="top"><h3>RoboCat（DeepMind）</h3><span class="d">2023.06 · <a href="https://arxiv.org/abs/2306.11706" target="_blank" rel="noreferrer">arXiv 2306.11706</a></span></div><ul class="how"><li>基于 Gato 架构，图像用 VQ-GAN 编码成 token，训练成一个多机型、多任务的基础策略。</li><li>自我改进循环：新任务只给 100–1000 条示范 → 微调出专用版本 → 让它自己练习生成更多数据 → 再并回大模型训练。</li></ul><p class="why">把"模型自己生成训练数据"带进机器人基础模型。</p></article>
+    <article class="work"><div class="top"><h3>Language to Rewards</h3><span class="d">2023.06 · <a href="https://arxiv.org/abs/2306.08647" target="_blank" rel="noreferrer">arXiv 2306.08647</a></span></div><ul class="how"><li>LLM 不写动作，而是把自然语言指令翻译成奖励函数的参数。</li><li>由 MPC 优化器根据奖励实时求出低层动作，可用于四足和灵巧手。</li></ul><p class="why">另一条"语言→控制"的路：语言定义目标，优化器负责怎么做。</p></article>
+  </section>
+  <section class="era" id="e4">
+    <div class="era-head"><span class="yr">2023–2024</span><h2>VLA 诞生：VLM 直接输出动作，数据走向共享</h2></div>
+    <p class="era-lead">把互联网规模的视觉语言知识直接搬进动作，这就是"VLA"一词的来源。</p>
+    <article class="work"><div class="top"><h3>RT-2</h3><span class="d">2023.07 · <a href="https://arxiv.org/abs/2307.15818" target="_blank" rel="noreferrer">arXiv 2307.15818</a></span></div><ul class="how"><li>骨干直接用 VLM（PaLI-X 55B 或 PaLM-E 12B）。</li><li>动作写成文字 token：终止标志 + 6 自由度位移和旋转 + 夹爪，每维 256 个 bin，变成一串数字字符串。</li><li>用网页视觉问答数据和 RT-1 的机器人数据共同微调（co-fine-tuning），防止忘掉网页知识。</li></ul><p class="why">第一次正式叫"VLA"。在没见过的物体、背景和指令上，泛化约为 RT-1 的 2 倍，还能理解"把东西放到泰勒·斯威夫特旁边"这类语义；<b>代价</b>是模型太大、只能云端推理，约 1–3Hz。</p></article>
+    <article class="work"><div class="top"><h3>Open X-Embodiment / RT-X</h3><span class="d">2023.10 · <a href="https://arxiv.org/abs/2310.08864" target="_blank" rel="noreferrer">arXiv 2310.08864</a></span></div><ul class="how"><li>联合 21 家机构，汇总 22 种机器人构型、超过 100 万条轨迹的数据集。</li><li>在混合数据上训练 RT-1-X 和 RT-2-X。</li></ul><p class="why">跨本体训练带来正迁移：RT-1-X 在小数据机构上平均提升约 50%，RT-2-X 的涌现技能约为 RT-2 的 3 倍。这个数据集后来成为 OpenVLA、Octo 等开源模型的底座。</p></article>
+    <article class="work"><div class="top"><h3>RT-Trajectory</h3><span class="d">2023.11 · <a href="https://arxiv.org/abs/2311.01977" target="_blank" rel="noreferrer">arXiv 2311.01977</a></span></div><ul class="how"><li>用一条画在图像上的 2D 轨迹草图代替语言，告诉策略"手大概往哪走"。</li><li>训练时轨迹从已有数据中事后提取（hindsight），不需要额外标注。</li></ul><p class="why">用比语言更具体的提示提升新动作的泛化，草图可以由人、LLM 或视频生成。</p></article>
+    <article class="work"><div class="top"><h3>SARA-RT</h3><span class="d">2023.12 · <a href="https://arxiv.org/abs/2312.01990" target="_blank" rel="noreferrer">arXiv 2312.01990</a></span></div><ul class="how"><li>通过"up-training"把 RT-2 等 Transformer 的平方注意力转成线性注意力。</li></ul><p class="why">在几乎不掉精度的前提下加速推理，回应"VLA 太慢"的问题。</p></article>
+    <article class="work"><div class="top"><h3>AutoRT</h3><span class="d">2024.01 · <a href="https://arxiv.org/abs/2401.12963" target="_blank" rel="noreferrer">arXiv 2401.12963</a></span></div><ul class="how"><li>VLM 看场景，LLM 提出要做的任务，再按"机器人宪法"（安全规则）筛选。</li><li>选中的任务分派给遥操作员或自主策略执行，同时调度数十台机器人。</li><li>7 个月在多栋楼里采集约 7.7 万条真机轨迹。</li></ul><p class="why">让基础模型自己去"找数据"，把数据采集本身规模化。</p></article>
+    <article class="work"><div class="top"><h3>RT-H</h3><span class="d">2024.03 · <a href="https://arxiv.org/abs/2403.01823" target="_blank" rel="noreferrer">arXiv 2403.01823</a></span></div><ul class="how"><li>在"指令 → 动作"之间插入一层"语言动作"，例如"手臂往前移""向左转"。</li><li>模型先预测语言动作，再输出具体动作；人可以直接在语言动作这一层纠正机器人。</li></ul><p class="why">用语言做动作层级，让相似任务共享底层动作，也让人工纠错更便宜。</p></article>
+    <article class="work"><div class="top"><h3>ALOHA Unleashed</h3><span class="d">2024.10 · <a href="https://arxiv.org/abs/2410.13126" target="_blank" rel="noreferrer">arXiv 2410.13126</a></span></div><ul class="how"><li>在 ALOHA 2 双臂平台上大规模采集遥操作数据。</li><li>用 Transformer + 扩散策略学习系鞋带、挂衬衫、换齿轮等高灵巧任务。</li></ul><p class="why">证明"简单配方 + 大量数据"能做到很高的灵巧度，也为 Gemini Robotics 的双臂能力打下了基础。</p></article>
+  </section>
+  <section class="era" id="e5">
+    <div class="era-head"><span class="yr">2025–</span><h2>Gemini Robotics：一个大模型同时"想"和"动"</h2></div>
+    <p class="era-lead">合并后的 Google DeepMind 把机器人能力直接建在 Gemini 上，形成"推理模型 + VLA"的组合。</p>
+    <article class="work"><div class="top"><h3>Gemini Robotics / Gemini Robotics-ER</h3><span class="d">2025.03 · <a href="https://arxiv.org/abs/2503.20020" target="_blank" rel="noreferrer">arXiv 2503.20020</a></span></div><ul class="how"><li>Gemini Robotics-ER（具身推理）：在 Gemini 2.0 上强化空间理解，能指点物体、估计 3D 位置、预测抓取点和轨迹。</li><li>Gemini Robotics（VLA）：在 ER 的基础上用大量 ALOHA 2 双臂数据训练，输出低层动作；骨干跑在云端，机载的轻量动作解码器负责低延迟地输出动作块。</li><li>可以只用少量示范快速适配新任务和新机型。</li></ul><p class="why">把最强的通用多模态模型直接变成机器人策略，覆盖折纸、装便当等灵巧任务。</p></article>
+    <article class="work"><div class="top"><h3>Gemini Robotics On-Device</h3><span class="d">2025.06 · <a href="https://deepmind.google/blog/gemini-robotics-on-device-brings-ai-to-local-robotic-devices/" target="_blank" rel="noreferrer">官方博客</a></span></div><ul class="how"><li>把 Gemini Robotics 压缩到可以在机器人本地运行，不依赖网络。</li><li>新任务用 50–100 条示范即可微调。</li></ul><p class="why">解决云端推理的延迟和联网问题。</p></article>
+    <article class="work"><div class="top"><h3>Gemini Robotics 1.5 / ER 1.5</h3><span class="d">2025.10 · <a href="https://arxiv.org/abs/2510.03342" target="_blank" rel="noreferrer">arXiv 2510.03342</a></span></div><ul class="how"><li>ER 1.5 担任"大脑"：做长时程规划，必要时调用搜索等工具，再把每一步交给 VLA。</li><li>VLA 1.5 在动作前先用自然语言"想一想"（thinking），把复杂动作拆成更短的步骤。</li><li>Motion Transfer：同一个模型同时学 ALOHA、双臂 Franka 和 Apollo 人形机器人，技能可以跨机型迁移。</li></ul><p class="why">回到"慢思考 + 快执行"的双系统架构，并显式地把跨本体迁移做进训练。</p></article>
+  </section>
+
+  <section>
+    <h2>主线上的几个固定取舍</h2>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>问题</th><th>Google 的选择</th><th>同期其他路线</th></tr></thead>
+      <tbody>
+        <tr><td>动作怎么表示</td><td>长期使用离散 token（RT-1、RT-2）；ALOHA Unleashed 和 Gemini Robotics 转向<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块</a></td><td>Diffusion Policy、π0 的连续生成（<a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">flow matching</a>）</td></tr>
+        <tr><td>语言放在哪</td><td>从策略外（SayCan）→ 策略内（RT-1）→ 骨干本身（RT-2）→ 推理模型 + VLA（Gemini Robotics 1.5）</td><td>OpenVLA 等开源 VLA 延续 RT-2 的做法</td></tr>
+        <tr><td>数据从哪来</td><td>自建机器人农场 → 跨机构共享（OXE，<a class="concept-link" href="Qwen-VLA-论文解读.html#concept-cross-embodiment">跨本体</a>）→ 让模型自己找任务（AutoRT）</td><td>DROID、UMI、仿真合成数据</td></tr>
+        <tr><td>是否开源</td><td>以论文为主；OXE 数据集和 RT-1 代码开放，Gemini Robotics 不开放权重</td><td>OpenVLA、openpi 开放权重</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>自测</h2>
+    <ol>
+      <li>SayCan 里的 "Say" 和 "Can" 分别由谁打分？为什么要相乘？</li>
+      <li>RT-1 和 RT-2 都把动作离散成 256 个 bin，两者最大的区别是什么？</li>
+      <li>Gemini Robotics 1.5 的 ER 和 VLA 分别负责什么？它和 SayCan 的"LLM + 技能"有什么不同？</li>
+    </ol>
+  </section>
+
+  <footer>
+    <span>VLA 总览 · Google / DeepMind 线</span>
+    <a href="VLA-发展历程.html">返回 VLA 发展史 →</a>
+  </footer>
+</div>
+<script src="nav.js"></script>
+</body>
+</html>
