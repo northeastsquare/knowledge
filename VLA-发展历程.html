@@ -256,7 +256,7 @@
 
   <!-- 01 -->
   <section class="section" id="swimlane" aria-labelledby="swim-title">
-    <div class="section-head"><div><div class="eyebrow">01 / 全景泳道图</div><h2 id="swim-title">一屏看完 60 年</h2></div><p>横轴是时间，2013 年以前压缩显示；纵轴是五条技术主线。点击任一节点查看它的贡献；按主线筛选时，一篇工作会出现在它涉及的所有主线中。</p></div>
+    <div class="section-head"><div><div class="eyebrow">01 / 全景泳道图</div><h2 id="swim-title">一屏看完 60 年</h2></div><p>横轴是时间，2013 年以前压缩显示；纵轴是五条技术主线。点击任一节点查看它的贡献；每篇工作画在它的主要主线上；按主线筛选时，凡涉及该主线的节点都会高亮。</p></div>
     <div class="lane-filters" id="laneFilters" role="group" aria-label="按主线筛选"></div>
     <div class="swim-wrap"><div class="swim" id="swim"></div></div>
     <div class="card detail" id="detail" aria-live="polite">
@@ -606,7 +606,7 @@
   var NODES=[
     {id:'shakey',date:'1966-01',title:'Shakey',full:'Shakey the Robot（SRI，1966–72）',org:'SRI',stage:'p0',lanes:['backbone'],url:'https://en.wikipedia.org/wiki/Shakey_the_robot',one:'第一台能对自身行动进行推理的移动机器人，STRIPS 规划由它而来；感知、规划、执行模块化的范式。'},
     {id:'shrdlu',date:'1970-01',title:'SHRDLU',full:'SHRDLU（Winograd，1970）',org:'MIT',stage:'p0',lanes:['backbone'],url:'https://en.wikipedia.org/wiki/SHRDLU',one:'在积木世界里用自然语言对话并操作物体，是“语言 → 操作”最早的系统，但完全基于规则。'},
-    {id:'alvinn',date:'1988-12',title:'ALVINN',full:'ALVINN: An Autonomous Land Vehicle in a Neural Network（Pomerleau，NeurIPS 1988）',org:'CMU',stage:'p0',lanes:['action','train'],one:'用一个小神经网络从图像直接回归方向盘转角，是端到端行为克隆的鼻祖。'},
+    {id:'alvinn',date:'1988-12',title:'ALVINN',full:'ALVINN: An Autonomous Land Vehicle in a Neural Network（Pomerleau，NeurIPS 1988）',org:'CMU',stage:'p0',lanes:['action','train'],url:'https://proceedings.neurips.cc/paper/1988/hash/812b4ba287f5ee0bc9d43bbf5bbe87fb-Abstract.html',one:'用一个小神经网络从图像直接回归方向盘转角，是端到端行为克隆的鼻祖。'},
     {id:'dagger',date:'2010-11',title:'DAgger',full:'A Reduction of Imitation Learning and Structured Prediction to No-Regret Online Learning（AISTATS 2011）',org:'CMU',stage:'p1',lanes:['train'],arxiv:'1011.0686',one:'指出行为克隆存在复合误差（分布漂移），并提出让专家在学习者访问到的状态上给出标注的迭代算法。'},
     {id:'visuomotor',date:'2015-04',title:'端到端 Visuomotor',full:'End-to-End Training of Deep Visuomotor Policies',org:'UC Berkeley',stage:'p1',lanes:['action','backbone'],arxiv:'1504.00702',one:'用 CNN 把原始像素直接映射到电机力矩，联合训练感知和控制。'},
     {id:'graspfarm',date:'2016-03',title:'抓取农场',full:'Learning Hand-Eye Coordination for Robotic Grasping with Deep Learning and Large-Scale Data Collection',org:'Google',stage:'p1',lanes:['data'],arxiv:'1603.02199',one:'14 台机械臂收集约 80 万次抓取尝试，证明了规模化的真机数据对视觉抓取的价值。'},
@@ -750,9 +750,10 @@
 
   /* model table */
   var tbody=document.querySelector('#tbl tbody');var sortKey='date',sortAsc=true,headFilter='all';
+  function sortVal(m){var v=m[sortKey]||'';if(sortKey!=='size')return v;var r=/([\d.]+)\s*([MB])/.exec(v);return r?parseFloat(r[1])*(r[2]==='B'?1e3:1):null;}
   function renderTable(){
     tbody.innerHTML='';
-    MODELS.filter(function(m){return headFilter==='all'||m.head===headFilter;}).slice().sort(function(a,b){var x=a[sortKey]||'',y=b[sortKey]||'';return (x<y?-1:x>y?1:0)*(sortAsc?1:-1);}).forEach(function(m){
+    MODELS.filter(function(m){return headFilter==='all'||m.head===headFilter;}).slice().sort(function(a,b){var x=sortVal(a),y=sortVal(b);if(x===null||y===null)return x===y?0:x===null?1:-1;return (x<y?-1:x>y?1:0)*(sortAsc?1:-1);}).forEach(function(m){
       var tr=el('tr');
       tr.appendChild(el('td',{class:'mono'},m.date.replace('-','.')));
       tr.appendChild(el('td',{class:'m'},m.name));
