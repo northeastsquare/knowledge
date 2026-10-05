@@ -255,7 +255,7 @@ td.num{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
 
 <section class="strip" id="s3">
   <div class="chap"><div class="no">3</div>
-    <h2 id="concept-rl-token" class="concept-anchor">招式一：RL Token，把大模型的理解压成一颗药丸<small>Sec. IV-A</small></h2></div>
+    <h2 id="concept-rl-token" class="concept-anchor">招式一：RL Token，把大模型的理解压成一颗药丸<small>Sec. IV-A</small> <a class="code-jump" href="代码索引.html#rl-token" style="font:12px ui-monospace,Consolas,monospace;white-space:nowrap;text-decoration:none;border:1px dashed currentColor;border-radius:4px;padding:0 5px;margin-left:4px;opacity:.8">⟨/⟩ 代码</a></h2></div>
 
   <div class="panel tilt-r">
     <h3>问题：VLA 内部的特征太多太杂</h3>
@@ -281,7 +281,7 @@ td.num{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
 
 <section class="strip" id="s4">
   <div class="chap"><div class="no">4</div>
-    <h2 id="concept-action-chunk" class="concept-anchor">招式二：以"动作块"为单位，把记功距离缩短 10 倍<small>chunked action</small></h2></div>
+    <h2 id="concept-action-chunk" class="concept-anchor">招式二：以"动作块"为单位，把记功距离缩短 10 倍<small>chunked action</small> <a class="code-jump" href="代码索引.html#action-chunk" style="font:12px ui-monospace,Consolas,monospace;white-space:nowrap;text-decoration:none;border:1px dashed currentColor;border-radius:4px;padding:0 5px;margin-left:4px;opacity:.8">⟨/⟩ 代码</a></h2></div>
 
   <div class="panel tilt-l">
     <h3>50Hz 是 RL 的噩梦</h3>
@@ -411,7 +411,7 @@ td.num{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
   </div>
 
   <div class="panel tilt-r">
-    <h3 id="concept-target-network" class="concept-anchor">插播：target 网络是什么，RLT 里到底有几个网络</h3>
+    <h3 id="concept-target-network" class="concept-anchor">插播：target 网络是什么，RLT 里到底有几个网络 <a class="code-jump" href="代码索引.html#target-network" style="font:12px ui-monospace,Consolas,monospace;white-space:nowrap;text-decoration:none;border:1px dashed currentColor;border-radius:4px;padding:0 5px;margin-left:4px;opacity:.8">⟨/⟩ 代码</a></h3>
     <p><b class="hot">target 网络就是 critic 的一份副本</b>——同样结构，另一套参数 <kbd>θ'</kbd>，不靠梯度训练，靠"抄"。</p>
     <p>为什么要副本：若用正在训练的 critic 自己算目标，<kbd>目标 = r + γ·Q_θ(x',a')</kbd> 而你同时在改 <kbd>θ</kbd>——<b class="hot">朝靶子射一箭，靶子跟着枪口一起动</b>（moving target，DQN 那篇最早点明）。解法很土但有效：<b>把靶子焊死</b>，算目标只用 <kbd>θ'</kbd>，梯度完全不流过它。</p>
     <p><kbd>θ'</kbd> 怎么更新——不训练，只复制：<b>硬拷贝</b>（每 N 步 <kbd>θ' ← θ</kbd>）或 <b>Polyak 软更新</b>（每步 <kbd>θ' ← τθ + (1−τ)θ'</kbd>，τ 取 0.005 之类，像影子缓慢跟随）。论文只说"follow TD3，θ' 是 target 网络参数"，没写是哪种。</p>
@@ -493,7 +493,7 @@ td.num{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
     <h3>actor 的输入里，直接塞进 VLA 的答案</h3>
     <p>RLT 的 actor 是个高斯策略 <kbd>π(a|x, ã)</kbd>：输入不只有状态 <kbd>x =(RL Token, 关节/位姿)</kbd>，<b class="hot">还有 VLA 当前采样出的参考动作块 ã</b>。相当于考试时允许看学霸的草稿，任务从"自己想答案"变成"把这份草稿改得更好"。</p>
     <p>还有个隐藏好处：VLA 的动作分布是<mark>多模态</mark>的（有好几种可行做法），而高斯 actor 是单峰的。把采样出的 ã 传进来，等于顺手保留了"这次打算走哪条路"的模态信息。</p>
-    <h3 id="concept-behavior-cloning" class="concept-anchor">损失函数里再拴一根绳</h3>
+    <h3 id="concept-behavior-cloning" class="concept-anchor">损失函数里再拴一根绳 <a class="code-jump" href="代码索引.html#behavior-cloning" style="font:12px ui-monospace,Consolas,monospace;white-space:nowrap;text-decoration:none;border:1px dashed currentColor;border-radius:4px;padding:0 5px;margin-left:4px;opacity:.8">⟨/⟩ 代码</a></h3>
     <p><b>行为克隆（Behavior Cloning，BC）</b>通常把示范中的动作当作监督目标，让策略学会模仿。这里借用相近的动作匹配思想：把 VLA 给出的参考动作作为约束，加进 RL 的目标中，而不是只靠模仿来训练策略。</p>
     <p>目标是 <kbd>L(π) = −Q(x,a) + λ‖a − ã‖²</kbd>：一边要 critic 打高分，一边被拉住不许离 VLA 太远。λ 就是"允许多大胆"的旋钮，精神上等价于 KL 正则的 RL。</p>
     <h3>但也不能让它变成复印机</h3>
@@ -554,7 +554,7 @@ td.num{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
     <p><b class="hot">② 热身</b>：先用 VLA 自己跑若干回合，把回放池填上，让 critic 有初始信号——RL 一开始就站在"已经会干活"的水平上。</p>
     <p><b class="hot">③ 只练最难那一段</b>：每个回合先由 VLA 执行简单部分，人类在关键阶段前把控制权交给 RL 策略。数据收集和记功都集中在这 5~20 秒。</p>
     <p><b class="hot">④ 人类的两个角色</b>：给稀疏的成功/失败标签（这就是全部奖励信号）；必要时接管遥操作，接管数据会<b>替换掉参考动作</b>存进回放池。</p>
-    <p id="concept-replay-buffer" class="concept-anchor"><b class="hot">⑤ 更新</b>：<a class="concept-link" href="两条主干-拆机手册.html#concept-off-policy">off-policy</a>，回放池里 VLA 数据、RL 数据、人类接管数据混着用。UTD（更新/数据比）高达 <kbd>5</kbd>，每 2 次 critic 更新配 1 次 actor 更新，采集与训练异步跑。</p>
+    <p id="concept-replay-buffer" class="concept-anchor"><b class="hot">⑤ 更新</b>：<a class="concept-link" href="两条主干-拆机手册.html#concept-off-policy">off-policy</a>，回放池里 VLA 数据、RL 数据、人类接管数据混着用。UTD（更新/数据比）高达 <kbd>5</kbd>，每 2 次 critic 更新配 1 次 actor 更新，采集与训练异步跑。 <a class="code-jump" href="代码索引.html#replay-buffer" style="font:12px ui-monospace,Consolas,monospace;white-space:nowrap;text-decoration:none;border:1px dashed currentColor;border-radius:4px;padding:0 5px;margin-left:4px;opacity:.8">⟨/⟩ 代码</a></p>
     <p><b class="hot">⑥ 收尾自动化</b>：最后再微调 VLA，让它学会预测"该交班了"（用人类的接管时机当标签），测试时就能自动切换。</p>
   </div>
 

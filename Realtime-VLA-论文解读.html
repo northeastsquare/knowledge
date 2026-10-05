@@ -223,7 +223,7 @@
     </div>
     <div class="card">
       <h3>一轮推理的数据流（对比两路径）</h3>
-      <p id="concept-kv-cache" class="concept-anchor"><strong>KV Cache</strong> 保存注意力层已算出的 Key / Value 表示，让后续计算复用上下文，避免重复编码。本文进一步跨重规划轮复用最近一次全量路径的缓存；新观测可能让缓存过时，因此还需要周期刷新与回退。它与“草稿提出、主模型验证”的投机推理是配合使用的两种机制。</p>
+      <p id="concept-kv-cache" class="concept-anchor"><strong>KV Cache</strong> 保存注意力层已算出的 Key / Value 表示，让后续计算复用上下文，避免重复编码。本文进一步跨重规划轮复用最近一次全量路径的缓存；新观测可能让缓存过时，因此还需要周期刷新与回退。它与“草稿提出、主模型验证”的投机推理是配合使用的两种机制。 <a class="code-jump" href="代码索引.html#kv-cache" style="font:12px ui-monospace,Consolas,monospace;white-space:nowrap;text-decoration:none;border:1px dashed currentColor;border-radius:4px;padding:0 5px;margin-left:4px;opacity:.8">⟨/⟩ 代码</a></p>
       <div class="tbl-wrap">
         <table>
           <tr><th>阶段</th><th>Full Path（全量）</th><th>Flash Path（投机）</th></tr>

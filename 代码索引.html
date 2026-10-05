@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>代码索引：关键概念的官方实现在哪 · 专题</title>
+<meta name="description" content="把知识库里的关键概念直接链接到 openpi、OpenVLA、OpenVLA-OFT、RTC、RLinf 的源码行。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f1f4f6;
+    --surface:#fbfcfd;
+    --surface-2:#eaf0f4;
+    --ink:#16222e;
+    --ink-2:#51626f;
+    --ink-3:#83919c;
+    --accent:#0e6e8a;
+    --accent-strong:#0a4c60;
+    --signal:#c4572a;
+    --line:#d8e1e7;
+    --line-strong:#c3d0d9;
+    --grid-line:rgba(22,34,46,.05);
+    --shadow:0 1px 2px rgba(22,34,46,.04),0 14px 34px rgba(22,34,46,.07);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+      --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+      --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+      --line:#1e2d3a; --line-strong:#2b3d4b;
+      --grid-line:rgba(231,238,244,.045);
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+    --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+    --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+    --line:#1e2d3a; --line-strong:#2b3d4b;
+    --grid-line:rgba(231,238,244,.045);
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Sans",-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+    line-height:1.78; font-size:16px; -webkit-font-smoothing:antialiased;
+  }
+  .grid{
+    position:fixed; inset:0; z-index:-1; pointer-events:none;
+    background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);
+    background-size:28px 28px;
+  }
+  .wrap{max-width:860px; margin:0 auto; padding:0 24px 96px;}
+
+  .masthead{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px 24px 0; max-width:860px; margin:0 auto;
+  }
+  .back{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:13px; color:var(--accent); text-decoration:none; letter-spacing:.03em;
+  }
+  .back:hover{text-decoration:underline;}
+  .masthead .ref{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12.5px; color:var(--ink-3); letter-spacing:.04em;
+  }
+
+  .hero{padding:52px 0 34px; border-bottom:1px solid var(--line-strong);}
+  .eyebrow{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent);
+    margin-bottom:16px;
+  }
+  .hero h1{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:clamp(28px,4.6vw,42px); font-weight:700; line-height:1.2;
+    margin:0 0 16px; color:var(--ink); text-wrap:balance;
+  }
+  .hero .summary{
+    font-size:17px; color:var(--ink-2); max-width:640px; margin:0 0 22px;
+  }
+  .meta{
+    border:1px solid var(--line); border-radius:12px; background:var(--surface);
+    padding:14px 18px; font-size:13.5px; display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px 24px;
+    box-shadow:var(--shadow);
+  }
+  .meta .m{display:flex; flex-direction:column; gap:1px;}
+  .meta .m .k{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:11px;
+    color:var(--ink-3); letter-spacing:.08em; text-transform:uppercase;
+  }
+  .meta .m .v{color:var(--ink); font-weight:500;}
+
+  section{margin-top:40px;}
+  h2{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:21px; font-weight:600; margin:0 0 14px; color:var(--ink);
+    display:flex; align-items:center; gap:12px;
+  }
+  h2::before{
+    content:""; width:10px; height:10px; flex:none;
+    background:var(--accent); border-radius:2px; transform:rotate(45deg);
+  }
+  p{margin:0 0 12px;}
+  strong{font-weight:700;}
+  .hl{color:var(--accent); font-weight:600;}
+  a{color:var(--accent);}
+
+  ul,ol{margin:0 0 14px; padding-left:22px;}
+  li{margin-bottom:7px;}
+  li::marker{color:var(--accent);}
+
+  blockquote{
+    margin:16px 0; padding:14px 18px; border-left:3px solid var(--accent);
+    background:var(--surface-2); border-radius:0 10px 10px 0; color:var(--ink);
+  }
+  blockquote p{margin:0;}
+
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    padding:20px 22px; box-shadow:var(--shadow); margin:14px 0;
+  }
+  .card h3{font-size:16px; font-weight:700; margin:0 0 10px;}
+
+  table{width:100%; border-collapse:collapse; font-size:14px; margin:12px 0;}
+  th,td{padding:9px 12px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12.5px;
+    color:var(--accent-strong); background:var(--surface-2); letter-spacing:.03em; font-weight:600;
+  }
+  tr:last-child td{border-bottom:none;}
+  .tbl-wrap{overflow-x:auto;}
+
+  code{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:13.5px;
+    background:var(--surface-2); border:1px solid var(--line); border-radius:5px; padding:1px 6px;
+  }
+  pre{overflow-x:auto; background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:16px; font-size:13px; line-height:1.6;}
+  pre code{border:none; background:none; padding:0;}
+
+  .diagram{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px; margin:16px 0; box-shadow:var(--shadow); overflow-x:auto;}
+  .diagram svg{max-width:100%; height:auto; display:block;}
+
+  footer{
+    margin-top:56px; padding-top:20px; border-top:1px solid var(--line-strong);
+    display:flex; justify-content:space-between; gap:12px; font-size:13px; color:var(--ink-3);
+  }
+  footer a{color:var(--accent); text-decoration:none;}
+  footer a:hover{text-decoration:underline;}
+  .era{margin-top:44px}
+  .era-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+  .era-head .yr{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;font-size:12.5px;color:var(--signal);letter-spacing:.06em}
+  .era-lead{color:var(--ink-2);font-size:15px}
+  .work{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 20px;box-shadow:var(--shadow);margin:12px 0}
+  .work .top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .work h3{font-size:16.5px;margin:0}
+  .work .d{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;font-size:12px;color:var(--ink-3)}
+  .work .how{margin:8px 0 6px;padding-left:20px;font-size:14.5px}
+  .work .how li{margin-bottom:4px}
+  .work .why{font-size:14px;color:var(--ink-2);margin:0}
+  .work .why b{color:var(--accent-strong)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0}
+  .chips a{font-size:12.5px;text-decoration:none;border:1px solid var(--line-strong);border-radius:999px;padding:3px 10px;background:var(--surface)}
+  .work .how a{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;font-size:13px;overflow-wrap:anywhere}
+  .kind{display:inline-block;font-size:11px;border-radius:999px;padding:0 7px;margin-right:6px;border:1px solid var(--line-strong);color:var(--ink-3)}
+  .kind.rep{border-style:dashed}
+</style>
+<link rel="stylesheet" href="concepts.css">
+</head>
+<body>
+<div class="grid" aria-hidden="true"></div>
+
+<header class="masthead">
+  <a class="back" href="concepts.html">← 概念索引</a>
+  <span class="ref">Code Map</span>
+</header>
+
+<div class="wrap">
+  <section class="hero">
+    <div class="eyebrow">专题 · 代码对照</div>
+    <h1>代码索引：每个关键概念的实现在哪</h1>
+    <p class="summary">每个链接都直接打开官方仓库里对应的<strong>文件和行号</strong>。链接固定在某个 commit，仓库以后改动也不会错位。文中出现 <code>⟨/⟩ 代码</code> 的地方，都会跳到这里。</p>
+    <div class="meta">
+      <div class="m"><span class="k">概念数</span><span class="v">26 个</span></div>
+      <div class="m"><span class="k">官方</span><span class="v">作者团队自己的代码</span></div>
+      <div class="m"><span class="k">复现</span><span class="v">作者没开源时，用 RLinf 等可信第三方实现代替</span></div>
+    </div>
+    <div class="chips"><a href="#g1">VLA 怎么生成动作</a><a href="#g2">VLA 怎么用 RL 变好</a><a href="#g3">RL 基础零件</a></div>
+  </section>
+
+  <section>
+    <h2>先看这一组对照：动作怎么出</h2>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>步骤</th><th>OpenVLA（离散 token）</th><th>π0 / openpi（flow matching）</th></tr></thead>
+      <tbody>
+        <tr><td>动作怎么表示</td><td><a href="https://github.com/openvla/openvla/blob/c8f03f48af692657d3060c19588038c7220e9af9/prismatic/vla/action_tokenizer.py#L13-L73" target="_blank" rel="noreferrer">ActionTokenizer</a>：每维 256 个 bin</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L140-L186" target="_blank" rel="noreferrer">embed_suffix</a>：带噪的连续动作块 + 时间步</td></tr>
+        <tr><td>训练目标</td><td>下一个 token 的交叉熵（和语言模型一样）</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L189-L214" target="_blank" rel="noreferrer">compute_loss</a>：速度场的均方误差</td></tr>
+        <tr><td>推理</td><td><a href="https://github.com/openvla/openvla/blob/c8f03f48af692657d3060c19588038c7220e9af9/prismatic/models/vlas/openvla.py#L36-L103" target="_blank" rel="noreferrer">predict_action</a>：逐个生成 7 个 token</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L217-L280" target="_blank" rel="noreferrer">sample_actions</a>：10 步去噪，输出 50 步动作块</td></tr>
+        <tr><td>后来的改进</td><td><a href="https://github.com/moojink/openvla-oft/blob/e4287e94541f459edc4feabc4e181f537cd569a8/prismatic/models/action_heads.py#L84-L107" target="_blank" rel="noreferrer">OFT 的 L1 回归头</a>：并行输出整个动作块</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/tokenizer.py#L51-L145" target="_blank" rel="noreferrer">FASTTokenizer</a>：反过来引入离散 token</td></tr>
+      </tbody>
+    </table></div>
+    <p>详细对比见 <a href="OpenVLA-vs-pi系列-对比.html">OpenVLA vs π 系列</a>。</p>
+  </section>
+
+  <section class="era" id="g1">
+    <div class="era-head"><h2>VLA 怎么生成动作</h2></div>
+    <article class="work" id="vla"><div class="top"><h3>VLA · 动作当 token（OpenVLA）</h3><span class="d"><a class="concept-link" href="concepts.html#vla">概念解释 →</a></span></div><ul class="how"><li><span class="kind">官方</span><a href="https://github.com/openvla/openvla/blob/c8f03f48af692657d3060c19588038c7220e9af9/prismatic/vla/action_tokenizer.py#L13-L73" target="_blank" rel="noreferrer">openvla · ActionTokenizer ↗</a><br>每维动作裁剪后切成 256 个 bin，覆盖词表最后 256 个 token</li><li><span class="kind">官方</span><a href="https://github.com/openvla/openvla/blob/c8f03f48af692657d3060c19588038c7220e9af9/prismatic/models/vlas/openvla.py#L36-L103" target="_blank" rel="noreferrer">openvla · predict_action ↗</a><br>自回归生成 7 个动作 token，再解码、反归一化成连续动作</li></ul></article>
+    <article class="work" id="fast"><div class="top"><h3>FAST · 动作分词</h3><span class="d"><a class="concept-link" href="concepts.html#fast">概念解释 →</a></span></div><ul class="how"><li><span class="kind">官方</span><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/tokenizer.py#L51-L145" target="_blank" rel="noreferrer">openpi · FASTTokenizer ↗</a><br>DCT+BPE 分词器（HF: physical-intelligence/fast），映射到 PaliGemma 词表末尾</li><li><span class="kind">官方</span><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/tokenizer.py#L148-L243" target="_blank" rel="noreferrer">openpi · BinningTokenizer（对照） ↗</a><br>RT-2/OpenVLA 式逐维分箱，便于和 FAST 对比</li></ul></article>
+    <article class="work" id="flow-matching"><div class="top"><h3>Flow Matching · 流匹配</h3><span class="d"><a class="concept-link" href="concepts.html#flow-matching">概念解释 →</a></span></div><ul class="how"><li><span class="kind">官方</span><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L189-L214" target="_blank" rel="noreferrer">openpi · Pi0.compute_loss ↗</a><br>构造 x_t = t·噪声 + (1−t)·动作，回归速度场 u_t = 噪声 − 动作</li><li><span class="kind">官方</span><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L217-L280" target="_blank" rel="noreferrer">openpi · Pi0.sample_actions ↗</a><br>从纯噪声出发，用 10 步欧拉积分 x ← x + dt·v 得到动作块</li></ul></article>
+    <article class="work" id="action-expert"><div class="top"><h3>Action expert · 动作专家</h3><span class="d"><a class="concept-link" href="concepts.html#action-expert">概念解释 →</a></span></div><ul class="how"><li><span class="kind">官方</span><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0_config.py#L20-L26" target="_blank" rel="noreferrer">openpi · Pi0Config ↗</a><br>骨干 gemma_2b，动作专家 gemma_300m</li><li><span class="kind">官方</span><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/gemma.py#L58-L109" target="_blank" rel="noreferrer">openpi · gemma.get_config ↗</a><br>gemma_300m 的宽度、深度、头数</li><li><span class="kind">官方</span><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L140-L186" target="_blank" rel="noreferrer">openpi · Pi0.embed_suffix（π0.5 adaRMS） ↗</a><br>状态、带噪动作和时间步编码成动作专家的输入；π0.5 用 adaRMS 注入时间</li></ul></article>
+    <article class="work" id="action-chunk"><div class="top"><h3>Action chunk · 动作块</h3><span class="d"><a class="concept-link" href="concepts.html#action-chunk">概念解释 →</a></span></div><ul class="how"><li><span class="kind">官方</span><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0_config.py#L25-L26" target="_blank" rel="noreferrer">openpi · action_horizon = 50 ↗</a><br>π0 一次输出 50 步</li><li><span class="kind">官方</span><a href="https://github.com/moojink/openvla-oft/blob/e4287e94541f459edc4feabc4e181f537cd569a8/prismatic/models/action_heads.py#L84-L107" target="_blank" rel="noreferrer">openvla-oft · L1RegressionActionHead ↗</a><br>OFT 一次并行回归整块动作（NUM_ACTIONS_CHUNK 步）</li><li><span class="kind">官方</span><a href="https://github.com/moojink/openvla-oft/blob/e4287e94541f459edc4feabc4e181f537cd569a8/prismatic/extern/hf/modeling_prismatic.py#L877-L942" target="_blank" rel="noreferrer">openvla-oft · 并行解码 ↗</a><br>用占位 token 一次前向得到整块动作，不再逐 token 生成</li></ul></article>
+    <article class="work" id="kv-cache"><div class="top"><h3>KV Cache</h3><span class="d"><a class="concept-link" href="concepts.html#kv-cache">概念解释 →</a></span></div><ul class="how"><li><span class="kind">官方</span><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L233-L237" target="_blank" rel="noreferrer">openpi · 前缀 KV cache ↗</a><br>图像+文字前缀只算一次，10 步去噪都复用这份 cache</li></ul></article>
+    <article class="work" id="latency"><div class="top"><h3>感知—执行时延 / 实时分块</h3><span class="d"><a class="concept-link" href="concepts.html#latency">概念解释 →</a></span></div><ul class="how"><li><span class="kind">官方</span><a href="https://github.com/Physical-Intelligence/real-time-chunking-kinetix/blob/9296f31d62d5bfeb5779dcb2f9bcf71ca37f448b/src/model.py#L219-L265" target="_blank" rel="noreferrer">RTC · realtime_action ↗</a><br>推理时 RTC：冻结前缀动作，用引导（inpainting）生成其余部分</li><li><span class="kind">官方</span><a href="https://github.com/Physical-Intelligence/real-time-chunking-kinetix/blob/9296f31d62d5bfeb5779dcb2f9bcf71ca37f448b/src/model.py#L267-L289" target="_blank" rel="noreferrer">RTC · loss（训练时 RTC） ↗</a><br>训练时随机模拟延迟，以已执行前缀为条件</li><li><span class="kind rep">复现</span><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/models/embodiment/openpi/sampling/rtc_guidance.py#L88-L163" target="_blank" rel="noreferrer">RLinf · RTC 引导采样 ↗</a><br>在 openpi 模型上的 RTC 实现</li></ul></article>
+    <article class="work" id="cross-embodiment"><div class="top"><h3>Cross-embodiment · 跨本体</h3><span class="d"><a class="concept-link" href="concepts.html#cross-embodiment">概念解释 →</a></span></div><ul class="how"><li><span class="kind">官方</span><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/policies/aloha_policy.py" target="_blank" rel="noreferrer">openpi · aloha_policy ↗</a><br>把某种机器人的观测/动作映射到统一的 32 维格式；droid、libero 同理</li></ul></article>
+    <article class="work" id="behavior-cloning"><div class="top"><h3>Behavior cloning · 行为克隆</h3><span class="d"><a class="concept-link" href="concepts.html#behavior-cloning">概念解释 →</a></span></div><ul class="how"><li><span class="kind">官方</span><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L189-L214" target="_blank" rel="noreferrer">openpi · Pi0.compute_loss ↗</a><br>π0 的预训练就是对示范动作做（流匹配式的）行为克隆</li></ul></article>
+  </section>
+  <section class="era" id="g2">
+    <div class="era-head"><h2>VLA 怎么用 RL 变好</h2></div>
+    <article class="work" id="denoising-mdp"><div class="top"><h3>去噪链 MDP（πRL）</h3><span class="d"><a class="concept-link" href="concepts.html#denoising-mdp">概念解释 →</a></span></div><ul class="how"><li><span class="kind">官方</span><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/models/embodiment/openpi/sampling/rl_sampler.py#L30-L87" target="_blank" rel="noreferrer">RLinf · sample_mean_var ↗</a><br>每一步去噪加入噪声，变成高斯策略 N(μ,σ)</li><li><span class="kind">官方</span><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/models/embodiment/openpi/sampling/rl_sampler.py#L90-L102" target="_blank" rel="noreferrer">RLinf · gaussian_logprob ↗</a><br>逐步计算 log π，供 PPO 使用</li></ul></article>
+    <article class="work" id="recap"><div class="top"><h3>RECAP · 优势条件化</h3><span class="d"><a class="concept-link" href="concepts.html#recap">概念解释 →</a></span></div><ul class="how"><li><span class="kind rep">复现</span><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/models/embodiment/value_model/recap/modeling_critic.py" target="_blank" rel="noreferrer">RLinf · RECAP 价值模型 ↗</a><br>RLinf 复现的价值函数（PI 未开源 π*0.6 代码）</li></ul></article>
+    <article class="work" id="rl-token"><div class="top"><h3>RL Token</h3><span class="d"><a class="concept-link" href="concepts.html#rl-token">概念解释 →</a></span></div><ul class="how"><li><span class="kind rep">复现</span><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/algorithms/rlt/rollout.py#L38-L85" target="_blank" rel="noreferrer">RLinf · predict_rlt_actions ↗</a><br>冻结 VLA 给出参考动作块，轻量 actor 在其上修正（PI 未开源）</li></ul></article>
+  </section>
+  <section class="era" id="g3">
+    <div class="era-head"><h2>RL 基础零件</h2></div>
+    <article class="work" id="policy-gradient"><div class="top"><h3>策略梯度</h3><span class="d"><a class="concept-link" href="concepts.html#policy-gradient">概念解释 →</a></span></div><ul class="how"><li><span class="kind">官方</span><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/algorithms/losses.py#L179-L371" target="_blank" rel="noreferrer">RLinf · compute_ppo_actor_loss ↗</a><br>优势 × 概率比的损失，就是策略梯度的实用形态</li></ul></article>
+    <article class="work" id="log-trick"><div class="top"><h3>Log 技巧</h3><span class="d"><a class="concept-link" href="concepts.html#log-trick">概念解释 →</a></span></div><ul class="how"><li><span class="kind">官方</span><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/algorithms/losses.py#L179-L371" target="_blank" rel="noreferrer">RLinf · compute_ppo_actor_loss ↗</a><br>代码里存的都是 logprob，比值用 exp(差) 计算</li></ul></article>
+    <article class="work" id="advantage"><div class="top"><h3>Advantage · 优势 / GAE</h3><span class="d"><a class="concept-link" href="concepts.html#advantage">概念解释 →</a></span></div><ul class="how"><li><span class="kind">官方</span><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/algorithms/advantages.py#L25-L86" target="_blank" rel="noreferrer">RLinf · compute_gae_advantages_and_returns ↗</a><br>从后往前累加 δ_t = r + γV(s′) − V(s)</li></ul></article>
+    <article class="work" id="ppo"><div class="top"><h3>PPO</h3><span class="d"><a class="concept-link" href="concepts.html#ppo">概念解释 →</a></span></div><ul class="how"><li><span class="kind">官方</span><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/algorithms/losses.py#L179-L371" target="_blank" rel="noreferrer">RLinf · compute_ppo_actor_loss ↗</a><br>ratio = exp(logπ − logπ_old)，裁剪后取 min</li><li><span class="kind">官方</span><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/algorithms/losses.py#L374-L449" target="_blank" rel="noreferrer">RLinf · compute_ppo_critic_loss ↗</a><br>价值函数回归，带 value clip</li></ul></article>
+    <article class="work" id="grpo"><div class="top"><h3>GRPO</h3><span class="d"><a class="concept-link" href="concepts.html#grpo">概念解释 →</a></span></div><ul class="how"><li><span class="kind">官方</span><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/algorithms/advantages.py#L90-L121" target="_blank" rel="noreferrer">RLinf · compute_grpo_advantages ↗</a><br>组内奖励减均值、除标准差，代替 critic</li></ul></article>
+    <article class="work" id="q-value"><div class="top"><h3>Q 值</h3><span class="d"><a class="concept-link" href="concepts.html#q-value">概念解释 →</a></span></div><ul class="how"><li><span class="kind">官方</span><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/workers/actor/fsdp_sac_policy_worker.py#L355-L481" target="_blank" rel="noreferrer">RLinf · SAC forward_critic ↗</a><br>Q 网络回归 TD 目标</li></ul></article>
+    <article class="work" id="bellman"><div class="top"><h3>Bellman 方程</h3><span class="d"><a class="concept-link" href="concepts.html#bellman">概念解释 →</a></span></div><ul class="how"><li><span class="kind">官方</span><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/workers/actor/fsdp_sac_policy_worker.py#L465-L476" target="_blank" rel="noreferrer">RLinf · TD 目标 ↗</a><br>target = r + γ·Q′，终止时截断</li></ul></article>
+    <article class="work" id="sac"><div class="top"><h3>SAC</h3><span class="d"><a class="concept-link" href="concepts.html#sac">概念解释 →</a></span></div><ul class="how"><li><span class="kind">官方</span><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/workers/actor/fsdp_sac_policy_worker.py#L355-L481" target="_blank" rel="noreferrer">RLinf · SAC forward_critic ↗</a><br>软 Bellman 目标：r + γ(min Q′ − α·logπ)</li><li><span class="kind">官方</span><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/workers/actor/fsdp_sac_policy_worker.py#L484-L559" target="_blank" rel="noreferrer">RLinf · SAC forward_actor / forward_alpha ↗</a><br>最大化 Q − α·logπ，并自动调温度 α</li></ul></article>
+    <article class="work" id="twin-q"><div class="top"><h3>Twin Q · 双 Q</h3><span class="d"><a class="concept-link" href="concepts.html#twin-q">概念解释 →</a></span></div><ul class="how"><li><span class="kind">官方</span><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/workers/actor/fsdp_sac_policy_worker.py#L456-L460" target="_blank" rel="noreferrer">RLinf · 取两个 Q 的最小值 ↗</a><br>torch.min(all_qf_next) 压低过估计</li></ul></article>
+    <article class="work" id="overestimation"><div class="top"><h3>过估计</h3><span class="d"><a class="concept-link" href="concepts.html#overestimation">概念解释 →</a></span></div><ul class="how"><li><span class="kind">官方</span><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/workers/actor/fsdp_sac_policy_worker.py#L456-L460" target="_blank" rel="noreferrer">RLinf · 取两个 Q 的最小值 ↗</a><br>用双 Q 取 min 对抗过估计</li></ul></article>
+    <article class="work" id="target-network"><div class="top"><h3>Target network · 目标网络</h3><span class="d"><a class="concept-link" href="concepts.html#target-network">概念解释 →</a></span></div><ul class="how"><li><span class="kind">官方</span><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/workers/actor/fsdp_sac_policy_worker.py#L273-L319" target="_blank" rel="noreferrer">RLinf · soft_update_target_model ↗</a><br>θ′ ← (1−τ)θ′ + τθ</li></ul></article>
+    <article class="work" id="replay-buffer"><div class="top"><h3>Replay buffer · 经验回放</h3><span class="d"><a class="concept-link" href="concepts.html#replay-buffer">概念解释 →</a></span></div><ul class="how"><li><span class="kind">官方</span><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/data/storage/replay/buffer.py#L228" target="_blank" rel="noreferrer">RLinf · TrajectoryReplayBuffer ↗</a><br>按轨迹存储、采样的回放缓冲</li></ul></article>
+    <article class="work" id="off-policy"><div class="top"><h3>Off-policy</h3><span class="d"><a class="concept-link" href="concepts.html#off-policy">概念解释 →</a></span></div><ul class="how"><li><span class="kind">官方</span><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/data/storage/replay/buffer.py#L228" target="_blank" rel="noreferrer">RLinf · TrajectoryReplayBuffer ↗</a><br>旧策略的数据存进回放池反复使用</li></ul></article>
+    <article class="work" id="iql"><div class="top"><h3>IQL</h3><span class="d"><a class="concept-link" href="concepts.html#iql">概念解释 →</a></span></div><ul class="how"><li><span class="kind">官方</span><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/workers/actor/fsdp_iql_policy_worker.py#L35-L38" target="_blank" rel="noreferrer">RLinf · iql_expectile_loss ↗</a><br>expectile 回归：|τ − 1(diff&lt;0)|·diff²</li><li><span class="kind">官方</span><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/workers/actor/fsdp_iql_policy_worker.py#L408-L470" target="_blank" rel="noreferrer">RLinf · IQL forward_value / actor / critic ↗</a><br>V、Q、优势加权行为克隆三部分</li></ul></article>
+  </section>
+
+  <section>
+    <h2>用到的仓库和版本</h2>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>仓库</th><th>对应论文</th><th>固定的 commit</th></tr></thead>
+      <tbody>
+        <tr><td><a href="https://github.com/Physical-Intelligence/openpi" target="_blank" rel="noreferrer">Physical-Intelligence/openpi</a></td><td>π0、π0-FAST、π0.5</td><td><code>215abfb</code></td></tr>
+        <tr><td><a href="https://github.com/openvla/openvla" target="_blank" rel="noreferrer">openvla/openvla</a></td><td>OpenVLA</td><td><code>c8f03f4</code></td></tr>
+        <tr><td><a href="https://github.com/moojink/openvla-oft" target="_blank" rel="noreferrer">moojink/openvla-oft</a></td><td>OpenVLA-OFT</td><td><code>e4287e9</code></td></tr>
+        <tr><td><a href="https://github.com/Physical-Intelligence/real-time-chunking-kinetix" target="_blank" rel="noreferrer">Physical-Intelligence/real-time-chunking-kinetix</a></td><td>RTC、训练时 RTC</td><td><code>9296f31</code></td></tr>
+        <tr><td><a href="https://github.com/RLinf/RLinf" target="_blank" rel="noreferrer">RLinf/RLinf</a></td><td>πRL、PPO/GRPO/SAC/IQL；RECAP、RL Token 复现</td><td><code>c70606f</code></td></tr>
+      </tbody>
+    </table></div>
+    <p>π*0.6（RECAP）、π0.7、RL Token 的官方代码目前没有公开，所以这几项链接的是 RLinf 的复现。</p>
+  </section>
+
+  <footer>
+    <span>专题 · 代码索引</span>
+    <a href="concepts.html">返回概念索引 →</a>
+  </footer>
+</div>
+<script src="nav.js"></script>
+</body>
+</html>

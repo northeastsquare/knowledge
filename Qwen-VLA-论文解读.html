@@ -194,7 +194,7 @@
 
   <section>
     <h2>方法主线</h2>
-    <p id="concept-cross-embodiment" class="concept-anchor"><strong>跨本体（cross-embodiment）</strong>指同一模型适应不同机器人构型及其控制语义，例如不同臂型、关节维度或控制频率。这里用构型提示和统一动作表征实现；它与“仿真到真机”的域迁移是不同的维度。五步把异构具身任务收进一个模型：</p>
+    <p id="concept-cross-embodiment" class="concept-anchor"><strong>跨本体（cross-embodiment）</strong>指同一模型适应不同机器人构型及其控制语义，例如不同臂型、关节维度或控制频率。这里用构型提示和统一动作表征实现；它与“仿真到真机”的域迁移是不同的维度。五步把异构具身任务收进一个模型： <a class="code-jump" href="代码索引.html#cross-embodiment" style="font:12px ui-monospace,Consolas,monospace;white-space:nowrap;text-decoration:none;border:1px dashed currentColor;border-radius:4px;padding:0 5px;margin-left:4px;opacity:.8">⟨/⟩ 代码</a></p>
     <ol>
       <li><strong>统一问题形式化</strong>：所有任务写成 <code>p(y<sub>t:t+H-1</sub> | o<sub>t</sub>, x, e, z)</code>——给定视觉 <code>o<sub>t</sub></code>、指令 <code>x</code>、构型描述 <code>e</code>、任务 id <code>z</code>，预测未来 <code>H</code> 步动作/轨迹序列。</li>
       <li><strong>双模块架构</strong>：<span class="hl">Qwen3.5-4B</span> 原生多模态骨干（ViT 空间合并 + 混合注意力）负责理解与推理；外挂一个 <span class="hl">DiT <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">流匹配</a><a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a></span>（约 1.15B 参数）负责细粒度连续动作生成。</li>

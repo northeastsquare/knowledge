@@ -192,7 +192,7 @@
 
   <section>
     <h2>方法主线</h2>
-    <p id="concept-recap" class="concept-anchor">RECAP = <strong>R</strong>L with <strong>E</strong>xperience and <strong>C</strong>orrections via <strong>A</strong>dvantage-conditioned <strong>P</strong>olicies（通过优势条件化策略，用经验与纠错做 RL）。这里的<a class="concept-link" href="两条主干-拆机手册.html#concept-advantage">优势</a>衡量动作相对参考行为好多少；RECAP 将它作为策略的输入条件，不等同于 PPO 的策略梯度更新。整条流水线只有三个子程序，反复循环即可：</p>
+    <p id="concept-recap" class="concept-anchor">RECAP = <strong>R</strong>L with <strong>E</strong>xperience and <strong>C</strong>orrections via <strong>A</strong>dvantage-conditioned <strong>P</strong>olicies（通过优势条件化策略，用经验与纠错做 RL）。这里的<a class="concept-link" href="两条主干-拆机手册.html#concept-advantage">优势</a>衡量动作相对参考行为好多少；RECAP 将它作为策略的输入条件，不等同于 PPO 的策略梯度更新。整条流水线只有三个子程序，反复循环即可： <a class="code-jump" href="代码索引.html#recap" style="font:12px ui-monospace,Consolas,monospace;white-space:nowrap;text-decoration:none;border:1px dashed currentColor;border-radius:4px;padding:0 5px;margin-left:4px;opacity:.8">⟨/⟩ 代码</a></p>
     <ol>
       <li><strong>预训练一个"带优势条件化"的通用 VLA（π0.6）</strong>：在数万小时、多任务多机器人的离线数据集上，先训一个分布式价值函数，再训一个以"二值优势指示 <code>I_t</code>"为输入的策略，用离线 RL 的方式把 RL 能力烙进底座模型；</li>
       <li><strong>任务级监督微调（SFT）</strong>：用目标任务的示范数据微调 π0.6，此阶段把优势指示固定为 <code>True</code>，等价于普通行为克隆，得到初始策略 <code>π0</code>；</li>

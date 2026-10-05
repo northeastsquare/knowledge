@@ -193,7 +193,7 @@
     <h2>方法主线</h2>
     <ol>
       <li><strong>底座选 VLM</strong>：以开源的 PaliGemma（3B 视觉-语言模型）为视觉-语言主干，直接继承互联网规模预训练的语义知识与推理能力。</li>
-      <li id="concept-action-expert" class="concept-anchor"><strong>挂一个"动作专家"</strong>：另起一套 <code>300M</code> 参数的独立权重（action expert），用<span class="hl">流匹配</span>把动作建模成连续分布，一次输出 <code>H=50</code> 步的动作块。</li>
+      <li id="concept-action-expert" class="concept-anchor"><strong>挂一个"动作专家"</strong>：另起一套 <code>300M</code> 参数的独立权重（action expert），用<span class="hl">流匹配</span>把动作建模成连续分布，一次输出 <code>H=50</code> 步的动作块。 <a class="code-jump" href="代码索引.html#action-expert" style="font:12px ui-monospace,Consolas,monospace;white-space:nowrap;text-decoration:none;border:1px dashed currentColor;border-radius:4px;padding:0 5px;margin-left:4px;opacity:.8">⟨/⟩ 代码</a></li>
       <li><strong>统一 token 流 + 块状因果注意力</strong>：图像、语言、本体状态、动作全部投进同一个 transformer；注意力分成三块 <code>[图像+语言] | [状态] | [动作]</code>，动作块内部双向、只允许向后看。</li>
       <li><strong>预训练 + 后训练两阶段</strong>：先在约 <code>1 万小时</code>跨本体数据上预训练打底，再用高质量任务数据微调出"流畅、高效、会纠错"的行为。</li>
       <li><strong>（可选）高层 VLM 策略</strong>：复杂长任务交给高层 VLM 拆解成中间语言指令（类似 SayCan），π0 只负责执行每个子指令。</li>
@@ -260,7 +260,7 @@
   <section>
     <h2>训练或运行方式</h2>
     <p><strong>预训练</strong>：在约 <code>10,000 小时</code>的跨本体数据上训练。自有灵巧操作数据覆盖 <span class="hl">7 种机器人配置、68 个任务</span>，共 <code>903M</code> timesteps（单臂 106M、双臂 797M）；再拼上开源数据（OXE、Bridge v2、DROID，合计占混合的 <code>9.1%</code>）。为了防止过采样任务占大头，每个 task-robot 组合按 <code>n^0.43</code> 降权配平。</p>
-    <p id="concept-flow-matching" class="concept-anchor"><strong>流匹配损失</strong>：训练时抽噪声 <code>ε ~ N(0, I)</code>，构造"噪声动作" <code>A^τ = τ·A + (1-τ)ε</code>，让网络回归去噪场 <code>u = A - ε</code>。关键细节是时间步 <code>τ</code> 不从均匀分布抽，而是抽自一个 <span class="hl">shift-beta 分布</span>（截断 <code>s=0.999</code>），刻意<b>偏向高噪声段</b>——作者论证动作预测不同于图像生成：低噪声段几乎只是恒等映射，信息都在高噪声段。</p>
+    <p id="concept-flow-matching" class="concept-anchor"><strong>流匹配损失</strong>：训练时抽噪声 <code>ε ~ N(0, I)</code>，构造"噪声动作" <code>A^τ = τ·A + (1-τ)ε</code>，让网络回归去噪场 <code>u = A - ε</code>。关键细节是时间步 <code>τ</code> 不从均匀分布抽，而是抽自一个 <span class="hl">shift-beta 分布</span>（截断 <code>s=0.999</code>），刻意<b>偏向高噪声段</b>——作者论证动作预测不同于图像生成：低噪声段几乎只是恒等映射，信息都在高噪声段。 <a class="code-jump" href="代码索引.html#flow-matching" style="font:12px ui-monospace,Consolas,monospace;white-space:nowrap;text-decoration:none;border:1px dashed currentColor;border-radius:4px;padding:0 5px;margin-left:4px;opacity:.8">⟨/⟩ 代码</a></p>
     <p><strong>后训练微调</strong>：简单任务约 <code>5 小时</code>数据即可，最复杂任务用到 <code>100 小时以上</code>。原则是"低质量多样数据教纠错与恢复，高质量数据教流畅高效"。</p>
     <p><strong>推理</strong>：从纯噪声出发做 <code>10 步</code>前向欧拉积分（步长 <code>Δτ=0.1</code>），前缀观测的 <a class="concept-link" href="Realtime-VLA-论文解读.html#concept-kv-cache">KV 可缓存</a>。在消费级 RTX 4090 上，单次推理约 <code>73ms</code> 板端延迟（图像编码 14ms + 观测前向 32ms + 10× 动作前向 27ms）。20Hz 的 UR5e/Franka 每 0.8s 推理一次（执行 16 步），50Hz 机器人每 0.5s 一次（执行 25 步），动作块<b>开环执行</b>——作者试过 temporal ensembling，反而更差，于是干脆不做动作聚合。</p>
   </section>

@@ -235,7 +235,7 @@
     <div class="section-head"><div><div class="eyebrow">00 / 定义与边界</div><h2 id="define-title">什么才算 VLA？</h2></div><p>先划清边界。否则 SayCan、Diffusion Policy、π0 会被混在同一个筐里。</p></div>
     <div class="def">
       <div class="card def-main">
-        <p id="concept-vla" class="concept-anchor"><strong>VLA（Vision-Language-Action，视觉—语言—动作模型）</strong>：以预训练的视觉语言模型（VLM）为骨干，输入图像和语言指令（通常还有本体状态），<strong>端到端地直接输出机器人动作</strong>的策略模型。这个说法由 <a href="https://arxiv.org/abs/2307.15818" target="_blank" rel="noreferrer">RT-2（2023）</a>正式提出。</p>
+        <p id="concept-vla" class="concept-anchor"><strong>VLA（Vision-Language-Action，视觉—语言—动作模型）</strong>：以预训练的视觉语言模型（VLM）为骨干，输入图像和语言指令（通常还有本体状态），<strong>端到端地直接输出机器人动作</strong>的策略模型。这个说法由 <a href="https://arxiv.org/abs/2307.15818" target="_blank" rel="noreferrer">RT-2（2023）</a>正式提出。 <a class="code-jump" href="代码索引.html#vla" style="font:12px ui-monospace,Consolas,monospace;white-space:nowrap;text-decoration:none;border:1px dashed currentColor;border-radius:4px;padding:0 5px;margin-left:4px;opacity:.8">⟨/⟩ 代码</a></p>
         <div class="formula">π<sub>θ</sub>( a<sub>t:t+H</sub> | I<sub>t</sub><sup>1..n</sup>, ℓ, q<sub>t</sub> )，其中 θ 从 VLM 初始化</div>
         <p>两个缺一不可的条件：<strong>① 语义来自大规模预训练</strong>，从而继承互联网的视觉与语言常识；<strong>② 动作由同一个网络直接生成</strong>，不经过手工定义的技能接口。动作头可以是离散 token、扩散、<a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">流匹配</a>，也可以是它们的混合。</p>
         <p class="def-note">它的最小闭环是：看见观测 → 对齐目标 → 生成动作 → 适配身体 → 执行并得到反馈（见 06）。</p>
