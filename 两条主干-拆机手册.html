@@ -299,7 +299,7 @@
       <p style="margin:6px 0 0">梯度 = <b>方向（送来的）</b> × <b>力度（要自己估的）</b>。所以 PPO / GRPO / DAPO / Reinforce++ 这些名字，<strong>全都不是不同的理论，只是同一台机器上换了「力度表」的不同型号</strong>。</p>
     </div>
 
-    <h3 id="concept-advantage" class="concept-anchor">力度为什么不能直接用「总回报 R」？</h3>
+    <h3 id="concept-advantage" class="concept-anchor">力度为什么不能直接用「总回报 R」？ <a class="code-jump" href="代码索引.html#advantage" style="font:12px ui-monospace,Consolas,monospace;white-space:nowrap;text-decoration:none;border:1px dashed currentColor;border-radius:4px;padding:0 5px;margin-left:4px;opacity:.8">⟨/⟩ 代码</a></h3>
     <p>最原始的想法（REINFORCE）就是拿 R 当力度。问题用三个数就能看出来。假设某状态下三个动作，跑完拿到的回报分别是 10、11、12：</p>
     <div class="fml">用 R 当力度:   a₁ ← +10 踩油门    a₂ ← +11 踩油门    a₃ ← +12 踩油门
               <span class="c">三个动作的概率<span class="r">全都被推高</span> —— 可它们的概率加起来必须是 1！</span>
@@ -339,7 +339,7 @@ STEAM      → 从演示的<span class="b">时间顺序</span>自监督出 A    
   <section class="sheet tilt">
     <span class="plate">§2 · 主干 B · Bellman 方程</span>
     <h2>一台「标价目表」的机器</h2>
-    <p id="concept-q-value" class="lead concept-anchor">这台机器<em>完全不走梯度上升</em>。它先学一张价目表 Q(s,a)：在状态 s 下做动作 a，往后一共能赚多少。表准了，策略就免费了——<strong>查表，挑最贵的那个动作</strong>。</p>
+    <p id="concept-q-value" class="lead concept-anchor">这台机器<em>完全不走梯度上升</em>。它先学一张价目表 Q(s,a)：在状态 s 下做动作 a，往后一共能赚多少。表准了，策略就免费了——<strong>查表，挑最贵的那个动作</strong>。 <a class="code-jump" href="代码索引.html#q-value" style="font:12px ui-monospace,Consolas,monospace;white-space:nowrap;text-decoration:none;border:1px dashed currentColor;border-radius:4px;padding:0 5px;margin-left:4px;opacity:.8">⟨/⟩ 代码</a></p>
 
     <div class="flow">
       <span class="node">经验 (s,a,r,s')</span>
@@ -349,7 +349,7 @@ STEAM      → 从演示的<span class="b">时间顺序</span>自监督出 A    
       <span class="node dark">π = argmax Q</span>
     </div>
 
-    <h3 id="concept-bellman" class="concept-anchor">价目表必须自己跟自己对得上</h3>
+    <h3 id="concept-bellman" class="concept-anchor">价目表必须自己跟自己对得上 <a class="code-jump" href="代码索引.html#bellman" style="font:12px ui-monospace,Consolas,monospace;white-space:nowrap;text-decoration:none;border:1px dashed currentColor;border-radius:4px;padding:0 5px;margin-left:4px;opacity:.8">⟨/⟩ 代码</a></h3>
     <p>怎么学这张表？不需要跑完整条轨迹。因为一张<strong>正确</strong>的价目表必然满足一条自洽条件——今天的价，等于今天的钱加上明天最好的价（打个折）：</p>
     <div class="fml big">Q(s,a) = r + γ · <span class="r">max</span><sub>a'</sub> Q(s', a')</div>
     <p>于是训练方式变成：<em>把右边算出来当「标准答案」，让左边去拟合它</em>。反复迭代直到不动为止（不动点迭代）。这个「用自己算出的答案训练自己」的把戏叫 <strong><a class="concept-link" href="RLToken-漫画分镜解读.html#concept-bootstrap">bootstrapping</a></strong>，是主干 B 的心脏。</p>
@@ -373,13 +373,13 @@ STEAM      → 从演示的<span class="b">时间顺序</span>自监督出 A    
       <p style="margin:6px 0 0">信息是<strong>每轮只往回传一格</strong>的。所以主干 B 的「收敛慢」不是玄学，而是结构性的。也正因如此，CrossQ 才会说 <em>target 网络虽然稳，但它人为延迟了价值传播，是样本效率的隐形税</em>——它拖慢的就是这个渗透过程。</p>
     </div>
 
-    <h3 id="concept-off-policy" class="concept-anchor">回报：数据可以永久复用</h3>
+    <h3 id="concept-off-policy" class="concept-anchor">回报：数据可以永久复用 <a class="code-jump" href="代码索引.html#off-policy" style="font:12px ui-monospace,Consolas,monospace;white-space:nowrap;text-decoration:none;border:1px dashed currentColor;border-radius:4px;padding:0 5px;margin-left:4px;opacity:.8">⟨/⟩ 代码</a></h3>
     <p>看那条自洽式子的右边：<code>r + γ max Q(s',a')</code>。它只用到 <strong>(s, a, r, s')</strong> —— <em>完全不在乎这条经验是谁采的</em>。</p>
     <div class="fml">主干 A: E[...] 必须在<span class="b">当前 π</span>下取  →  换了策略，旧数据作废   <span class="c">on-policy</span>
 主干 B: 自洽条件<span class="r">与采集者无关</span>       →  旧数据永远有效，塞进 <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-replay-buffer">replay buffer</a> 反复用  <span class="c">off-policy</span></div>
     <p>这就是样本效率差一个量级的来源，也是真机实验几乎只能走主干 B 的原因：<strong>你没有一亿次试错的预算</strong>。顺带还能直接吃别人采的数据（离线数据集、人类演示）。</p>
 
-    <h3 id="concept-overestimation" class="concept-anchor">代价：那个 max 是万恶之源</h3>
+    <h3 id="concept-overestimation" class="concept-anchor">代价：那个 max 是万恶之源 <a class="code-jump" href="代码索引.html#overestimation" style="font:12px ui-monospace,Consolas,monospace;white-space:nowrap;text-decoration:none;border:1px dashed currentColor;border-radius:4px;padding:0 5px;margin-left:4px;opacity:.8">⟨/⟩ 代码</a></h3>
     <p>表是<strong>估</strong>出来的，必然带噪声。而 <code>max</code> 干的事情是——<em>在一堆带噪的数字里挑最大的那个</em>。它不是在挑最好的动作，它是在<strong>挑运气最好的误差</strong>。</p>
 
     <!-- 实验 3 -->

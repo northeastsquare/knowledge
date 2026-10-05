@@ -145,7 +145,7 @@
   <section>
     <h2>方法主线</h2>
     <ol>
-      <li id="concept-denoising-mdp" class="concept-anchor"><strong>把去噪过程重写成 MDP</strong>：每步去噪当作一个状态转移，配一个高斯转移分布。给定起始噪声，整条去噪链的条件概率是各步转移概率的乘积，对数似然则是各步对数转移概率的和。这里可计算的是去噪轨迹的概率，不代表最终动作的边际密度直接有了闭式表达。</li>
+      <li id="concept-denoising-mdp" class="concept-anchor"><strong>把去噪过程重写成 MDP</strong>：每步去噪当作一个状态转移，配一个高斯转移分布。给定起始噪声，整条去噪链的条件概率是各步转移概率的乘积，对数似然则是各步对数转移概率的和。这里可计算的是去噪轨迹的概率，不代表最终动作的边际密度直接有了闭式表达。 <a class="code-jump" href="代码索引.html#denoising-mdp" style="font:12px ui-monospace,Consolas,monospace;white-space:nowrap;text-decoration:none;border:1px dashed currentColor;border-radius:4px;padding:0 5px;margin-left:4px;opacity:.8">⟨/⟩ 代码</a></li>
       <li><strong>Flow-Noise</strong>：注入可学习的噪声网络，去噪每步服从 <code>N(μ_τ, σ_τ²)</code>——均值来自原 ODE 的欧拉步，方差由噪声网络给出；训练后丢弃噪声网络，推理退回确定性。</li>
       <li><strong>Flow-SDE</strong>：把确定性「概率流 ODE」换成<strong>保边际分布</strong>的等价 SDE，在两层 MDP 里同时建模去噪步骤与环境交互，探索来自 SDE 的随机项。</li>
       <li><strong>PPO + GAE 优化</strong>：<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块</a>当作一个宏步、块内奖励求和；RL 阶段<strong>冻结 3.3B VLM，只微调 300M <a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a></strong>（省显存）。</li>

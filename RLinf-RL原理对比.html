@@ -196,7 +196,7 @@
     <div class="camp-body">
       <p class="desc">这一族的共同软肋是<strong>数据用一次就废</strong>——因为策略一更新，旧数据的分布就不对了。所以它们全部要回答同一个问题：能走多远？</p>
 
-      <h3 id="concept-ppo" class="concept-anchor" style="margin-top:16px">PPO：用裁剪代替信任域</h3>
+      <h3 id="concept-ppo" class="concept-anchor" style="margin-top:16px">PPO：用裁剪代替信任域 <a class="code-jump" href="代码索引.html#ppo" style="font:12px ui-monospace,Consolas,monospace;white-space:nowrap;text-decoration:none;border:1px dashed currentColor;border-radius:4px;padding:0 5px;margin-left:4px;opacity:.8">⟨/⟩ 代码</a></h3>
       <p>理论上该约束 KL(π_new‖π_old) ≤ δ，但那要解带约束优化。PPO 的做法是把约束<strong>换成一个不再奖励越界的目标函数</strong>：</p>
       <div class="fml">L = E[ min( r·A , clip(r, 1−ε, 1+ε)·A ) ]      r = π_θ/π_old</div>
       <p>关键在这个 <code>min</code> 的非对称性：A&gt;0 时上界被 1+ε 截住，再增大 r 也没有额外收益；A&lt;0 时下界被 1−ε 截住。所以梯度在越界后<strong>直接归零</strong>，而不是变成惩罚。优势用 GAE 估：</p>
@@ -204,7 +204,7 @@
       <span class="c">λ→0：单步 TD，低方差高偏差    λ→1：蒙特卡洛，高方差低偏差</span></div>
       <p>代价很实在：<strong>必须养一个 critic</strong>。对 VLA 这意味着第二个几十亿参数的网络，所以 RLinf 让它跟语言主干共享参数、只挂个 value head。</p>
 
-      <h3 id="concept-grpo" class="concept-anchor" style="margin-top:20px">GRPO：用组内比较替掉 critic</h3>
+      <h3 id="concept-grpo" class="concept-anchor" style="margin-top:20px">GRPO：用组内比较替掉 critic <a class="code-jump" href="代码索引.html#grpo" style="font:12px ui-monospace,Consolas,monospace;white-space:nowrap;text-decoration:none;border:1px dashed currentColor;border-radius:4px;padding:0 5px;margin-left:4px;opacity:.8">⟨/⟩ 代码</a></h3>
       <p>一个观察：A(s,a) 本质是「这个动作比该状态的平均水平好多少」。既然 V(s) 就是个 baseline，那<strong>为什么不直接采一组样本、用组内均值当 baseline</strong>？</p>
       <div class="fml">A_i = ( R_i − mean(R_1..R_G) ) / std(R_1..R_G)</div>
       <p>省掉一整个 critic 网络。代价有三个，都是理论上的硬代价：<strong>① 要能从同一状态重复采样</strong>（仿真器行，真机基本不行）；<strong>② 只有轨迹级信号</strong>，组内所有时间步共享一个优势，细粒度信用分配没了；<strong>③ 全成或全败时 std→0、优势恒为 0</strong>，这组样本白采。第③点直接催生了「成功率过滤」。</p>
@@ -221,7 +221,7 @@ A_norm = (A − mean_batch) / std_batch</div>
     </div>
   </div>
   <div class="camp">
-    <div class="camp-head"><span class="bar" style="background:var(--c-resid)"></span><h2 id="concept-sac" class="concept-anchor">② off-policy 最大熵：跟 max 搏斗</h2><span class="cnt">主干 B</span></div>
+    <div class="camp-head"><span class="bar" style="background:var(--c-resid)"></span><h2 id="concept-sac" class="concept-anchor">② off-policy 最大熵：跟 max 搏斗 <a class="code-jump" href="代码索引.html#sac" style="font:12px ui-monospace,Consolas,monospace;white-space:nowrap;text-decoration:none;border:1px dashed currentColor;border-radius:4px;padding:0 5px;margin-left:4px;opacity:.8">⟨/⟩ 代码</a></h2><span class="cnt">主干 B</span></div>
     <div class="camp-body">
       <p class="desc">SAC 先把 Bellman 里那个硬 <code>max</code> 换成<strong>软的</strong>——在目标里加一个熵项，于是最优策略不再是 argmax 的尖峰，而是一个玻尔兹曼分布：</p>
       <div class="fml">Q(s,a) = r + γ·E[ Q(s',a') <span class="h">− α log π(a'|s')</span> ]      <span class="c">软 Bellman</span>
@@ -273,7 +273,7 @@ critic: E=10 集成 + 随机子集              <span class="c">支撑高 UTD / 
     <div class="camp-body">
       <p class="desc">纯离线时，那个 <code>max Q(s',a')</code> 会去问「数据里从没出现过的动作」值多少 —— 而网络对这些动作的输出纯属幻觉，且幻觉一定是<strong>偏高</strong>的（否则不会被 max 选中）。这个误差还会沿 Bellman 迭代累积放大。三种回避方式：</p>
 
-      <h3 id="concept-iql" class="concept-anchor" style="margin-top:18px">IQL：干脆不取 max</h3>
+      <h3 id="concept-iql" class="concept-anchor" style="margin-top:18px">IQL：干脆不取 max <a class="code-jump" href="代码索引.html#iql" style="font:12px ui-monospace,Consolas,monospace;white-space:nowrap;text-decoration:none;border:1px dashed currentColor;border-radius:4px;padding:0 5px;margin-left:4px;opacity:.8">⟨/⟩ 代码</a></h3>
       <p>核心招数是用<strong>期望回归</strong>估计 V。把 τ 设成 0.7 这类大于 0.5 的值，非对称地加权正负残差：</p>
       <div class="fml">L_V = E[ ρ_τ( Q(s,a) − V(s) ) ]        ρ_τ(u) = |τ − 1(u&lt;0)|·u²
       <span class="c">τ&gt;0.5 时更重罚"低估"，于是 V 逼近数据内动作的高分位，近似 max 的效果</span>
