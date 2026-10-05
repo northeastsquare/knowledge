@@ -16,7 +16,8 @@
         { t: '主干 A / 主干 B：两台机器拆开看', h: '两条主干-拆机手册.html' },
         { t: 'RLinf RL 方法：原理视角对比', h: 'RLinf-RL原理对比.html' },
         { t: 'RLinf 里的 RL 方法详细对比', h: 'RLinf-RL方法对比.html' },
-        { t: 'VLA 强化学习方法全景对比', h: 'VLA-RL-方法全景对比.html' }
+        { t: 'VLA 强化学习方法全景对比', h: 'VLA-RL-方法全景对比.html' },
+        { t: 'OpenVLA vs π 系列：动作怎么生成', h: 'OpenVLA-vs-pi系列-对比.html' }
       ]
     },
     {

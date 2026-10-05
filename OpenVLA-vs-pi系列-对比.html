@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenVLA vs π 系列（openpi）· 专题对比</title>
+<meta name="description" content="两条开源 VLA 路线的核心区别：把动作当文字（离散 token） vs VLM + 动作专家（flow matching）。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f1f4f6;
+    --surface:#fbfcfd;
+    --surface-2:#eaf0f4;
+    --ink:#16222e;
+    --ink-2:#51626f;
+    --ink-3:#83919c;
+    --accent:#0e6e8a;
+    --accent-strong:#0a4c60;
+    --signal:#c4572a;
+    --line:#d8e1e7;
+    --line-strong:#c3d0d9;
+    --grid-line:rgba(22,34,46,.05);
+    --shadow:0 1px 2px rgba(22,34,46,.04),0 14px 34px rgba(22,34,46,.07);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+      --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+      --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+      --line:#1e2d3a; --line-strong:#2b3d4b;
+      --grid-line:rgba(231,238,244,.045);
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+    --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+    --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+    --line:#1e2d3a; --line-strong:#2b3d4b;
+    --grid-line:rgba(231,238,244,.045);
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Sans",-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+    line-height:1.78; font-size:16px; -webkit-font-smoothing:antialiased;
+  }
+  .grid{
+    position:fixed; inset:0; z-index:-1; pointer-events:none;
+    background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);
+    background-size:28px 28px;
+  }
+  .wrap{max-width:860px; margin:0 auto; padding:0 24px 96px;}
+
+  .masthead{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px 24px 0; max-width:860px; margin:0 auto;
+  }
+  .back{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:13px; color:var(--accent); text-decoration:none; letter-spacing:.03em;
+  }
+  .back:hover{text-decoration:underline;}
+  .masthead .ref{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12.5px; color:var(--ink-3); letter-spacing:.04em;
+  }
+
+  .hero{padding:52px 0 34px; border-bottom:1px solid var(--line-strong);}
+  .eyebrow{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent);
+    margin-bottom:16px;
+  }
+  .hero h1{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:clamp(28px,4.6vw,42px); font-weight:700; line-height:1.2;
+    margin:0 0 16px; color:var(--ink); text-wrap:balance;
+  }
+  .hero .summary{
+    font-size:17px; color:var(--ink-2); max-width:640px; margin:0 0 22px;
+  }
+  .meta{
+    border:1px solid var(--line); border-radius:12px; background:var(--surface);
+    padding:14px 18px; font-size:13.5px; display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px 24px;
+    box-shadow:var(--shadow);
+  }
+  .meta .m{display:flex; flex-direction:column; gap:1px;}
+  .meta .m .k{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:11px;
+    color:var(--ink-3); letter-spacing:.08em; text-transform:uppercase;
+  }
+  .meta .m .v{color:var(--ink); font-weight:500;}
+
+  section{margin-top:40px;}
+  h2{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:21px; font-weight:600; margin:0 0 14px; color:var(--ink);
+    display:flex; align-items:center; gap:12px;
+  }
+  h2::before{
+    content:""; width:10px; height:10px; flex:none;
+    background:var(--accent); border-radius:2px; transform:rotate(45deg);
+  }
+  p{margin:0 0 12px;}
+  strong{font-weight:700;}
+  .hl{color:var(--accent); font-weight:600;}
+  a{color:var(--accent);}
+
+  ul,ol{margin:0 0 14px; padding-left:22px;}
+  li{margin-bottom:7px;}
+  li::marker{color:var(--accent);}
+
+  blockquote{
+    margin:16px 0; padding:14px 18px; border-left:3px solid var(--accent);
+    background:var(--surface-2); border-radius:0 10px 10px 0; color:var(--ink);
+  }
+  blockquote p{margin:0;}
+
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    padding:20px 22px; box-shadow:var(--shadow); margin:14px 0;
+  }
+  .card h3{font-size:16px; font-weight:700; margin:0 0 10px;}
+
+  table{width:100%; border-collapse:collapse; font-size:14px; margin:12px 0;}
+  th,td{padding:9px 12px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12.5px;
+    color:var(--accent-strong); background:var(--surface-2); letter-spacing:.03em; font-weight:600;
+  }
+  tr:last-child td{border-bottom:none;}
+  .tbl-wrap{overflow-x:auto;}
+
+  code{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:13.5px;
+    background:var(--surface-2); border:1px solid var(--line); border-radius:5px; padding:1px 6px;
+  }
+  pre{overflow-x:auto; background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:16px; font-size:13px; line-height:1.6;}
+  pre code{border:none; background:none; padding:0;}
+
+  .diagram{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px; margin:16px 0; box-shadow:var(--shadow); overflow-x:auto;}
+  .diagram svg{max-width:100%; height:auto; display:block;}
+
+  footer{
+    margin-top:56px; padding-top:20px; border-top:1px solid var(--line-strong);
+    display:flex; justify-content:space-between; gap:12px; font-size:13px; color:var(--ink-3);
+  }
+  footer a{color:var(--accent); text-decoration:none;}
+  footer a:hover{text-decoration:underline;}
+  .vs{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px}
+  @media(max-width:640px){.vs{grid-template-columns:minmax(0,1fr)}}
+  .vs .card{margin:0}
+  .tag-a{color:var(--accent-strong)}.tag-b{color:var(--signal)}
+</style>
+<link rel="stylesheet" href="concepts.css">
+</head>
+<body>
+<div class="grid" aria-hidden="true"></div>
+
+<header class="masthead">
+  <a class="back" href="index.html">← 返回知识库</a>
+  <span class="ref">2406.09246 · 2410.24164</span>
+</header>
+
+<div class="wrap">
+
+  <section class="hero">
+    <div class="eyebrow">专题 · 方法对比</div>
+    <h1>OpenVLA vs π 系列（openpi）：动作该怎么生成？</h1>
+    <p class="summary">两者都是"VLM 骨干 + 输出机器人动作"的 VLA，最核心的分歧只有一个：<strong>动作是像文字一样逐个生成离散 token，还是交给一个独立的生成式动作专家，一次输出一段连续动作</strong>。</p>
+    <div class="meta">
+      <div class="m"><span class="k">OpenVLA</span><span class="v">斯坦福 / 伯克利 / TRI 等，2024.06</span></div>
+      <div class="m"><span class="k">π0</span><span class="v">Physical Intelligence，2024.10</span></div>
+      <div class="m"><span class="k">开源仓库</span><span class="v"><a href="https://github.com/openvla/openvla" target="_blank" rel="noreferrer">openvla</a> · <a href="https://github.com/Physical-Intelligence/openpi" target="_blank" rel="noreferrer">openpi</a></span></div>
+      <div class="m"><span class="k">主题</span><span class="v">动作表示 · 骨干与架构</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>一句话区别</h2>
+    <div class="vs">
+      <div class="card"><h3 class="tag-a">OpenVLA：把动作当文字</h3><p>沿用 RT-2 路线。每个动作维度切成 256 个 bin，借用词表里的 token，由 Llama 2 <strong>自回归</strong>地一个一个输出，一次只输出一步动作。</p></div>
+      <div class="card"><h3 class="tag-b">π0：VLM 负责理解，动作专家负责生成</h3><p>VLM 之外另接一个约 300M 的"动作专家"，用 <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">flow matching</a> 从噪声中生成<strong>连续</strong>动作，一次输出一段 <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">action chunk</a>（50 步）。</p></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>逐项对照</h2>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>维度</th><th>OpenVLA</th><th>π0（π 系列起点）</th></tr></thead>
+      <tbody>
+        <tr><td>骨干</td><td>Llama 2 7B；视觉编码器为 DINOv2 + SigLIP 双编码器（基于 Prismatic VLM）</td><td>PaliGemma 3B，加约 300M 动作专家，合计约 3.3B</td></tr>
+        <tr><td>动作输出</td><td>离散 token：每维 256 个 bin，自回归解码</td><td>连续动作：flow matching，几步积分去噪</td></tr>
+        <tr><td>每次输出</td><td>单步动作</td><td>动作块：H = 50 步</td></tr>
+        <tr><td>控制频率 / 任务</td><td>较低，擅长桌面抓放类任务</td><td>最高约 50Hz，能做叠衣服、收餐桌等高频灵巧任务</td></tr>
+        <tr><td>注意力结构</td><td>标准因果 LLM，动作 token 与文字共用一个模型</td><td>同一 Transformer 中两套权重（mixture-of-experts 式），动作 token 之间双向注意力</td></tr>
+        <tr><td>预训练数据</td><td>Open X-Embodiment，约 97 万条轨迹，全为公开数据</td><td>OXE 加上自采的 7 种机器人构型、68 个任务，共约 1 万小时，多数为私有数据</td></tr>
+        <tr><td>开源程度</td><td>权重、代码、训练流程全开，支持 LoRA 微调</td><td>openpi 开放 π0、π0-FAST、π0.5 的 base 权重和微调代码，预训练数据不开放</td></tr>
+        <tr><td>代表结论</td><td>7B 模型在通用操作上超过 55B 的 RT-2-X，证明开源 VLA 可行</td><td>flow 动作头让 VLA 第一次能做长时程、高灵巧任务</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>为什么动作头是分水岭</h2>
+    <ul>
+      <li><strong>精度</strong>：每维 256 个 bin 是粗量化，细腻的连续控制会损失精度；flow 直接在连续空间建模，还能表达多峰分布（同一场景下有多种合理做法）。</li>
+      <li><strong>速度</strong>：自回归每输出一个维度就要前向一次，7 维动作就要解码 7 个 token；动作块配合并行生成，一次推理就能覆盖未来多步。</li>
+      <li><strong>知识保留</strong>：离散 token 与文字共享输出空间，天然保留 VLM 的语言能力；独立动作专家的梯度会回传到骨干、破坏 VLM 知识，π0.5 后来用<a class="concept-link" href="pi0.5_论文测验_精美版.html#concept-fast">离散 FAST token</a>与知识隔离来补这一点。</li>
+    </ul>
+    <blockquote><p>口诀：OpenVLA 是"<strong>语言模型顺便说动作</strong>"，π0 是"<strong>语言模型看懂之后，交给专门的手去动</strong>"。</p></blockquote>
+  </section>
+
+  <section>
+    <h2>后来两条路线互相借鉴</h2>
+    <div class="vs">
+      <div class="card"><h3 class="tag-a">OpenVLA → OpenVLA-OFT（2025.02）</h3><p>放弃逐 token 解码，改为<strong>并行解码 + 动作块 + 连续动作 L1 回归</strong>，速度和成功率都大幅提升，实际已向 π0 的"一次输出一段连续动作"靠拢。<a href="https://arxiv.org/abs/2502.19645" target="_blank" rel="noreferrer">arXiv 2502.19645</a></p></div>
+      <div class="card"><h3 class="tag-b">π0 → π0-FAST / π0.5 / π*0.6 / π0.7</h3><p>反过来引入离散 token：<a href="https://arxiv.org/abs/2501.09747" target="_blank" rel="noreferrer">π0-FAST</a> 用 DCT + BPE 压缩动作 token；<a href="pi0.5_论文测验_精美版.html">π0.5</a> 训练时用离散 token、推理时用 flow；<a href="pi0.6-论文解读.html">π*0.6</a> 加入 RL（RECAP）；<a href="pi0.7_问答学习卡.html">π0.7</a> 让模型可以通过提示调节行为。</p></div>
+    </div>
+    <p>所以今天的分界已经不是"谁离散、谁连续"，而是<strong>训练时用离散 token 保住语义，推理时用连续生成保证精度和速度</strong>的混合方案。</p>
+  </section>
+
+  <section>
+    <h2>该选哪个上手</h2>
+    <ul>
+      <li><strong>想理解 VLA 的最小形态、在单卡上做 LoRA 微调或改代码</strong>：先读 OpenVLA。它是 PyTorch + HuggingFace 实现，结构最直白。</li>
+      <li><strong>要做灵巧、高频或双臂任务，或者想直接用强 base 模型微调</strong>：用 openpi 的 π0 / π0.5 checkpoint（JAX 实现，也有 PyTorch 支持）。</li>
+      <li><strong>要研究 VLA + RL</strong>：本库的 <a href="piRL-论文解读.html">πRL</a>、<a href="RL-Token-论文解读.html">RL Token</a> 都以 π 系列为底座，见 <a href="VLA-RL-方法全景对比.html">VLA-RL 全景</a>。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>自测</h2>
+    <ol>
+      <li>OpenVLA 输出一个 7 维动作，需要解码几个 token？π0 一次推理输出多少步动作？</li>
+      <li>为什么说 π0 的动作专家会"伤害"VLM 的语言知识？π0.5 用什么办法补救？</li>
+      <li>OpenVLA-OFT 改了哪三件事？改完之后它更像 RT-2 还是更像 π0？</li>
+    </ol>
+  </section>
+
+  <section>
+    <h2>出处</h2>
+    <ul>
+      <li>OpenVLA: An Open-Source Vision-Language-Action Model — <a href="https://arxiv.org/abs/2406.09246" target="_blank" rel="noreferrer">arXiv 2406.09246</a></li>
+      <li>π0: A Vision-Language-Action Flow Model for General Robot Control — <a href="https://arxiv.org/abs/2410.24164" target="_blank" rel="noreferrer">arXiv 2410.24164</a> · 本库精读：<a href="pi0-论文解读.html">π0 论文解读</a></li>
+      <li>OpenVLA-OFT（Fine-Tuning VLA Models: Optimizing Speed and Success）— <a href="https://arxiv.org/abs/2502.19645" target="_blank" rel="noreferrer">arXiv 2502.19645</a></li>
+      <li>FAST: Efficient Action Tokenization for VLA Models — <a href="https://arxiv.org/abs/2501.09747" target="_blank" rel="noreferrer">arXiv 2501.09747</a></li>
+      <li>在时间线上的位置：<a href="VLA-发展历程.html#p5">VLA 发展史 · P5（2024）</a></li>
+    </ul>
+  </section>
+
+  <footer>
+    <span>专题对比 · OpenVLA vs π 系列</span>
+    <a href="index.html">返回知识库 →</a>
+  </footer>
+</div>
+<script src="nav.js"></script>
+</body>
+</html>
