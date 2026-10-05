@@ -8,7 +8,8 @@
     {
       id: 'MAP', name: 'VLA 总览', items: [
         { t: 'VLA 发展史｜从模块化到闭环具身', h: 'VLA-发展历程.html' },
-        { t: 'Google / DeepMind 的 VLA 发展史', h: 'Google-VLA-发展历程.html' }
+        { t: 'Google / DeepMind 的 VLA 发展史', h: 'Google-VLA-发展历程.html' },
+        { t: 'Physical Intelligence（π）的工作全景', h: 'PI-工作全景.html' }
       ]
     },
     {

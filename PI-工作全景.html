@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Physical Intelligence（π）的工作全景 · 专题</title>
+<meta name="description" content="从 π0 到 π0.7 与 RL Token：Physical Intelligence 每项工作是干什么的、怎么做的、接下来解决什么。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f1f4f6;
+    --surface:#fbfcfd;
+    --surface-2:#eaf0f4;
+    --ink:#16222e;
+    --ink-2:#51626f;
+    --ink-3:#83919c;
+    --accent:#0e6e8a;
+    --accent-strong:#0a4c60;
+    --signal:#c4572a;
+    --line:#d8e1e7;
+    --line-strong:#c3d0d9;
+    --grid-line:rgba(22,34,46,.05);
+    --shadow:0 1px 2px rgba(22,34,46,.04),0 14px 34px rgba(22,34,46,.07);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+      --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+      --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+      --line:#1e2d3a; --line-strong:#2b3d4b;
+      --grid-line:rgba(231,238,244,.045);
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+    --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+    --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+    --line:#1e2d3a; --line-strong:#2b3d4b;
+    --grid-line:rgba(231,238,244,.045);
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Sans",-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+    line-height:1.78; font-size:16px; -webkit-font-smoothing:antialiased;
+  }
+  .grid{
+    position:fixed; inset:0; z-index:-1; pointer-events:none;
+    background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);
+    background-size:28px 28px;
+  }
+  .wrap{max-width:860px; margin:0 auto; padding:0 24px 96px;}
+
+  .masthead{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px 24px 0; max-width:860px; margin:0 auto;
+  }
+  .back{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:13px; color:var(--accent); text-decoration:none; letter-spacing:.03em;
+  }
+  .back:hover{text-decoration:underline;}
+  .masthead .ref{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12.5px; color:var(--ink-3); letter-spacing:.04em;
+  }
+
+  .hero{padding:52px 0 34px; border-bottom:1px solid var(--line-strong);}
+  .eyebrow{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent);
+    margin-bottom:16px;
+  }
+  .hero h1{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:clamp(28px,4.6vw,42px); font-weight:700; line-height:1.2;
+    margin:0 0 16px; color:var(--ink); text-wrap:balance;
+  }
+  .hero .summary{
+    font-size:17px; color:var(--ink-2); max-width:640px; margin:0 0 22px;
+  }
+  .meta{
+    border:1px solid var(--line); border-radius:12px; background:var(--surface);
+    padding:14px 18px; font-size:13.5px; display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px 24px;
+    box-shadow:var(--shadow);
+  }
+  .meta .m{display:flex; flex-direction:column; gap:1px;}
+  .meta .m .k{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:11px;
+    color:var(--ink-3); letter-spacing:.08em; text-transform:uppercase;
+  }
+  .meta .m .v{color:var(--ink); font-weight:500;}
+
+  section{margin-top:40px;}
+  h2{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:21px; font-weight:600; margin:0 0 14px; color:var(--ink);
+    display:flex; align-items:center; gap:12px;
+  }
+  h2::before{
+    content:""; width:10px; height:10px; flex:none;
+    background:var(--accent); border-radius:2px; transform:rotate(45deg);
+  }
+  p{margin:0 0 12px;}
+  strong{font-weight:700;}
+  .hl{color:var(--accent); font-weight:600;}
+  a{color:var(--accent);}
+
+  ul,ol{margin:0 0 14px; padding-left:22px;}
+  li{margin-bottom:7px;}
+  li::marker{color:var(--accent);}
+
+  blockquote{
+    margin:16px 0; padding:14px 18px; border-left:3px solid var(--accent);
+    background:var(--surface-2); border-radius:0 10px 10px 0; color:var(--ink);
+  }
+  blockquote p{margin:0;}
+
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    padding:20px 22px; box-shadow:var(--shadow); margin:14px 0;
+  }
+  .card h3{font-size:16px; font-weight:700; margin:0 0 10px;}
+
+  table{width:100%; border-collapse:collapse; font-size:14px; margin:12px 0;}
+  th,td{padding:9px 12px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12.5px;
+    color:var(--accent-strong); background:var(--surface-2); letter-spacing:.03em; font-weight:600;
+  }
+  tr:last-child td{border-bottom:none;}
+  .tbl-wrap{overflow-x:auto;}
+
+  code{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:13.5px;
+    background:var(--surface-2); border:1px solid var(--line); border-radius:5px; padding:1px 6px;
+  }
+  pre{overflow-x:auto; background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:16px; font-size:13px; line-height:1.6;}
+  pre code{border:none; background:none; padding:0;}
+
+  .diagram{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px; margin:16px 0; box-shadow:var(--shadow); overflow-x:auto;}
+  .diagram svg{max-width:100%; height:auto; display:block;}
+
+  footer{
+    margin-top:56px; padding-top:20px; border-top:1px solid var(--line-strong);
+    display:flex; justify-content:space-between; gap:12px; font-size:13px; color:var(--ink-3);
+  }
+  footer a{color:var(--accent); text-decoration:none;}
+  footer a:hover{text-decoration:underline;}
+  .era{margin-top:44px}
+  .era-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+  .era-head .yr{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;font-size:12.5px;color:var(--signal);letter-spacing:.06em}
+  .era-lead{color:var(--ink-2);font-size:15px}
+  .work{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 20px;box-shadow:var(--shadow);margin:12px 0}
+  .work .top{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
+  .work h3{font-size:16.5px;margin:0}
+  .work .d{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;font-size:12px;color:var(--ink-3)}
+  .work .how{margin:8px 0 6px;padding-left:20px;font-size:14.5px}
+  .work .how li{margin-bottom:4px}
+  .work .why{font-size:14px;color:var(--ink-2);margin:0}
+  .work .why b{color:var(--accent-strong)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0}
+  .chips a{font-size:12.5px;text-decoration:none;border:1px solid var(--line-strong);border-radius:999px;padding:3px 10px;background:var(--surface)}
+  .work .one{font-size:15.5px;margin:8px 0 4px;color:var(--ink)}
+  .work .next{font-size:13.5px;color:var(--signal);margin:6px 0 0}
+  .tag{display:inline-block;font-size:11.5px;border-radius:999px;padding:1px 8px;margin-left:6px;border:1px solid var(--line-strong);color:var(--ink-2);vertical-align:middle}
+  .chain{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:14px 0;font-size:14px}
+  .chain span{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:4px 10px}
+  .chain i{font-style:normal;color:var(--ink-3)}
+</style>
+<link rel="stylesheet" href="concepts.css">
+</head>
+<body>
+<div class="grid" aria-hidden="true"></div>
+
+<header class="masthead">
+  <a class="back" href="VLA-发展历程.html">← VLA 发展史</a>
+  <span class="ref">Physical Intelligence</span>
+</header>
+
+<div class="wrap">
+
+  <section class="hero">
+    <div class="eyebrow">VLA 总览 · 机构线</div>
+    <h1>Physical Intelligence（π）的工作全景</h1>
+    <p class="summary">Physical Intelligence 发布的每项工作，都按<strong>一句话 → 怎么做 → 解决了什么 / 留下了什么 → 下一步</strong>来写。每一项都是在接上一项留下的问题，顺着往下读就能串成一条线。总体时间线见 <a href="VLA-发展历程.html">VLA 发展史</a>，同类对照见 <a href="Google-VLA-发展历程.html">Google / DeepMind 线</a>。</p>
+    <div class="meta">
+      <div class="m"><span class="k">时间跨度</span><span class="v">2024.10 – 2026.04</span></div>
+      <div class="m"><span class="k">工作数</span><span class="v">12 项</span></div>
+      <div class="m"><span class="k">公司</span><span class="v">Physical Intelligence（旧金山，2024 年成立，Sergey Levine、Chelsea Finn 等联合创办）</span></div>
+      <div class="m"><span class="k">标签</span><span class="v">模型 · 动作 · 交互 · RL · 数据 · 生态</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>先记住这条主干</h2>
+    <div class="chain"><span>π0 底座</span><i>→</i><span>π0.5 开放世界</span><i>→</i><span>π*0.6 从经验学</span><i>→</i><span>π0.7 可操控</span></div>
+    <p>其余工作都是给这条主干补短板，可以分成三组：</p>
+    <ul>
+      <li><strong>动作怎么出得又好又快</strong>：FAST（训练快）→ 知识隔离（不伤 VLM）→ RTC / 训练时 RTC（执行不卡）。</li>
+      <li><strong>怎么听懂人</strong>：Hi Robot（分层理解复杂指令）→ π0.5 把分层合进一个模型 → π0.7 用元数据控制"怎么做"。</li>
+      <li><strong>数据和改进从哪来</strong>：openpi 开源 → RECAP（自己的经验）→ 人类视频迁移 → RL Token（几分钟的在线精修）。</li>
+    </ul>
+    <div class="chips"><a href="#e1">2024 · 打底座</a><a href="#e2">2025 上半年 · 听得懂、训得快、走进陌生的家</a><a href="#e3">2025 下半年 · 跑得顺、从经验中变强</a><a href="#e4">2026 · 可操控的通才 + 快速精修</a></div>
+  </section>
+
+  <section class="era" id="e1">
+    <div class="era-head"><span class="yr">2024</span><h2>打底座：VLM + 动作专家</h2></div>
+    <p class="era-lead">公司成立后的第一个模型，先回答一个问题：能不能有一个通用底座，同时具备 VLM 的常识和灵巧的连续控制？</p>
+    <article class="work"><div class="top"><h3>π0<span class="tag">模型</span></h3><span class="d">2024.10 · <a href="https://arxiv.org/abs/2410.24164" target="_blank" rel="noreferrer">arXiv 2410.24164</a> · <a href="pi0-论文解读.html">本库精读</a></span></div><p class="one"><b>一句话：</b>给 VLM 接一个会"画"连续动作的小网络，一次输出一整段动作。</p><ul class="how"><li>骨干是 PaliGemma 3B（VLM），另接一个约 300M 参数的<b>动作专家</b>；两者在同一个 Transformer 里通过注意力交互。</li><li>动作专家用 <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">flow matching</a> 从噪声出发，经少量去噪步骤生成连续动作，一次输出 50 步的动作块，控制频率可到 50Hz。</li><li>预训练数据包括约 1 万小时、7 种机器人构型的自采数据，加上 OXE；之后再用高质量数据做后训练。</li></ul><p class="why">解决了 RT-2/OpenVLA 那种"动作当文字"的路线又慢又粗的问题，能叠衣服、收桌子；<b>留下的问题</b>：动作专家是新加的、没有预训练，训练慢，还可能破坏 VLM 原本的知识。</p><p class="next">→ FAST 想：能不能把连续动作也压成好用的 token？</p></article>
+  </section>
+  <section class="era" id="e2">
+    <div class="era-head"><span class="yr">2025 上半年</span><h2>听得懂、训得快、走进陌生的家</h2></div>
+    <p class="era-lead">围绕 π0 的三个短板展开：训练效率（动作 token）、复杂指令（分层）、开放世界泛化（异构数据混训）。</p>
+    <article class="work"><div class="top"><h3>FAST / π0-FAST<span class="tag">动作</span></h3><span class="d">2025.01 · <a href="https://arxiv.org/abs/2501.09747" target="_blank" rel="noreferrer">arXiv 2501.09747</a></span></div><p class="one"><b>一句话：</b>像压缩 JPEG 一样压缩动作，让自回归 VLA 也能学高频灵巧动作。</p><ul class="how"><li>对一段动作的每一维做 DCT（离散余弦变换），把轨迹变成频率系数，量化后只保留主要成分。</li><li>再用 BPE 把系数合并成少量 token，比"每步每维一个 bin"短得多、冗余少得多。</li><li>训练出 π0-FAST：自回归输出 FAST token，再解码回连续动作。</li></ul><p class="why">训练速度约为扩散/flow 版的 5 倍，并且在高频任务上首次让 token 路线追上 π0；<b>代价</b>是推理时要逐 token 生成，比 flow 慢。</p><p class="next">→ 后续的 π0.5 和知识隔离都把 FAST token 用作"训练骨干的信号"。</p></article>
+    <article class="work"><div class="top"><h3>openpi 开源<span class="tag">生态</span></h3><span class="d">2025.02 · <a href="https://github.com/Physical-Intelligence/openpi" target="_blank" rel="noreferrer">GitHub</a></span></div><p class="one"><b>一句话：</b>把 π0、π0-FAST 的权重和微调代码公开，后来又加入 π0.5。</p><ul class="how"><li>提供 base checkpoint，以及在 DROID、ALOHA、LIBERO 等数据上微调好的版本。</li><li>提供 JAX 训练和推理代码，后来也支持 PyTorch；可以用 LoRA 微调到自己的机器人上。</li></ul><p class="why">让学术界第一次能直接拿到 flow-matching VLA 的权重，πRL、RLinf 等后续开源工作都建立在它上面。</p><p class="next">→ 对比 OpenVLA 的路线可见 <a href="OpenVLA-vs-pi系列-对比.html">OpenVLA vs π 系列</a>。</p></article>
+    <article class="work"><div class="top"><h3>Hi Robot<span class="tag">交互</span></h3><span class="d">2025.02 · <a href="https://arxiv.org/abs/2502.19417" target="_blank" rel="noreferrer">arXiv 2502.19417</a></span></div><p class="one"><b>一句话：</b>"慢脑"先把复杂指令和用户插话想成下一步简单指令，"快脑"π0 去执行。</p><ul class="how"><li>高层 VLM 看图像和用户的话（如"做个素三明治""那个不是垃圾"），输出下一步的原子指令，必要时也回复用户。</li><li>低层 π0 只执行"拿起面包"这类简单指令。</li><li>高层的训练数据来自合成：给已有机器人片段配上人可能说的复杂指令和插话。</li></ul><p class="why">让机器人能处理开放式指令和执行中途的纠正，在单臂、双臂、移动双臂三种平台上验证；<b>但</b>需要两个模型。</p><p class="next">→ π0.5 把"想下一步"和"做动作"合进同一个模型。</p></article>
+    <article class="work"><div class="top"><h3>π0.5<span class="tag">模型</span></h3><span class="d">2025.04 · <a href="https://arxiv.org/abs/2504.16054" target="_blank" rel="noreferrer">arXiv 2504.16054</a> · <a href="pi0.5_论文测验_精美版.html">本库精读</a></span></div><p class="one"><b>一句话：</b>多种数据混在一起训，一个模型先说出子任务、再做动作，在没见过的家里收拾房间。</p><ul class="how"><li>混训数据：多种机器人数据、网页图文数据、高层子任务标注、口头指令。</li><li>推理时同一个模型先输出子任务文字（如"拿起盘子"），再由动作专家输出连续动作，相当于把 Hi Robot 的分层放进一个模型。</li><li>预训练阶段用 FAST 离散 token，后训练阶段加入 flow 动作专家。</li></ul><p class="why">第一次在训练时完全没见过的真实家庭里完成收厨房、整理卧室等长任务；<b>留下的问题</b>：只靠示范数据，做得不够快、不够稳，也不会从自己的失败中学。</p><p class="next">→ 知识隔离解释"为什么要先用离散 token 训"；π*0.6 让它从经验中学。</p></article>
+    <article class="work"><div class="top"><h3>知识隔离（Knowledge Insulation）<span class="tag">动作</span></h3><span class="d">2025.05 · <a href="https://arxiv.org/abs/2505.23705" target="_blank" rel="noreferrer">arXiv 2505.23705</a></span></div><p class="one"><b>一句话：</b>别让新加的动作专家把 VLM 的知识"冲掉"。</p><ul class="how"><li>发现：直接把随机初始化的动作专家接到 VLM 上训练，梯度会回传进骨干，拖慢训练、损伤语义知识。</li><li>做法：<b>阻断</b>动作专家流向骨干的梯度；骨干改用 FAST 离散动作 token 和网页数据来训练。</li><li>推理时仍然用动作专家输出连续动作，保持速度。</li></ul><p class="why">同时拿到"训练快（token）、跑得快（flow）、泛化好（保住 VLM 知识）"，成为 π0.5 之后的标准训练配方。</p><p class="next">→ 解决了训练问题，接下来是部署时的延迟问题。</p></article>
+  </section>
+  <section class="era" id="e3">
+    <div class="era-head"><span class="yr">2025 下半年</span><h2>跑得顺、从经验中变强</h2></div>
+    <p class="era-lead">模型能做事以后，问题变成：推理延迟导致动作卡顿；只靠模仿，成功率和速度到不了实用水平。</p>
+    <article class="work"><div class="top"><h3>实时动作分块（RTC）<span class="tag">动作</span></h3><span class="d">2025.06 · <a href="https://arxiv.org/abs/2506.07339" target="_blank" rel="noreferrer">arXiv 2506.07339</a></span></div><p class="one"><b>一句话：</b>边执行当前动作块边算下一块，并让两块无缝衔接。</p><ul class="how"><li>异步执行：机器人执行当前<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块</a>时，模型已经在算下一块。</li><li>推理期间必然会执行的那几步动作被"冻结"，其余部分用 inpainting（补全）方式生成，保证与已执行动作连贯。</li><li>只在推理时修改，不需要重新训练，适用于任何扩散/flow VLA。</li></ul><p class="why">消除块与块之间的停顿和抖动，即使延迟很大也能完成划火柴这类精细任务；<b>代价</b>是推理时的补全带来额外计算。</p><p class="next">→ 训练时 RTC 把这部分开销去掉。</p></article>
+    <article class="work"><div class="top"><h3>π*0.6 / RECAP<span class="tag">RL</span></h3><span class="d">2025.11 · <a href="https://arxiv.org/abs/2511.14759" target="_blank" rel="noreferrer">arXiv 2511.14759</a> · <a href="pi0.6-论文解读.html">本库精读</a></span></div><p class="one"><b>一句话：</b>把"这个动作比平时好还是差"作为条件喂给模型，用监督学习完成 RL。</p><ul class="how"><li>训练一个价值函数，评估每段经验离成功还有多远，据此算出优势（advantage）。</li><li>把"优势好/坏"作为一个二元条件放进输入，正常地做监督学习；推理时始终条件化为"好"，即可得到改进后的策略。</li><li>数据来自三种：示范、自主执行（包括失败）、人工干预纠正；循环迭代。</li></ul><p class="why">不依赖难以用于大模型的策略梯度，就让 VLA 从自己的经验中学习；在做咖啡、叠衣服、组装纸箱上吞吐量提升约一倍以上，并能连续运行数小时。</p><p class="next">→ 继续往两个方向走：更可操控的通用模型（π0.7）、更快的局部精修（RL Token）。</p></article>
+    <article class="work"><div class="top"><h3>训练时 RTC<span class="tag">动作</span></h3><span class="d">2025.12 · <a href="https://arxiv.org/abs/2512.05964" target="_blank" rel="noreferrer">arXiv 2512.05964</a></span></div><p class="one"><b>一句话：</b>训练时就模拟推理延迟，让模型学会接着已执行的动作往下写。</p><ul class="how"><li>训练时随机模拟一段延迟，把动作块的前缀设为"已经确定"的真实动作，只学习生成剩余部分。</li><li>推理时直接把已执行的前缀作为条件，不再需要 inpainting。</li><li>不改模型结构和机器人运行时，只需要几行代码。</li></ul><p class="why">在 π0.6 上做纸箱、做咖啡，效果和推理时 RTC 持平，但计算更省；在延迟较大时表现更好。</p></article>
+    <article class="work"><div class="top"><h3>人到机器人的迁移<span class="tag">数据</span></h3><span class="d">2025.12 · <a href="https://arxiv.org/abs/2512.22414" target="_blank" rel="noreferrer">arXiv 2512.22414</a></span></div><p class="one"><b>一句话：</b>机器人预训练足够多样以后，"看人做"的视频就能直接教会机器人。</p><ul class="how"><li>用简单的混训配方，把人类第一视角视频和机器人数据一起训练，不做专门的人-机映射工程。</li><li>对比不同预训练规模：数据少时人类视频几乎没用，场景、任务、本体足够多以后迁移才"涌现"。</li><li>分析发现，多样化预训练让人和机器人数据的表示变得与本体无关。</li></ul><p class="why">在只出现在人类数据里的泛化场景上，性能接近翻倍，为"用便宜的人类视频扩充数据"提供依据。</p></article>
+  </section>
+  <section class="era" id="e4">
+    <div class="era-head"><span class="yr">2026</span><h2>可操控的通才 + 快速精修</h2></div>
+    <p class="era-lead">两个互补的方向：让大模型"听话地按指定方式做"，再用小网络把最后几毫米做准。</p>
+    <article class="work"><div class="top"><h3>π0.7<span class="tag">模型</span></h3><span class="d">2026.04 · <a href="https://arxiv.org/abs/2604.15483" target="_blank" rel="noreferrer">arXiv 2604.15483</a> · <a href="pi0.7_问答学习卡.html">本库精读</a></span></div><p class="one"><b>一句话：</b>不只告诉模型"做什么"，还告诉它"怎么做、做到多好"。</p><ul class="how"><li>5B 参数。训练时的上下文除了任务和子任务指令，还包括子目标图像、episode 元数据（速度、质量、是否出错）、控制模式。</li><li>因此可以用质量好坏不一的数据训练，推理时再把元数据设为"高质量、快"。</li><li>带来组合泛化：不做任务特定微调，就能执行训练中各技能的新组合。</li></ul><p class="why">把"数据质量参差不齐"从问题变成可控的条件，开箱表现接近甚至超过此前各任务的专用微调模型。</p></article>
+    <article class="work"><div class="top"><h3>RL Token<span class="tag">RL</span></h3><span class="d">2026.04 · <a href="https://arxiv.org/abs/2604.23073" target="_blank" rel="noreferrer">arXiv 2604.23073</a> · <a href="RL-Token-论文解读.html">本库精读</a></span></div><p class="one"><b>一句话：</b>冻结大 VLA，让它吐出一个小表示和参考动作，只训练小网络做在线 RL。</p><ul class="how"><li>VLA 冻结不动，输出一个压缩的状态表示（RL token）和一个参考动作块。</li><li>只训练一个轻量的 actor-critic，在参考动作附近做局部修正，而不是从零探索。</li><li>在真机上用几分钟到几小时的在线 RL，把毫米级插拔、拧螺丝等精细操作做得更快、更准。</li></ul><p class="why">同时拿到 VLA 的泛化和小模型 RL 的样本效率；<b>局限</b>是只能在 VLA 已经会做的动作附近精修。</p></article>
+  </section>
+
+  <section>
+    <h2>一张表回顾</h2>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>它要解决的问题</th><th>π 的答案</th><th>对应工作</th></tr></thead>
+      <tbody>
+        <tr><td>连续、高频的灵巧动作</td><td>flow matching 动作专家 + 动作块</td><td>π0</td></tr>
+        <tr><td>动作专家训练慢、伤知识</td><td>FAST token 训骨干，阻断动作专家的梯度</td><td>FAST、知识隔离</td></tr>
+        <tr><td>复杂指令、陌生环境</td><td>先说出子任务再做动作，多源数据混训</td><td>Hi Robot、π0.5</td></tr>
+        <tr><td>推理延迟导致卡顿</td><td>异步执行，以已执行动作为条件</td><td>RTC、训练时 RTC</td></tr>
+        <tr><td>模仿学习的上限</td><td>以优势为条件的监督学习；小网络在线 RL</td><td>π*0.6 / RECAP、RL Token</td></tr>
+        <tr><td>数据质量参差、组合泛化</td><td>以元数据和子目标图像为上下文</td><td>π0.7</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>自测</h2>
+    <ol>
+      <li>π0 和 π0-FAST 都输出连续动作，它们的生成方式有什么不同？</li>
+      <li>知识隔离为什么要阻断动作专家流向骨干的梯度？训练骨干用的又是什么信号？</li>
+      <li>RECAP 没有用策略梯度，它是怎么让模型"往好的方向"改进的？</li>
+      <li>RTC 和训练时 RTC 都以已执行的动作为条件，区别在哪？</li>
+    </ol>
+  </section>
+
+  <footer>
+    <span>VLA 总览 · Physical Intelligence 线</span>
+    <a href="VLA-发展历程.html">返回 VLA 发展史 →</a>
+  </footer>
+</div>
+<script src="nav.js"></script>
+</body>
+</html>
