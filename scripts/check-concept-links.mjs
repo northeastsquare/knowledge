@@ -73,6 +73,7 @@ const nav = fs.readFileSync(path.join(root, 'nav.js'), 'utf8');
 new vm.Script(nav, { filename: 'nav.js' });
 for (const match of nav.matchAll(/\bh:\s*'([^']+)'/g)) {
   if (!pages.has(match[1])) errors.push(`nav.js: missing article ${match[1]}`);
+  if (!pages.get('index.html').links.some(l => l.href === match[1])) errors.push(`index.html: no entry for ${match[1]}`);
 }
 
 if (errors.length) {

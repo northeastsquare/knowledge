@@ -24,6 +24,7 @@ GitHub 默认分支和网页发布分支均为 `master`。发布源选择 `maste
 
 - 首页目录：`index.html`。
 - 各页面的公共导航：`nav.js`。
+- 新页面要同时加到 `nav.js` 和 `index.html`；校验脚本会检查 `nav.js` 里的每一页在首页都有入口。
 - 关键概念索引：`concepts.html`；正文概念链接与跳转提示样式：`concepts.css`。
 - 论文原文：`pdfs/`。
 - 新增文章时，将 HTML 放在根目录，并更新首页与公共导航。

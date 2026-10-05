@@ -119,6 +119,7 @@
   .origin-map-kicker{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:11px; letter-spacing:.16em; color:var(--accent); text-transform:uppercase; margin-bottom:8px;}
   .origin-map h2{font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif; font-size:23px; margin:0 0 6px; line-height:1.25;}
   .origin-map p{margin:0; color:var(--ink-2); font-size:14px; max-width:610px;}
+  .origin-map-links{display:flex; flex-direction:column; align-items:stretch; gap:8px; flex:none;}
   .origin-map-link{display:inline-flex; align-items:center; gap:8px; flex:none; padding:9px 13px; border-radius:999px; background:var(--accent); color:#fff; text-decoration:none; font-size:13px; font-weight:600; transition:transform .15s ease,background .15s ease;}
   .origin-map-link:hover{background:var(--accent-strong); transform:translateY(-1px);}
   .origin-track{display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin-top:22px; position:relative; z-index:1;}
@@ -289,6 +290,7 @@
     .stats{gap:24px;}
     .hero{padding:48px 0 32px;}
     .origin-map-head{display:block;}
+    .origin-map-links{flex-direction:row; flex-wrap:wrap; margin-top:14px;}
     .origin-map-link{margin-top:16px;}
     .origin-track{grid-template-columns:1fr 1fr; gap:14px 10px;}
     .origin-track::before{display:none;}
@@ -329,7 +331,11 @@
         <h2 id="origin-map-title">先看它怎么一路走到今天</h2>
         <p>把论文放回“问题 → 突破 → 代价”的因果链：从模块化机器人，到语言接口、生成式动作，再到能用反馈持续变好的闭环具身系统。</p>
       </div>
-      <a class="origin-map-link" href="VLA-发展历程.html">打开历程地图 <span>↗</span></a>
+      <div class="origin-map-links">
+        <a class="origin-map-link" href="VLA-发展历程.html">打开历程地图 <span>↗</span></a>
+        <a class="origin-map-link" href="Google-VLA-发展历程.html">Google 线 <span>↗</span></a>
+        <a class="origin-map-link" href="PI-工作全景.html">π 公司线 <span>↗</span></a>
+      </div>
     </div>
     <div class="origin-track" aria-hidden="true">
       <div class="origin-step"><b>模块化</b>感知 / 规划 / 控制</div>
@@ -361,7 +367,7 @@
       <div class="cat-head">
         <span class="no">00</span>
         <h2>专题 · 方法对比</h2>
-        <span class="cnt">7 篇</span>
+        <span class="cnt">10 篇</span>
       </div>
 
       <a class="entry" href="VLA-发展历程.html">
@@ -371,6 +377,26 @@
           <span class="thesis">从模块化机器人、端到端策略、语言接口，到生成式动作与闭环具身智能；每个阶段都按“问题 → 突破 → 代价”串起来。</span>
         </span>
         <span class="tags"><span class="tag">VLA</span><span class="tag">发展史</span><span class="tag">知识地图</span></span>
+        <span class="arrow">→</span>
+      </a>
+
+      <a class="entry" href="Google-VLA-发展历程.html">
+        <span class="ref">GOOGLE-VLA</span>
+        <span class="body">
+          <span class="title">Google / DeepMind 的 VLA 发展史<span class="fmt">机构线</span></span>
+          <span class="thesis">从 QT-Opt、SayCan、RT-1、RT-2 到 Gemini Robotics：每项工作具体怎么做、解决了什么、留下了什么问题。</span>
+        </span>
+        <span class="tags"><span class="tag">VLA</span><span class="tag">发展史</span><span class="tag">Google</span></span>
+        <span class="arrow">→</span>
+      </a>
+
+      <a class="entry" href="PI-工作全景.html">
+        <span class="ref">PI-WORKS</span>
+        <span class="body">
+          <span class="title">Physical Intelligence（π）的工作全景<span class="fmt">机构线</span></span>
+          <span class="thesis">从 π0、FAST、π0.5 到 π*0.6、π0.7、RL Token：每项工作按“一句话 → 怎么做 → 解决/留下了什么 → 下一步”串起来。</span>
+        </span>
+        <span class="tags"><span class="tag">VLA</span><span class="tag">发展史</span><span class="tag">π 系列</span></span>
         <span class="arrow">→</span>
       </a>
 
@@ -431,6 +457,16 @@
           <span class="thesis">离散 token 自回归 vs VLM + flow 动作专家：骨干、动作头、数据、开源程度逐项对照，以及两条路线后来如何互相借鉴。</span>
         </span>
         <span class="tags"><span class="tag">VLA</span><span class="tag">方法对比</span></span>
+        <span class="arrow">→</span>
+      </a>
+
+      <a class="entry" href="代码索引.html">
+        <span class="ref">CODE-MAP</span>
+        <span class="body">
+          <span class="title">代码索引：关键概念的官方实现在哪<span class="fmt">代码对照</span></span>
+          <span class="thesis">flow matching、动作专家、FAST、256-bin token、RTC、PPO/GRPO/SAC/IQL……每个概念直接跳到官方仓库的源码行。</span>
+        </span>
+        <span class="tags"><span class="tag">源码</span><span class="tag">openpi</span><span class="tag">OpenVLA</span><span class="tag">RLinf</span></span>
         <span class="arrow">→</span>
       </a>
     </div>
