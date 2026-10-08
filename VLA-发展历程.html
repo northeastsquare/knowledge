@@ -757,7 +757,7 @@
   });
 
   /* popover */
-  var pop=document.getElementById('pop');var popFrom=null;
+  var pop=document.getElementById('pop');var popFrom=null;var wrap=document.querySelector('.swim-wrap');
   function actions(n,box){
     box.innerHTML='';
     var src=link(n);if(src)box.appendChild(el('a',{class:'button',href:src,target:'_blank',rel:'noreferrer'},n.arxiv?'arXiv '+n.arxiv+' ↗':'原始出处 ↗'));
@@ -771,7 +771,7 @@
     document.getElementById('popTitle').textContent=n.title+'｜'+n.full;
     document.getElementById('popText').textContent=n.one;
     actions(n,document.getElementById('popActs'));
-    pop.hidden=false;popY=window.scrollY;
+    pop.hidden=false;popY=window.scrollY;popX=wrap.scrollLeft;popW=window.innerWidth;popT=Date.now();
     var r=bt.getBoundingClientRect(),w=pop.offsetWidth,h=pop.offsetHeight,vw=window.innerWidth,vh=window.innerHeight;
     var left=Math.min(Math.max(12,r.left),vw-w-12);
     var top=r.bottom+8+h<=vh-12?r.bottom+8:Math.max(12,r.top-8-h);
@@ -781,11 +781,12 @@
   document.getElementById('popX').addEventListener('click',closePop);
   document.addEventListener('keydown',function(e){if(e.key==='Escape')closePop();});
   document.addEventListener('click',function(e){if(!pop.contains(e.target))closePop();});
-  window.addEventListener('resize',closePop);
-  var popY=0;
-  function closeOnScroll(){if(window.innerWidth>720&&!pop.hidden&&Math.abs(window.scrollY-popY)>60)closePop();}
+  window.addEventListener('resize',function(){if(window.innerWidth!==popW)closePop();});
+  var popY=0,popX=0,popW=0,popT=0;
+  function settling(){if(Date.now()-popT<500){popY=window.scrollY;popX=wrap.scrollLeft;return true;}return false;}
+  function closeOnScroll(){if(window.innerWidth>720&&!pop.hidden&&!settling()&&Math.abs(window.scrollY-popY)>60)closePop();}
   window.addEventListener('scroll',closeOnScroll,{passive:true});
-  document.querySelector('.swim-wrap').addEventListener('scroll',function(){if(window.innerWidth>720)closePop();},{passive:true});
+  wrap.addEventListener('scroll',function(){if(window.innerWidth>720&&!pop.hidden&&!settling()&&Math.abs(wrap.scrollLeft-popX)>60)closePop();},{passive:true});
 
   function show(id,scroll){
     var n=byId[id];if(!n)return;
