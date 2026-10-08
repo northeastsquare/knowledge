@@ -133,6 +133,8 @@
     .hero h1{font-size:30px;}
     .stats{grid-template-columns:repeat(2,1fr);}
   }
+  blockquote{margin:10px 0;padding:10px 14px;border-left:3px solid var(--navy);background:var(--navy-soft);border-radius:0 8px 8px 0;font-size:14px;font-style:italic;}
+  .card code{font-family:Consolas,ui-monospace,monospace;font-size:13.5px;}
 </style>
 <link rel="stylesheet" href="concepts.css">
 </head>
@@ -140,7 +142,7 @@
 
 <div class="hero">
   <div class="inner">
-    <span class="badge">论文解读 · arXiv 2604.23073v2</span>
+    <span class="badge">论文解读 · arXiv 2604.23073v2 · 2026.04</span>
     <h1>RL Token：用 VLA 模型<span class="hl">快速在线强化学习</span></h1>
     <p class="sub">给大型 VLA 模型（π0.6）装一个"小接口"，只训练轻量 actor-critic，就能在几分钟到几小时内把毫米级高精度任务的成功率和速度大幅提上去。</p>
     <p class="meta"><b>RL Token: Bootstrapping Online RL with Vision-Language-Action Models</b> · Physical Intelligence · Charles Xu, Jost Tobias Springenberg, Sergey Levine 等</p>
@@ -161,6 +163,7 @@
     <a href="#s2">2 · 核心思想</a>
     <a href="#s3">3 · 三个关键设计</a>
     <a href="#s4">4 · 完整系统流程</a>
+    <a href="#s-faq">4½ · 运行时五问</a>
     <a href="#s5">5 · 实验结果</a>
     <a href="#s6">6 · 与已有方法的关系</a>
     <a href="#s7">7 · 局限与展望</a>
@@ -329,10 +332,85 @@
       <ol>
         <li><strong>适配</strong>：用少量任务演示数据，微调 VLA + 训练 RL token（重建损失）。</li>
         <li><strong>冻结</strong> VLA 和 RL token。</li>
-        <li><strong>预热</strong>：先用 VLA 跑几十集填满 <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-replay-buffer">replay buffer</a>，给 critic 一个初始信号。</li>
+        <li><strong>预热</strong>：先用 VLA 跑 N<sub>warm</sub> 个环境步填充 <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-replay-buffer">replay buffer</a>，给 critic 一个初始信号。</li>
         <li><strong>在线 RL</strong>：机器人边跑边 <a class="concept-link" href="两条主干-拆机手册.html#concept-off-policy">off-policy</a> 更新 critic 和 actor；replay buffer 混合 VLA 数据、RL 数据、人类干预数据；高更新比（update-to-data = 5）。</li>
-        <li><strong>关键阶段专注</strong>：简单部分（抓取/搬运）让基础 VLA 做，到精度要求最高的插入/紧固段切换到 RL 策略；测试时训练 VLA 学会预测"何时交接"。</li>
+        <li><strong>关键阶段专注</strong>：简单部分（抓取/搬运）让基础 VLA 做，到精度要求最高的插入/紧固段切换到 RL 策略；测试时训练 VLA 学会预测"何时交接"（<a href="#faq-switch">详见 Q3</a>）。</li>
       </ol>
+    </div>
+  </section>
+
+  <!-- 4.5 -->
+  <section id="s-faq">
+    <h2><span class="no">4½</span>运行时到底怎么跑：五个常见疑问</h2>
+    <p class="lead">先说结论：VLA 每 10 步才推理一次；RL 只负责最难的那一段；"强化学习"指的是在线训练小网络，执行时 actor 只做一次前向。下面每条都标了论文出处页码（arXiv v2 PDF）。</p>
+
+    <div class="card" id="faq-when">
+      <h3><span class="tag">Q1</span>这项工作是什么时候做的？</h3>
+      <p>论文 <strong>2026-04-24</strong> 首次提交到 arXiv（v1），04-30 更新为 v2。作者没有写什么时候开始做的。基座模型用的是 π0.6（π*0.6 论文 2025.11 发布）。</p>
+    </div>
+
+    <div class="card" id="faq-loop">
+      <h3><span class="tag">Q2</span>是不是每一步都要做强化学习推理？"10 步"是推理 10 次吗？</h3>
+      <p><strong>都不是。</strong>10 是 <strong>RL 动作块长度 C=10</strong>，表示一次输出 10 个控制步的动作，不是推理 10 次。每到一个动作块边界，流程如下（p5 "Rollout" 段和 Algorithm 1 第 6–10 行）：</p>
+      <ol>
+        <li>冻结的 VLA <strong>推理一次</strong>，得到参考动作块 ã（VLA 原生 H=50 步，取前 C=10 步），同时抽出 RL token z<sub>rl</sub>。</li>
+        <li>小 actor <strong>前向一次</strong>：输入 RL token 和参考动作块，输出修正后的 10 步动作。每步 14 维，共 140 维（p7）。actor 是标准差固定且很小的高斯策略，采样一次就出结果，没有多步去噪（p12 附录 B）。</li>
+        <li>机器人执行这 10 步（50Hz 下 0.2 秒），然后回到第 1 步。</li>
+      </ol>
+      <table>
+        <tr><th>以 50Hz 计</th><th>频率</th></tr>
+        <tr><td>机器人控制（执行动作）</td><td>每秒 50 步</td></tr>
+        <tr><td>VLA 推理 + actor 前向</td><td>每 10 步一次，即每秒 5 次</td></tr>
+        <tr><td>critic / actor 参数更新</td><td>和采集<strong>异步</strong>并行；每更新 1 次 actor 更新 2 次 critic，update-to-data 比为 5（p5 "Update" 段）</td></tr>
+      </table>
+      <p>反证（p7 消融 "w/o Chunk"）：如果把 C 改成 1、每步都决策，就得每秒调 50 次 VLA，根本跑不动，只能把 RL token 换成 ResNet-10 编码器，效果明显变差。</p>
+    </div>
+
+    <div class="card" id="faq-switch">
+      <h3><span class="tag">Q3</span>机械臂刚开始动的时候也用 RL 吗？怎么切换到 RL？</h3>
+      <p><strong>不用。</strong>RL 只负责每个任务的<strong>关键阶段</strong>：插入、紧固、旋转这一段，通常 5–20 秒（250–1000 个控制步），而整个任务长 30–120 秒（p7 VI-A）。伸手、抓取、搬运仍然由原来的 VLA 完成。原文在 <strong>p6，第 V 节 "Targeted improvement of critical phases"</strong>：</p>
+      <blockquote>each episode starts by executing the base model. During data collection, a human operator can then choose at which point to hand the control from the base VLA to the RL policy. … until receiving a terminal signal from the human operator that indicates success or failure of the RL task.</blockquote>
+      <blockquote>we can conclude training with a final short fine-tuning phase of the VLA where we ask it to additionally predict when to hand over execution to the RL policy (using the human interventions as labels). We can then automatically trigger the switch of policies at test-time.</blockquote>
+      <ul>
+        <li><strong>训练时</strong>：每个回合先由 VLA 执行，人判断"到关键阶段了"就把控制权交给 RL；只有这一段的数据会进入训练，直到人给出成功或失败信号。</li>
+        <li><strong>测试时</strong>：训练最后再微调一下 VLA，让它学会预测"何时交接"（标签就是人工交接的时刻），之后自动切换。论文没有说这个预测具体怎么实现（比如是否是一个额外的输出 token）。</li>
+        <li><strong>评测也分两种</strong>（p7）：Critical-phase 评测直接复位到关键阶段之前开始，比如扎带任务一开始机器人已经捏着两端；Full-task 评测从初始位置出发，前面几段由 VLA 做完再交给 RL。训练时也是先只练关键阶段，再过渡到全任务。</li>
+        <li><strong>别和"人工接管"混淆</strong>：Algorithm 1 第 9 行里，有人工接管时用人的遥操作动作，前 N<sub>warm</sub> 步用 VLA 参考动作预热，其余时候用 actor 采样。这里的接管是 RL 段<strong>内部</strong>、人临时纠正动作，不是"VLA → RL 交接"。Algorithm 1 也没有画出交接这一步。</li>
+      </ul>
+    </div>
+
+    <div class="card" id="faq-buffer">
+      <h3><span class="tag">Q4</span>replay buffer 是什么？</h3>
+      <p>一个<strong>"经验仓库"</strong>：机器人每做一个动作块，就把这次经历存进去；训练时随机抽一批出来学，旧经验可以反复使用。每条记录是（Algorithm 1 第 12 行）：</p>
+      <p style="text-align:center"><code>⟨ x<sub>t</sub>, a<sub>t:t+C−1</sub>, ã, r<sub>t</sub>, x<sub>t+1</sub> ⟩</code><br><span style="color:var(--muted);font-size:13.5px">状态（RL token + 关节/末端位姿）· 实际执行的 10 步动作 · VLA 参考动作 · 奖励 · 执行后的状态</span></p>
+      <ul>
+        <li><strong>怎么用</strong>（第 13–17 行）：每和环境交互一次，就随机抽若干批数据。critic 用 TD 目标学习"这个动作块值多少"，actor 最大化 Q 值，同时用 <code>β‖a−ã‖²</code> 拉住自己，不离参考动作太远。</li>
+        <li><strong>为什么要它</strong>：每个任务只有约 15 分钟到 5 小时的实际机器人数据（p7），用一次就扔太浪费。能用旧经验训练的方法叫 <a class="concept-link" href="两条主干-拆机手册.html#concept-off-policy">off-policy</a> RL。</li>
+        <li><strong>预热</strong>（p5）：正式 RL 前，先让 VLA 跑 N<sub>warm</sub> 个环境步把仓库填上，让 critic 一开始就有可学的数据。</li>
+        <li><strong>人工纠正</strong>（p5）：人接管时，存进去的参考动作 ã 换成人的动作，actor 也能从纠正里学。</li>
+      </ul>
+    </div>
+
+    <div class="card" id="faq-stride">
+      <h3><span class="tag">Q5</span>"步长 2 的子采样"：一块才 10 步，每 2 步存一条，每条里又是 10 步，这是怎么回事？</h3>
+      <p>关键在于机器人是<strong>连续执行</strong>的：一块做完马上接下一块，实际执行过的动作是一条不断的序列 a<sub>0</sub>, a<sub>1</sub>, a<sub>2</sub>, …，而且每一步的观测都记录下来了。子采样就是在这条序列上<strong>滑动一个 10 步的窗口，每次往后挪 2 步</strong>：</p>
+      <div class="diagram">
+        <svg viewBox="0 0 760 200" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Microsoft YaHei, sans-serif" role="img" aria-label="步长 2 的滑动窗口示意">
+          <text x="40" y="18" font-size="12" fill="#6b6560">实际执行的动作序列（每格 1 个控制步，50Hz）</text>
+          <g id="seq"></g>
+          <text x="180" y="62" text-anchor="middle" font-size="11.5" fill="#c2410c">第 1 块（actor 一次输出）</text>
+          <text x="460" y="62" text-anchor="middle" font-size="11.5" fill="#1e3a5f">第 2 块</text>
+          <g id="win"></g>
+        </svg>
+        <div class="caption">每条记录都是真实执行过的连续 10 步，只是起点不同；跨块的窗口（如 ⟨x<sub>2</sub>, a<sub>2:12</sub>⟩）包含第 1 块的后 8 步和第 2 块的前 2 步。</div>
+      </div>
+      <ul>
+        <li><strong>原文</strong>（p5 "Subsampling Action Chunks"）：存 <code>⟨x<sub>0</sub>,a<sub>0:C</sub>⟩, ⟨x<sub>2</sub>,a<sub>2:C+2</sub>⟩, ⟨x<sub>4</sub>,a<sub>4:C+4</sub>⟩, …</code>；附录 B（p12）："each second of data produces roughly 25 samples"。</li>
+        <li><strong>数据量</strong>：每秒 50 步。不做子采样时，每 10 步存一条，每秒 5 条；按步长 2 滑窗，每秒约 25 条，是原来的 5 倍。</li>
+        <li><strong>为什么可以这样用</strong>：critic 学的是"从状态 x 出发、执行这 10 步，能拿到多少回报"，不要求这 10 步恰好是 actor 当时一次输出的那一块。只要它们真的被连续执行过、结果也观测到了，就是有效样本。论文原话是 "due to the off-policy nature of our RL algorithm we can use all action chunks"。</li>
+        <li><strong>奖励怎么算</strong>：奖励是稀疏的，任务完成时操作员给 +1，其余都是 0（p12）。只有覆盖完成那一刻的窗口奖励才不为 0，其余窗口靠 TD 目标里"下一状态的价值"把回报一步步往前传。</li>
+        <li><strong>论文没写清的一点</strong>：窗口跨两块时，存进去的参考动作 ã 是怎么拼的。</li>
+      </ul>
     </div>
   </section>
 
@@ -418,6 +496,19 @@
     本页由 Claude 生成，仅供学习参考。
   </div>
 </div>
+<script>
+(function(){
+  var NS='http://www.w3.org/2000/svg',seq=document.getElementById('seq'),win=document.getElementById('win');
+  if(!seq)return;
+  function el(t,a){var e=document.createElementNS(NS,t);for(var k in a)e.setAttribute(k,a[k]);return e;}
+  for(var i=0;i<24;i++){var c=i<10?'#fff1e8':(i<20?'#e8eef6':'#f1efec'),st=i<10?'#c2410c':(i<20?'#1e3a5f':'#9a938b');
+    seq.appendChild(el('rect',{x:40+i*28,y:26,width:26,height:22,rx:3,fill:c,stroke:st,'stroke-width':1}));
+    var t=el('text',{x:53+i*28,y:41,'text-anchor':'middle','font-size':10,fill:'#6b6560'});t.textContent=i;seq.appendChild(t);}
+  [0,2,4,6].forEach(function(s0,j){var y=76+j*30;
+    win.appendChild(el('rect',{x:40+s0*28,y:y,width:278,height:22,rx:6,fill:j?'#e8eef6':'#fff1e8',stroke:j?'#1e3a5f':'#c2410c','stroke-width':1.2}));
+    var t=el('text',{x:40+s0*28+139,y:y+15,'text-anchor':'middle','font-size':11.5,fill:'#1f1b16'});t.textContent='第 '+(j+1)+' 条：⟨x'+s0+', a'+s0+':'+(s0+10)+'⟩';win.appendChild(t);});
+})();
+</script>
 <script src="nav.js"></script>
 </body>
 </html>
