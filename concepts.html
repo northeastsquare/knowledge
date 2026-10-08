@@ -16,10 +16,10 @@ a{color:var(--accent)}a:focus-visible,button:focus-visible,input:focus-visible{o
 </head>
 <body>
 <main>
-  <header><div class="eyebrow">ROBOTIC LEARNING / CONCEPT INDEX</div><h1>从一个概念，读懂另一篇。<small>38 个关键概念 · 20 篇研读网页</small></h1><p class="intro">正文里的虚线下划线可以点击，直达相关讲解。这里按问题收录概念：点击标题阅读原文，沿“接着理解”继续串读。</p></header>
+  <header><div class="eyebrow">ROBOTIC LEARNING / CONCEPT INDEX</div><h1>从一个概念，读懂另一篇。<small>39 个关键概念 · 20 篇研读网页</small></h1><p class="intro">正文里的虚线下划线可以点击，直达相关讲解。这里按问题收录概念：点击标题阅读原文，沿“接着理解”继续串读。</p></header>
   <aside class="route" aria-label="概念阅读路线"><strong>从你正在问的问题出发</strong><p>“target 和双 Q 是一回事吗？” <a href="#q-value">Q 值</a> → <a href="#target-network">target 副本</a> → <a href="#twin-q">双 Q</a></p><p>“VLA 怎么用 RL 变好？” <a href="#flow-matching">流匹配</a> → <a href="#denoising-mdp">去噪链 MDP</a> / <a href="#rl-token">RL Token</a> → <a href="#recap">RECAP</a></p></aside>
   <div class="search-area"><div class="search-field"><label for="concept-search">查找概念或相关问题</label><input id="concept-search" type="search" placeholder="例如：target、双 Q、奖励、动作块" autocomplete="off"></div><button id="clear-search" type="button">清空搜索</button></div>
-  <p class="count" id="result-count" role="status" aria-live="polite">共 38 个概念</p>
+  <p class="count" id="result-count" role="status" aria-live="polite">共 39 个概念</p>
   <p class="empty" id="empty-state" hidden>没有找到匹配概念。试试中文名称、英文缩写，或清空搜索查看全部。</p>
   <section class="term-group" aria-labelledby="group-0">
     <div class="group-heading"><span>01</span><h2 id="group-0">价值如何学出来</h2></div>
@@ -266,7 +266,14 @@ a{color:var(--accent)}a:focus-visible,button:focus-visible,input:focus-visible{o
         <p>推理期间物体继续运动，旧观测对应的动作可能已经过时；需要同时考虑模型速度和动作执行调度。</p>
         <div class="term-source">讲解位置：DynamicVLA-论文解读</div>
         <div class="term-code"><span>代码在哪 · <a href="代码索引.html#latency">索引</a></span> <a class="code-link" href="https://github.com/Physical-Intelligence/real-time-chunking-kinetix/blob/9296f31d62d5bfeb5779dcb2f9bcf71ca37f448b/src/model.py#L219-L265" target="_blank" rel="noreferrer" title="RTC · realtime_action">RTC · realtime_action ↗</a> <a class="code-link" href="https://github.com/Physical-Intelligence/real-time-chunking-kinetix/blob/9296f31d62d5bfeb5779dcb2f9bcf71ca37f448b/src/model.py#L267-L289" target="_blank" rel="noreferrer" title="RTC · loss（训练时 RTC）">RTC · loss（训练时 RTC） ↗</a> <a class="code-link" href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/models/embodiment/openpi/sampling/rtc_guidance.py#L88-L163" target="_blank" rel="noreferrer" title="RLinf · RTC 引导采样">复现 · RLinf · RTC 引导采样 ↗</a></div>
-        <div class="term-related"><span>接着理解</span> <a href="#action-chunk">Action chunk</a> <a href="#speculative-inference">投机推理</a> <a href="#motion-perception">运动感知与未来预测</a></div>
+        <div class="term-related"><span>接着理解</span> <a href="#rtc">RTC</a> <a href="#action-chunk">Action chunk</a> <a href="#speculative-inference">投机推理</a> <a href="#motion-perception">运动感知与未来预测</a></div>
+      </article>
+      <article class="term-card" id="rtc">
+        <h3><a href="RTC-训练时-论文解读.html#concept-rtc">RTC · 实时动作分块<span aria-hidden="true"> ↗</span></a></h3>
+        <p>边执行当前动作块边算下一块，新块以“推理期间会执行的前 d 步”为条件接上；推理时用梯度引导补全，训练时版本直接学条件生成、零推理开销。</p>
+        <div class="term-source">讲解位置：训练时 RTC · 精读</div>
+        <div class="term-code"><span>代码在哪 · <a href="代码索引.html#latency">索引</a></span> <a class="code-link" href="https://github.com/Physical-Intelligence/real-time-chunking-kinetix/blob/9296f31d62d5bfeb5779dcb2f9bcf71ca37f448b/src/model.py#L267-L289" target="_blank" rel="noreferrer" title="训练时 RTC · loss">训练时 RTC · loss ↗</a></div>
+        <div class="term-related"><span>接着理解</span> <a href="#latency">感知—执行时延</a> <a href="#action-chunk">Action chunk</a></div>
       </article>
       <article class="term-card" id="speculative-inference">
         <h3><a href="Realtime-VLA-论文解读.html#concept-speculative-inference">投机推理<span aria-hidden="true"> ↗</span></a></h3>

@@ -202,7 +202,7 @@
     <div class="chain"><span>π0 底座</span><i>→</i><span>π0.5 开放世界</span><i>→</i><span>π*0.6 从经验学</span><i>→</i><span>π0.7 可操控</span></div>
     <p>其余工作都是给这条主干补短板，可以分成三组：</p>
     <ul>
-      <li><strong>动作怎么出得又好又快</strong>：FAST（训练快）→ 知识隔离（不伤 VLM）→ RTC / 训练时 RTC（执行不卡）。</li>
+      <li><strong>动作怎么出得又好又快</strong>：FAST（训练快）→ 知识隔离（不伤 VLM）→ RTC / <a href="RTC-训练时-论文解读.html">训练时 RTC</a>（执行不卡）。</li>
       <li><strong>怎么听懂人</strong>：Hi Robot（分层理解复杂指令）→ π0.5 把分层合进一个模型 → π0.7 用元数据控制"怎么做"。</li>
       <li><strong>数据和改进从哪来</strong>：openpi 开源 → RECAP（自己的经验）→ 人类视频迁移 → RL Token（几分钟的在线精修）。</li>
     </ul>
@@ -226,9 +226,9 @@
   <section class="era" id="e3">
     <div class="era-head"><span class="yr">2025 下半年</span><h2>跑得顺、从经验中变强</h2></div>
     <p class="era-lead">模型能做事以后，问题变成：推理延迟导致动作卡顿；只靠模仿，成功率和速度到不了实用水平。</p>
-    <article class="work"><div class="top"><h3>实时动作分块（RTC）<span class="tag">动作</span></h3><span class="d">2025.06 · <a href="https://arxiv.org/abs/2506.07339" target="_blank" rel="noreferrer">arXiv 2506.07339</a></span></div><p class="one"><b>一句话：</b>边执行当前动作块边算下一块，并让两块无缝衔接。</p><ul class="how"><li>异步执行：机器人执行当前<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块</a>时，模型已经在算下一块。</li><li>推理期间必然会执行的那几步动作被"冻结"，其余部分用 inpainting（补全）方式生成，保证与已执行动作连贯。</li><li>只在推理时修改，不需要重新训练，适用于任何扩散/flow VLA。</li></ul><p class="why">消除块与块之间的停顿和抖动，即使延迟很大也能完成划火柴这类精细任务；<b>代价</b>是推理时的补全带来额外计算。</p><p class="next">→ 训练时 RTC 把这部分开销去掉。</p></article>
+    <article class="work"><div class="top"><h3>实时动作分块（RTC）<span class="tag">动作</span></h3><span class="d">2025.06 · <a href="https://arxiv.org/abs/2506.07339" target="_blank" rel="noreferrer">arXiv 2506.07339</a></span></div><p class="one"><b>一句话：</b>边执行当前动作块边算下一块，并让两块无缝衔接。</p><ul class="how"><li>异步执行：机器人执行当前<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块</a>时，模型已经在算下一块。</li><li>推理期间必然会执行的那几步动作被"冻结"，其余部分用 inpainting（补全）方式生成，保证与已执行动作连贯。</li><li>只在推理时修改，不需要重新训练，适用于任何扩散/flow VLA。</li></ul><p class="why">消除块与块之间的停顿和抖动，即使延迟很大也能完成划火柴这类精细任务；<b>代价</b>是推理时的补全带来额外计算。</p><p class="next">→ <a href="RTC-训练时-论文解读.html">训练时 RTC</a> 把这部分开销去掉（<a href="RTC-训练时-论文解读.html#concept-rtc">推理时 RTC 原理也在那页</a>）。</p></article>
     <article class="work"><div class="top"><h3>π*0.6 / RECAP<span class="tag">RL</span></h3><span class="d">2025.11 · <a href="https://arxiv.org/abs/2511.14759" target="_blank" rel="noreferrer">arXiv 2511.14759</a> · <a href="pi0.6-论文解读.html">本库精读</a></span></div><p class="one"><b>一句话：</b>把"这个动作比平时好还是差"作为条件喂给模型，用监督学习完成 RL。</p><ul class="how"><li>训练一个价值函数，评估每段经验离成功还有多远，据此算出优势（advantage）。</li><li>把"优势好/坏"作为一个二元条件放进输入，正常地做监督学习；推理时始终条件化为"好"，即可得到改进后的策略。</li><li>数据来自三种：示范、自主执行（包括失败）、人工干预纠正；循环迭代。</li></ul><p class="why">不依赖难以用于大模型的策略梯度，就让 VLA 从自己的经验中学习；在做咖啡、叠衣服、组装纸箱上吞吐量提升约一倍以上，并能连续运行数小时。</p><p class="next">→ 继续往两个方向走：更可操控的通用模型（π0.7）、更快的局部精修（RL Token）。</p></article>
-    <article class="work"><div class="top"><h3>训练时 RTC<span class="tag">动作</span></h3><span class="d">2025.12 · <a href="https://arxiv.org/abs/2512.05964" target="_blank" rel="noreferrer">arXiv 2512.05964</a></span></div><p class="one"><b>一句话：</b>训练时就模拟推理延迟，让模型学会接着已执行的动作往下写。</p><ul class="how"><li>训练时随机模拟一段延迟，把动作块的前缀设为"已经确定"的真实动作，只学习生成剩余部分。</li><li>推理时直接把已执行的前缀作为条件，不再需要 inpainting。</li><li>不改模型结构和机器人运行时，只需要几行代码。</li></ul><p class="why">在 π0.6 上做纸箱、做咖啡，效果和推理时 RTC 持平，但计算更省；在延迟较大时表现更好。</p></article>
+    <article class="work"><div class="top"><h3>训练时 RTC<span class="tag">动作</span></h3><span class="d">2025.12 · <a href="https://arxiv.org/abs/2512.05964" target="_blank" rel="noreferrer">arXiv 2512.05964</a> · <a href="RTC-训练时-论文解读.html">本库精读 →</a></span></div><p class="one"><b>一句话：</b>训练时就模拟推理延迟，让模型学会接着已执行的动作往下写。</p><ul class="how"><li>训练时随机模拟一段延迟，把动作块的前缀设为"已经确定"的真实动作，只学习生成剩余部分。</li><li>推理时直接把已执行的前缀作为条件，不再需要 inpainting。</li><li>不改模型结构和机器人运行时，只需要几行代码。</li></ul><p class="why">在 π0.6 上做纸箱、做咖啡，效果和推理时 RTC 持平，但计算更省；在延迟较大时表现更好。</p></article>
     <article class="work"><div class="top"><h3>人到机器人的迁移<span class="tag">数据</span></h3><span class="d">2025.12 · <a href="https://arxiv.org/abs/2512.22414" target="_blank" rel="noreferrer">arXiv 2512.22414</a></span></div><p class="one"><b>一句话：</b>机器人预训练足够多样以后，"看人做"的视频就能直接教会机器人。</p><ul class="how"><li>用简单的混训配方，把人类第一视角视频和机器人数据一起训练，不做专门的人-机映射工程。</li><li>对比不同预训练规模：数据少时人类视频几乎没用，场景、任务、本体足够多以后迁移才"涌现"。</li><li>分析发现，多样化预训练让人和机器人数据的表示变得与本体无关。</li></ul><p class="why">在只出现在人类数据里的泛化场景上，性能接近翻倍，为"用便宜的人类视频扩充数据"提供依据。</p></article>
   </section>
   <section class="era" id="e4">
@@ -259,7 +259,7 @@
       <li>π0 和 π0-FAST 都输出连续动作，它们的生成方式有什么不同？</li>
       <li>知识隔离为什么要阻断动作专家流向骨干的梯度？训练骨干用的又是什么信号？</li>
       <li>RECAP 没有用策略梯度，它是怎么让模型"往好的方向"改进的？</li>
-      <li>RTC 和训练时 RTC 都以已执行的动作为条件，区别在哪？</li>
+      <li>RTC 和训练时 RTC 都以已执行的动作为条件，区别在哪？（<a href="RTC-训练时-论文解读.html#s-one">对照表</a>）</li>
     </ol>
   </section>
 

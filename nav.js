@@ -27,6 +27,7 @@
       id: '01', name: 'π 系列 VLA', items: [
         { t: 'π0', h: 'pi0-论文解读.html' },
         { t: 'FAST / π0-FAST', h: 'FAST-论文解读.html' },
+        { t: '训练时 RTC', h: 'RTC-训练时-论文解读.html' },
         { t: 'π0.5', h: 'pi0.5_论文测验_精美版.html' },
         { t: 'π0.6', h: 'pi0.6-论文解读.html' },
         { t: 'π0.7', h: 'pi0.7_问答学习卡.html' }

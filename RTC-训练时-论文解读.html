@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>训练时 RTC：训练时动作条件化的实时分块 · 精读</title>
+<meta name="description" content="训练时 RTC 在训练中模拟推理延迟、以已执行动作前缀为条件，替代推理时补全，零推理开销；原理、交互演示与官方代码精读">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f1f4f6;
+    --surface:#fbfcfd;
+    --surface-2:#eaf0f4;
+    --ink:#16222e;
+    --ink-2:#51626f;
+    --ink-3:#83919c;
+    --accent:#0e6e8a;
+    --accent-strong:#0a4c60;
+    --signal:#c4572a;
+    --line:#d8e1e7;
+    --line-strong:#c3d0d9;
+    --grid-line:rgba(22,34,46,.05);
+    --shadow:0 1px 2px rgba(22,34,46,.04),0 14px 34px rgba(22,34,46,.07);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+      --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+      --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+      --line:#1e2d3a; --line-strong:#2b3d4b;
+      --grid-line:rgba(231,238,244,.045);
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+    --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+    --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+    --line:#1e2d3a; --line-strong:#2b3d4b;
+    --grid-line:rgba(231,238,244,.045);
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Sans",-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+    line-height:1.78; font-size:16px; -webkit-font-smoothing:antialiased;
+  }
+  .grid{
+    position:fixed; inset:0; z-index:-1; pointer-events:none;
+    background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);
+    background-size:28px 28px;
+  }
+  .wrap{max-width:860px; margin:0 auto; padding:0 24px 96px;}
+
+  .masthead{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px 24px 0; max-width:860px; margin:0 auto;
+  }
+  .back{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:13px; color:var(--accent); text-decoration:none; letter-spacing:.03em;
+  }
+  .back:hover{text-decoration:underline;}
+  .masthead .ref{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12.5px; color:var(--ink-3); letter-spacing:.04em;
+  }
+
+  .hero{padding:52px 0 34px; border-bottom:1px solid var(--line-strong);}
+  .eyebrow{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent);
+    margin-bottom:16px;
+  }
+  .hero h1{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:clamp(28px,4.6vw,42px); font-weight:700; line-height:1.2;
+    margin:0 0 16px; color:var(--ink); text-wrap:balance;
+  }
+  .hero .summary{
+    font-size:17px; color:var(--ink-2); max-width:640px; margin:0 0 22px;
+  }
+  .meta{
+    border:1px solid var(--line); border-radius:12px; background:var(--surface);
+    padding:14px 18px; font-size:13.5px; display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px 24px;
+    box-shadow:var(--shadow);
+  }
+  .meta .m{display:flex; flex-direction:column; gap:1px;}
+  .meta .m .k{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:11px;
+    color:var(--ink-3); letter-spacing:.08em; text-transform:uppercase;
+  }
+  .meta .m .v{color:var(--ink); font-weight:500;}
+
+  section{margin-top:40px;}
+  h2{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:21px; font-weight:600; margin:0 0 14px; color:var(--ink);
+    display:flex; align-items:center; gap:12px;
+  }
+  h2::before{
+    content:""; width:10px; height:10px; flex:none;
+    background:var(--accent); border-radius:2px; transform:rotate(45deg);
+  }
+  p{margin:0 0 12px;}
+  strong{font-weight:700;}
+  .hl{color:var(--accent); font-weight:600;}
+  a{color:var(--accent);}
+
+  ul,ol{margin:0 0 14px; padding-left:22px;}
+  li{margin-bottom:7px;}
+  li::marker{color:var(--accent);}
+
+  blockquote{
+    margin:16px 0; padding:14px 18px; border-left:3px solid var(--accent);
+    background:var(--surface-2); border-radius:0 10px 10px 0; color:var(--ink);
+  }
+  blockquote p{margin:0;}
+
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    padding:20px 22px; box-shadow:var(--shadow); margin:14px 0;
+  }
+  .card h3{font-size:16px; font-weight:700; margin:0 0 10px;}
+
+  table{width:100%; border-collapse:collapse; font-size:14px; margin:12px 0;}
+  th,td{padding:9px 12px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12.5px;
+    color:var(--accent-strong); background:var(--surface-2); letter-spacing:.03em; font-weight:600;
+  }
+  tr:last-child td{border-bottom:none;}
+  .tbl-wrap{overflow-x:auto;}
+
+  code{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:13.5px;
+    background:var(--surface-2); border:1px solid var(--line); border-radius:5px; padding:1px 6px;
+  }
+  pre{overflow-x:auto; background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:16px; font-size:13px; line-height:1.6;}
+  pre code{border:none; background:none; padding:0;}
+
+  .diagram{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px; margin:16px 0; box-shadow:var(--shadow); overflow-x:auto;}
+  .diagram svg{max-width:100%; height:auto; display:block;}
+  .diagram .caption{font-size:12.5px; color:var(--ink-3); margin-top:8px;}
+
+  footer{
+    margin-top:56px; padding-top:20px; border-top:1px solid var(--line-strong);
+    display:flex; justify-content:space-between; gap:12px; font-size:13px; color:var(--ink-3);
+  }
+  footer a{color:var(--accent); text-decoration:none;}
+  footer a:hover{text-decoration:underline;}
+  .toc{display:flex;flex-wrap:wrap;gap:6px;margin-top:18px}
+  .toc a{font-size:12.5px;padding:3px 10px;border:1px solid var(--line-strong);border-radius:999px;color:var(--ink-2);text-decoration:none;background:var(--surface)}
+  .toc a:hover{border-color:var(--accent);color:var(--accent)}
+  .hl-line{border-left:3px solid var(--accent);padding:8px 14px;background:var(--surface-2);border-radius:0 8px 8px 0}
+  .flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:14px 0}
+  .flow .st{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:13.5px;line-height:1.65}
+  .flow .st b{display:block;color:var(--accent-strong);margin-bottom:4px;font-size:14.5px}
+  .demo .ctrl{display:flex;flex-wrap:wrap;gap:18px;margin-bottom:10px;font-size:13.5px}
+  .demo .ctrl label{display:flex;align-items:center;gap:8px}
+  .demo .ctrl b{min-width:2.5em;color:var(--accent-strong)}
+  .demo canvas{display:block;width:100%;background:var(--surface);border:1px solid var(--line);border-radius:8px}
+  .demo .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--ink-2);margin:6px 0 12px}
+  .demo .legend span::before{content:"";display:inline-block;width:14px;height:3px;margin-right:5px;vertical-align:middle;background:var(--line-strong)}
+  .demo .legend .k1::before{background:var(--signal)} .demo .legend .k2::before{background:var(--accent)}
+  .demo .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
+  .demo .stats div{background:var(--surface-2);border-radius:8px;padding:8px 10px}
+  .demo .stats span{display:block;font-size:12px;color:var(--ink-3)} .demo .stats b{font-size:20px;color:var(--ink)}
+  .note{font-size:13px;color:var(--ink-2)}
+  .pipe{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:13px}
+  .pipe span{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;text-align:center}
+  .pipe small{color:var(--ink-3)} .pipe i{color:var(--accent);font-style:normal}
+  details.qz{border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin:8px 0;background:var(--surface)}
+  details.qz summary{cursor:pointer;font-weight:600} details.qz p{margin:8px 0 0}
+  .seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:8px;overflow:hidden;margin-bottom:12px}
+  .seg button{border:0;background:var(--surface);color:var(--ink-2);padding:6px 14px;font:inherit;font-size:13px;cursor:pointer}
+  .seg button.on{background:var(--accent);color:#fff}
+  .cells-lab{font-size:12px;color:var(--ink-3);margin:6px 0 4px}
+  .cells,.bars{display:flex;gap:2px}
+  .bars{align-items:flex-end;height:48px;border-bottom:1px solid var(--line)}
+  .cell{flex:1;height:22px;border-radius:3px;min-width:0}
+  .bar{flex:1;border-radius:2px 2px 0 0;min-width:0}
+  .c1{background:#c4572a}.c2{background:#d9a53c}.c3{background:#3d9a6b}.bar.cur{background:var(--line-strong)}
+  .demo .legend .c1::before{background:#c4572a}.demo .legend .c2::before{background:#d9a53c}.demo .legend .c3::before{background:#3d9a6b}
+  .demo .legend span.c1,.demo .legend span.c2,.demo .legend span.c3{background:none}
+</style>
+<link rel="stylesheet" href="concepts.css">
+</head>
+<body>
+<div class="grid" aria-hidden="true"></div>
+
+<header class="masthead">
+  <a class="back" href="index.html">← 返回知识库</a>
+  <span class="ref">arXiv:2512.05964</span>
+</header>
+
+<div class="wrap">
+
+      <section class="hero">
+    <div class="eyebrow">精读笔记 · 执行与实时性</div>
+    <h1>训练时 RTC：让模型在训练里就学会“接着已经在执行的动作往下写”</h1>
+    <p class="summary">异步执行时，新动作块算出来的那一刻，旧动作块已经执行了 d 步，所以新块必须和这 d 步严丝合缝地接上。推理时 RTC 在<b>每一步去噪</b>时都用梯度把新块往这 d 步上“拽”，有效但更慢；训练时 RTC 换了个思路：训练时<b>随机模拟延迟</b>，把前 d 步换成真实动作并标记为“已经干净”，让模型直接学会条件生成。这样推理时不增加任何计算，网络结构也不用改。</p>
+    <div class="meta">
+      <div class="m"><span class="k">论文</span><span class="v">Training-Time Action Conditioning for Efficient Real-Time Chunking</span></div>
+      <div class="m"><span class="k">作者</span><span class="v">Kevin Black, Allen Z. Ren, Michael Equi, Sergey Levine</span></div>
+      <div class="m"><span class="k">机构</span><span class="v">Physical Intelligence</span></div>
+      <div class="m"><span class="k">首版</span><span class="v"><a href="https://arxiv.org/abs/2512.05964" target="_blank" rel="noreferrer">arXiv 2512.05964</a>（2025.12）</span></div>
+    </div>
+    <nav class="toc" aria-label="本页目录">
+      <a href="#s-one">一句话</a><a href="#s-problem">问题</a><a href="#s-demo">动手看</a><a href="#concept-rtc">推理时 RTC</a><a href="#concept-trtc">训练时 RTC</a><a href="#s-why">为什么成立</a><a href="#s-code">读代码</a><a href="#s-results">结果</a><a href="#s-insight">深层理解</a><a href="#s-cost">代价</a><a href="#s-next">被谁接手</a><a href="#s-quiz">自测</a>
+    </nav>
+  </section>
+
+  <section id="s-one">
+    <h2>先建立坐标：四种“块与块怎么接”</h2>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th></th><th>同步</th><th>朴素异步</th><th>推理时 RTC（2025.06）</th><th>训练时 RTC（2025.12）</th></tr>
+        <tr><td><strong>做法</strong></td><td>执行完 s 步后停下，等下一块算完</td><td>边执行边算下一块，新块到了直接切换</td><td>边执行边算；采样时用梯度引导，让新块贴合上一块</td><td>边执行边算；把上一块的前 d 步作为条件直接输入</td></tr>
+        <tr><td><strong>块间衔接</strong></td><td>有停顿</td><td>会跳变（新块可能换了策略）</td><td>平滑</td><td>平滑</td></tr>
+        <tr><td><strong>推理开销</strong></td><td>基线</td><td>基线</td><td>每个去噪步多一次反向传播（VJP）</td><td>和基线一样</td></tr>
+        <tr><td><strong>要不要重新训练</strong></td><td>不用</td><td>不用</td><td>不用</td><td>要（在已有模型上微调即可）</td></tr>
+        <tr><td><strong>能利用的上一块信息</strong></td><td>—</td><td>—</td><td>前 d 步（硬约束）+ 后面的重叠部分（软约束，权重指数衰减）</td><td>只有前 d 步（硬约束）</td></tr>
+      </table>
+    </div>
+    <p class="hl-line"><b>一句话：</b>把“补全前缀”这件事从<b>推理时的数值优化</b>搬到<b>训练时的监督学习</b>。实现只需要三处改动：每个动作 token 用各自的 flow 时间步、前缀填真实动作并设 τ=1、损失只算后缀。</p>
+  </section>
+
+  <section id="s-problem">
+    <h2>问题：为什么异步执行会“抖”，同步执行会“停”</h2>
+    <ol>
+      <li><strong>动作分块与延迟</strong>：<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块</a>一次预测 H 步，执行其中 s 步后再重新推理。大模型推理一次要几十到上百毫秒（<a class="concept-link" href="DynamicVLA-论文解读.html#concept-latency">感知—执行时延</a>）。在 50Hz（每步 20ms）的机器人上，100ms 相当于 d≈5 步。</li>
+      <li><strong>同步执行会停</strong>：执行完 s 步就停下来等新块，动作一顿一顿的，整体也慢。RTC 论文中，π0.5 用同步执行就能看到明显停顿。</li>
+      <li><strong>朴素异步会跳</strong>：推理从第 t 步开始，到第 t+d 步才出结果，这 d 步只能继续执行上一块。新块是根据新观测重新采样的，而 flow/扩散策略是<b>多模态</b>的（比如从左边绕还是从右边绕都合理），新块可能换了一种策略，切换时速度和方向会突变。平均两个块（temporal ensembling）也不行，把两种策略平均可能得到一个两边都不是的动作。</li>
+      <li><strong>约束</strong>：前缀要有效，必须满足 <code>d ≤ H − s</code>，也就是新块的前 d 步在上一块里还没用完。RTC 进一步要求 <code>d ≤ s ≤ H − d</code>。</li>
+    </ol>
+    <p class="hl-line">所以真正要解的是一个<b>条件生成</b>问题：已知新块的前 d 步一定等于上一块对应的动作，生成其余部分，使它既和前缀连贯，又能利用新观测。</p>
+  </section>
+
+  <section id="s-demo">
+    <h2>动手看：一个动作块里，哪些步被冻结、哪些可改、哪些要新生成</h2>
+    <p>拖动 H（预测长度）、d（推理延迟，单位为控制步）和 s（执行长度），切换两种 RTC，看每个位置在两种方法里分别是什么角色。</p>
+    <div class="demo card">
+      <div class="ctrl">
+        <label>H <b id="hVal">50</b><input id="hIn" type="range" min="8" max="50" step="1" value="50"></label>
+        <label>d <b id="dVal">5</b><input id="dIn" type="range" min="0" max="20" step="1" value="5"></label>
+        <label>s <b id="sVal">25</b><input id="sIn" type="range" min="1" max="49" step="1" value="25"></label>
+      </div>
+      <div class="seg" role="group" aria-label="方法">
+        <button type="button" class="on" data-m="inf">推理时 RTC</button><button type="button" data-m="train">训练时 RTC</button>
+      </div>
+      <div class="cells-lab">当前动作块的 H 个位置（左边是最早执行的）</div>
+      <div class="cells" id="cells"></div>
+      <div class="cells-lab" id="rowLab">引导权重 W<sub>i</sub></div>
+      <div class="bars" id="bars"></div>
+      <div class="legend"><span class="c1">前缀：推理期间会执行，来自上一块</span><span class="c2">重叠区：上一块有，但可以改</span><span class="c3">全新：上一块没有</span></div>
+      <div class="stats">
+        <div><span>延迟（50Hz）</span><b id="sMs">-</b></div>
+        <div><span>每个去噪步的计算</span><b id="sCost">-</b></div>
+        <div><span>参与训练损失的位置</span><b id="sLoss">-</b></div>
+      </div>
+      <p class="note" id="warn"></p>
+    </div>
+  </section>
+
+  <section id="concept-rtc" class="concept-anchor">
+    <h2>推理时 RTC：把衔接当成“补全图像”，每一步去噪都做一次引导</h2>
+    <p>前作 <a href="https://arxiv.org/abs/2506.07339" target="_blank" rel="noreferrer">Real-Time Chunking（arXiv 2506.07339）</a> 把块间衔接看成<b>图像补全（inpainting）</b>：前 d 步像图像中已知的像素，其余部分要补全。它用的是不需要训练的伪逆引导（ΠGDM）。设 flow 约定为 <code>A<sup>τ</sup> = τ·A + (1−τ)·ε</code>，τ=1 时是干净动作。每个去噪步做四件事：</p>
+    <div class="flow">
+      <div class="st"><b>① 估计终点</b>用当前速度一步跳到 τ=1：<code>Â¹ = A<sup>τ</sup> + (1−τ)·v</code></div>
+      <div class="st"><b>② 比较目标</b>误差 <code>(Y − Â¹)·W</code>，Y 是上一块的剩余动作，W 是逐位置权重</div>
+      <div class="st"><b>③ 反向传播</b>把误差经网络的雅可比 <code>∂Â¹/∂A<sup>τ</sup></code> 传回去，得到修正量（向量-雅可比积，VJP）</div>
+      <div class="st"><b>④ 加到速度上</b><code>v + min(β, (1−τ)/(τ·r²<sub>τ</sub>))·修正量</code>；β 是作者为少步数采样的稳定性加的上限</div>
+    </div>
+    <p><strong>软掩码（soft masking）</strong>：只约束前 d 步时，引导信号太弱，新块仍可能换策略。所以 W 对前 d 步取 1，对重叠区按指数从 1 衰减到 0，对最后 s 个全新位置取 0。演示里“推理时 RTC”模式显示的就是这条权重曲线，公式和代码中的 <code>get_prefix_weights(..., "exp")</code> 一致。</p>
+    <p><strong>代价</strong>：每个去噪步都要多一次反向传播。RTC 论文里，π0.5 的模型延迟从 76ms 增加到 97ms。另外，引导依赖网络在当前点的<b>线性化</b>，前缀越长，补全越吃力。</p>
+  </section>
+
+  <section id="concept-trtc" class="concept-anchor">
+    <h2>训练时 RTC：三处改动</h2>
+    <p>目标是直接学习条件分布 <code>p(A<sub>t+d:H</sub> | o<sub>t</sub>, A<sub>t:t+d</sub>)</code>，前缀和后缀都取自同一条真实动作块。</p>
+    <div class="flow">
+      <div class="st"><b>① 每个 token 有自己的 τ</b>标准 flow 中整个块共用一个 τ。现在 τ 变成形状 <code>(batch, H)</code>。对于 adaLN-zero 结构（π0.6 的动作专家、DiT），只需让 scale/shift/gate 逐 token 不同，<b>参数量不变</b>。</div>
+      <div class="st"><b>② 前缀填真值，τ=1</b>前 d 个位置直接放真实的干净动作，τ 设为 1；后缀照常加噪。τ=1 本来就表示“这是干净数据”，所以 τ 序列本身就告诉了模型延迟 d 是多少。</div>
+      <div class="st"><b>③ 损失只算后缀</b>前缀位置的预测不计入损失，只学“已知前缀时怎么去噪后缀”。</div>
+      <div class="st"><b>④ 延迟随机采样</b>真实延迟会波动，所以每个样本随机抽一个 d。真机实验用 0–10 均匀分布（50Hz 下最大 200ms）；仿真用 {0..4}，延迟越大权重越小（指数递减）。</div>
+    </div>
+    <p><strong>推理</strong>：每个去噪步都先把前 d 位覆盖成上一块的动作，并把这些位置的 τ 设为 1，然后正常前向一次。<b>没有反向传播，也没有引导系数</b>。接口和推理时 RTC 完全相同（输入前缀和 d，输出整个块），机器人运行时代码不用改。</p>
+    <pre><code># 论文 Algorithm 1（节选，与标准 flow matching 的差别在注释处）
+delay = randint(0, max_delay)                       # 新增：模拟延迟
+prefix = arange(H)[None] &lt; delay[:, None]            # 新增
+time   = where(prefix, 1.0, time[:, None])           # 新增：前缀 τ=1
+x_t    = time * action + (1 - time) * noise
+loss   = (model(obs, x_t, time) - (action - noise))**2
+loss   = sum(loss * ~prefix) / sum(~prefix)          # 新增：只算后缀
+
+# 采样：每一步都把前缀覆盖为已执行的动作
+for _ in range(num_steps):
+    x_t = where(prefix, action_prefix, x_t)
+    v_t = model(obs, x_t, where(prefix, 1.0, time))
+    x_t, time = x_t + dt * v_t, time + dt</code></pre>
+  </section>
+
+  <section id="s-why">
+    <h2>为什么这样就成立：三层原理</h2>
+    <ol>
+      <li><strong>τ 本来就是“这个位置有多可信”的信号。</strong>flow 模型的输入是“τ 比例的真值 + (1−τ) 比例的噪声”。τ=1 表示完全没有噪声。把前缀的 τ 设为 1，相当于用模型原有的语言告诉它“这几步已经确定”，不需要新增输入通道或条件 token。adaLN 让每个 token 根据自己的 τ 调制特征，token 之间通过注意力或 token-mixing 交换信息，后缀就能“看到”干净的前缀。</li>
+      <li><strong>学出来的条件分布比现算的引导更准。</strong>推理时 RTC 是在一个没学过条件生成的模型上，用一阶线性化去近似条件采样，前缀越长误差越大。训练时 RTC 用真实数据直接监督“已知前缀时后缀该是什么”，属于精确的条件建模。所以在 d≥2 时它更好，而且 d 越大差距越大。</li>
+      <li><strong>算力从推理端挪到训练端。</strong>推理端的成本是每次控制都要付的，训练端的成本只付一次。对实时控制来说，这笔交换很划算：少量微调换来推理延迟回到基线，而延迟变小又让 d 变小、反应更快，形成正反馈（真机上 108ms 对应 d≈5，推理时 RTC 是 135ms、d≈7）。</li>
+    </ol>
+  </section>
+
+  <section id="s-code">
+    <h2>读代码：官方 Kinetix 实现中的两种 RTC</h2>
+    <p>官方仓库 <a href="https://github.com/Physical-Intelligence/real-time-chunking-kinetix" target="_blank" rel="noreferrer">real-time-chunking-kinetix</a> 同时实现了推理时和训练时两种 RTC，由 <code>ModelConfig.simulated_delay</code> 切换（为 <code>None</code> 时是推理时 RTC）。以下链接固定在 <code>9296f31</code>：</p>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>顺序</th><th>代码</th><th>看什么</th></tr>
+        <tr><td>1</td><td><a href="https://github.com/Physical-Intelligence/real-time-chunking-kinetix/blob/9296f31d62d5bfeb5779dcb2f9bcf71ca37f448b/src/model.py#L140-L158" target="_blank" rel="noreferrer">model.py · FlowPolicy.__call__ ↗</a></td><td><code>time</code> 被广播成 <code>(batch, H)</code>，每个位置单独做 sincos 嵌入。逐 token 的 τ 就是从这里开始的</td></tr>
+        <tr><td>2</td><td><a href="https://github.com/Physical-Intelligence/real-time-chunking-kinetix/blob/9296f31d62d5bfeb5779dcb2f9bcf71ca37f448b/src/model.py#L66-L100" target="_blank" rel="noreferrer">model.py · MLPMixerBlock ↗</a></td><td>adaLN-zero：<code>scale/shift/gate</code> 来自逐 token 的时间嵌入，因此不同位置可以有不同的 τ，参数量不变</td></tr>
+        <tr><td>3</td><td><a href="https://github.com/Physical-Intelligence/real-time-chunking-kinetix/blob/9296f31d62d5bfeb5779dcb2f9bcf71ca37f448b/src/model.py#L267-L289" target="_blank" rel="noreferrer">model.py · loss ↗</a></td><td>训练时 RTC 的全部改动：按指数递减的权重抽延迟（L280-L283）、前缀 τ=1、<code>loss_mask</code> 只算后缀</td></tr>
+        <tr><td>4</td><td><a href="https://github.com/Physical-Intelligence/real-time-chunking-kinetix/blob/9296f31d62d5bfeb5779dcb2f9bcf71ca37f448b/src/model.py#L253-L257" target="_blank" rel="noreferrer">model.py · realtime_action 训练时分支 ↗</a></td><td>推理：<code>where(mask, prev_action_chunk, x_t)</code> 加上 <code>time_chunk = where(mask, 1.0, time)</code>，只做一次前向</td></tr>
+        <tr><td>5</td><td><a href="https://github.com/Physical-Intelligence/real-time-chunking-kinetix/blob/9296f31d62d5bfeb5779dcb2f9bcf71ca37f448b/src/model.py#L236-L251" target="_blank" rel="noreferrer">model.py · pinv_corrected_velocity ↗</a></td><td>对照组（推理时 RTC）：<code>jax.vjp</code> 求修正量，<code>inv_r2</code>、<code>c=(1−t)/t</code>，并用 <code>max_guidance_weight</code> 截断</td></tr>
+        <tr><td>6</td><td><a href="https://github.com/Physical-Intelligence/real-time-chunking-kinetix/blob/9296f31d62d5bfeb5779dcb2f9bcf71ca37f448b/src/model.py#L40-L63" target="_blank" rel="noreferrer">model.py · get_prefix_weights ↗</a></td><td>软掩码的权重曲线：前 d 步为 1，重叠区线性或指数衰减，之后为 0</td></tr>
+        <tr><td>7</td><td><a href="https://github.com/Physical-Intelligence/real-time-chunking-kinetix/blob/9296f31d62d5bfeb5779dcb2f9bcf71ca37f448b/src/eval_flow.py#L119-L126" target="_blank" rel="noreferrer">eval_flow.py · 拼接执行 ↗</a></td><td>运行时：先执行上一块的前 d 步，再执行新块的第 d 到 s−1 步。两种 RTC 在这里共用同一套逻辑</td></tr>
+      </table>
+    </div>
+    <p>这个仓库是仿真基准的实现（MLP-Mixer，H=8），π0.6 上的真机版本没有开源。openpi 上的推理时 RTC 可以参考 RLinf 的复现，见 <a class="concept-link" href="代码索引.html#latency">代码索引 · 实时分块</a>。</p>
+  </section>
+
+  <section id="s-results">
+    <h2>关键结果</h2>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>设置</th><th>结果</th></tr>
+        <tr><td><strong>仿真</strong>：动态 Kinetix，H=8，4 层 MLP-Mixer，每个数据点 2048 次 rollout，<code>s=max(d,1)</code></td><td>d≥2 时训练时 RTC 优于推理时 RTC，延迟越大差距越大；d=0、1 时略差，因为前几个位置得到的监督变少了。为了让训练算力相同，训练时 RTC 从第 24 个 epoch 接着微调 8 个 epoch，对照组训练满 32 个 epoch</td></tr>
+        <tr><td><strong>真机</strong>：π0.6 基座，组装纸箱和做浓缩咖啡（来自 <a href="pi0.6-论文解读.html">π*0.6</a> 的任务），各微调 8000 步，batch 512</td><td>成功率和完成时长与推理时 RTC 持平；两种 RTC 都比同步执行快（同步执行在块之间有明显停顿）</td></tr>
+        <tr><td><strong>延迟</strong>：远程 H100，5 个去噪步</td><td>端到端延迟：训练时 RTC 108ms（d≈5），推理时 RTC 135ms（d≈7）</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section id="s-insight">
+    <h2>深层理解：这篇真正改变了什么</h2>
+    <ul>
+      <li><strong>执行层的问题，可以在训练层解决。</strong>RTC 把实时性当作采样算法问题，训练时 RTC 把它变成数据增强：训练分布里本来就包含“带延迟的条件生成”这种情形。</li>
+      <li><strong>flow 时间步是通用的条件接口。</strong>τ 不只是噪声日程，还可以逐 token 表达“这一位有多确定”。同样的思路可以推广到其他已知部分动作的场景，例如固定的末端位姿或安全约束。论文没有做这些实验，这里是推论。</li>
+      <li><strong>它让大模型也能实时控制。</strong>推理开销为零，所以模型变大或推理放到远端服务器时，只需要把延迟分布调大。<a href="pi0.7_问答学习卡.html">π0.7</a> 就用了训练时 RTC：模拟 0–12 步延迟（50Hz 下 240ms），最小变体的推理延迟降到 38ms。</li>
+    </ul>
+  </section>
+
+  <section id="s-cost">
+    <h2>代价与边界</h2>
+    <ul>
+      <li><strong>只有硬前缀</strong>：只能以前 d 步为条件，不能像软掩码那样“温和地”参考后面的重叠部分。</li>
+      <li><strong>延迟分布要事先选好</strong>：训练时没见过的延迟（比如超过 max_delay）就无法处理。真实延迟分布变化后，需要重新微调。</li>
+      <li><strong>需要训练</strong>：推理时 RTC 可以直接套在现成的 checkpoint 上，训练时 RTC 必须微调。好在不需要从头预训练。</li>
+      <li><strong>小延迟下略差</strong>：前缀位置不计入损失，前几步动作得到的监督略少。</li>
+      <li><strong>依赖 flow/扩散动作头</strong>：逐 token 的 τ 是 flow/扩散模型特有的。<a href="FAST-论文解读.html">FAST</a> 这类自回归 token 策略天然就以前缀为条件，不需要这个技巧，但它们的推理延迟更大。</li>
+    </ul>
+  </section>
+
+  <section id="s-next">
+    <h2>前后脉络与被谁接手</h2>
+    <ul>
+      <li><strong>前作</strong>：<a href="https://arxiv.org/abs/2506.07339" target="_blank" rel="noreferrer">RTC</a>（推理时补全）；它之前有 ACT 的 temporal ensembling，以及 <a href="https://arxiv.org/abs/2506.01844" target="_blank" rel="noreferrer">SmolVLA</a> 的异步推理（不处理块间不连续）。</li>
+      <li><strong>同期</strong>：<a href="https://arxiv.org/abs/2509.23224" target="_blank" rel="noreferrer">A2C2</a> 加一个轻量的修正头；<a href="https://arxiv.org/abs/2512.01031" target="_blank" rel="noreferrer">VLASH</a> 只以未来的一个动作为条件，训练时 RTC 则以完整前缀为条件。</li>
+      <li><strong>接手</strong>：<a href="pi0.7_问答学习卡.html">π0.7</a> 默认采用训练时 RTC；<a href="Realtime-VLA-论文解读.html">Realtime-VLA FLASH</a> 用投机推理进一步降低扩散 VLA 的延迟，并指出与 RTC 结合时需要处理可变延迟；<a href="DynamicVLA-论文解读.html">DynamicVLA</a> 处理运动物体带来的感知—执行错位。</li>
+      <li><strong>在全景中的位置</strong>：见 <a href="PI-工作全景.html">π 公司线</a> 的“动作怎么出得又好又快”：FAST → 知识隔离 → RTC → 训练时 RTC。</li>
+    </ul>
+  </section>
+
+  <section id="s-quiz">
+    <h2>自测</h2>
+    <details class="qz"><summary>为什么前缀的 τ 要设成 1，而不是 0？</summary><p>按 <code>A<sup>τ</sup>=τA+(1−τ)ε</code> 的约定，τ=1 表示完全没有噪声的真实动作，τ=0 表示纯噪声。前缀是已知的干净动作，所以取 1。</p></details>
+    <details class="qz"><summary>推理时 RTC 的额外开销具体来自哪里？</summary><p>每个去噪步都要对“估计终点”做一次向量-雅可比积（反向传播），把加权误差传回输入，得到引导修正量。5 个去噪步就多 5 次反向传播。</p></details>
+    <details class="qz"><summary>训练时 RTC 为什么不需要额外的参数？</summary><p>adaLN-zero 本来就根据时间嵌入算 scale/shift/gate，只需让时间嵌入逐 token 不同，线性层权重保持共享。</p></details>
+    <details class="qz"><summary>为什么延迟越大，训练时 RTC 的优势越明显？</summary><p>前缀越长，推理时补全要用一阶线性化把更多位置“拽”到目标上，近似误差越大；训练时 RTC 直接学到了对应的条件分布，不依赖这种近似。</p></details>
+    <details class="qz"><summary>它能完全替代推理时 RTC 吗？</summary><p>大多数场景可以，真机上效果持平且更省计算。但它只支持硬前缀、需要事先确定延迟分布、要额外微调；需要软约束或现成 checkpoint 时，推理时 RTC 仍然有用。</p></details>
+  </section>
+
+  <aside class="concept-related" aria-label="相关概念">
+    <strong>相关概念</strong>
+    <a class="concept-link" href="concepts.html#rtc">RTC 概念卡</a>
+    <a class="concept-link" href="DynamicVLA-论文解读.html#concept-latency">感知—执行时延</a>
+    <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块</a>
+    <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">Flow Matching</a>
+    <a class="concept-link" href="concepts.html">全部概念 →</a>
+  </aside>
+
+  <footer>
+    <span>精读笔记 · 训练时 RTC · 出处：Black et al., <a href="https://arxiv.org/abs/2512.05964" target="_blank" rel="noreferrer">arXiv 2512.05964</a> · 前作 <a href="https://arxiv.org/abs/2506.07339" target="_blank" rel="noreferrer">arXiv 2506.07339</a></span>
+    <a href="index.html">返回知识库 →</a>
+  </footer>
+</div>
+<script>
+(function(){
+  var hIn=document.getElementById('hIn'),dIn=document.getElementById('dIn'),sIn=document.getElementById('sIn');
+  var mode='inf';
+  document.querySelectorAll('.seg button').forEach(function(b){b.addEventListener('click',function(){mode=b.getAttribute('data-m');document.querySelectorAll('.seg button').forEach(function(x){x.classList.toggle('on',x===b);});draw();});});
+  function softW(i,d,H,s){var end=H-s;if(i<Math.min(d,end))return 1;if(i>=end)return 0;var c=(end-i)/(end-d+1);c=Math.min(1,Math.max(0,c));return c*(Math.exp(c)-1)/(Math.E-1);}
+  function draw(){
+    var H=+hIn.value;dIn.max=Math.floor(H/2);sIn.max=H-1;
+    var d=Math.min(+dIn.value,+dIn.max),s=Math.min(+sIn.value,H-1);
+    document.getElementById('hVal').textContent=H;document.getElementById('dVal').textContent=d;document.getElementById('sVal').textContent=s;
+    var cells=document.getElementById('cells'),bars=document.getElementById('bars');cells.innerHTML='';bars.innerHTML='';
+    var nLoss=0;
+    for(var i=0;i<H;i++){
+      var k=i<d?'c1':(i<H-s?'c2':'c3');
+      var c=document.createElement('span');c.className='cell '+k;c.title='位置 '+i;cells.appendChild(c);
+      var v,lab;
+      if(mode==='inf'){v=softW(i,d,H,s);lab=v.toFixed(2);}
+      else{v=i<d?1:0.35;lab=i<d?'τ=1':'τ';if(i>=d)nLoss++;}
+      var b=document.createElement('span');b.className='bar '+(mode==='train'&&i>=d?'cur':k);b.style.height=Math.max(2,v*46)+'px';b.title='位置 '+i+'：'+lab;bars.appendChild(b);
+    }
+    document.getElementById('rowLab').innerHTML=mode==='inf'?'引导权重 W<sub>i</sub>（软掩码：1 → 指数衰减 → 0）':'每个位置的 flow 时间步：前缀固定 τ=1，其余共用当前 τ（0→1 逐步去噪）';
+    document.getElementById('sMs').textContent=(d*20)+' ms';
+    document.getElementById('sCost').textContent=mode==='inf'?'前向 + 反向':'仅前向';
+    document.getElementById('sLoss').textContent=mode==='inf'?'全部 '+H+'（训练不变）':nLoss+' / '+H+'（只算后缀）';
+    var w=[];if(d>H-s)w.push('d > H − s：上一块不够覆盖推理期间，前缀无效');if(s<d)w.push('s < d：RTC 要求 d ≤ s ≤ H − d');
+    document.getElementById('warn').textContent=w.length?'⚠ '+w.join('；'):'d 步前缀来自上一块；推理时 RTC 还会用重叠区做软约束，训练时 RTC 只用前缀。';
+  }
+  [hIn,dIn,sIn].forEach(function(x){x.addEventListener('input',draw);});
+  draw();
+})();
+</script>
+<script src="nav.js"></script>
+</body>
+</html>

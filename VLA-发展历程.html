@@ -556,7 +556,7 @@
           <li><a href="Realtime-VLA-论文解读.html">Realtime-VLA FLASH</a></li>
         </ol>
         <details class="qz"><summary>为什么 MSE 回归在示范数据有多种做法时会失败？</summary><p>当示范存在多峰（比如从左边绕或从右边绕）时，MSE 的最优解是各个峰的平均，得到的动作可能哪一种都不是，甚至直接撞上障碍物。扩散和 flow 学的是整个分布，可以采样到其中一个峰。</p></details>
-        <details class="qz"><summary>动作分块为什么能减少复合误差？</summary><p>一次预测 H 步，相当于把需要做决策的次数减少到原来的 1/H，误差累积的机会随之减少；动作在块内也更连贯。代价是对突发变化的响应变慢，所以需要时间集成或实时分块来弥补。</p></details>
+        <details class="qz"><summary>动作分块为什么能减少复合误差？</summary><p>一次预测 H 步，相当于把需要做决策的次数减少到原来的 1/H，误差累积的机会随之减少；动作在块内也更连贯。代价是对突发变化的响应变慢，所以需要时间集成或<a href="RTC-训练时-论文解读.html">实时分块（RTC）</a>来弥补。</p></details>
         <details class="qz"><summary>FAST 解决了离散 token 的什么问题？</summary><p>按时间步逐维分箱，在高频控制下会产生大量高度相关的 token，自回归模型很难学好。FAST 先用 DCT 把动作块变换到频域，再用 BPE 压缩，token 更少、信息更集中。</p></details>
       </div>
       <div class="path" style="--lc:var(--l-backbone)">
@@ -672,12 +672,14 @@
     {id:'pi05',date:'2025-04',title:'π0.5',full:'π0.5: a Vision-Language-Action Model with Open-World Generalization',org:'Physical Intelligence',stage:'p6',lanes:['train','backbone'],arxiv:'2504.16054',kb:'pi0.5_论文测验_精美版.html',loop:'ground',one:'多源异构数据联合训练，先预测高层子任务再生成低层动作，在训练中没见过的家庭里完成长时程任务。'},
     {id:'ki',date:'2025-05',title:'知识隔离',full:'Knowledge Insulating Vision-Language-Action Models: Train Fast, Run Fast, Generalize Better',org:'Physical Intelligence',stage:'p6',lanes:['train','action'],arxiv:'2505.23705',one:'骨干用 FAST 离散 token 训练，flow 动作专家用于推理，同时阻断动作专家的梯度回传到 VLM。'},
     {id:'smolvla',date:'2025-06',title:'SmolVLA',full:'SmolVLA: A Vision-Language-Action Model for Affordable and Efficient Robotics',org:'Hugging Face',stage:'p6',lanes:['backbone','exec'],arxiv:'2506.01844',one:'约 0.45B 参数的小型 VLA，用社区数据训练，支持异步推理，消费级硬件就能运行。'},
+    {id:'rtc',date:'2025-06',title:'RTC',full:'Real-Time Execution of Action Chunking Flow Policies',org:'Physical Intelligence',stage:'p6',lanes:['exec','action'],arxiv:'2506.07339',kb:'RTC-训练时-论文解读.html',one:'异步执行：边执行边算下一块，用推理时补全（伪逆引导）让新块和已执行的前缀无缝衔接。'},
     {id:'vjepa2',date:'2025-06',title:'V-JEPA 2',full:'V-JEPA 2: Self-Supervised Video Models Enable Understanding, Prediction and Planning',org:'Meta',stage:'p7',lanes:['backbone','data'],arxiv:'2506.09985',one:'在视频上自监督预训练出的世界模型，加少量机器人数据后即可做基于模型的规划。'},
     {id:'gr3',date:'2025-07',title:'GR-3',full:'GR-3 Technical Report',org:'ByteDance Seed',stage:'p7',lanes:['backbone','data'],arxiv:'2507.15493',one:'VLM 加 flow 动作模块，与网页视觉语言数据、VR 人类轨迹联合训练，能快速适应新环境。'},
     {id:'gemini15',date:'2025-10',title:'Gemini Robotics 1.5',full:'Gemini Robotics 1.5: Pushing the Frontier of Generalist Robots with Advanced Embodied Reasoning, Thinking, and Motion Transfer',org:'Google DeepMind',stage:'p7',lanes:['backbone','train'],arxiv:'2510.03342',one:'动作之前先“思考”，并支持跨本体的动作迁移（Motion Transfer）。'},
     {id:'pirl',date:'2025-10',title:'πRL',full:'πRL: Online RL Fine-tuning for Flow-based Vision-Language-Action Models',org:'清华大学等',stage:'p7',lanes:['train'],arxiv:'2510.25889',kb:'piRL-论文解读.html',loop:'learn',one:'把 flow 去噪过程建模成 MDP，用 PPO 在线微调 π0 / π0.5。'},
     {id:'interndata',date:'2025-11',title:'InternData-A1',full:'InternData-A1: Pioneering High-Fidelity Synthetic Data for Pre-training Generalist Policy',org:'上海人工智能实验室 · 北京大学',stage:'p7',lanes:['data'],arxiv:'2511.16651',kb:'InternData-A1-论文解读.html',loop:'body',one:'高保真合成数据预训练通用策略，检验合成数据能在多大程度上替代真机数据。'},
     {id:'pi06',date:'2025-11',title:'π*0.6 / RECAP',full:'π*0.6: a VLA That Learns From Experience',org:'Physical Intelligence',stage:'p7',lanes:['train'],arxiv:'2511.14759',kb:'pi0.6-论文解读.html',loop:'learn',one:'RECAP：用价值函数估计优势，再以优势作为条件做策略提取，把自主执行经验和人类纠正接回模型。'},
+    {id:'trtc',date:'2025-12',title:'训练时 RTC',full:'Training-Time Action Conditioning for Efficient Real-Time Chunking',org:'Physical Intelligence',stage:'p7',lanes:['exec'],arxiv:'2512.05964',kb:'RTC-训练时-论文解读.html',loop:'act',one:'训练时模拟推理延迟，前缀填真实动作并设 τ=1、只对后缀算损失，替代推理时补全，零推理开销。'},
     {id:'d4rt',date:'2025-12',title:'D4RT',full:'Efficiently Reconstructing Dynamic Scenes One D4RT at a Time',org:'Google DeepMind 等',stage:'p7',lanes:['data'],arxiv:'2512.08924',kb:'D4RT_study_cards.html',loop:'perceive',one:'高效的动态场景 4D 重建，为策略提供几何与运动的感知先验。'},
     {id:'dynamicvla',date:'2026-01',title:'DynamicVLA',full:'DynamicVLA: A Vision-Language-Action Model for Dynamic Object Manipulation',org:'NTU S-Lab',stage:'p7',lanes:['exec'],arxiv:'2601.22153',kb:'DynamicVLA-论文解读.html',loop:'body',one:'针对感知与执行之间的时序错位，让 VLA 能抓取移动中的物体。'},
     {id:'puma',date:'2026-03',title:'PUMA',full:'Towards Generalizable Robotic Manipulation in Dynamic Environments',org:'华中科技大学 · 华为',stage:'p7',lanes:['exec'],arxiv:'2603.15620',kb:'PUMA-论文解读.html',loop:'body',one:'构建动态操作基准 DOMINO，并耦合场景级历史光流与目标级未来预测，在目标会动的环境中做可泛化操作。'},
