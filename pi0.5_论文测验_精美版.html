@@ -321,7 +321,7 @@
       <div class="q-row"><span class="q-num">Q08</span><span class="q-text">为什么既用 FAST 离散 token 训练、又用 flow matching？两者各解决什么？</span></div>
       <div class="peek"><button>点击显示答案 ▸</button></div>
       <div class="answer"><span class="alab">A</span><b>FAST 离散 token</b> 把连续动作块编码为离散 token 序列，让 <a class="concept-link" href="VLA-发展历程.html#concept-vla">VLA</a> 训练更快、更稳，且语言跟随更强，但推理要昂贵的自回归解码、慢；<b><a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">flow matching</a></b> 适合实时连续动作推理。所以结合两者：训练用离散 token（pre-training），推理用 flow matching 出连续动作，取两者之长。
-      <br><span class="cite">Sec IV-B · p.5</span></div>
+      <br><a href="FAST-论文解读.html">FAST / π0-FAST 精读 →</a> <span class="cite">Sec IV-B · p.5</span></div>
     </article>
 
     <article class="card">
