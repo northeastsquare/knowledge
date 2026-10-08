@@ -344,7 +344,7 @@
     <ul>
       <li><strong>补背景</strong>：读 π0 原论文（arXiv:2410.24164）吃透 flow matching VLA 的 Action Expert 与 KV Cache 机制；读 Realtime-VLA 系列（Triton 版 2510.26742、v2 2603.26360）理解 kernel 级优化到底做了什么。</li>
       <li><strong>读代码 / 复现</strong>：复现 Table 6 的组件级延迟分解，亲自验证"去噪访存受限、prefill 算力受限"的 roofline 结论在自己硬件上是否成立；对比 flash path 并行验证的真实墙钟收益。</li>
-      <li><strong>动手实验</strong>：把投机推理与 real-time chunking（RTC）结合——现有 RTC 假设固定推理延迟，而 FLASH 引入了可变接受前缀长度，需要能处理变延迟策略更新的轨迹优化。</li>
+      <li><strong>动手实验</strong>：把投机推理与 <a href="RTC-训练时-论文解读.html">real-time chunking（RTC）</a>结合——现有 RTC 假设固定推理延迟，而 FLASH 引入了可变接受前缀长度，需要能处理变延迟策略更新的轨迹优化。</li>
       <li><strong>追方向</strong>：关注边缘部署（VLA-Perf 2602.18397 指出边缘设备更偏访存受限、功耗/散热更紧），FLASH 减少重复全量推理的思路在边缘可能收益更大。</li>
     </ul>
   </section>
