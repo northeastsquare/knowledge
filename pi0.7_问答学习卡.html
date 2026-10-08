@@ -347,7 +347,7 @@
         <div class="qa">
           <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q8</span>什么是 Knowledge Insulation (KI) 训练配方?</div></div>
           <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
-          <div class="qa-answer"><div class="badge a">A</div><div class="atext">VLM backbone 用 <mark><a class="concept-link" href="pi0.5_论文测验_精美版.html#concept-fast">FAST tokens</a></mark> 监督;action expert 虽然 attend 到 VLM backbone 的所有 activations,但 <mark>action expert 的梯度不回流到 VLM backbone</mark>。这样 VLM 通过相对稳定的离散 cross-entropy loss 训练,而不被 flow matching 的 noisy 梯度干扰。</div></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">VLM backbone 用 <mark><a class="concept-link" href="FAST-论文解读.html#concept-fast">FAST tokens</a></mark> 监督;action expert 虽然 attend 到 VLM backbone 的所有 activations,但 <mark>action expert 的梯度不回流到 VLM backbone</mark>。这样 VLM 通过相对稳定的离散 cross-entropy loss 训练,而不被 flow matching 的 noisy 梯度干扰。</div></div>
         </div>
 
         <div class="qa">

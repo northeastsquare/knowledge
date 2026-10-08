@@ -220,7 +220,7 @@
     <h2>后来两条路线互相借鉴</h2>
     <div class="vs">
       <div class="card"><h3 class="tag-a">OpenVLA → OpenVLA-OFT（2025.02）</h3><p>放弃逐 token 解码，改为<strong>并行解码 + 动作块 + 连续动作 L1 回归</strong>，速度和成功率都大幅提升，实际已向 π0 的"一次输出一段连续动作"靠拢。<a href="https://arxiv.org/abs/2502.19645" target="_blank" rel="noreferrer">arXiv 2502.19645</a></p></div>
-      <div class="card"><h3 class="tag-b">π0 → π0-FAST / π0.5 / π*0.6 / π0.7</h3><p>反过来引入离散 token：<a href="https://arxiv.org/abs/2501.09747" target="_blank" rel="noreferrer">π0-FAST</a> 用 DCT + BPE 压缩动作 token；<a href="pi0.5_论文测验_精美版.html">π0.5</a> 训练时用离散 token、推理时用 flow；<a href="pi0.6-论文解读.html">π*0.6</a> 加入 RL（RECAP）；<a href="pi0.7_问答学习卡.html">π0.7</a> 让模型可以通过提示调节行为。</p></div>
+      <div class="card"><h3 class="tag-b">π0 → π0-FAST / π0.5 / π*0.6 / π0.7</h3><p>反过来引入离散 token：<a href="FAST-论文解读.html">π0-FAST</a> 用 DCT + BPE 压缩动作 token（<a href="FAST-论文解读.html">精读</a>）；<a href="pi0.5_论文测验_精美版.html">π0.5</a> 训练时用离散 token、推理时用 flow；<a href="pi0.6-论文解读.html">π*0.6</a> 加入 RL（RECAP）；<a href="pi0.7_问答学习卡.html">π0.7</a> 让模型可以通过提示调节行为。</p></div>
     </div>
     <p>所以今天的分界已经不是"谁离散、谁连续"，而是<strong>训练时用离散 token 保住语义，推理时用连续生成保证精度和速度</strong>的混合方案。</p>
   </section>

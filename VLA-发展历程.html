@@ -552,7 +552,7 @@
           <li><a href="https://arxiv.org/abs/2303.04137" target="_blank" rel="noreferrer">Diffusion Policy</a></li>
           <li><a href="https://arxiv.org/abs/2304.13705" target="_blank" rel="noreferrer">ACT / ALOHA</a></li>
           <li><a href="pi0-论文解读.html">π0 精读</a></li>
-          <li><a href="https://arxiv.org/abs/2501.09747" target="_blank" rel="noreferrer">FAST</a> → <a href="pi0.5_论文测验_精美版.html">π0.5 测验</a></li>
+          <li><a href="FAST-论文解读.html">FAST 精读</a> → <a href="pi0.5_论文测验_精美版.html">π0.5 测验</a></li>
           <li><a href="Realtime-VLA-论文解读.html">Realtime-VLA FLASH</a></li>
         </ol>
         <details class="qz"><summary>为什么 MSE 回归在示范数据有多种做法时会失败？</summary><p>当示范存在多峰（比如从左边绕或从右边绕）时，MSE 的最优解是各个峰的平均，得到的动作可能哪一种都不是，甚至直接撞上障碍物。扩散和 flow 学的是整个分布，可以采样到其中一个峰。</p></details>
@@ -663,7 +663,7 @@
     {id:'rdt',date:'2024-10',title:'RDT-1B',full:'RDT-1B: a Diffusion Foundation Model for Bimanual Manipulation',org:'清华大学',stage:'p5',lanes:['action'],arxiv:'2410.07864',one:'把扩散 Transformer 扩展到 1.2B 参数，并设计统一的物理动作空间来适配不同机器人。'},
     {id:'lapa',date:'2024-10',title:'LAPA',full:'Latent Action Pretraining from Videos',org:'KAIST / UW 等',stage:'p5',lanes:['data','train'],arxiv:'2410.11758',one:'从没有动作标签的视频中学习潜在动作，用于 VLA 预训练。'},
     {id:'pi0',date:'2024-10',title:'π0',full:'π0: A Vision-Language-Action Flow Model for General Robot Control',org:'Physical Intelligence',stage:'p5',lanes:['action','backbone'],arxiv:'2410.24164',kb:'pi0-论文解读.html',loop:'act',one:'PaliGemma 加一个 flow matching 动作专家，以 50Hz 输出动作块；采用跨本体预训练加高质量后训练的配方。'},
-    {id:'fast',date:'2025-01',title:'FAST',full:'FAST: Efficient Action Tokenization for Vision-Language-Action Models',org:'Physical Intelligence',stage:'p6',lanes:['action'],arxiv:'2501.09747',one:'用 DCT 加 BPE 压缩动作块，让自回归 VLA 也能处理高频、灵巧的动作。'},
+    {id:'fast',date:'2025-01',title:'FAST',full:'FAST: Efficient Action Tokenization for Vision-Language-Action Models',org:'Physical Intelligence',stage:'p6',lanes:['action'],arxiv:'2501.09747',kb:'FAST-论文解读.html',loop:'act',one:'用 DCT 加 BPE 压缩动作块，让自回归 VLA 也能处理高频、灵巧的动作。'},
     {id:'helix',date:'2025-02',title:'Helix',full:'Helix: A Vision-Language-Action Model for Generalist Humanoid Control（技术博客）',org:'Figure',stage:'p6',lanes:['backbone','exec'],url:'https://www.figure.ai/news/helix',one:'双系统结构：S2 是 7B 的 VLM，运行在 7–9Hz；S1 是 80M 参数的策略，以 200Hz 控制人形机器人的整个上半身。'},
     {id:'hirobot',date:'2025-02',title:'Hi Robot',full:'Hi Robot: Open-Ended Instruction Following with Hierarchical VLA Models',org:'Physical Intelligence',stage:'p6',lanes:['backbone'],arxiv:'2502.19417',one:'高层 VLM 把开放式指令和用户插话转写成子任务语言，交给低层 VLA 执行。'},
     {id:'oft',date:'2025-02',title:'OpenVLA-OFT',full:'Fine-Tuning Vision-Language-Action Models: Optimizing Speed and Success',org:'Stanford',stage:'p6',lanes:['action','train'],arxiv:'2502.19645',one:'把 OpenVLA 改成并行解码、动作分块和连续 L1 回归，微调后的速度和成功率都大幅提升。'},

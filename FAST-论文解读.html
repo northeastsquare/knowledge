@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FAST / π0-FAST：频域动作分词 · 精读</title>
+<meta name="description" content="FAST 用 DCT + BPE 把高频动作块压成少量高信息 token，让自回归 VLA 训练提速 5 倍；π0-FAST 的方法、代码与代价精读">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f1f4f6;
+    --surface:#fbfcfd;
+    --surface-2:#eaf0f4;
+    --ink:#16222e;
+    --ink-2:#51626f;
+    --ink-3:#83919c;
+    --accent:#0e6e8a;
+    --accent-strong:#0a4c60;
+    --signal:#c4572a;
+    --line:#d8e1e7;
+    --line-strong:#c3d0d9;
+    --grid-line:rgba(22,34,46,.05);
+    --shadow:0 1px 2px rgba(22,34,46,.04),0 14px 34px rgba(22,34,46,.07);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+      --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+      --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+      --line:#1e2d3a; --line-strong:#2b3d4b;
+      --grid-line:rgba(231,238,244,.045);
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+    --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+    --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+    --line:#1e2d3a; --line-strong:#2b3d4b;
+    --grid-line:rgba(231,238,244,.045);
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Sans",-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+    line-height:1.78; font-size:16px; -webkit-font-smoothing:antialiased;
+  }
+  .grid{
+    position:fixed; inset:0; z-index:-1; pointer-events:none;
+    background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);
+    background-size:28px 28px;
+  }
+  .wrap{max-width:860px; margin:0 auto; padding:0 24px 96px;}
+
+  .masthead{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px 24px 0; max-width:860px; margin:0 auto;
+  }
+  .back{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:13px; color:var(--accent); text-decoration:none; letter-spacing:.03em;
+  }
+  .back:hover{text-decoration:underline;}
+  .masthead .ref{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12.5px; color:var(--ink-3); letter-spacing:.04em;
+  }
+
+  .hero{padding:52px 0 34px; border-bottom:1px solid var(--line-strong);}
+  .eyebrow{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent);
+    margin-bottom:16px;
+  }
+  .hero h1{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:clamp(28px,4.6vw,42px); font-weight:700; line-height:1.2;
+    margin:0 0 16px; color:var(--ink); text-wrap:balance;
+  }
+  .hero .summary{
+    font-size:17px; color:var(--ink-2); max-width:640px; margin:0 0 22px;
+  }
+  .meta{
+    border:1px solid var(--line); border-radius:12px; background:var(--surface);
+    padding:14px 18px; font-size:13.5px; display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px 24px;
+    box-shadow:var(--shadow);
+  }
+  .meta .m{display:flex; flex-direction:column; gap:1px;}
+  .meta .m .k{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:11px;
+    color:var(--ink-3); letter-spacing:.08em; text-transform:uppercase;
+  }
+  .meta .m .v{color:var(--ink); font-weight:500;}
+
+  section{margin-top:40px;}
+  h2{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:21px; font-weight:600; margin:0 0 14px; color:var(--ink);
+    display:flex; align-items:center; gap:12px;
+  }
+  h2::before{
+    content:""; width:10px; height:10px; flex:none;
+    background:var(--accent); border-radius:2px; transform:rotate(45deg);
+  }
+  p{margin:0 0 12px;}
+  strong{font-weight:700;}
+  .hl{color:var(--accent); font-weight:600;}
+  a{color:var(--accent);}
+
+  ul,ol{margin:0 0 14px; padding-left:22px;}
+  li{margin-bottom:7px;}
+  li::marker{color:var(--accent);}
+
+  blockquote{
+    margin:16px 0; padding:14px 18px; border-left:3px solid var(--accent);
+    background:var(--surface-2); border-radius:0 10px 10px 0; color:var(--ink);
+  }
+  blockquote p{margin:0;}
+
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    padding:20px 22px; box-shadow:var(--shadow); margin:14px 0;
+  }
+  .card h3{font-size:16px; font-weight:700; margin:0 0 10px;}
+
+  table{width:100%; border-collapse:collapse; font-size:14px; margin:12px 0;}
+  th,td{padding:9px 12px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12.5px;
+    color:var(--accent-strong); background:var(--surface-2); letter-spacing:.03em; font-weight:600;
+  }
+  tr:last-child td{border-bottom:none;}
+  .tbl-wrap{overflow-x:auto;}
+
+  code{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:13.5px;
+    background:var(--surface-2); border:1px solid var(--line); border-radius:5px; padding:1px 6px;
+  }
+  pre{overflow-x:auto; background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:16px; font-size:13px; line-height:1.6;}
+  pre code{border:none; background:none; padding:0;}
+
+  .diagram{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px; margin:16px 0; box-shadow:var(--shadow); overflow-x:auto;}
+  .diagram svg{max-width:100%; height:auto; display:block;}
+  .diagram .caption{font-size:12.5px; color:var(--ink-3); margin-top:8px;}
+
+  footer{
+    margin-top:56px; padding-top:20px; border-top:1px solid var(--line-strong);
+    display:flex; justify-content:space-between; gap:12px; font-size:13px; color:var(--ink-3);
+  }
+  footer a{color:var(--accent); text-decoration:none;}
+  footer a:hover{text-decoration:underline;}
+  .toc{display:flex;flex-wrap:wrap;gap:6px;margin-top:18px}
+  .toc a{font-size:12.5px;padding:3px 10px;border:1px solid var(--line-strong);border-radius:999px;color:var(--ink-2);text-decoration:none;background:var(--surface)}
+  .toc a:hover{border-color:var(--accent);color:var(--accent)}
+  .hl-line{border-left:3px solid var(--accent);padding:8px 14px;background:var(--surface-2);border-radius:0 8px 8px 0}
+  .flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:14px 0}
+  .flow .st{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:13.5px;line-height:1.65}
+  .flow .st b{display:block;color:var(--accent-strong);margin-bottom:4px;font-size:14.5px}
+  .demo .ctrl{display:flex;flex-wrap:wrap;gap:18px;margin-bottom:10px;font-size:13.5px}
+  .demo .ctrl label{display:flex;align-items:center;gap:8px}
+  .demo .ctrl b{min-width:2.5em;color:var(--accent-strong)}
+  .demo canvas{display:block;width:100%;background:var(--surface);border:1px solid var(--line);border-radius:8px}
+  .demo .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--ink-2);margin:6px 0 12px}
+  .demo .legend span::before{content:"";display:inline-block;width:14px;height:3px;margin-right:5px;vertical-align:middle;background:var(--line-strong)}
+  .demo .legend .k1::before{background:var(--signal)} .demo .legend .k2::before{background:var(--accent)}
+  .demo .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
+  .demo .stats div{background:var(--surface-2);border-radius:8px;padding:8px 10px}
+  .demo .stats span{display:block;font-size:12px;color:var(--ink-3)} .demo .stats b{font-size:20px;color:var(--ink)}
+  .note{font-size:13px;color:var(--ink-2)}
+  .pipe{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:13px}
+  .pipe span{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;text-align:center}
+  .pipe small{color:var(--ink-3)} .pipe i{color:var(--accent);font-style:normal}
+  details.qz{border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin:8px 0;background:var(--surface)}
+  details.qz summary{cursor:pointer;font-weight:600} details.qz p{margin:8px 0 0}
+</style>
+<link rel="stylesheet" href="concepts.css">
+</head>
+<body>
+<div class="grid" aria-hidden="true"></div>
+
+<header class="masthead">
+  <a class="back" href="index.html">← 返回知识库</a>
+  <span class="ref">arXiv:2501.09747</span>
+</header>
+
+<div class="wrap">
+
+  <section class="hero">
+    <div class="eyebrow">精读笔记 · 动作表示</div>
+    <h1>FAST / π0-FAST：把动作像 JPEG 一样压缩成 token</h1>
+    <p class="summary">离散动作 token 在高频控制下学不动，问题不在“离散”本身，而在<b>每个 token 携带的信息太少</b>。FAST 用 DCT + BPE 把一段动作压成约 30 个高信息量 token，让自回归 <a class="concept-link" href="VLA-发展历程.html#concept-vla">VLA</a> 第一次能学会 50Hz 的叠衣服。</p>
+    <div class="meta">
+      <div class="m"><span class="k">论文</span><span class="v">FAST: Efficient Action Tokenization for Vision-Language-Action Models</span></div>
+      <div class="m"><span class="k">作者</span><span class="v">Pertsch*, Stachowicz*, Ichter, Driess, Nair, Vuong, Mees, Finn, Levine</span></div>
+      <div class="m"><span class="k">机构</span><span class="v">Physical Intelligence · UC Berkeley · Stanford</span></div>
+      <div class="m"><span class="k">首版</span><span class="v"><a href="https://arxiv.org/abs/2501.09747" target="_blank" rel="noreferrer">arXiv 2501.09747</a>（2025.01）</span></div>
+    </div>
+    <nav class="toc" aria-label="本页目录">
+      <a href="#s-one">一句话</a><a href="#s-problem">问题</a><a href="#s-demo">动手看</a><a href="#concept-fast">算法五步</a><a href="#concept-fast-plus">FAST+</a><a href="#concept-pi0-fast">π0-FAST</a><a href="#s-code">读代码</a><a href="#s-results">结果</a><a href="#s-insight">深层理解</a><a href="#s-cost">代价</a><a href="#s-next">被谁接手</a><a href="#s-quiz">自测</a>
+    </nav>
+  </section>
+
+  <section id="s-one">
+    <h2>先建立坐标：三种“动作怎么出”</h2>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th></th><th>OpenVLA / RT-2：逐维分箱</th><th>π0：flow matching</th><th>π0-FAST：频域压缩 token</th></tr>
+        <tr><td><strong>动作长什么样</strong></td><td>每步每维一个 256-bin token</td><td>连续向量，一次 50 步</td><td>一整段动作的 DCT 系数，经 BPE 合并成离散 token</td></tr>
+        <tr><td><strong>谁生成</strong></td><td>LLM 自回归，复用词表末尾 256 个 token</td><td>独立的 300M <a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a>，10 步积分去噪</td><td>PaliGemma 2B 主干自回归，没有动作专家</td></tr>
+        <tr><td><strong>1 秒 50Hz 双臂（14 维）的 token 数</strong></td><td>700</td><td>不是 token（50×14 个连续数）</td><td>约 53</td></tr>
+        <tr><td><strong>训练目标</strong></td><td>交叉熵</td><td>速度场回归（MSE）</td><td>交叉熵</td></tr>
+        <tr><td><strong>强项</strong></td><td>简单、复用 LLM 设施</td><td>推理快、动作精细</td><td>训练快、语言跟随强、复用 LLM 设施</td></tr>
+        <tr><td><strong>弱点</strong></td><td>高频数据学不动</td><td>训练慢，梯度会伤 VLM 知识</td><td>推理慢（逐 token 解码）</td></tr>
+      </table>
+    </div>
+    <p class="hl-line"><b>一句话：</b>FAST 是一个<b>动作 tokenizer</b>（不是模型）；π0-FAST 是“π0 的 VLM 主干 + FAST token + 自回归解码”训出来的<b>模型</b>。它不是 flow matching，也不是 OpenVLA 那种逐维分箱。</p>
+  </section>
+
+  <section id="s-problem">
+    <h2>问题：为什么分箱 token 在高频下“学不动”</h2>
+    <p>分箱的做法是：对动作块 <code>a<sub>1:H</sub></code>（H 步 × D 维）的<b>每一步、每一维</b>独立离散成 256 个 bin 之一，得到 <code>H×D</code> 个 token：<code>[T<sub>1,1</sub>…T<sub>1,D</sub>, …, T<sub>H,1</sub>…T<sub>H,D</sub>]</code>。</p>
+    <ol>
+      <li><strong>玩具实验</strong>：让小 Transformer 根据 4 个点预测一条三次样条。曲线本身不变，只改采样率（每条 25 → 800 个点）。分箱 token 在低采样率下预测很准；采样率越高误差越大，最后模型干脆<b>一直复制第一个动作</b>。</li>
+      <li><strong>原因在训练目标</strong>：自回归模型学的是“给定前面所有 token，下一个是什么”，学习信号正比于 <code>T<sub>i</sub></code> 相对 <code>T<sub>1:i-1</sub></code> 的<b>边际信息量</b>。信号越平滑、步长越短，相邻两步的差就越小，下一个 token 几乎等于上一个，边际信息趋近于 0。“抄上一个”这个捷径就能拿到很低的 loss。</li>
+      <li><strong>现实印证</strong>：OpenVLA 在低频的 BridgeV2、RT-1 数据上效果不错，但很难拟合 15Hz 的 DROID；在 20Hz 收桌、50Hz 叠 T 恤任务上，分箱 token 训练的策略<b>完全没有进展</b>。</li>
+    </ol>
+    <p class="hl-line">所以要的不是“换成连续表示”，而是<b>先把冗余挤掉，让每个 token 都有信息</b>。这就是一个压缩问题。</p>
+  </section>
+
+  <section id="s-demo">
+    <h2>动手看：同一条曲线，采样越密，分箱越冗余</h2>
+    <p>下面是一维“动作”曲线。拖动采样点数，对比分箱需要多少 token、相邻 token 有多少完全相同，以及 DCT 量化后还剩多少非零系数。<b>DCT 的非零系数几乎不随采样率增长</b>，这正是论文中“每条手臂约 30 个 token”的来源。</p>
+    <div class="demo card">
+      <div class="ctrl">
+        <label>采样点数 <b id="nVal">50</b><input id="nIn" type="range" min="10" max="400" step="10" value="50"></label>
+        <label>量化尺度 γ <b id="gVal">10</b><input id="gIn" type="range" min="2" max="40" step="1" value="10"></label>
+      </div>
+      <canvas id="cv" width="760" height="230" aria-label="原始曲线、分箱结果与 FAST 重建"></canvas>
+      <div class="legend"><span class="k0">原始曲线</span><span class="k1">256-bin 分箱</span><span class="k2">FAST 重建（逆 DCT）</span></div>
+      <canvas id="cc" width="760" height="110" aria-label="量化后的 DCT 系数"></canvas>
+      <div class="legend"><span class="k2">量化后的 DCT 系数（左边是低频）</span></div>
+      <div class="stats">
+        <div><span>分箱 token 数</span><b id="sNaive">-</b></div>
+        <div><span>相邻 token 相同的比例</span><b id="sRep">-</b></div>
+        <div><span>DCT 非零系数</span><b id="sNz">-</b></div>
+        <div><span>FAST 重建误差 RMSE</span><b id="sErr">-</b></div>
+      </div>
+      <p class="note">说明：演示只做了 DCT + 量化，没做 BPE。真实 FAST 还会用 BPE 把大量 0 和常见的系数组合合并掉，token 数会更少。γ 越大越精细，但非零系数越多。</p>
+    </div>
+  </section>
+
+  <section id="concept-fast" class="concept-anchor">
+    <h2>FAST 算法五步（Frequency-space Action Sequence Tokenization）</h2>
+    <div class="flow">
+      <div class="st"><b>① 归一化</b><span>每个动作维度的训练集第 1 / 99 分位数映射到 [−1, 1]。用分位数是为了抗离群值，也方便不同机器人共用一个 tokenizer。</span></div>
+      <div class="st"><b>② 逐维 DCT</b><span>对 H×D 动作块的每一维沿时间轴做离散余弦变换。低频系数描述整体走势，高频系数描述突变。平滑的轨迹只需要少数几个系数。</span></div>
+      <div class="st"><b>③ 缩放取整</b><span><code>round(γ·C)</code>，γ 默认为 10。这是<b>唯一有损</b>的一步：小系数会变成 0，矩阵变得稀疏。γ 控制压缩率和精度之间的权衡。</span></div>
+      <div class="st"><b>④ 低频优先展平</b><span>按“先所有维度的第 0 频，再所有维度的第 1 频……”展平（column-first）。这样自回归时先确定整体形状，再补细节，rollout 更稳。</span></div>
+      <div class="st"><b>⑤ BPE 合并</b><span>在整数序列上训练词表为 1024 的 BPE，无损地压掉成串的 0，并合并跨维度常一起出现的系数组合。输出是固定大小的词表，可以直接塞进 VLM 词表。</span></div>
+    </div>
+    <p><b>解码是完全逆过程</b>：BPE 解码 → reshape 成 H×D → 除以 γ → 逆 DCT → 反归一化，得到连续动作块。整个 tokenizer 只有两个超参（γ 与词表大小），论文发现都不敏感。唯一需要学习的是 BPE 词表，几分钟就能训完。</p>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>为什么这样设计</th><th>换成别的会怎样</th></tr>
+        <tr><td>用 DCT：解析变换，像 JPEG 一样简单快，不需要训练网络</td><td>VQ / FSQ 等学习式压缩也能提升训练，但要单独训练网络、仔细调参；论文的 FSQ 基线在灵巧任务上不如 FAST</td></tr>
+        <tr><td>保留 BPE</td><td>去掉 BPE 后仍好于分箱，但大量 0 token 会稀释学习信号，还要多解码几百个 token，效果变差、推理变慢</td></tr>
+        <tr><td>低频优先展平</td><td>按维度展平（先把一维的所有频率写完）会让早期 token 只定义了一条手臂的一维，rollout 不稳</td></tr>
+      </table>
+    </div>
+  </section>
+
+  <section id="concept-fast-plus" class="concept-anchor">
+    <h2>FAST+：通用动作 tokenizer</h2>
+    <ul>
+      <li><strong>训练数据</strong>：约 100 万条 <b>1 秒</b>动作块，覆盖单臂、双臂、移动操作，关节空间和末端空间，以及多种控制频率。</li>
+      <li><strong>泛化</strong>：在训练时没见过的机器人数据集上（灵巧手、人形、甚至 Waymo 驾驶），token 数都至少减半，有些数据集减少得更多。训练策略时，效果与专门为该数据集训练的 FAST tokenizer 持平。</li>
+      <li><strong>用法</strong>：HuggingFace 上三行代码 <code>AutoProcessor.from_pretrained("physical-intelligence/fast", trust_remote_code=True)</code>；也可以用 <code>.fit(action_dataset)</code> 在自己的数据上重新训练 BPE。建议输入先做分位数归一化，每次切 1 秒动作块。</li>
+    </ul>
+  </section>
+
+  <section id="concept-pi0-fast" class="concept-anchor">
+    <h2>π0-FAST：模型怎么搭、怎么训、怎么推</h2>
+    <ol>
+      <li><strong>结构</strong>：π0 的 PaliGemma（Gemma 2B + SigLIP）主干，<b>去掉动作专家</b>。动作也变成词表里的 token，与文字共用同一个输出头。</li>
+      <li><strong>输入序列</strong>：<code>[图像 token] Task: 指令, State: 256-bin 离散状态;\n</code> 作为前缀，<code>Action: [FAST token…] |</code> 作为后缀。前缀内部双向注意力，后缀因果注意力。</li>
+      <li><strong>词表映射</strong>：FAST 的 1024 个 token 映射到 PaliGemma 词表末尾，并跳过最后 128 个特殊 token：<code>pg_id = vocab_size − 1 − 128 − fast_id</code>。</li>
+      <li><strong>训练</strong>：标准的下一个 token 交叉熵，<b>只在后缀（动作部分）上计 loss</b>。没有噪声、没有积分步数，和训练语言模型完全一样。</li>
+      <li><strong>推理</strong>：前缀先过一遍填 KV cache，然后逐 token 贪心解码（默认温度 0），遇到 EOS 停止 → 截取 “Action:” 与 “|” 之间的部分 → FAST 解码 → 连续动作块。</li>
+      <li><strong>规模</strong>：在 π0 的同一套跨本体数据（9.03 亿时间步自有数据，外加 9.1% 的 BridgeV2 / DROID / OXE）上训练，对标扩散/flow 版 π0。</li>
+    </ol>
+    <div class="diagram card">
+      <div class="pipe"><span>相机图像 + 指令 + 状态</span><i>→</i><span>PaliGemma 2B<br><small>前缀双向注意力</small></span><i>→</i><span>逐 token 生成<br><small>约 30–60 个 FAST token</small></span><i>→</i><span>BPE 解码 → ÷γ → 逆 DCT</span><i>→</i><span>连续动作块<br><small>交给机器人执行</small></span></div>
+    </div>
+  </section>
+
+  <section id="s-code">
+    <h2>读代码：openpi 里的 π0-FAST 全链路</h2>
+    <p>以下链接都固定在 openpi <code>215abfb</code> 和 HuggingFace <code>physical-intelligence/fast</code> 的 <code>ec4d7aa</code> 版本。建议按顺序读：</p>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>顺序</th><th>代码</th><th>看什么</th></tr>
+        <tr><td>1</td><td><a href="https://huggingface.co/physical-intelligence/fast/blob/ec4d7aa71691cac0b8bed6942be45684db2110f4/processing_action_tokenizer.py#L43" target="_blank" rel="noreferrer">processing_action_tokenizer.py · __call__ ↗</a></td><td>DCT（<code>norm="ortho"</code>）→ <code>np.around(coeff*scale)</code> → 减去 <code>min_token</code> 后用 <code>chr()</code> 变成字符串 → BPE。这里把整数系数当作“字符”，正是为了复用现成的文本 BPE 实现</td></tr>
+        <tr><td>2</td><td><a href="https://huggingface.co/physical-intelligence/fast/blob/ec4d7aa71691cac0b8bed6942be45684db2110f4/processing_action_tokenizer.py#L60" target="_blank" rel="noreferrer">processing_action_tokenizer.py · decode ↗</a></td><td>逆过程；解出的形状不等于 <code>(H, D)</code> 时打印错误并<b>返回全 0 系数</b></td></tr>
+        <tr><td>3</td><td><a href="https://huggingface.co/physical-intelligence/fast/blob/ec4d7aa71691cac0b8bed6942be45684db2110f4/processing_action_tokenizer.py#L98" target="_blank" rel="noreferrer">processing_action_tokenizer.py · fit ↗</a></td><td>在新数据上训 BPE：初始字母表覆盖 <code>[min, max]</code> 全部整数，词表默认 1024</td></tr>
+        <tr><td>4</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/tokenizer.py#L64-L117" target="_blank" rel="noreferrer">tokenizer.py · FASTTokenizer.tokenize ↗</a></td><td>拼出 <code>Task: …, State: …;\n</code> + <code>Action: … |</code>；状态离散成 256 bin 写成文字；<code>ar_mask</code> 与 <code>loss_mask</code> 只对后缀为 1</td></tr>
+        <tr><td>5</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/tokenizer.py#L119-L139" target="_blank" rel="noreferrer">tokenizer.py · extract_actions / 词表映射 ↗</a></td><td>按 “Action: ” 和 “|” 截取输出；没生成 “Action: ” 时返回全 0 动作；FAST id ↔ PaliGemma id 的映射公式</td></tr>
+        <tr><td>6</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0_fast.py#L77-L89" target="_blank" rel="noreferrer">pi0_fast.py · Pi0FASTConfig ↗</a></td><td>默认 <code>action_horizon=32</code>、<code>max_token_len=250</code>；DROID 配置用 <code>action_horizon=10</code>（<a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/training/config.py#L616-L617" target="_blank" rel="noreferrer">config.py ↗</a>）</td></tr>
+        <tr><td>7</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0_fast.py#L198-L233" target="_blank" rel="noreferrer">pi0_fast.py · compute_loss ↗</a></td><td>一次前向前缀加后缀，目标右移一位做 one-hot，只对后缀解码 logits 以省显存，交叉熵按 <code>token_loss_mask</code> 求平均</td></tr>
+        <tr><td>8</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0_fast.py#L236-L313" target="_blank" rel="noreferrer">pi0_fast.py · sample_actions ↗</a></td><td>左对齐 → prefill KV cache → 用 <code>jax.lax.while_loop</code> 逐 token 解码，最多 256 步，全部样本遇到 EOS 就停</td></tr>
+        <tr><td>9</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/transforms.py#L270-L306" target="_blank" rel="noreferrer">transforms.py · TokenizeFASTInputs / ExtractFASTActions ↗</a></td><td>数据管线两端：训练前把动作变成 token，推理后把 token 变回动作</td></tr>
+      </table>
+    </div>
+    <p>对照阅读：同一文件里的 <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/tokenizer.py#L148-L243" target="_blank" rel="noreferrer">BinningTokenizer ↗</a>（逐维分箱基线），以及 π0 的 flow matching 实现，见 <a class="concept-link" href="代码索引.html#fast">代码索引 · FAST</a> 和 <a href="代码索引.html#flow-matching">flow matching</a>。</p>
+  </section>
+
+  <section id="s-results">
+    <h2>关键结果</h2>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>数据集（1 秒动作块）</th><th>维度</th><th>频率</th><th>分箱 token</th><th>FAST token</th><th>压缩比</th></tr>
+        <tr><td>BridgeV2</td><td>7</td><td>5Hz</td><td>35</td><td>20</td><td>1.75×</td></tr>
+        <tr><td>DROID</td><td>7</td><td>15Hz</td><td>105</td><td>29</td><td>3.6×</td></tr>
+        <tr><td>收桌 Bussing</td><td>7</td><td>20Hz</td><td>140</td><td>28</td><td>5.0×</td></tr>
+        <tr><td>叠 T 恤</td><td>14</td><td>50Hz</td><td>700</td><td>53</td><td>13.2×</td></tr>
+      </table>
+    </div>
+    <p class="note">两种方法的重建误差相当。注意 FAST 列：无论频率多高，每条手臂大约都是 30 个 token。token 数跟着<b>动作本身的复杂度</b>走，而不是跟着采样频率走。</p>
+    <ul>
+      <li><strong>策略效果</strong>：在收桌（20Hz）、叠 T 恤（50Hz）上，分箱完全学不会，FAST 能学会；FAST 与 FSQ 相当或更好，灵巧任务上优势更明显。</li>
+      <li><strong>DROID 零样本</strong>：第一个只用自然语言提示、不做微调，就能在伯克利、斯坦福、华盛顿大学三个校园的新环境里完成简单桌面任务的 DROID 策略。</li>
+      <li><strong>与骨干无关</strong>：把 OpenVLA 的分箱换成 FAST+ 后，它在叠 T 恤任务上从学不会变成能学会。</li>
+      <li><strong>对比扩散/flow 版 π0（单任务）</strong>：小数据集（Libero、叠 T 恤，少于 50 小时）两者相当；大数据集（收桌）FAST 达到同样效果所需训练步数约为 1/3；DROID 上 FAST 更听语言指令，flow 版常忽略指令。</li>
+      <li><strong>通才模型</strong>：π0-FAST 在 π0 的全部数据上训练，5 个任务（含最难的叠衣服）与 π0 持平，训练 <b>GPU 小时少 5 倍</b>。</li>
+    </ul>
+  </section>
+
+  <section id="s-insight">
+    <h2>深层理解：这篇真正改变了什么</h2>
+    <ul>
+      <li><strong>“离散还是连续”被问错了</strong>：分箱失败不是因为离散，而是因为 token 的<b>信息密度</b>太低。只要每个 token 都有足够的边际信息，离散自回归就能学好高频灵巧动作。论文原话的意思是：任何足够有效的压缩方法都能加快 VLA 训练。</li>
+      <li><strong>tokenizer 是模型的一部分</strong>：LLM 里 BPE 的选择影响很大，机器人也一样。动作表示决定了训练信号长什么样，比“换更大的骨干”更便宜、更有效。</li>
+      <li><strong>先轮廓、后细节</strong>：低频优先展平让自回归的生成顺序变成“先定整体趋势，再补细节”，与扩散模型从粗到细的去噪相似，只是换成了在频域里按 token 生成。</li>
+      <li><strong>训练快的来源</strong>：交叉熵 + 共享输出头，梯度直接落在 VLM 熟悉的“下一个 token”任务上，不需要随机初始化的动作专家从零学起，也不用学一个速度场。</li>
+      <li><strong>语言跟随更强</strong>：动作和文字共用同一个输出空间，VLM 的语言能力保留得更好。这个观察直接引出了后来的知识隔离（KI）。</li>
+    </ul>
+  </section>
+
+  <section id="s-cost">
+    <h2>代价与边界</h2>
+    <ul>
+      <li><strong>推理慢</strong>：在 RTX 4090 上，flow 版 π0 生成 1 秒动作块约 100ms，π0-FAST 约 <b>750ms</b>。原因有两个：要逐个解码 30–60 个 token（flow 版只要 10 步积分），而且每一步都要跑完整的 2B 主干（flow 版只跑 300M 动作专家）。论文的静态任务没受影响，但动态任务和实时控制会受影响。</li>
+      <li><strong>有损且长度可变</strong>：γ 决定精度上限。输出 token 数不固定，一旦解码出非法序列，openpi 会返回全 0 动作，部署时需要专门处理。</li>
+      <li><strong>验证范围</strong>：论文只在静态机械臂上做了策略实验；移动、人形和驾驶数据只测了压缩率。</li>
+      <li><strong>可能的加速</strong>：作者提到可以借鉴 LLM 的推测解码、量化、定制算子，但论文没做。</li>
+    </ul>
+  </section>
+
+  <section id="s-next">
+    <h2>被谁接手</h2>
+    <ul>
+      <li><strong><a href="pi0.5_论文测验_精美版.html#concept-fast">π0.5</a></strong>：取两条路线之长。训练时用 FAST token 训 VLM 主干（训练快、语言好），推理时由 flow 动作专家出动作（推理快），两种动作表示之间用注意力 mask 隔开。</li>
+      <li><strong>知识隔离（KI）</strong>：FAST token 训练骨干，同时<b>阻断</b>动作专家回传到骨干的梯度，避免破坏 VLM 知识。见 <a href="PI-工作全景.html">Physical Intelligence 工作全景</a>。</li>
+      <li><strong>π0.6 / π0.7</strong>：沿用 π0.5 的“FAST 训骨干 + 动作专家出动作”底座。见 <a href="pi0.6-论文解读.html">π*0.6</a>、<a href="pi0.7_问答学习卡.html">π0.7</a>。</li>
+      <li><strong>另一条路</strong>：OpenVLA-OFT 放弃逐 token 生成，改为并行解码加连续回归来提速。对比见 <a href="OpenVLA-vs-pi系列-对比.html">OpenVLA vs π 系列</a>。</li>
+      <li><strong>放回全局</strong>：<a href="VLA-发展历程.html">VLA 发展史</a>中的“动作表示”主线，2025.01 节点。</li>
+    </ul>
+  </section>
+
+  <section id="s-quiz">
+    <h2>自测</h2>
+    <details class="qz"><summary>π0-FAST 是 flow matching 吗？和 π0 的根本区别是什么？</summary><p>不是。π0-FAST 没有动作专家，由 VLM 主干像生成文字一样逐个生成 FAST token，用交叉熵训练；π0 由动作专家用 flow matching 从噪声积分出连续动作，用速度场回归训练。两者最后都输出连续动作块。</p></details>
+    <details class="qz"><summary>同一条平滑曲线采样更密，为什么分箱 token 更难学？</summary><p>相邻 token 越来越像，每个 token 相对前文的边际信息趋于 0，模型靠“抄上一个”就能把 loss 压得很低，学习信号被稀释。</p></details>
+    <details class="qz"><summary>FAST 中哪一步有损？哪一步需要训练？</summary><p>缩放取整有损（由 γ 控制）；只有 BPE 词表需要在数据上训练，DCT 是固定的解析变换。</p></details>
+    <details class="qz"><summary>为什么要按“低频优先”展平？</summary><p>自回归先生成所有维度的低频系数，相当于先确定整段动作的整体形状，再补高频细节，rollout 更稳定。</p></details>
+    <details class="qz"><summary>FAST 让训练快 5 倍，为什么 π0.5 推理时又换回 flow？</summary><p>FAST 推理要用 2B 主干逐 token 解码（约 750ms/块），flow 动作专家 10 步积分约 100ms。π0.5 用 FAST 训练拿收敛速度和语言能力，用 flow 推理拿速度。</p></details>
+  </section>
+
+  <aside class="concept-related" aria-label="相关概念">
+    <strong>相关概念</strong>
+    <a class="concept-link" href="concepts.html#fast">FAST 概念卡</a>
+    <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">Flow Matching</a>
+    <a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a>
+    <a class="concept-link" href="concepts.html">全部概念 →</a>
+  </aside>
+
+  <footer>
+    <span>精读笔记 · FAST / π0-FAST · 出处：Pertsch et al., <a href="https://arxiv.org/abs/2501.09747" target="_blank" rel="noreferrer">arXiv 2501.09747</a> · <a href="https://www.pi.website/research/fast" target="_blank" rel="noreferrer">官方博客</a></span>
+    <a href="index.html">返回知识库 →</a>
+  </footer>
+</div>
+<script>
+(function(){
+  var nIn=document.getElementById('nIn'),gIn=document.getElementById('gIn');
+  var cv=document.getElementById('cv'),cc=document.getElementById('cc');
+  function sig(t){return 0.55*Math.sin(2*Math.PI*0.7*t+0.3)+0.25*Math.sin(2*Math.PI*1.6*t+1.1)+0.3*t-0.1;}
+  function dct(x){var N=x.length,X=new Array(N);for(var k=0;k<N;k++){var s=0;for(var n=0;n<N;n++)s+=x[n]*Math.cos(Math.PI*(n+0.5)*k/N);X[k]=s*Math.sqrt((k?2:1)/N);}return X;}
+  function idct(X){var N=X.length,x=new Array(N);for(var n=0;n<N;n++){var s=0;for(var k=0;k<N;k++)s+=X[k]*Math.sqrt((k?2:1)/N)*Math.cos(Math.PI*(n+0.5)*k/N);x[n]=s;}return x;}
+  function css(v){return getComputedStyle(document.documentElement).getPropertyValue(v).trim();}
+  function fit(c){var r=c.getBoundingClientRect(),d=window.devicePixelRatio||1;c.width=Math.max(300,r.width)*d;c.height=parseInt(c.getAttribute('height'),10)*d;var g=c.getContext('2d');g.setTransform(d,0,0,d,0,0);return {g:g,w:c.width/d,h:c.height/d};}
+  function draw(){
+    var N=+nIn.value,G=+gIn.value;
+    document.getElementById('nVal').textContent=N;document.getElementById('gVal').textContent=G;
+    var x=[],b=[],i;for(i=0;i<N;i++)x.push(sig(i/(N-1)));
+    var bins=x.map(function(v){return Math.min(255,Math.max(0,Math.floor((v+1)/2*256)));});
+    b=bins.map(function(k){return (k+0.5)/256*2-1;});
+    var rep=0;for(i=1;i<N;i++)if(bins[i]===bins[i-1])rep++;
+    var q=dct(x).map(function(c){return Math.round(c*G);});
+    var nz=q.filter(function(v){return v!==0;}).length;
+    var y=idct(q.map(function(v){return v/G;}));
+    var err=0;for(i=0;i<N;i++)err+=(y[i]-x[i])*(y[i]-x[i]);err=Math.sqrt(err/N);
+    document.getElementById('sNaive').textContent=N;
+    document.getElementById('sRep').textContent=Math.round(100*rep/Math.max(1,N-1))+'%';
+    document.getElementById('sNz').textContent=nz;
+    document.getElementById('sErr').textContent=err.toFixed(4);
+    var A=fit(cv),g=A.g,W=A.w,H=A.h,p=10;
+    g.clearRect(0,0,W,H);
+    function X(i){return p+i/(N-1)*(W-2*p);}function Y(v){return H/2-v*(H/2-p);}
+    g.strokeStyle=css('--line');g.beginPath();g.moveTo(p,H/2);g.lineTo(W-p,H/2);g.stroke();
+    g.lineWidth=5;g.strokeStyle=css('--line-strong');g.beginPath();x.forEach(function(v,i){i?g.lineTo(X(i),Y(v)):g.moveTo(X(i),Y(v));});g.stroke();
+    g.lineWidth=1.5;g.strokeStyle=css('--signal');g.beginPath();b.forEach(function(v,i){if(!i)g.moveTo(X(i),Y(v));else{g.lineTo(X(i),Y(b[i-1]));g.lineTo(X(i),Y(v));}});g.stroke();
+    g.lineWidth=1.5;g.setLineDash([4,3]);g.strokeStyle=css('--accent');g.beginPath();y.forEach(function(v,i){i?g.lineTo(X(i),Y(v)):g.moveTo(X(i),Y(v));});g.stroke();g.setLineDash([]);
+    var B=fit(cc),h=B.g,w=B.w,hh=B.h,m=Math.max.apply(null,q.map(Math.abs))||1,K=Math.min(N,60),bw=(w-2*p)/K;
+    h.clearRect(0,0,w,hh);h.strokeStyle=css('--line');h.beginPath();h.moveTo(p,hh/2);h.lineTo(w-p,hh/2);h.stroke();
+    for(i=0;i<K;i++){var v=q[i];h.fillStyle=v?css('--accent'):css('--line-strong');var bh=v?Math.max(1.5,Math.abs(v)/m*(hh/2-6)):1.5;h.fillRect(p+i*bw+1,v>=0?hh/2-bh:hh/2,Math.max(1,bw-2),bh);}
+    h.fillStyle=css('--ink-3');h.font='11px sans-serif';h.fillText(K<N?'仅显示前 '+K+' 个系数，其余均为 0 或接近 0':'共 '+N+' 个系数',p,12);
+  }
+  nIn.addEventListener('input',draw);gIn.addEventListener('input',draw);window.addEventListener('resize',draw);
+  if(window.matchMedia)window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',draw);
+  draw();
+})();
+</script>
+<script src="nav.js"></script>
+</body>
+</html>
