@@ -73,6 +73,17 @@
   .nd.kb{box-shadow:inset 0 0 0 1px var(--lc)}
   .nd.kb::after{content:"本库";float:right;font-size:9.5px;color:var(--lc);font-weight:700}
   .nd.off{opacity:.18}
+  .view-toggle{align-items:center;margin-bottom:8px}
+  .view-toggle span{font-size:12.5px;color:var(--muted)}
+  .view-note{margin:0 0 10px;font-size:13px;color:var(--muted)}
+  .pop{position:fixed;z-index:60;width:min(380px,calc(100vw - 24px));max-height:min(70vh,520px);overflow:auto;background:var(--paper);border:1px solid var(--line-strong);border-radius:12px;box-shadow:0 18px 50px rgba(16,35,31,.22);padding:16px 18px}
+  .pop[hidden]{display:none}
+  .pop .meta{font:12px "DM Mono",monospace;color:var(--muted-2);padding-right:24px}
+  .pop h3{margin:4px 0 6px;font-size:17px;line-height:1.35;letter-spacing:-.01em}
+  .pop p{margin:0 0 12px;color:var(--muted);font-size:14px}
+  .pop .acts{display:flex;flex-wrap:wrap;gap:7px}
+  .pop-x{position:absolute;top:8px;right:10px;border:0;background:none;font-size:22px;line-height:1;color:var(--muted);cursor:pointer;padding:2px 6px}
+  @media (max-width:720px){.pop{left:12px!important;right:12px;top:auto!important;bottom:12px;width:auto}}
   .detail{margin-top:14px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:start}
   .detail h3{margin:2px 0 6px;font-size:20px;letter-spacing:-.02em}
   .detail p{margin:0;color:var(--muted);font-size:14.5px}
@@ -258,9 +269,22 @@
 
   <!-- 01 -->
   <section class="section" id="swimlane" aria-labelledby="swim-title">
-    <div class="section-head"><div><div class="eyebrow">01 / 全景泳道图</div><h2 id="swim-title">一屏看完 60 年</h2></div><p>横轴是时间，2013 年以前压缩显示；纵轴是五条技术主线。点击任一节点查看它的贡献；每篇工作画在它的主要主线上；按主线筛选时，凡涉及该主线的节点都会高亮。</p></div>
+    <div class="section-head"><div><div class="eyebrow">01 / 全景泳道图</div><h2 id="swim-title">一屏看完 60 年</h2></div><p>横轴是时间，2013 年以前压缩显示；纵轴是五条技术主线。点击任一节点，会就地弹出它的介绍。行可以切换成“技术主线”或“机构”。</p></div>
+    <div class="lane-filters view-toggle" id="viewToggle" role="group" aria-label="行的分法">
+      <span>每一行是：</span>
+      <button type="button" class="button active" data-view="lane" aria-pressed="true">技术主线</button>
+      <button type="button" class="button" data-view="org" aria-pressed="false">机构（π 系列在同一行）</button>
+    </div>
     <div class="lane-filters" id="laneFilters" role="group" aria-label="按主线筛选"></div>
+    <p class="view-note" id="viewNote"></p>
     <div class="swim-wrap"><div class="swim" id="swim"></div></div>
+    <div class="pop" id="pop" role="dialog" aria-modal="false" aria-labelledby="popTitle" hidden>
+      <button type="button" class="pop-x" id="popX" aria-label="关闭">×</button>
+      <div class="meta" id="popMeta"></div>
+      <h3 id="popTitle"></h3>
+      <p id="popText"></p>
+      <div class="acts" id="popActs"></div>
+    </div>
     <div class="card detail" id="detail" aria-live="polite">
       <div><div class="meta" id="dMeta">点击上方任一节点</div><h3 id="dTitle">选择一个节点</h3><p id="dText">每个节点都回答三件事：它在哪个阶段、改动了哪条主线、为本库哪一页提供了背景。</p></div>
       <div class="acts" id="dActs"></div>
@@ -692,35 +716,85 @@
   function year(n){return parseInt(n.date.slice(0,4),10);}
 
   /* swimlane */
+  var ORGS=[
+    {id:'google',name:'Google / DeepMind',c:'#3b6fd8',test:function(o){return /Google|DeepMind/.test(o);}},
+    {id:'pi',name:'Physical Intelligence',c:'#c4572a',test:function(o){return o==='Physical Intelligence';}},
+    {id:'corp',name:'其他公司',c:'#8a4fb0',test:function(o){return /NVIDIA|Figure|ByteDance|Hugging Face|OpenAI|Meta|Qwen|华为|Dexmal|TRI|MSRA/.test(o);}},
+    {id:'acad',name:'高校与研究所',c:'#16796f',test:function(){return true;}}
+  ];
+  function orgOf(n){for(var i=0;i<ORGS.length;i++)if(ORGS[i].test(n.org))return ORGS[i].id;}
   var swim=document.getElementById('swim');
-  swim.appendChild(el('div',{class:'h'},'主线 / 年份'));
-  BINS.forEach(function(b){swim.appendChild(el('div',{class:'h'},b.name));});
-  var buttonsByNode={};
-  LANES.forEach(function(L){
-    var name=el('div',{class:'lane-name','data-lane':L.id});var dot=el('i');dot.style.background=L.c;name.appendChild(dot);name.appendChild(document.createTextNode(L.name));swim.appendChild(name);
-    BINS.forEach(function(b){
-      var cell=el('div',{class:'c','data-lane':L.id});
-      NODES.filter(function(n){return n.lanes[0]===L.id&&b.test(year(n));}).forEach(function(n){
-        var bt=el('button',{type:'button',class:'nd'+(n.kb?' kb':''),'data-id':n.id});
-        bt.style.setProperty('--lc',L.c);
-        bt.appendChild(document.createTextNode(n.title));bt.appendChild(el('small',null,n.date.replace('-','.')));
-        bt.addEventListener('click',function(){show(n.id,false);});
-        cell.appendChild(bt);buttonsByNode[n.id]=bt;
+  var buttonsByNode={};var curView='lane';var selId=null;
+  var NOTES={lane:'每篇工作画在它“主要改动”的那条主线上（例如 π0 改的是动作表示，π*0.6 改的是训练范式），所以同一家的工作会分散在不同行；节点左边框颜色就是主线颜色。',org:'按发布机构分行：π0 → FAST → π0.5 → π*0.6 → π0.7 都在 Physical Intelligence 这一行。节点左边框颜色仍表示它主要改动的技术主线。'};
+  function renderSwim(){
+    swim.innerHTML='';buttonsByNode={};
+    var rows=curView==='lane'?LANES:ORGS;
+    swim.appendChild(el('div',{class:'h'},curView==='lane'?'主线 / 年份':'机构 / 年份'));
+    BINS.forEach(function(b){swim.appendChild(el('div',{class:'h'},b.name));});
+    rows.forEach(function(R){
+      var name=el('div',{class:'lane-name','data-lane':R.id});var dot=el('i');dot.style.background=R.c;name.appendChild(dot);name.appendChild(document.createTextNode(R.name));swim.appendChild(name);
+      BINS.forEach(function(b){
+        var cell=el('div',{class:'c','data-lane':R.id});
+        NODES.filter(function(n){return (curView==='lane'?n.lanes[0]===R.id:orgOf(n)===R.id)&&b.test(year(n));}).forEach(function(n){
+          var bt=el('button',{type:'button',class:'nd'+(n.kb?' kb':'')+(n.id===selId?' sel':''),'data-id':n.id,'aria-haspopup':'dialog'});
+          bt.style.setProperty('--lc',laneOf(n.lanes[0]).c);
+          bt.appendChild(document.createTextNode(n.title));bt.appendChild(el('small',null,n.date.replace('-','.')));
+          bt.addEventListener('click',function(e){e.stopPropagation();show(n.id,false);openPop(n,bt);});
+          cell.appendChild(bt);buttonsByNode[n.id]=bt;
+        });
+        swim.appendChild(cell);
       });
-      swim.appendChild(cell);
+    });
+    document.getElementById('viewNote').textContent=NOTES[curView];
+  }
+  renderSwim();
+  document.querySelectorAll('#viewToggle .button').forEach(function(b){
+    b.addEventListener('click',function(){
+      curView=b.getAttribute('data-view');closePop();
+      document.querySelectorAll('#viewToggle .button').forEach(function(x){var on=x===b;x.classList.toggle('active',on);x.setAttribute('aria-pressed',on?'true':'false');});
+      renderSwim();applyLane();
     });
   });
 
+  /* popover */
+  var pop=document.getElementById('pop');var popFrom=null;
+  function actions(n,box){
+    box.innerHTML='';
+    var src=link(n);if(src)box.appendChild(el('a',{class:'button',href:src,target:'_blank',rel:'noreferrer'},n.arxiv?'arXiv '+n.arxiv+' ↗':'原始出处 ↗'));
+    if(n.kb)box.appendChild(el('a',{class:'button primary',href:n.kb},'本库精读 →'));
+    box.appendChild(el('a',{class:'button',href:'#'+n.stage},'所在阶段 '+n.stage.toUpperCase()+' ↓'));
+  }
+  function metaOf(n){return n.date.replace('-','.')+' · '+n.org+' · '+STAGES[n.stage]+' · '+n.lanes.map(function(l){return laneOf(l).name;}).join(' / ');}
+  function openPop(n,bt){
+    popFrom=bt;
+    document.getElementById('popMeta').textContent=metaOf(n);
+    document.getElementById('popTitle').textContent=n.title+'｜'+n.full;
+    document.getElementById('popText').textContent=n.one;
+    actions(n,document.getElementById('popActs'));
+    pop.hidden=false;popY=window.scrollY;
+    var r=bt.getBoundingClientRect(),w=pop.offsetWidth,h=pop.offsetHeight,vw=window.innerWidth,vh=window.innerHeight;
+    var left=Math.min(Math.max(12,r.left),vw-w-12);
+    var top=r.bottom+8+h<=vh-12?r.bottom+8:Math.max(12,r.top-8-h);
+    pop.style.left=left+'px';pop.style.top=top+'px';
+  }
+  function closePop(){if(!pop.hidden){pop.hidden=true;if(popFrom&&document.activeElement&&pop.contains(document.activeElement))popFrom.focus();}}
+  document.getElementById('popX').addEventListener('click',closePop);
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')closePop();});
+  document.addEventListener('click',function(e){if(!pop.contains(e.target))closePop();});
+  window.addEventListener('resize',closePop);
+  var popY=0;
+  function closeOnScroll(){if(window.innerWidth>720&&!pop.hidden&&Math.abs(window.scrollY-popY)>60)closePop();}
+  window.addEventListener('scroll',closeOnScroll,{passive:true});
+  document.querySelector('.swim-wrap').addEventListener('scroll',function(){if(window.innerWidth>720)closePop();},{passive:true});
+
   function show(id,scroll){
     var n=byId[id];if(!n)return;
+    selId=id;
     Object.keys(buttonsByNode).forEach(function(k){buttonsByNode[k].classList.toggle('sel',k===id);});
-    document.getElementById('dMeta').textContent=n.date.replace('-','.')+' · '+n.org+' · '+STAGES[n.stage]+' · '+n.lanes.map(function(l){return laneOf(l).name;}).join(' / ');
+    document.getElementById('dMeta').textContent=metaOf(n);
     document.getElementById('dTitle').textContent=n.full;
     document.getElementById('dText').textContent=n.one;
-    var acts=document.getElementById('dActs');acts.innerHTML='';
-    var src=link(n);if(src){var a=el('a',{class:'button',href:src,target:'_blank',rel:'noreferrer'},n.arxiv?'arXiv '+n.arxiv+' ↗':'原始出处 ↗');acts.appendChild(a);}
-    if(n.kb)acts.appendChild(el('a',{class:'button primary',href:n.kb},'本库精读 →'));
-    acts.appendChild(el('a',{class:'button',href:'#'+n.stage},'所在阶段 '+n.stage.toUpperCase()+' ↓'));
+    actions(n,document.getElementById('dActs'));
     if(scroll)document.getElementById('swimlane').scrollIntoView();
   }
 
