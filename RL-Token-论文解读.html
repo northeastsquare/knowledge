@@ -163,7 +163,7 @@
     <a href="#s2">2 · 核心思想</a>
     <a href="#s3">3 · 三个关键设计</a>
     <a href="#s4">4 · 完整系统流程</a>
-    <a href="#s-faq">4½ · 运行时五问</a>
+    <a href="#s-faq">4½ · 运行时八问</a>
     <a href="#s5">5 · 实验结果</a>
     <a href="#s6">6 · 与已有方法的关系</a>
     <a href="#s7">7 · 局限与展望</a>
@@ -187,7 +187,8 @@
       <table>
         <tr><th>方案</th><th>优点</th><th>缺点</th></tr>
         <tr><td><strong>直接微调整个 VLA</strong><br><span style="color:var(--faint)"><a class="concept-link" href="pi0.6-论文解读.html#concept-recap">RECAP</a> / <a class="concept-link" href="RLinf-RL原理对比.html#concept-ppo">PPO</a> 类</span></td><td>保留泛化能力</td><td>计算贵、样本效率低，几小时练不出来</td></tr>
-        <tr><td><strong>训练小模型做 RL</strong><br><span style="color:var(--faint)">SERL / RL100 类</span></td><td>快、样本高效</td><td>丢掉 VLA 的泛化与视觉先验，从零学</td></tr>
+        <tr><td><strong>训练小模型做 RL</strong><br><span style="color:var(--faint)">SERL / HIL-SERL 类</span></td><td>快、样本高效</td><td>丢掉 VLA 的泛化与视觉先验，从零学</td></tr>
+        <tr><td><strong>在 IL 策略上做 RL 后训练</strong><br><span style="color:var(--faint)"><a href="RL-100-论文解读.html">RL-100</a> 类</span></td><td>保留行为先验，改进单调可控</td><td>仍要改整条去噪链，每任务需数小时真机数据</td></tr>
       </table>
       <p style="margin-top:12px;"><strong>核心问题</strong>：怎么"鱼与熊掌兼得"——既拿到 VLA 的泛化，又拿到小模型 RL 的速度？</p>
     </div>
@@ -341,8 +342,8 @@
 
   <!-- 4.5 -->
   <section id="s-faq">
-    <h2><span class="no">4½</span>运行时到底怎么跑：五个常见疑问</h2>
-    <p class="lead">先说结论：VLA 每 10 步才推理一次；RL 只负责最难的那一段；"强化学习"指的是在线训练小网络，执行时 actor 只做一次前向。下面每条都标了论文出处页码（arXiv v2 PDF）。</p>
+    <h2><span class="no">4½</span>运行时到底怎么跑：八个常见疑问</h2>
+    <p class="lead">先说结论：VLA 每 10 步才推理一次；RL 只负责最难的那一段；"强化学习"指的是在线训练小网络，执行时 actor 只做一次前向。下面每条都标了论文出处页码（arXiv v2 PDF）。Q6–Q8 这三条超出论文范围，回答的是"论文没写的执行时序"，来源是 PI 未开源的实现与 RLinf 的复现代码。</p>
 
     <div class="card" id="faq-when">
       <h3><span class="tag">Q1</span>这项工作是什么时候做的？</h3>
@@ -412,6 +413,66 @@
         <li><strong>论文没写清的一点</strong>：窗口跨两块时，存进去的参考动作 ã 是怎么拼的。</li>
       </ul>
     </div>
+
+    <div class="card" id="faq-seam">
+      <h3><span class="tag">Q6</span>常见 VLA 推理时要"截头"，为什么 RLT 推理 10 步不用截头？</h3>
+      <p>先把两件事分开——中文里都叫"截"，但机制完全不同：</p>
+      <table>
+        <tr><th>动作</th><th>含义</th><th>谁做</th></tr>
+        <tr><td><strong>截尾</strong>（execute prefix）</td><td>一次预测 H 步，只执行前 s 步就重新规划</td><td>几乎所有 chunking VLA，<strong>RLT 也做</strong>（H=50 取前 10 步）</td></tr>
+        <tr><td><strong>截头</strong>（丢弃过时前缀）</td><td>新块算出来时旧块还剩 d 步没执行，把这 d 步丢掉直接跳新块</td><td>只有<strong>异步流水线</strong>才需要</td></tr>
+      </table>
+      <p>"截头"成立的前提是<strong>边执行边推理</strong>：推理期间机械臂还在跑上一块的剩余动作，新块落地时两者要对接，于是那 d 步必须被丢掉或当成条件。RLT 论文根本没进这个场景——它的执行循环是严格串行的（p5 "Rollout" + Algorithm 1 第 6–10 行）：</p>
+      <p style="text-align:center"><code>VLA 推理 → actor 前向 → 执行 10 步 → 回到开头</code></p>
+      <p>没有时间重叠，就不存在"需要丢掉的剩余旧动作"，d 等于 0。C=10 在论文里的理由和衔接无关，原文第 3 页讲得很清楚，是为了<strong>缩短信用分配的时间跨度</strong>：</p>
+      <blockquote>RLT operates over chunked actions aligned with the VLA's native action interface, <strong>shortening the effective decision horizon for temporal-difference learning under sparse rewards at high control frequencies</strong> — in contrast to single-step methods [28–30] that face a much longer credit-assignment problem.</blockquote>
+      <p>同一页还有一句 "We choose C &lt; H to <strong>give the policy the ability to be more reactive</strong>"——这个 "more reactive" 的对照物是 <strong>H=50</strong>（VLA 原生块），不是同步执行。</p>
+      <p><strong>为什么 RLT 敢不异步：</strong></p>
+      <ul>
+        <li><strong>任务是准静态接触操作</strong>。拧螺丝、扎带、插网线/充电器——一旦接触上，标称轨迹就在毫米级有效，没有"必须 50ms 内反应"的东西。感知-执行错位是 <a href="DynamicVLA-论文解读.html">DynamicVLA</a> / <a href="PUMA-论文解读.html">PUMA</a> 抓运动物体时的致命问题，在 RLT 的任务里不是。</li>
+        <li><strong>时延预算的大头被小模型消化了</strong>。RLT 只在块边界多跑一次 VLA 前向 + 一个两层 MLP（隐层 256）的前向（p12 附录 B）。MLP 微秒级，VLA 几十毫秒，而一块有 200ms。</li>
+        <li><strong>actor 的输入全部来自同一次 VLA 前向</strong>（z<sub>rl</sub> 和 ã 都是），天然是"VLA 前向 → actor → 执行"的耦合链条，异步化要把两者一起挪到后台，并不省事。</li>
+      </ul>
+      <p><strong>论文的空白</strong>：全文没有 latency / delay / async execution / dead time 的任何分析，唯一一处 "asynchronously"（p5）说的是训练时 rollout 与梯度更新异步，属于训练循环层面，跟执行衔接无关。按 Algorithm 1 字面实现，块边界处机器人要<strong>停下来等 VLA 前向</strong>——就是 <a href="RTC-训练时-论文解读.html">RTC 论文</a>里 π0.5 那种"一顿一顿"。论文没交代真机上是否藏了未写明的重叠执行。</p>
+      <p class="note">对照：RLT 消融 "w/o Chunk"（C=1）才是真正的"每步重规划、d=0、没有衔接问题"，但代价是 50Hz 调 VLA 根本跑不动，只能把 RL token 换成 ResNet-10，效果明显变差。说明 C=10 是在"跑得动"和"信用分配好"之间取的，不是在"衔接"上做文章。</p>
+    </div>
+
+    <div class="card" id="faq-obstime">
+      <h3><span class="tag">Q7</span>是等机械臂速度降为 0 才开始观测吗？</h3>
+      <p><strong>不是。</strong>没有任何地方等速度归零——观测是在固定 sleep 之后直接读的，跟机械臂有没有停稳无关。</p>
+      <p>RLinf 的 Franka 真机实现（<code>rlinf/envs/real/franka/base.py:342</code> <code>step()</code>）真实顺序是：</p>
+      <ol>
+        <li>基于<strong>上次读到的</strong> <code>tcp_pose</code> 算目标位姿；</li>
+        <li><code>_move_action()</code> 下发目标——它只是 <code>robot.send_action({"arm": {"tcp_pose": ...}})</code>，<strong>把目标塞进运动队列就立刻返回</strong>，不等执行；</li>
+        <li><code>time.sleep(1/step_frequency)</code> 固定补足周期；</li>
+        <li><code>_read_robot()</code> 读机器人；</li>
+        <li>组装观测。</li>
+      </ol>
+      <p>所以观测里的 <code>tcp_pose</code> 是"<strong>已经朝目标走了一部分、但很可能没走完</strong>"的位置。这个偏差存在于<strong>每一步</strong>，不只是块边界——每步观测都是"指令发出后一个周期"的快照。代码里 <code>tcp_vel</code> 只出现在观测空间声明（<code>:677</code>）和一次坐标变换（<code>:1044</code>），没有 <code>is_stopped</code> / <code>settle</code> / 速度阈值判断。</p>
+      <p><strong>那为什么没出事</strong>：这是<strong>绝对位姿目标 + 笛卡尔阻抗控制</strong>（peg insertion 用 <code>translational_stiffness=2000</code>），下发的不是速度指令。推理期间没人更新指令，阻抗控制器的参考量不变，机械臂会<strong>收敛到最后那个目标点并自己停住</strong>。所以它不是"匀速滑出去"，误差量级是控制器收敛残差，不是持续漂移。</p>
+      <p><strong>反例——夹爪分支是真的在等</strong>：</p>
+      <pre><code>def _binary_gripper_action(self, position):
+    if position &lt;= -threshold and self._end_effector.is_open:
+        self._end_effector.close()
+        time.sleep(0.6)          # ← 这里是真的阻塞等</code></pre>
+      <p><code>sleep(0.6)</code> 比一个 step 的周期还长好几倍。所以夹爪动作确实会打断节拍，而机械臂位姿不会。</p>
+      <p class="note"><strong>注意频率差异</strong>：<code>FrankaEnvConfig.step_frequency</code> 默认 <strong>10.0</strong>（注释写 "Maximum environment steps per second"），而 RLT 的真机配置没有覆盖它——即 RLinf 真机复现跑在 <strong>10 Hz</strong>，不是论文的 50 Hz。单步运动时间从 20ms 变成 100ms，"指令已发但未到位"的滞后幅度放大 5 倍，一块 C=10 覆盖 1 秒而不是 0.2 秒。这不破坏数据一致性（采集和推理同一套约定），但改变了任务难度和反应延迟。</p>
+    </div>
+
+    <div class="card" id="faq-rlinf">
+      <h3><span class="tag">Q8</span>RLinf 实现里，RLT 的衔接问题怎么处理的？</h3>
+      <p><strong>没有处理——它靠"同步执行"绕开了这个问题。</strong>论文没说清的执行时序，在复现代码里是明确的串行结构。</p>
+      <ul>
+        <li><strong>执行循环严格串行</strong>：<code>rlinf/workers/env/env_worker.py:1131</code> 起，<code>actions = self._recv_actions(...)</code> 是阻塞收 chunk，接着 <code>env_interact_step</code> → <code>RealWorldEnv.chunk_step</code>（<code>rlinf/envs/real/env.py:388</code>）把一个 chunk 的 10 步全跑完才返回。<strong>收动作和跑动作之间没有重叠</strong>，d=0。</li>
+        <li><strong>配置层面也是同步</strong>：三个 RLT 配置（<code>realworld_rlt_stage2_ac_mlp.yaml</code>、<code>maniskill_rlt_stage2_{ac,td3}_mlp.yaml</code>）都是 <code>rollout.pipeline_stage_num: 1</code>，且都没有 <code>enable_decoupled_mode: True</code>。全仓库只有两个非 RLT 配置开了它。</li>
+        <li><strong>代码里没有 prev-chunk 通道</strong>：<code>predict_rlt_actions</code>（<code>rlinf/algorithms/rlt/rollout.py:38</code>）的签名没有 <code>prev_action</code> / <code>prefix</code> 之类入参；<code>RLTMLPPolicy._get_ref_chunk</code>（<code>rlinf/models/embodiment/mlp_policy/rlt_mlp_policy.py:100</code>）只做"把 VLA 的 ref_chunk 从 20 步切成前 10 步"，<strong>没有"上一块的剩余部分"这个概念</strong>。</li>
+        <li><strong>唯一的过渡机制，在 RLT 里是关的</strong>：<code>rlinf/utils/env_helpers/smooth_intervene.py</code> 能记住刚执行的 chunk（<code>remember_actions</code> → 取 <code>actions[:, -1, :]</code> 当保持动作），但它有硬性前置校验要求 <code>loss_type=embodied_dagger</code>，RLT 用的 <code>rlt_ac</code> 会被直接拒掉。而且它的用途是"人类接管时不让机械臂弹回默认位姿"，不是块间平滑。</li>
+        <li><strong>RTC 有实现但没接上</strong>：<code>rlinf/models/embodiment/openpi/sampling/rtc_guidance.py</code> 在，<code>rtc_enabled</code> 默认 <code>False</code>（<code>openpi/__init__.py:133</code>），RLT 配置一个都没设，也没有东西往 <code>rtc_context</code> 里塞 <code>prev_chunk</code>。</li>
+        <li><strong>策略切换处是硬切</strong>：<code>RealworldRLTRoute.route</code>（<code>rlinf/algorithms/rlt/route.py:127</code>）用整 chunk 粒度的 <code>torch.where</code>——要么 10 步全用 actor，要么全用 VLA ref，不做混合。</li>
+      </ul>
+      <p><strong>为什么这样取舍合理</strong>：RLinf 的 rollout 首要目的是<strong>采数据训 actor-critic</strong>，不是做实时部署控制器。训练时停几十毫秒不损失什么；而异步化会引入"执行动作 ≠ 当次策略输出"的 off-policy 偏移，给稀疏奖励下的信用分配再添一层麻烦——RLT 的核心机制（reference dropout、β 锚定）都假设 ref chunk 和执行的 chunk 是同一时刻同一观测下的产物。</p>
+      <p class="note"><strong>要在 RLinf 里补上衔接，改动不大</strong>：<code>_get_ref_chunk</code> 已经是"20 步取前 10 步"的形状，只要在 <code>extract_rlt_obs</code> 时把上一块剩下的 d 步覆写进 <code>ref_chunk</code> 前 d 位（<code>apply_rlt_interventions</code> 里已有同样的覆写模式可照抄），再打开 <code>rtc_enabled</code>。但<strong>这会改变 <code>next_obs</code> 语义</strong>——replay 里存的 <code>next_ref_chunk</code> 也得跟着变成"以旧前缀为条件的参考块"，否则 critic 的 TD 目标和推理时看到的东西对不上。</p>
+    </div>
   </section>
 
   <!-- 5 -->
@@ -459,8 +520,8 @@
     <div class="card">
       <table>
         <tr><th>流派</th><th>代表</th><th>RLT 的差异</th></tr>
-        <tr><td>小模型真机 RL</td><td>SERL / RL100</td><td>把视觉编码器换成 VLA 的 RL token，保留行为先验</td></tr>
-        <tr><td>整模型 RL</td><td>RECAP / SimpleVLA-RL</td><td>只训小头，计算与样本开销小得多</td></tr>
+        <tr><td>小模型真机 RL</td><td>SERL / HIL-SERL</td><td>把视觉编码器换成 VLA 的 RL token，保留行为先验</td></tr>
+        <tr><td>整模型 / 全策略 RL</td><td><a href="RL-100-论文解读.html">RL-100</a> / RECAP / SimpleVLA-RL</td><td>只训小头，计算与样本开销小得多；RL-100 是改整条去噪链，RLT 只训轻量 actor-critic</td></tr>
         <tr><td>冻结 VLA + 残差/噪声</td><td>PLD / Policy Decorator / DSRL</td><td>不是输出残差或操纵扩散噪声，而是以参考动作为条件做局部精修，且用动作块而非单步</td></tr>
       </table>
     </div>

@@ -39,6 +39,7 @@
         { t: 'RL Token · 漫画分镜版', h: 'RLToken-漫画分镜解读.html' },
         { t: 'πRL', h: 'piRL-论文解读.html' },
         { t: 'Object-Centric Residual RL', h: 'ObjectCentric-RL-论文解读.html' },
+        { t: 'RL-100', h: 'RL-100-论文解读.html' },
         { t: 'DynamicVLA', h: 'DynamicVLA-论文解读.html' },
         { t: 'PUMA', h: 'PUMA-论文解读.html' },
         { t: 'Qwen-VLA', h: 'Qwen-VLA-论文解读.html' },

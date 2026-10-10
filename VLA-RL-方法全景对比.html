@@ -177,20 +177,22 @@
           <tr><td class="mname">PLD<span class="tag" style="background:var(--c-resid)">残差</span></td><td>残差策略（冻结 VLA）</td><td>Cal-QL 预训 critic → 残差</td><td>单步残差</td><td>真机</td><td>Cal-QL 预训 critic，可选蒸馏回 VLA</td></tr>
           <tr><td class="mname">ConRFT<span class="tag" style="background:var(--c-resid)">残差</span></td><td>action head（冻结 encoder）</td><td>一致性 + 奖励分类器</td><td>单步</td><td>短程任务</td><td>一致性目标 + 学习二值奖励分类器</td></tr>
           <tr><td class="mname">Object-Centric RL<span class="tag" style="background:var(--c-resid)">残差</span></td><td>残差策略（冻结 VLA）</td><td>online（仿真）</td><td>残差（修正 VLA 动作）</td><td>纯仿真 → 真机零样本</td><td>物体位姿观测 + 噪声注入/dropout，42%→76%</td></tr>
+          <tr><td class="mname">RL-100<span class="tag" style="background:var(--c-full)">整模型</span></td><td>扩散策略（IL 初始化）</td><td>迭代离线 RL + 小预算在线 RL</td><td>动作块（单步/分块皆可）</td><td>真机</td><td>PPO 代理目标套在去噪链上 + OPE 接受门 + 一致性蒸馏成单步</td></tr>
           <tr><td class="mname">RLT（RL Token）<span class="tag" style="background:var(--c-rlt)">RL token</span></td><td>轻量 actor-critic（冻结 VLA）</td><td>online（off-policy，TD3）</td><td>动作块（以 ã 为条件）</td><td>真机在线</td><td>RL token 表示 + KL 正则锚定 + reference dropout</td></tr>
-          <tr><td class="mname">SERL / RL100<span class="tag" style="background:var(--c-zero)">从零</span></td><td>从零小模型</td><td>online（off-policy）</td><td>小块动作</td><td>真机</td><td>无 VLA 先验，ResNet 编码器（对照基线）</td></tr>
+          <tr><td class="mname">SERL / HIL-SERL<span class="tag" style="background:var(--c-zero)">从零</span></td><td>从零小模型</td><td>online（off-policy）</td><td>小块动作</td><td>真机</td><td>无 VLA 先验，ResNet 编码器（对照基线）</td></tr>
         </tbody>
       </table>
     </div>
   </section>
 
   <div class="camp">
-    <div class="camp-head"><span class="bar" style="background:var(--c-full)"></span><h2>① 整模型 RL</h2><span class="cnt">3 个</span></div>
+    <div class="camp-head"><span class="bar" style="background:var(--c-full)"></span><h2>① 整模型 RL</h2><span class="cnt">4 个</span></div>
     <div class="camp-body">
       <p class="desc">直接更新整个 VLA。上限最高、能真正改变行为模式，但计算和样本成本最贵，on-policy 方法尤其难上真机。RECAP 用<strong>离线 RL</strong>绕开在线探索，是这一类的实用代表。</p>
       <div class="mcard"><div class="mt"><a class="concept-link" href="pi0.6-论文解读.html#concept-recap">RECAP（π0.6）</a></div><div class="md">优势条件策略抽取：价值函数估每步优势，把「演示 + 自主 rollout + 人类干预」全喂给模型，吞吐 >2×。</div></div>
       <div class="mcard"><div class="mt">SimpleVLA-RL</div><div class="md">PPO 类整模型 RL，面向规模化 VLA 训练。</div></div>
       <div class="mcard"><div class="mt">DPPO</div><div class="md">Diffusion Policy 上的 PPO，把策略梯度用到扩散策略。</div></div>
+      <div class="mcard"><div class="mt"><a href="RL-100-论文解读.html">RL-100</a></div><div class="md">在模仿学习训出的扩散策略上做 RL 后训练。三段式：IL 打底 → <strong>OPE 把关的迭代离线 RL</strong>（算力大头）→ 小预算在线 RL 清长尾。PPO 代理目标套在去噪链上，一致性蒸馏压成单步；八项真机任务 100%（1000/1000）。</div></div>
     </div>
   </div>
 
@@ -227,7 +229,7 @@
     <div class="camp-head"><span class="bar" style="background:var(--c-zero)"></span><h2>⑤ 从零小模型（对照基线）</h2><span class="cnt">1 个</span></div>
     <div class="camp-body">
       <p class="desc">完全不用 VLA，从零训小 actor-critic + ResNet 编码器。样本效率尚可，但<strong>丢了 VLA 的泛化与行为先验</strong>，精度上限被小模型限制。作为对照，反衬出「用 VLA 先验」的价值。</p>
-      <div class="mcard"><div class="mt">SERL / HIL-SERL / RL100</div><div class="md">off-policy actor-critic + ResNet，真机小时级；无 VLA 先验。</div></div>
+      <div class="mcard"><div class="mt">SERL / HIL-SERL</div><div class="md">off-policy actor-critic + ResNet，真机小时级；无 VLA 先验。<strong>注意别和 RL-100 混淆</strong>——RL-100 是在模仿学习训出的扩散策略上做 RL 后训练，保留了行为先验，归在①整模型那一类。</div></div>
     </div>
   </div>
 

@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RL-100：真机强化学习的可复用流水线 · 精读</title>
+<meta name="description" content="RL-100 在模仿学习训出的扩散策略上做三段式 RL 后训练：IL 打底 → OPE 把关的迭代离线 RL → 小预算在线 RL；PPO 代理目标套在去噪链上，一致性蒸馏压成单步。八项真机任务 100%。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f1f4f6;
+    --surface:#fbfcfd;
+    --surface-2:#eaf0f4;
+    --ink:#16222e;
+    --ink-2:#51626f;
+    --ink-3:#83919c;
+    --accent:#0e6e8a;
+    --accent-strong:#0a4c60;
+    --signal:#c4572a;
+    --line:#d8e1e7;
+    --line-strong:#c3d0d9;
+    --grid-line:rgba(22,34,46,.05);
+    --shadow:0 1px 2px rgba(22,34,46,.04),0 14px 34px rgba(22,34,46,.07);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+      --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+      --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+      --line:#1e2d3a; --line-strong:#2b3d4b;
+      --grid-line:rgba(231,238,244,.045);
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+    --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+    --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+    --line:#1e2d3a; --line-strong:#2b3d4b;
+    --grid-line:rgba(231,238,244,.045);
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Sans",-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+    line-height:1.78; font-size:16px; -webkit-font-smoothing:antialiased;
+  }
+  .grid{
+    position:fixed; inset:0; z-index:-1; pointer-events:none;
+    background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);
+    background-size:28px 28px;
+  }
+  .wrap{max-width:860px; margin:0 auto; padding:0 24px 96px;}
+
+  .masthead{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px 24px 0; max-width:860px; margin:0 auto;
+  }
+  .back{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:13px; color:var(--accent); text-decoration:none; letter-spacing:.03em;
+  }
+  .back:hover{text-decoration:underline;}
+  .masthead .ref{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12.5px; color:var(--ink-3); letter-spacing:.04em;
+  }
+
+  .hero{padding:52px 0 34px; border-bottom:1px solid var(--line-strong);}
+  .eyebrow{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent);
+    margin-bottom:16px;
+  }
+  .hero h1{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:clamp(28px,4.6vw,42px); font-weight:700; line-height:1.2;
+    margin:0 0 16px; color:var(--ink); text-wrap:balance;
+  }
+  .hero .summary{
+    font-size:17px; color:var(--ink-2); max-width:640px; margin:0 0 22px;
+  }
+  .meta{
+    border:1px solid var(--line); border-radius:12px; background:var(--surface);
+    padding:14px 18px; font-size:13.5px; display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px 24px;
+    box-shadow:var(--shadow);
+  }
+  .meta .m{display:flex; flex-direction:column; gap:1px;}
+  .meta .m .k{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:11px;
+    color:var(--ink-3); letter-spacing:.08em; text-transform:uppercase;
+  }
+  .meta .m .v{color:var(--ink); font-weight:500;}
+
+  section{margin-top:40px;}
+  h2{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:21px; font-weight:600; margin:0 0 14px; color:var(--ink);
+    display:flex; align-items:center; gap:12px;
+  }
+  h2::before{
+    content:""; width:10px; height:10px; flex:none;
+    background:var(--accent); border-radius:2px; transform:rotate(45deg);
+  }
+  h2 .no{
+    flex:none; display:inline-flex; align-items:center; justify-content:center;
+    width:32px; height:32px; border-radius:9px; background:var(--accent); color:#fff;
+    font-size:15px; font-weight:800;
+  }
+  .lead{color:var(--ink-2); font-size:15.5px; margin:0 0 18px;}
+  h3 .tag{
+    display:inline-block; font-size:11.5px; font-weight:700; letter-spacing:.06em;
+    color:var(--accent-strong); background:var(--surface-2); border:1px solid var(--line);
+    border-radius:6px; padding:2px 8px; margin-right:8px; vertical-align:2px;
+  }
+  p{margin:0 0 12px;}
+  strong{font-weight:700;}
+  .hl{color:var(--accent); font-weight:600;}
+  a{color:var(--accent);}
+
+  ul,ol{margin:0 0 14px; padding-left:22px;}
+  li{margin-bottom:7px;}
+  li::marker{color:var(--accent);}
+
+  blockquote{
+    margin:16px 0; padding:14px 18px; border-left:3px solid var(--accent);
+    background:var(--surface-2); border-radius:0 10px 10px 0; color:var(--ink);
+  }
+  blockquote p{margin:0;}
+
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    padding:20px 22px; box-shadow:var(--shadow); margin:14px 0;
+  }
+  .card h3{font-size:16px; font-weight:700; margin:0 0 10px;}
+
+  table{width:100%; border-collapse:collapse; font-size:14px; margin:12px 0;}
+  th,td{padding:9px 12px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12.5px;
+    color:var(--accent-strong); background:var(--surface-2); letter-spacing:.03em; font-weight:600;
+  }
+  tr:last-child td{border-bottom:none;}
+  .tbl-wrap{overflow-x:auto;}
+
+  code{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:13.5px;
+    background:var(--surface-2); border:1px solid var(--line); border-radius:5px; padding:1px 6px;
+  }
+  pre{overflow-x:auto; background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:16px; font-size:13px; line-height:1.6;}
+  pre code{border:none; background:none; padding:0;}
+
+  .diagram{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px; margin:16px 0; box-shadow:var(--shadow); overflow-x:auto;}
+  .diagram svg{max-width:100%; height:auto; display:block;}
+  .diagram .caption{font-size:12.5px; color:var(--ink-3); margin-top:8px;}
+
+  .toc{display:flex;flex-wrap:wrap;gap:6px;margin-top:18px}
+  .toc a{font-size:12.5px;padding:3px 10px;border:1px solid var(--line-strong);border-radius:999px;color:var(--ink-2);text-decoration:none;background:var(--surface)}
+  .toc a:hover{border-color:var(--accent);color:var(--accent)}
+  .hl-line{border-left:3px solid var(--accent);padding:8px 14px;background:var(--surface-2);border-radius:0 8px 8px 0}
+
+  .flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:14px 0}
+  .flow .st{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:13.5px;line-height:1.65}
+  .flow .st b{display:block;color:var(--accent-strong);margin-bottom:4px;font-size:14.5px}
+  .note{font-size:13px;color:var(--ink-2)}
+  .callout{border:1px solid var(--line-strong);border-left:4px solid var(--accent);background:var(--surface);border-radius:0 12px 12px 0;padding:16px 20px;margin:18px 0;box-shadow:var(--shadow)}
+  .callout .ttl{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:6px}
+  .callout p:last-child{margin-bottom:0}
+  .good{color:#2f7d52;font-weight:600}
+  .concept-related{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:48px;padding-top:18px;border-top:1px solid var(--line);font-size:13px}
+  .concept-related strong{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+  .concept-related a{color:var(--accent);text-decoration:none;border:1px solid var(--line-strong);border-radius:999px;padding:3px 11px;background:var(--surface)}
+  .concept-related a:hover{border-color:var(--accent)}
+
+  footer{
+    margin-top:56px; padding-top:20px; border-top:1px solid var(--line-strong);
+    display:flex; justify-content:space-between; gap:12px; font-size:13px; color:var(--ink-3);
+  }
+  footer a{color:var(--accent); text-decoration:none;}
+  footer a:hover{text-decoration:underline;}
+</style>
+<link rel="stylesheet" href="concepts.css">
+</head>
+<body>
+<div class="grid" aria-hidden="true"></div>
+
+<header class="masthead">
+  <a class="back" href="index.html">← 返回知识库</a>
+  <span class="ref">arXiv:2510.14830</span>
+</header>
+
+<div class="wrap">
+
+  <section class="hero">
+    <div class="eyebrow">精读笔记 · VLA 与强化学习</div>
+    <h1>RL-100：真机强化学习，把成功率压到 100%</h1>
+    <p class="summary">在模仿学习训出的扩散策略之上做三段式 RL 后训练。核心不是新算法，而是一套<strong>可复用、能保证"每步都在变好"的工程流水线</strong>：用 OPE 当闸门把关迭代离线 RL，再拿小预算在线 RL 清长尾。</p>
+    <div class="meta">
+      <div class="m"><span class="k">论文</span><span class="v">RL-100: Performant Robotic Manipulation with Real-World Reinforcement Learning</span></div>
+      <div class="m"><span class="k">机构</span><span class="v">上海期智研究院 / 上海交大 / 清华 IIIS</span></div>
+      <div class="m"><span class="k">arXiv</span><span class="v">2510.14830（2025-10）</span></div>
+      <div class="m"><span class="k">主题</span><span class="v">真机 RL · 扩散策略后训练</span></div>
+    </div>
+    <div class="toc">
+      <a href="#s1">1 · 要解决什么问题</a>
+      <a href="#s2">2 · 三段式流水线</a>
+      <a href="#s3">3 · 两个关键技术</a>
+      <a href="#s4">4 · 数据流与运行方式</a>
+      <a href="#s5">5 · 实验结果</a>
+      <a href="#s6">6 · 消化成可复用的结论</a>
+      <a href="#s7">7 · 疑问与局限</a>
+    </div>
+  </section>
+
+  <section id="s1">
+    <h2><span class="no">1</span>要解决什么问题</h2>
+    <p class="lead">模仿学习有个天花板：它只能学到演示里已有的东西。</p>
+    <div class="card">
+      <p>纯行为克隆（BC）的性能上限<strong>受限于演示数据的质量与覆盖度</strong>。演示本身有噪声、不一致，长程任务里小误差会累积成失败；而且 BC 无法优化"完成得多快"——演示里的人怎么做，模型就怎么学。</p>
+      <p>但直接在真机上跑朴素 RL 又是另一组麻烦：样本低效、训练不稳定、探索不安全。真机的每一次失败都要花时间、磨损硬件。</p>
+      <p>RL-100 的定位很明确：<strong>不是提出新的 RL 算法</strong>，而是把 IL 先验、离线 RL 的稳定性、在线 RL 的收尾能力拼成一条<strong>工程上可复用、改进单调</strong>的流水线。</p>
+    </div>
+  </section>
+
+  <section id="s2">
+    <h2><span class="no">2</span>三段式流水线</h2>
+    <p class="lead">IL 打底 → 迭代离线 RL 挑大梁 → 在线 RL 收尾。</p>
+
+    <div class="flow">
+      <div class="st"><b>① 模仿学习（IL）</b>在遥操作演示上训扩散视觉运动策略。建立低方差底盘，论文称其 "a competent, low-variance base"。每任务约百来条演示，小时级。</div>
+      <div class="st"><b>② 迭代离线 RL（主算力）</b>用策略自己跑出的 rollout 不断扩充数据，<strong>用 OPE 闸门决定是否接受更新</strong>。论文明确说这一阶段 "delivers the bulk of the improvement"，性能提升的大头在这里。</div>
+      <div class="st"><b>③ 在线 RL（小预算）</b>on-policy 微调，专门清掉残余的长尾失败模式，把 ~95% 推到 99%+，即 "the last-mile reliability"。</div>
+    </div>
+
+    <div class="diagram">
+      <svg viewBox="0 0 780 190" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Microsoft YaHei, sans-serif" role="img" aria-label="RL-100 三段式流水线">
+        <defs>
+          <marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto">
+            <path d="M0,0 L0,6 L7,3 z" fill="#83919c"/>
+          </marker>
+        </defs>
+        <rect x="18" y="46" width="150" height="76" rx="10" fill="#eaf0f4" stroke="#c3d0d9"/>
+        <text x="93" y="74" text-anchor="middle" font-size="13.5" font-weight="700" fill="#0a4c60">① 模仿学习</text>
+        <text x="93" y="95" text-anchor="middle" font-size="11.5" fill="#51626f">遥操作演示 BC</text>
+        <text x="93" y="111" text-anchor="middle" font-size="11.5" fill="#51626f">扩散策略底盘</text>
+
+        <line x1="172" y1="84" x2="205" y2="84" stroke="#83919c" stroke-width="1.6" marker-end="url(#ar)"/>
+
+        <rect x="210" y="30" width="230" height="108" rx="10" fill="#dbe9f0" stroke="#0e6e8a" stroke-width="1.6"/>
+        <text x="325" y="58" text-anchor="middle" font-size="13.5" font-weight="700" fill="#0a4c60">② 迭代离线 RL</text>
+        <text x="325" y="79" text-anchor="middle" font-size="11.5" fill="#51626f">去噪链内 PPO 代理目标</text>
+        <text x="325" y="96" text-anchor="middle" font-size="11.5" fill="#51626f">rollout 扩 buffer → 更新</text>
+        <text x="325" y="118" text-anchor="middle" font-size="11.5" font-weight="700" fill="#c4572a">OPE 闸门：不通过就回滚</text>
+
+        <line x1="444" y1="84" x2="477" y2="84" stroke="#83919c" stroke-width="1.6" marker-end="url(#ar)"/>
+
+        <rect x="482" y="46" width="150" height="76" rx="10" fill="#eaf0f4" stroke="#c3d0d9"/>
+        <text x="557" y="74" text-anchor="middle" font-size="13.5" font-weight="700" fill="#0a4c60">③ 在线 RL</text>
+        <text x="557" y="95" text-anchor="middle" font-size="11.5" fill="#51626f">小预算 on-policy</text>
+        <text x="557" y="111" text-anchor="middle" font-size="11.5" fill="#51626f">清长尾 → 99%+</text>
+
+        <line x1="636" y1="84" x2="669" y2="84" stroke="#83919c" stroke-width="1.6" marker-end="url(#ar)"/>
+
+        <rect x="674" y="58" width="88" height="52" rx="10" fill="#e8f2ec" stroke="#2f7d52"/>
+        <text x="718" y="82" text-anchor="middle" font-size="15" font-weight="800" fill="#2f7d52">100%</text>
+        <text x="718" y="99" text-anchor="middle" font-size="11" fill="#2f7d52">真机部署</text>
+
+        <text x="18" y="26" font-size="11.5" fill="#83919c">算力与样本预算的大头在 ②，③ 只是收尾</text>
+      </svg>
+      <div class="caption">关键在阶段②的循环：策略自己在真机上跑 → 数据并入 replay buffer → 离线更新 → <strong>OPE 评估通过才推进</strong>，否则保持原策略不变。这个"接受门槛"是整条流水线稳定性的来源。</div>
+    </div>
+
+    <div class="card">
+      <h3>OPE 闸门具体怎么把关</h3>
+      <p>论文用 <strong>AM-Q</strong>——一个带<strong>学习到的转移模型</strong>的估计器——来比较"候选策略"和"当前行为策略"，<strong>不需要额外与真机交互</strong>。规则是：</p>
+      <blockquote>候选策略的 AM-Q 估计比当前策略高出至少 δ 时，才接受这次更新、把行为策略推进为 π<sub>i+1</sub> ≔ π；否则行为策略保持不变。</blockquote>
+      <p>δ 是自适应的：<code>δ = 0.05·|Ĵ_AM-Q(π_i)|</code>。论文把这条规则称为 "OPE-gated"，效果是<strong>保守且单调的行为策略改进</strong>——这正是它敢在真机上反复迭代而不崩的原因。</p>
+      <p class="note">离线阶段不采集任何新环境数据；候选策略来自在数据集 D 上跑若干轮梯度更新。只有"通过闸门"的策略才会被真机拿去跑 rollout、产生新数据。</p>
+    </div>
+  </section>
+
+  <section id="s3">
+    <h2><span class="no">3</span>两个关键技术</h2>
+
+    <div class="card">
+      <h3><span class="tag">设计一</span>把 PPO 套在去噪链上：一个目标打通离线与在线</h3>
+      <p>扩散/流策略一次要跑 K 步去噪。RL-100 把<strong>整个去噪过程当成一个 K 步的子 MDP</strong>，嵌在每个环境时间步内部，然后在每一步去噪上都套 clipped PPO 代理目标：</p>
+      <p style="text-align:center"><code>J<sub>i</sub>(π) = Σ<sub>k=1..K</sub> min( r<sub>k</sub>(π)·A<sub>t</sub>, clip(r<sub>k</sub>, 1−ε, 1+ε)·A<sub>t</sub> )</code></p>
+      <ul>
+        <li><strong>关键设计</strong>：<code>A<sub>t</sub></code> 是<strong>环境层面</strong>的优势，在 K 个去噪步之间<strong>共享</strong>。这样既给去噪过程提供了密集信号，又与环境的奖励结构保持一致。</li>
+        <li><strong>每步去噪的重要性比值</strong> <code>r<sub>k</sub></code> 用高斯子策略似然算（Eq. 7），仅在方差严格为正处有效。</li>
+        <li><strong>离线与在线共用一个代理目标</strong>，只有优势估计方式不同：离线用 IQL 式的 <code>A = Q(s,a) − V(s)</code>，在线用 GAE。这是"离线→在线切换不崩"的机制保证。</li>
+        <li><strong>只更新任务头</strong>：离线 RL 阶段视觉编码器 φ 是冻结的，防止表示漂移。</li>
+        <li><strong>方差裁剪</strong>（Eq. 23）：把标准差裁到 <code>[0.01, 0.8]</code>，限制行为策略的随机性、让 PPO 的重要性比值保持良性。论文说会"经验性地证明这个简单修改至关重要"。</li>
+      </ul>
+      <p class="note">注意区分：IL 阶段用的仍是<strong>监督式的噪声预测损失</strong>（加可选的重建 / VIB-KL 正则），不是这个 RL 目标。共享的是<strong>离线 RL 与在线 RL</strong> 这一个目标。RL 微调时重建/VIB 的权重 β 会<strong>下调 10 倍</strong>，保持表示稳定。</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="tag">设计二</span>一致性蒸馏：把多步去噪压成单步</h3>
+      <p>训练时用多步采样（K 步），部署时蒸馏成一个<strong>一致性模型</strong>，一步出结果：<code>x⁰ ≈ C<sub>θ</sub>(x<sup>τ_K</sup>, τ_K)</code>，<code>x<sup>τ_K</sup> ~ N(0,I)</code>。</p>
+      <ul>
+        <li><strong>和 RL 联合训练</strong>：<code>L_total = L_RL + λ_CD·L_CD</code>，用带 stop-gradient 的一致性蒸馏目标（Eq. 9），把扩散策略当 teacher。stop-gradient 的作用是<strong>让 teacher 在被 RL 持续改进的同时，仍能充当蒸馏目标</strong>。</li>
+        <li><strong>前提</strong>：teacher 必须遵循与 student 相同的子采样时间表 {τ<sub>k</sub>}。</li>
+        <li><strong>收益</strong>：多步采样上获得 K× 加速，论文表述为"一个数量级的延迟下降，同时保住任务性能"，给出的具体例子是 <strong>100ms → 10ms</strong>。</li>
+      </ul>
+      <p class="note">这篇 arXiv 版本<strong>没有量化蒸馏的额外成本</strong>，只称其为 "lightweight distillation loss"；也<strong>没有报告达成的控制频率</strong>。Hz 只在动机部分出现过一次（对比 20Hz 与 10Hz，说 20Hz 循环能把轨迹时间减半），不是实验结果。</p>
+    </div>
+
+    <div class="card">
+      <h3><span class="tag">设计三</span>奖励设计</h3>
+      <p>除 Dynamic Push-T 外，<strong>全部是稀疏奖励</strong>：任务成功时 +1，其余为 0，由人工监控者<strong>敲键盘</strong>给出。</p>
+      <p>Dynamic Push-T 用稠密整形奖励，三项之和：</p>
+      <ul>
+        <li><code>r_pose = exp(−3e) − 1</code>，e 是 T 型块与目标位姿之间的 SE(3) 偏差；</li>
+        <li><code>r_static = −1</code> 若该步内 T 型块位移低于阈值，否则 0（惩罚"不动"）；</li>
+        <li><code>r_smooth = −5‖a_t − a_{t−1}‖²</code>（惩罚动作抖动）。</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="s4">
+    <h2><span class="no">4</span>数据流与运行方式</h2>
+    <p class="lead">观测以 3D 点云为主，控制模式单步与动作块都支持。</p>
+
+    <div class="card">
+      <h3>输入输出</h3>
+      <table>
+        <tr><th>项</th><th>内容</th></tr>
+        <tr><td>观测</td><td>3D 点云（512 或 1024 个点）+ 本体感觉。框架也支持 2D RGB（换编码器即可），但真机实验以点云为主</td></tr>
+        <tr><td>动作</td><td>Push-T / Bowling 为 2 维归一化 Δ(x,y)；Unscrewing 为 23 维。单步与动作块两种控制模式都支持</td></tr>
+        <tr><td>动作表示</td><td>框架与任务、本体、表示无关（task-, embodiment-, and representation-agnostic）</td></tr>
+      </table>
+      <p class="note">消融显示：2D 与 3D 的表示对比<strong>只在仿真里做过</strong>，趋势一致（"the same performance trends with 2D inputs"）。真机上的点云比 RGB 快 1.02–1.31×。</p>
+    </div>
+
+    <div class="card">
+      <h3>训练循环（Algorithm 1）</h3>
+      <ol>
+        <li>训练 critic（IQL）与一个转移模型；</li>
+        <li><strong>离线 RL</strong> 更新，候选策略通过 OPE 闸门才被接受；</li>
+        <li>用新策略在真机 rollout，采集新数据；</li>
+        <li>数据并入，并在<strong>扩充后的数据上重新训练 IL</strong>；</li>
+        <li>重复 2–4，<strong>在线微调只在循环之后跑</strong>。</li>
+      </ol>
+      <p><strong>为什么要在扩充数据上重训 IL</strong>，论文给了四条理由：分布偏移、稳定性、多模态、蒸馏。</p>
+    </div>
+  </section>
+
+  <section id="s5">
+    <h2><span class="no">5</span>实验结果</h2>
+    <p class="lead">七项真机任务（arXiv 版），从 IL 基线的 50% 均值一路推到 100%。</p>
+
+    <div class="card">
+      <h3>成功率（%，arXiv v1 Table 3）</h3>
+      <div class="tbl-wrap">
+        <table>
+          <tr><th>任务</th><th>DP-2D<br><span style="font-weight:400">(IL 基线)</span></th><th>DP3<br><span style="font-weight:400">(IL 基线)</span></th><th>迭代离线 RL</th><th>在线 DDIM</th><th>在线 CM<br><span style="font-weight:400">(单步)</span></th></tr>
+          <tr><td>Dynamic Push-T</td><td>40</td><td>64</td><td>90</td><td>100</td><td>100</td></tr>
+          <tr><td>Agile Bowling</td><td>14</td><td>80</td><td>88</td><td>100</td><td>100</td></tr>
+          <tr><td>Pouring</td><td>42</td><td>48</td><td>92</td><td>100</td><td>100</td></tr>
+          <tr><td>Soft-towel Folding</td><td>46</td><td>68</td><td>94</td><td>100</td><td><strong class="good">100</strong>（250/250）</td></tr>
+          <tr><td>Dynamic Unscrewing</td><td>82</td><td>70</td><td>94</td><td>100</td><td>100</td></tr>
+          <tr><td>Juicing – Placing</td><td>78</td><td>88</td><td>94</td><td>100</td><td>100</td></tr>
+          <tr><td>Juicing – Removal</td><td>48</td><td>76</td><td>86</td><td>100</td><td>—</td></tr>
+          <tr><td><strong>均值</strong></td><td><strong>50.0</strong></td><td><strong>70.6</strong></td><td><strong>91.1</strong></td><td><strong>100.0</strong></td><td><strong>100.0</strong></td></tr>
+        </table>
+      </div>
+      <p class="note">每任务 50 次试验。DDIM 共 400/400（七任务）；CM 共 500/500（六任务，Juicing–Removal 未评 CM，脚注说是因为 push 与 grasp 之间的 IK 导致的位姿不连续）。<strong>越难的任务提升越大</strong>——箱折叠 46→94、倒料 42→92、保龄球 14→88，说明保守的离线迭代对长程、接触丰富的任务特别有效。</p>
+    </div>
+
+    <div class="card">
+      <h3>鲁棒性与泛化</h3>
+      <div class="tbl-wrap">
+        <table>
+          <tr><th>评测</th><th>设定</th><th>结果</th></tr>
+          <tr><td><strong>零样本</strong>（Table 4）</td><td>不重训，改变物体/表面/环境</td><td>倒液 90、Push-T 换表面 100、Push-T 加干扰物 80、保龄球换表面 100、折叠未知形状 80；<strong>均值 90.0</strong></td></tr>
+          <tr><td><strong>少样本</strong>（Table 5）</td><td>额外 1–3 小时训练</td><td>换容器倒液 60、折叠换物体 100、保龄球倒置球瓶 100；<strong>均值 86.7</strong></td></tr>
+          <tr><td><strong>抗扰动</strong>（Table 6）</td><td>人为干扰</td><td>折叠抓取段 90、折叠预折段 90、拧螺母（反向旋转干扰至 4 秒）100、Push-T 全程 100；<strong>均值 95.0</strong></td></tr>
+        </table>
+      </div>
+      <p class="note">论文还报告了多小时的鲁棒性（最高两小时），以及一台橙汁机器人在商场<strong>零样本连续服务约 7 小时无失败</strong>。</p>
+    </div>
+
+    <div class="card">
+      <h3>效率与消融</h3>
+      <ul>
+        <li><strong>步数更少</strong>：箱折叠 390 → 312 步（1.25×）；拧螺母 361 → 280 步（1.29×）。</li>
+        <li><strong>时间更快</strong>：Juicing–Placing 单步（CM）9.2s vs DDIM 10.2s vs DP-2D 10.6s。</li>
+        <li><strong>追平人手</strong>：Dynamic Push-T 吞吐 20 回合/单位时间，对比熟练操作员 17、新手 13。</li>
+        <li><strong>含失败在内</strong>：Push-T 822 → 658 → 382 → 322 步，最多比 DP-2D 少 2.55×。</li>
+        <li><strong>分段表本身即主消融</strong>：IL 基线 → 迭代离线 RL → 在线 RL → CM。</li>
+        <li><strong>方差裁剪是关键</strong>：σ 裁到 [0.01, 0.8]，让 PPO 重要性比值良性。</li>
+        <li><strong>表示消融</strong>：2D vs 3D 只在仿真验证，趋势一致。</li>
+      </ul>
+      <p class="note">控制模式与本体覆盖：Dynamic Push-T、Agile Bowling 用 UR5 + 3D 打印末端（单步）；Pouring、Dynamic Unscrewing 用 Franka + LeapHand；Soft-towel Folding 用 xArm + Franka + Robotiq 双臂；Juicing 用 xArm + Robotiq（动作块）。</p>
+    </div>
+  </section>
+
+  <section id="s6">
+    <h2><span class="no">6</span>消化成可复用的结论</h2>
+    <div class="card">
+      <ul>
+        <li><strong>真机 RL 的瓶颈常常不是算法，而是"敢不敢迭代"。</strong>RL-100 最大的工程贡献是把"每次更新都要保证不变差"做成了一条可执行的闸门规则（OPE-gated、δ 自适应）。有了它，离线迭代才能反复跑而不崩。</li>
+        <li><strong>离线挑大梁、在线收尾，是样本预算受限时的正确分工。</strong>训练时在真机上自由探索的代价太高；把绝大部分改进放在"不采新数据的离线迭代"里，只在最后用少量在线交互啃长尾。</li>
+        <li><strong>越难的任务收益越大，正是"先验 + 细化"的价值所在。</strong>IL 已经能做好的任务（拧螺母 82%、倒液 78%）提升有限；IL 做不好的（保龄球 14%、Push-T 40%）提升幅度最大。</li>
+        <li><strong>把去噪链当子 MDP、共享同一个环境级优势</strong>，是一个通用的"让扩散/流策略能被 PPO 训练"的技巧。和把优势条件化（RECAP）或只训噪声策略（DSRL）是同一问题的不同解法。</li>
+        <li><strong>部署延迟要靠蒸馏解决，而不是靠减少去噪步数。</strong>训练时保持多步采样质量，部署时蒸馏成单步（100ms → 10ms），trade-off 被挪到了训练端。</li>
+      </ul>
+    </div>
+  </section>
+
+  <section id="s7">
+    <h2><span class="no">7</span>疑问与局限</h2>
+    <div class="card">
+      <ul>
+        <li><strong>OPE 闸门依赖一个学习到的转移模型</strong>（AM-Q）。这个模型本身的误差会怎么影响"接受/拒绝"的判断，论文没有深挖——而它恰恰是整条流水线稳定性的支点。</li>
+        <li><strong>奖励仍需人工。</strong>除 Push-T 外都是稀疏奖励，靠人敲键盘标 +1。七任务、每个上千次 rollout，人工标注的负担不小，也限制了扩展到更长的任务。</li>
+        <li><strong>蒸馏成本未量化。</strong>arXiv 版只说 "lightweight"，没有给出额外训练开销，也没有报告实际达成的控制频率。</li>
+        <li><strong>重新训练 IL 的四条理由</strong>（分布偏移、稳定性、多模态、蒸馏）更像经验论述，缺少"去掉重训 IL 会怎样"的独立消融。</li>
+        <li><strong>点云 vs RGB 只在仿真对比过</strong>，真机上的表示选择仍按经验定。</li>
+        <li><strong>与 π 系列的关系需要留意版本差异</strong>：本文 arXiv 版是七任务、900/900；后续期刊版本任务数与试验数更多。引用具体数字时要注意对应的是哪一版。</li>
+      </ul>
+    </div>
+    <div class="callout">
+      <div class="ttl">一句话总结</div>
+      <p>RL-100 的贡献不是"某个更好的 RL 算法"，而是证明了一条真机流水线可以做到<strong>改进单调、可反复迭代</strong>：先让 IL 给一个不差的地板，再用"OPE 把关的迭代离线 RL"承担绝大部分提升，最后用小预算在线 RL 把最后的 5% 补上，并靠一致性蒸馏换回部署时的一个数量级延迟。</p>
+    </div>
+  </section>
+
+  <aside class="concept-related" aria-label="相关概念">
+    <strong>对比阅读</strong>
+    <a href="RL-Token-论文解读.html">RL Token：冻结 VLA + 轻量头</a>
+    <a href="pi0.6-论文解读.html#concept-recap">RECAP：优势条件化</a>
+    <a href="piRL-论文解读.html">πRL：去噪链 MDP</a>
+    <a href="VLA-RL-方法全景对比.html">VLA-RL 方法全景对比</a>
+    <a href="RTC-训练时-论文解读.html">训练时 RTC</a>
+    <a href="concepts.html">全部概念</a>
+  </aside>
+
+  <div class="foot">
+    论文：RL-100: Performant Robotic Manipulation with Real-World Reinforcement Learning · arXiv:2510.14830 · 上海期智研究院 / 上海交大 / 清华 IIIS<br>
+    <a href="VLA-RL-方法全景对比.html">对比阅读：VLA 强化学习方法全景对比 →</a><br>
+    本页由 Claude 生成，仅供学习参考。
+  </div>
+</div>
+<script src="nav.js"></script>
+</body>
+</html>
