@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>知识隔离：让新手的梯度只走一半 · 精读</title>
-<meta name="description" content="Knowledge Insulating VLA（arXiv 2505.23705）精读：动作专家的梯度为什么会伤害 VLM 骨干，三刀切法如何同时保住语言能力、加快训练，并保留连续动作的推理速度。">
+<meta name="description" content="Knowledge Insulating VLA（arXiv 2505.23705）精读：动作专家的梯度为什么会伤害 VLM 骨干；stop-gradient、离散动作目标、VLM 数据联训各自管什么；证据链、注意力掩码、数字与盲区。">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
@@ -21,6 +21,7 @@
     --teal:#2c7a74;
     --teal-soft:#dcece9;
     --note:#fff6d6;
+    --card:#fffdf8;
   }
   *{box-sizing:border-box}
   html{scroll-behavior:smooth}
@@ -30,102 +31,114 @@
     font:17px/1.9 "Noto Serif SC","Songti SC",Georgia,serif;
   }
   a{color:var(--rust);text-underline-offset:4px}
-  .wrap{max-width:760px;margin:0 auto}
-  .mono{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace}
+  code{font:14px "IBM Plex Mono",ui-monospace,Consolas,monospace;background:#f3ecdc;padding:1px 5px;border-radius:3px}
+  .wrap{max-width:780px;margin:0 auto}
 
-  /* ---------- 页眉：不是卡片，是一张手写感的便签 ---------- */
-  header{padding:34px 0 10px;border-bottom:2px solid var(--ink);margin-bottom:34px}
+  /* ---------- 页眉：一张便签 ---------- */
+  header{padding:34px 0 10px;border-bottom:2px solid var(--ink);margin-bottom:30px}
   .tag{font:12px/1.5 "IBM Plex Mono",ui-monospace,monospace;letter-spacing:.14em;color:var(--ink-3);text-transform:uppercase}
-  h1{font-size:clamp(30px,4.6vw,44px);line-height:1.3;margin:14px 0 8px;letter-spacing:.005em}
+  h1{font-size:clamp(30px,4.6vw,44px);line-height:1.3;margin:14px 0 8px}
   h1 em{font-style:normal;color:var(--rust)}
   .sub{color:var(--ink-2);font-size:16px;margin:0 0 18px}
   .lede{font-size:19px;line-height:1.85;margin:0 0 6px}
   .lede b{background:linear-gradient(transparent 58%,var(--rust-soft) 58%)}
-  .slip{
-    margin:26px 0 0;padding:14px 18px;background:var(--note);
-    border:1px solid #e7d98f;transform:rotate(-.4deg);font-size:14px;color:var(--ink-2);line-height:1.7;
-  }
+  .slip{margin:26px 0 0;padding:14px 18px;background:var(--note);border:1px solid #e7d98f;transform:rotate(-.4deg);font-size:14px;color:var(--ink-2);line-height:1.7}
   .slip strong{color:var(--ink)}
 
-  /* ---------- 章节：用数字编号代替标题样式 ---------- */
-  section{margin:56px 0 0}
+  /* ---------- 目录：一行路标 ---------- */
+  .toc{display:flex;flex-wrap:wrap;gap:6px 14px;font:13px "IBM Plex Mono",monospace;margin:0 0 10px}
+  .toc a{text-decoration:none;color:var(--ink-2)}
+  .toc a:hover{color:var(--rust)}
+
+  /* ---------- 章节 ---------- */
+  section{margin:56px 0 0;scroll-margin-top:70px}
   .n{font:13px "IBM Plex Mono",monospace;color:var(--rust);letter-spacing:.08em}
   h2{font-size:25px;line-height:1.4;margin:6px 0 16px;font-weight:700}
+  h3{font-size:18px;margin:22px 0 8px}
   p{margin:0 0 16px}
-  .q{font-size:18px;color:var(--ink);border-left:3px solid var(--rust);padding:2px 0 2px 16px;margin:24px 0;line-height:1.8}
-  .aside{
-    float:none;margin:20px 0;padding:6px 0 6px 16px;border-left:1px dashed var(--ink-3);
-    color:var(--ink-2);font-size:15px;line-height:1.75;
-  }
+  .aside{margin:20px 0;padding:6px 0 6px 16px;border-left:1px dashed var(--ink-3);color:var(--ink-2);font-size:15px;line-height:1.75}
   .aside::before{content:"旁注　";font:12px "IBM Plex Mono",monospace;color:var(--ink-3);letter-spacing:.06em}
+  .mine{margin:20px 0;padding:12px 16px;background:#f2efe6;border-radius:3px;font-size:15px;color:var(--ink-2);line-height:1.75}
+  .mine::before{content:"我的推断 · 论文没写　";font:12px "IBM Plex Mono",monospace;color:var(--rust);letter-spacing:.04em;display:block;margin-bottom:2px}
   .hl-r{color:var(--rust);font-weight:600}
   .hl-t{color:var(--teal);font-weight:600}
+  .src{font:12px "IBM Plex Mono",monospace;color:var(--ink-3);white-space:nowrap}
 
-  /* ---------- 概念卡：定义直接放在正文里 ---------- */
-  .defn{
-    margin:26px 0;padding:20px 22px;border:1.5px solid var(--ink);border-radius:2px;background:#fffdf8;
-  }
+  /* ---------- 概念卡 ---------- */
+  .defn{margin:26px 0;padding:20px 22px;border:1.5px solid var(--ink);border-radius:2px;background:var(--card)}
   .defn .k{font:12px "IBM Plex Mono",monospace;letter-spacing:.1em;color:var(--teal);margin-bottom:6px}
   .defn p{margin:0;font-size:16px}
 
-  /* ---------- 病理图：一条被剪断的梯度回路 ---------- */
-  .rig{
-    margin:26px 0 30px;padding:24px 16px;border:1px solid var(--rule);background:#fffdf8;
-    display:grid;grid-template-columns:1fr 92px 1fr;gap:10px 8px;align-items:center;text-align:center;
-    font-size:15px;line-height:1.5;
-  }
+  /* ---------- 结构图 ---------- */
+  .rig{margin:26px 0 30px;padding:24px 16px;border:1px solid var(--rule);background:var(--card);display:grid;grid-template-columns:1fr 92px 1fr;gap:10px 8px;align-items:center;text-align:center;font-size:15px;line-height:1.5}
   .rig .box{padding:16px 10px;border:1.5px solid var(--ink);border-radius:6px}
-  .rig .box small{display:block;font:11px "IBM Plex Mono",monospace;color:var(--ink-3);margin-top:6px;letter-spacing:.04em}
+  .rig .box small{display:block;font:11px "IBM Plex Mono",monospace;color:var(--ink-3);margin-top:6px;letter-spacing:.02em}
   .rig .fwd{color:var(--teal);font-size:13px}
   .rig .bwd{color:var(--rust);font-size:13px}
   .rig .cut{font:700 22px "IBM Plex Mono",monospace;color:var(--rust);line-height:1}
   .rig .cap{grid-column:1/-1;font-size:13px;color:var(--ink-3);margin-top:8px;text-align:left;line-height:1.6}
 
-  /* ---------- 三刀 ---------- */
+  /* ---------- 公式矩阵 ---------- */
+  .mx{margin:22px 0;padding:20px;background:var(--card);border:1px solid var(--rule);overflow-x:auto}
+  .mx-grid{display:grid;grid-template-columns:auto 1fr 1fr;gap:6px;min-width:440px;font:14px "IBM Plex Mono",monospace;text-align:center}
+  .mx-grid div{padding:10px 6px;border-radius:3px}
+  .mx-grid .h{color:var(--ink-3);font-size:12px}
+  .mx-grid .on{background:var(--teal-soft)}
+  .mx-grid .off{background:#efe9dc;color:var(--ink-3)}
+  .mx-grid .sg{background:var(--rust-soft);color:var(--rust);font-weight:600}
+  .mx p{font-size:14px;color:var(--ink-2);margin:12px 0 0}
+
+  /* ---------- 三件事 ---------- */
   .cut3{list-style:none;padding:0;margin:22px 0}
-  .cut3 li{
-    position:relative;padding:18px 0 18px 58px;border-top:1px solid var(--rule);
-  }
+  .cut3 li{position:relative;padding:18px 0 18px 58px;border-top:1px solid var(--rule)}
   .cut3 li:last-child{border-bottom:1px solid var(--rule)}
-  .cut3 li::before{
-    content:attr(data-k);position:absolute;left:0;top:18px;
-    font:700 20px "IBM Plex Mono",monospace;color:var(--rust);
-  }
-  .cut3 h3{font-size:18px;margin:0 0 6px;font-weight:700}
+  .cut3 li::before{content:attr(data-k);position:absolute;left:0;top:18px;font:700 20px "IBM Plex Mono",monospace;color:var(--rust)}
+  .cut3 h3{font-size:18px;margin:0 0 6px}
   .cut3 p{margin:0 0 6px;font-size:16px}
   .cut3 .why{color:var(--ink-2);font-size:15px}
 
-  /* ---------- 注意力掩码 ---------- */
-  table{width:100%;border-collapse:collapse;margin:18px 0 22px;font-size:15px;background:#fffdf8}
-  th,td{border:1px solid var(--rule);padding:10px 12px;text-align:center;vertical-align:middle}
+  /* ---------- 表格 ---------- */
+  table{width:100%;border-collapse:collapse;margin:18px 0 22px;font-size:15px;background:var(--card)}
+  th,td{border:1px solid var(--rule);padding:9px 11px;text-align:center;vertical-align:middle}
   th{font:500 13px "IBM Plex Mono",monospace;color:var(--ink-2);background:#f5efe2}
   td:first-child,th:first-child{text-align:left;font-weight:600}
+  td.l{text-align:left;font-size:14px;color:var(--ink-2)}
   .yes{color:var(--teal);font-weight:700}
   .no{color:var(--rust);font-weight:700}
-  .mask-note{font-size:14px;color:var(--ink-2);margin:-8px 0 20px}
+  .best{font-weight:700;color:var(--teal)}
+  .tbl-note{font-size:14px;color:var(--ink-2);margin:-8px 0 20px}
+  .scroll{overflow-x:auto}
 
-  /* ---------- 比较表 ---------- */
-  .three{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:24px 0}
-  .three div{padding:16px 14px;border:1px solid var(--rule);background:#fffdf8;font-size:15px;line-height:1.7}
-  .three div b{display:block;font-size:17px;margin-bottom:6px}
-  .three .win{border-color:var(--teal);background:var(--teal-soft)}
-  .three .lose{color:var(--ink-2)}
+  /* ---------- 四种选择 ---------- */
+  .four{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:24px 0}
+  .four div{padding:14px 12px;border:1px solid var(--rule);background:var(--card);font-size:14px;line-height:1.7;color:var(--ink-2)}
+  .four div b{display:block;font-size:16px;margin-bottom:6px;color:var(--ink)}
+  .four .win{border-color:var(--teal);background:var(--teal-soft);color:var(--ink)}
+  @media(max-width:680px){.four{grid-template-columns:1fr 1fr}.rig{grid-template-columns:1fr 70px 1fr}}
+
+  /* ---------- 证据链 ---------- */
+  .chain{counter-reset:ev;margin:20px 0}
+  .ev{position:relative;padding:14px 0 14px 46px;border-bottom:1px dotted var(--rule)}
+  .ev::before{counter-increment:ev;content:counter(ev);position:absolute;left:0;top:14px;width:28px;height:28px;border:1.5px solid var(--teal);border-radius:50%;font:600 14px/25px "IBM Plex Mono",monospace;text-align:center;color:var(--teal)}
+  .ev b{display:block}
+  .ev p{margin:4px 0 0;font-size:15px;color:var(--ink-2)}
 
   /* ---------- 数字 ---------- */
-  .num{margin:18px 0;padding:14px 0;border-bottom:1px dotted var(--rule)}
-  .num .v{font:600 17px "IBM Plex Mono",monospace;color:var(--ink);display:block;margin-bottom:4px}
+  .num{margin:16px 0;padding:12px 0;border-bottom:1px dotted var(--rule)}
+  .num .v{font:600 16px "IBM Plex Mono",monospace;color:var(--ink);display:block;margin-bottom:4px}
   .num .r{font-size:15px;color:var(--ink-2);margin:0}
 
   /* ---------- 追问与自测 ---------- */
-  .ask{margin:14px 0;padding:14px 0 14px 16px;border-left:2px solid var(--teal);font-size:16px}
+  .ask{margin:14px 0;padding:12px 0 12px 16px;border-left:2px solid var(--teal);font-size:16px}
   .ask b{color:var(--teal)}
-  details{margin:12px 0;padding:14px 18px;border:1px solid var(--rule);background:#fffdf8;border-radius:3px}
+  details{margin:12px 0;padding:14px 18px;border:1px solid var(--rule);background:var(--card);border-radius:3px}
   summary{cursor:pointer;font-weight:600;color:var(--ink);list-style:none}
+  summary::-webkit-details-marker{display:none}
   summary::before{content:"▸ ";color:var(--rust)}
   details[open] summary::before{content:"▾ "}
   details p{margin:10px 0 0;color:var(--ink-2);font-size:15px}
 
-  /* ---------- 知识网：不画图，直接是一串可点的线索 ---------- */
+  /* ---------- 知识网 ---------- */
   .web{display:grid;gap:12px;margin:22px 0}
   .web div{padding:14px 16px;border:1px dashed var(--ink-3);font-size:15px;line-height:1.8}
   .web .lbl{font:12px "IBM Plex Mono",monospace;color:var(--ink-3);letter-spacing:.08em;display:block;margin-bottom:4px}
@@ -141,210 +154,291 @@
   <div class="tag">READING NOTE · arXiv 2505.23705 · 2025.05</div>
   <h1>让新手的梯度<em>只走一半</em></h1>
   <p class="sub">知识隔离（Knowledge Insulation）· 一篇关于“梯度往哪儿流”的论文</p>
-  <p class="lede">这篇论文只做了一件事：<b>切断一条梯度通路</b>。难的是搞清楚两件事——为什么只切这一条，切完之后骨干还能不能学会机器人该学的东西。</p>
+  <p class="lede">这篇论文的核心是<b>切断一条梯度通路</b>。但只切这一刀是不够的：切完之后，骨干还得从别处学会机器人该学的东西。所以真正要搞懂的是两个问题：为什么只切这一条，以及切完靠什么补上。</p>
   <div class="slip">
     <strong>Knowledge Insulating Vision-Language-Action Models: Train Fast, Run Fast, Generalize Better</strong><br>
     Driess, Springenberg, Ichter, Yu, Li-Bell, Pertsch, Ren, Walke, Vuong, Shi, Levine · Physical Intelligence · 2025.05<br>
-    本页依据论文正文（10 页主文）整理，附录未逐条核对。
+    本页依据论文正文与附录 A–C 整理。正文没有给出精确数值的图表结果只写趋势；我自己的推断单独用灰色框标出。
   </div>
 </header>
 
+<nav class="toc" aria-label="本页目录">
+  <a href="#s1">01 画面</a><a href="#s2">02 病理</a><a href="#s3">03 证据</a><a href="#s4">04 手术</a><a href="#s5">05 条件</a><a href="#s6">06 旋钮</a><a href="#s7">07 数字</a><a href="#s8">08 误读</a><a href="#s9">09 追问</a><a href="#s10">10 知识网</a><a href="#s11">11 自测</a>
+</nav>
+
 <!-- ============ 01 ============ -->
-<section>
+<section id="s1">
   <div class="n">01 · 先看一个画面</div>
   <h2>一位老师，一个新人，一本共享的笔记</h2>
-  <p>把 VLA 想成一栋楼。楼上住着一位<span class="hl-t">老师</span>：它是预训练过的 VLM（约 3B 的 PaliGemma 骨干），读过海量文字、看过海量图片，会说话，也认得东西。楼下来了一个<span class="hl-r">新人</span>：一个 300M 的动作专家，参数随机初始化，手还不稳，但它要负责写出连续的机器人动作。</p>
-  <p>新人不是凭空干活。它要读老师写下的笔记——骨干在每一层算出的 key 和 value。这就是 <a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a>的工作方式：自己不看图、不读字，只从骨干那里借表征。</p>
+  <p>把 VLA 想成一栋楼。楼上住着一位<span class="hl-t">老师</span>：它是预训练过的 PaliGemma（2B 语言模型加视觉编码器，图 1 标作 3B），读过海量文字、看过海量图片，会说话，也认得东西。楼下来了一个<span class="hl-r">新人</span>：一个 300M 的动作专家，参数随机初始化，手还不稳，但它要负责写出连续的机器人动作。</p>
+  <p>新人不直接处理图像和文字 token。它在每一层通过注意力，读取老师在这一层算出的 key 和 value。这就是 <a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a>的工作方式。两者能逐层对接，是因为它们深度相同（18 层）、注意力头维度相同（256），只是专家更窄（宽 1024，骨干宽 2048）。<span class="src">附录 B</span></p>
   <p>问题出在回流。新人写错了一个动作，误差会沿着它读笔记的那条路<strong>倒着</strong>传回去，改的恰恰是老师的笔记本身。新人还没学会，老师先被改坏了。</p>
 
-  <div class="aside">这个“倒着传回去”不是比喻。训练时，损失对动作专家参数的梯度，要经过注意力层穿回骨干的 K、V，再穿进骨干的全部权重。论文里的整个故事，都是这一条反向路径的故事。</div>
+  <div class="aside">“倒着传回去”不是比喻。训练时，流匹配损失的梯度经过专家的注意力，穿回骨干的 K、V 投影，再穿进骨干的全部权重。这篇论文讲的，就是这一条反向路径。</div>
 </section>
 
 <!-- ============ 02 ============ -->
-<section>
+<section id="s2">
   <div class="n">02 · 病理</div>
   <h2>梯度是信使，也可能是污染源</h2>
-  <p>在标准的 π0 训练里，骨干和动作专家之间有两条通道：前向的 K/V（读），以及反向的梯度（写）。直觉上人们更关注前向，因为它是“知识从 VLM 流向动作”的那一条。论文指出，反向那条路同样存在，而且在新专家刚初始化时，它最危险。</p>
+  <p>在 <a href="pi0-论文解读.html">π0</a> 的训练方式里，骨干和动作专家之间有两条通道：前向的 K/V（读），以及反向的梯度（写）。直觉上人们更关注前向，因为它是“知识从 VLM 流向动作”的那一条。论文指出，反向那条路同样存在，而且在新专家刚初始化时最危险。</p>
 
   <div class="rig" role="img" aria-label="骨干向动作专家前向传递 K 和 V；动作专家的梯度被剪断，不回传到骨干">
-    <div class="box"><b>VLM 骨干</b><small>~3B · 已预训练</small></div>
+    <div class="box"><b>VLM 骨干</b><small>2B LM + 视觉 · 已预训练</small></div>
     <div><div class="fwd">K, V →</div><div class="cut" aria-hidden="true">✕</div><div class="bwd">← 梯度</div></div>
     <div class="box"><b>动作专家</b><small>300M · 随机初始化</small></div>
-    <div class="cap">标准 π0：K/V 向前，梯度向后，两条线都在。KI：只保留前向读取，反向那条线被 stop-gradient 切断。</div>
+    <div class="cap">π0：K/V 向前，梯度向后，两条线都在。KI：只保留前向读取，反向那条线被 stop-gradient 切断。</div>
   </div>
 
-  <p>论文的诊断可以概括成一句话：<span class="hl-r">随机初始化的连续输出模块，一边没学会，一边就把预训练得来的语言能力冲掉了。</span>它表现为两个症状：训练慢，以及语言跟随变差。图 2 的例子很直观——同一条指令“把勺子放进垃圾桶”，π0 直接去抓了别的垃圾。</p>
-
-  <p>这里有一个容易漏掉的问题：为什么不直接冻结骨干？后面第 05 节会回到这个问题。</p>
+  <p>症状有两个：<span class="hl-r">训练慢</span>，以及<span class="hl-r">语言跟随变差</span>。图 2 的例子很直观：指令是“把勺子收进垃圾桶”，π0 不理指令，抓起了另一件垃圾。</p>
+  <p>注意论文的用词。它说语言跟随变差“presumably due to gradient interference”，即“推测是梯度干扰造成的”。这是一个假设，下一节看它靠什么支撑。</p>
 </section>
 
 <!-- ============ 03 ============ -->
-<section>
-  <div class="n">03 · 手术</div>
-  <h2>三刀，各切一处</h2>
-  <p>论文没有只切一刀。它同时做了三件事，每一件都在解决“老师需要什么信号、新人该怎么接入”的一部分问题。</p>
+<section id="s3">
+  <div class="n">03 · 证据链</div>
+  <h2>凭什么说是梯度在捣乱</h2>
+  <p>论文没有直接测量梯度或表征的变化，它的证据都是行为层面的：几组对照实验，每组只改一个地方。把它们排在一起，结论才站得住。</p>
 
-  <ul class="cut3">
-    <li data-k="I">
-      <h3>用离散动作 token 训练骨干，而不是只用连续动作</h3>
-      <p>把动作先用 <a class="concept-link" href="FAST-论文解读.html#concept-fast">FAST</a> 压缩成离散 token，让骨干做普通的 next-token 预测。这些 token 和文字共用同一个输出口，不需要为动作新加一个 head。</p>
-      <p class="why">关键在于：这个训练信号<strong>不经过</strong>新专家的权重。它是骨干本来就熟悉的形式，所以能替代被切断的那条梯度，继续教骨干如何表示机器人任务。论文也比较了朴素的逐 bin 离散化：它仍比纯连续训练好，但不如 FAST；按步长 5 稀疏子采样的版本又比稠密版本好。</p>
-    </li>
-    <li data-k="II">
-      <h3><span id="concept-co-training" class="concept-anchor">混入通用 VLM 数据：co-training</span></h3>
-      <p>训练集里不只有机器人数据，还加入图像描述（caption）、视觉问答（VQA）、框选定位，以及机器人的规划数据。它们不含连续动作，只为了让骨干别忘了怎么看图说话。</p>
-      <p class="why">作者在通才模型实验里发现：去掉 VLM 数据后，联合训练的语言跟随下降最明显。他们的解释是，这些数据防止了对预训练表征的“灾难性干扰”。</p>
-    </li>
-    <li data-k="III">
-      <h3><span id="concept-stop-gradient" class="concept-anchor">Stop-gradient + 注意力掩码：把信息流改成单向</span></h3>
-      <p>专家读骨干的 K/V 时，套一层 <code>sg</code>（stop-gradient）。骨干的注意力行里，动作 token 的贡献为零；FAST token 与连续动作 token 之间互相不可见。</p>
-      <p class="why">注意：切断的是<strong>回传</strong>，不是<strong>读取</strong>。专家依然完整地看到骨干的表征，只是不能改它。信息从老师流向新人，不再逆流。</p>
-    </li>
-  </ul>
+  <div class="chain">
+    <div class="ev"><b>让梯度回流的，语言都差</b><p>“items in drawer” 任务（图 4b）里，凡是让专家梯度进入骨干的方案（π0、不切梯度的联合训练），语言跟随都明显变差。π0-FAST 没有专家，语言跟随反而保持得好。</p></div>
+    <div class="ev"><b>新增的随机参数越少，伤害越小</b><p>Transfusion 直接用骨干权重去噪连续动作，唯一新增的随机参数是动作投影层。它的语言跟随好于带专家的 π0（图 5）。</p></div>
+    <div class="ev"><b>不切梯度时，VLM 数据最能救场</b><p>通才模型上，去掉 VLM 数据对“不切梯度的联合训练”打击最大（图 6a）。作者的解释是：没有隔离时，这些数据格外需要，用来避免对预训练表征的灾难性干扰。</p></div>
+    <div class="ev"><b>排除一个混淆因素：状态表示</b><p>π0 用连续状态，KI 默认用文本状态。附录图 10 把两种状态表示都试了：KI 两种都行，π0 两种都差。所以差距不是状态表示带来的。顺带一个旁证：“特殊 token 状态”同样是随机初始化的新嵌入，它的表现最差。</p></div>
+  </div>
 
-  <p>训练时三者同时进行，共用一次前向：同一个序列里同时有文字、FAST token 和连续动作，靠掩码分开。推理时则只留下专家和几步 flow 积分，FAST token 和文字输出都不生成。</p>
-
-  <table>
-    <tr><th>行 → 能看见 ↓</th><th>骨干 tokens</th><th>FAST tokens</th><th>动作专家 tokens</th></tr>
-    <tr><td>骨干（图像、文字、状态）</td><td class="yes">✓</td><td class="no">✗</td><td class="no">✗</td></tr>
-    <tr><td>FAST（离散动作）</td><td class="yes">✓</td><td class="yes">✓ 只看前面的</td><td class="no">✗</td></tr>
-    <tr><td>动作专家（连续动作）</td><td class="yes">✓ 只读，K/V 经 sg</td><td class="no">✗</td><td class="yes">✓</td></tr>
-  </table>
-  <p class="mask-note">按论文式 (5)(6)：骨干对专家不可见；专家对骨干只读；FAST 与专家彼此不可见。信息只有一个方向：骨干 → 专家。</p>
-
-  <div class="aside">表里最反直觉的是“骨干看不见专家，但专家能读骨干”。这不是对称的注意力，是一扇单向门。</div>
+  <p>作者的措辞是这些结果“strongly support the hypothesis”（强有力地支持这一假设）。我同意这个强度：证据很一致，但仍是间接的。</p>
 </section>
 
 <!-- ============ 04 ============ -->
-<section>
-  <div class="n">04 · 条件</div>
-  <h2>这个切法什么时候才成立</h2>
-  <p>论文里有一句很关键、却容易被略过的话：stop-gradient 只在一个条件下是“合理的”——<span class="hl-r">骨干同时被训练去直接预测动作</span>。</p>
-  <p>这个条件把一切连了起来。切断回传之后，骨干还要学会动作，它的学习信号只能来自离散 token。如果骨干不预测动作，那么切断之后，骨干就根本得不到任何关于机器人的训练，专家也只能在一块不适应机器人的表征上硬学。所以三刀不是三个独立的技巧，而是一个成立的组合：<strong>切断回传 ⇔ 离散动作预测替代回传</strong>。</p>
+<section id="s4">
+  <div class="n">04 · 手术</div>
+  <h2>一刀切断，两处补上</h2>
+  <p>论文同时做了三件事。第 III 件是切断，前两件是补偿：切断之后，骨干需要别的信号来学机器人。</p>
 
-  <div class="defn concept-anchor" id="concept-knowledge-insulation">
-    <div class="k">CONCEPT · 知识隔离</div>
-    <p>训练 VLA 时，让骨干通过离散动作 token 与通用视觉语言数据学习；让连续输出的动作专家只读取骨干、不反向更新骨干。这样，新加入的随机参数不会冲掉预训练知识，同时仍保留连续动作的快速推理。</p>
+  <ul class="cut3">
+    <li data-k="I">
+      <h3>联合训练：骨干也预测离散动作</h3>
+      <p>把动作用 <a class="concept-link" href="FAST-论文解读.html#concept-fast">FAST</a> 压缩成离散 token，让骨干做普通的 next-token 预测，同时专家用流匹配预测连续动作。FAST token 和文字共用同一个输出口，不需要新加 head。</p>
+      <p class="why">论文原话：离散 token 提供了一个“不受动作专家未初始化权重影响”的替代学习信号。它是骨干预训练时就熟悉的任务形式，所以能接替被切断的那条梯度，继续教骨干表示机器人任务。消融里，换成朴素的逐 bin 离散化：仍比纯连续训练好，但不如 FAST；按步长 5 稀疏采样又比稠密版本好。</p>
+    </li>
+    <li data-k="II">
+      <h3><span id="concept-co-training" class="concept-anchor">VLM 数据联训（co-training）</span></h3>
+      <p>训练集里加入不含动作的数据：图像描述（CapsFusion、COCO）、视觉问答（Cambrian-7M、PixMo、VQAv2）、物体框选定位，以及带语言标注的机器人规划数据。<span class="src">附录 A.3</span></p>
+      <p class="why">它的作用是让骨干在适配机器人时，别忘了怎么看图说话。它和 I、III 不同：去掉它，KI 仍然成立，只是任务完成度略降、新物体泛化变差（见第 06 节）。</p>
+    </li>
+    <li data-k="III">
+      <h3><span id="concept-stop-gradient" class="concept-anchor">Stop-gradient + 注意力掩码：信息只能单向流动</span></h3>
+      <p>专家读骨干的 K/V 时，套一层 <code>sg</code>（stop-gradient）：前向照常计算，反向在这里截断。</p>
+      <p class="why">切断的是<strong>回传</strong>，不是<strong>读取</strong>。专家依然完整地看到骨干的表征，只是不能改它。</p>
+    </li>
+  </ul>
+
+  <h3>为什么只需要在一处套 sg</h3>
+  <p>论文式 (5)(6) 把注意力概率按“谁看谁”拆成四块。骨干看专家的那一块，被掩码直接置零：</p>
+  <div class="mx" role="img" aria-label="注意力分块矩阵：骨干行只看骨干；专家行看骨干时 K 和 V 经过 stop-gradient，看自己时正常">
+    <div class="mx-grid">
+      <div class="h"></div><div class="h">看 骨干 tokens</div><div class="h">看 专家 tokens</div>
+      <div class="h">骨干行</div><div class="on">Q<sub>b</sub>·K<sub>b</sub> → V<sub>b</sub></div><div class="off">0（不可见）</div>
+      <div class="h">专家行</div><div class="sg">Q<sub>a</sub>·sg(K<sub>b</sub>) → sg(V<sub>b</sub>)</div><div class="on">Q<sub>a</sub>·K<sub>a</sub> → V<sub>a</sub></div>
+    </div>
+    <p>右上角是 0，说明骨干的前向计算根本不依赖专家。那么专家的损失想影响骨干参数，只剩左下角一条路：经过 K<sub>b</sub>、V<sub>b</sub>。在这里套上 sg，就把唯一的通路堵死了。专家自己的 Q<sub>a</sub>、K<sub>a</sub>、V<sub>a</sub> 照常接收梯度。</p>
   </div>
+
+  <h3>完整的可见性表</h3>
+  <table>
+    <tr><th>行 → 能看见 ↓</th><th>前缀（图像、指令、文本状态）</th><th>FAST tokens</th><th>专家 tokens</th></tr>
+    <tr><td>前缀</td><td class="yes">✓ 双向</td><td class="no">✗</td><td class="no">✗</td></tr>
+    <tr><td>FAST（离散动作）</td><td class="yes">✓</td><td class="yes">✓ 只看前面的</td><td class="no">✗</td></tr>
+    <tr><td>专家（带噪连续动作）</td><td class="yes">✓ 只读，经 sg</td><td class="no">✗</td><td class="yes">✓</td></tr>
+  </table>
+  <p class="tbl-note">依据附录 B：前缀内部是完整的双向注意力；FAST 看前缀并按顺序自回归；专家看前缀和彼此，不看 FAST，“以避免两种动作表示之间的信息泄漏”。没有任何骨干 token 看专家。</p>
+
+  <p>FAST 和专家互相不可见，两个方向各有理由。附录给出的理由是防止<em>信息泄漏</em>，展开来是：</p>
+  <div class="mine">
+    <b>专家不能看 FAST：</b>训练时 FAST token 是 teacher forcing 的真值，专家看得到就能直接“抄答案”；而推理时根本不生成 FAST token，训练与推理会对不上。<br>
+    <b>FAST 不能看专家：</b>专家的输入是带噪的真实动作，噪声小时几乎就是答案。骨干的离散预测要是能偷看它，就会去抄，不再学习有用的表征。HybridVLA 恰好允许自回归 token 看连续输入，它在抽屉任务上明显变差，这与此一致。
+  </div>
+
+  <h3>损失怎么合在一起</h3>
+  <p>式 (4)：<code>L = 交叉熵(文字 + FAST token) + α · 流匹配损失</code>，两项各带掩码，所以一个 batch 里可以混合纯 VLM 样本、纯动作样本、语言加动作样本。训练时三类 token 共用一次前向，靠掩码分开；推理时只跑专家的几步 flow 积分，<strong>不生成 FAST token</strong>。</p>
+
+  <div class="aside">流匹配的写法：<code>a<sup>τ</sup> = τ·a + (1−τ)·ω</code>，网络预测 <code>ω − a</code>。在这个约定下 τ→0 是纯噪声，所以论文说时间步分布“偏向低 τ”，等价于 <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">π0 页</a>所说的“偏向高噪声段”，只是 τ 的方向记法相反。分布为 <code>Beta((s−τ)/s; 1.5, 1)</code>，s = 0.999。<span class="src">附录 B</span></div>
 </section>
 
 <!-- ============ 05 ============ -->
-<section>
-  <div class="n">05 · 为什么是隔离，不是冻结</div>
-  <h2>问题不在骨干能不能动，而在骨干被谁推动</h2>
-  <p>冻结骨干看起来最安全：预训练知识一根毛都不碰。论文的实验说它不行，原因是 VLM 的表征没有见过机器人数据，冻住之后表征不够用。论文里冻结骨干的基线表现很差（图 8 中为 0%）。</p>
-  <p>所以问题的形状是：骨干<span class="hl-r">既要学</span>机器人，又<span class="hl-r">不能被新人的梯度拖着走</span>。三种选择的取舍如下：</p>
+<section id="s5">
+  <div class="n">05 · 条件</div>
+  <h2>这一刀什么时候才能切</h2>
+  <p>论文里有一句关键、却容易被略过的话：stop-gradient 是合理的，<span class="hl-r">当且仅当骨干同时被训练去直接预测动作</span>（原文 “if and only if”）。</p>
+  <p>反过来想就明白了：如果骨干不预测动作，切断之后它就收不到任何关于机器人的信号，效果接近冻结骨干。论文测过冻结，图 4a 和图 8 里都是 0%。所以 I 和 III 是一对：<strong>切断回传 ⇔ 用离散动作预测接替回传</strong>，缺一个都不成立。II 是加强项，不是前提。</p>
 
-  <div class="three">
-    <div class="lose"><b>冻结</b>骨干不学机器人，表征不够用，成功率很低。</div>
-    <div class="lose"><b>放开</b>让专家的梯度回传，骨干学得动，但语言被冲掉，训练也慢。</div>
-    <div class="win"><b>隔离</b>骨干由离散 token 和 VLM 数据训练，专家不回写。学得动，语言保住，训练快。</div>
+  <div class="defn concept-anchor" id="concept-knowledge-insulation">
+    <div class="k">CONCEPT · 知识隔离</div>
+    <p>训练 VLA 时，骨干通过离散动作 token（以及通用视觉语言数据）学习；连续输出的动作专家只读取骨干、不反向更新骨干。这样，新加入的随机参数不会冲掉预训练知识，同时仍保留连续动作的快速推理。</p>
   </div>
 
-  <p>隔离的要点在于：它不是“限制骨干能不能变”，而是<span class="hl-t">决定骨干由哪种信号来改</span>。同一个骨干，换了信号来源，结果完全不同。这也是我读完这篇论文最想记住的一点：<b>信号的来源比信号的强弱更重要</b>。</p>
+  <h3>为什么是隔离，不是冻结</h3>
+  <p>冻结看起来最安全，但 VLM 预训练时没见过机器人数据，冻住的表征不够用。骨干<span class="hl-r">必须学</span>，但<span class="hl-r">不能被新人的梯度推着走</span>。把论文里的几种选择排在一起：</p>
+
+  <div class="four">
+    <div><b>冻结骨干</b>骨干不学机器人。抽屉、叠衣任务 0%。</div>
+    <div><b>π0：只有流损失</b>专家梯度回流。语言跟随差；达到同等成绩约需 7.5× 训练步数。</div>
+    <div><b>联合训练，不切梯度</b>有 FAST 信号，但专家梯度也回流。有 VLM 数据时语言尚可，没有时语言差；通才模型的任务完成度下降。</div>
+    <div class="win"><b>KI</b>骨干只由离散 token 与 VLM 数据塑造，专家只读。各项最好或接近最好。</div>
+  </div>
+
+  <p>差别不在“骨干能不能变”，而在<span class="hl-t">骨干由哪种信号来改</span>。同一个骨干，换了信号来源，结果完全不同。</p>
 </section>
 
 <!-- ============ 06 ============ -->
-<section>
-  <div class="n">06 · 数字</div>
-  <h2>我怎么读这些数字</h2>
-  <p>下面是论文中的主要数字，以及我对它们的保留意见。</p>
+<section id="s6">
+  <div class="n">06 · 旋钮</div>
+  <h2>每个部件管哪一项结果</h2>
+  <p>论文正文按任务组织，读起来容易混。按“部件 → 结果”重新排一遍，结构就清楚了：</p>
 
-  <div class="num">
-    <span class="v">DROID（真机）· 0.55 ± 0.09 vs π0 0.49 ± 0.09 vs π0-FAST 0.45 ± 0.09</span>
-    <p class="r">方向对，但标准差区间大幅重叠。仅凭这组数字不足以断定领先，更像是“不差于”而非“稳定胜过”。</p>
-  </div>
-  <div class="num">
-    <span class="v">LIBERO-Spatial · 98.0（通才微调）vs π0 96.8</span>
-    <p class="r">微弱领先。LIBERO 已经接近饱和，这个差距的参考价值有限。</p>
-  </div>
-  <div class="num">
-    <span class="v">LIBERO-10（长时程）· 85.8 vs OpenVLA-OFT 94.5</span>
-    <p class="r">作者自己承认这一项不是最好的。它是论文里最诚实的一行。</p>
-  </div>
-  <div class="num">
-    <span class="v">训练步数 · π0 需要约 7.5× 的步数才能达到同等的餐桌清理成绩</span>
-    <p class="r">这是步数效率，不是墙钟时间。每步的算力约多 20%，作者认为收敛更快足以抵消，所以墙钟时间仍然更短。读这个数字时要带上这个条件。</p>
-  </div>
-  <div class="num">
-    <span class="v">推理 · 流专家约 10 Hz；自回归 VLA 约 1.3 Hz；π0-FAST 1 秒动作块约 750 ms（RTX 4090）</span>
-    <p class="r">推理快的原因很简单：训练时的离散 token 在推理时被丢掉，只剩下小专家跑几步积分。</p>
-  </div>
-  <div class="num">
-    <span class="v">语言跟随 · 图 4b、图 5 的趋势</span>
-    <p class="r">正文里没有给出精确数字，只有图表。我只能读到趋势（隔离优于 π0 与无隔离的联合训练），没法给出具体的百分比。</p>
+  <div class="scroll">
+  <table>
+    <tr><th>结果</th><th>主要由谁负责</th><th>依据</th></tr>
+    <tr><td>训练快</td><td class="l">离散动作目标（I）。KI 和 π0-FAST 收敛一样快；FAST 优于朴素分词</td><td class="l">图 6b、图 5</td></tr>
+    <tr><td>推理快</td><td class="l">动作专家 + 少步 flow 积分。与 π0 相同的结构，没有新开销</td><td class="l">§4、§5.1</td></tr>
+    <tr><td>语言跟随</td><td class="l">stop-gradient（III）<b>或</b> VLM 数据（II）。两者任一都能明显改善；都没有时最差</td><td class="l">图 4b、5、6a、7</td></tr>
+    <tr><td>任务完成（通才）</td><td class="l">stop-gradient（III）。不切梯度的联合训练在这里下降；去掉 VLM 数据只略降</td><td class="l">图 6a</td></tr>
+    <tr><td>新物体泛化</td><td class="l">VLM 数据（II）“尤其重要”</td><td class="l">图 7 · OOD Follow Rate</td></tr>
+  </table>
   </div>
 
-  <div class="aside">论文里真正的硬证据是“训练步数”和“语言跟随的趋势”。真机成功率的差距小得多，要带着怀疑读。</div>
+  <p>这张表揭示了一件正文没有明说的事：<strong>论文里的“知识隔离”其实指两种手段</strong>。讨论语言跟随时，作者的原话是“knowledge insulation techniques of stopping gradient flow, and/or co-training with VLM data”，即切梯度和/或混 VLM 数据。两者在语言跟随上可以部分互相替代，但在任务完成度上，只有切梯度管用。</p>
 </section>
 
 <!-- ============ 07 ============ -->
-<section>
-  <div class="n">07 · 容易读错的地方</div>
-  <h2>四处容易误解</h2>
+<section id="s7">
+  <div class="n">07 · 数字</div>
+  <h2>我怎么读这些数字</h2>
+  <p>先记住评测规模：真机每个任务每个策略只跑 <strong>10 个 episode</strong>，显著性用双侧 t 检验。<span class="src">附录 A.2</span> 样本这么少，真机上的小差距不要过度解读。</p>
 
-  <div class="ask"><b>① KI 不是 π0.5 的两阶段。</b>π0.5 先用 FAST 预训练，再加入随机专家做后训练（两阶段）。KI 的做法是把两步合进同一个阶段。论文自己的说法是：它“形式化”了 π0.5，并把它扩展成单阶段配方。</div>
-  <div class="ask"><b>② stop-gradient 不等于“专家看不见骨干”。</b>专家全程读取骨干的 K/V。切断的只是回传。</div>
-  <div class="ask"><b>③ α = 1 的理由。</b>作者说，因为专家的损失作用在一组<em>独立</em>的权重上，所以不需要用权重去平衡两个损失。我的理解是：两个损失不争同一组参数，平衡系数也就失去了“平衡”的意义。</div>
-  <div class="ask"><b>④ 离散 token 只存在于训练里。</b>论文原话是：它只在训练时用作表征学习的目标。推理时它不存在。它是搭脚手架用的，楼盖好了就拆掉。</div>
+  <h3>LIBERO（成功率 %，表 1）</h3>
+  <div class="scroll">
+  <table>
+    <tr><th>方法</th><th>Spatial</th><th>Object</th><th>Goal</th><th>10 (Long)</th><th>90</th></tr>
+    <tr><td>Baku</td><td>–</td><td>–</td><td>–</td><td>86.0</td><td>90.0</td></tr>
+    <tr><td>MoDE</td><td>–</td><td>–</td><td>–</td><td>94.0</td><td>95.0</td></tr>
+    <tr><td>OpenVLA-OFT</td><td>97.6</td><td>98.4</td><td class="best">97.9</td><td class="best">94.5</td><td>–</td></tr>
+    <tr><td>π0</td><td>96.8</td><td class="best">98.8</td><td>95.8</td><td>85.2</td><td>–</td></tr>
+    <tr><td>π0-FAST</td><td>96.4</td><td>96.8</td><td>88.6</td><td>60.2</td><td>–</td></tr>
+    <tr><td>KI（从头训练）</td><td>96.6</td><td>97.2</td><td>94.6</td><td>84.8</td><td>92.7</td></tr>
+    <tr><td>KI（从通才模型微调）</td><td class="best">98.0</td><td>97.8</td><td>95.6</td><td>85.8</td><td class="best">96.0</td></tr>
+  </table>
+  </div>
+  <p class="tbl-note">论文声称在 Spatial 和 90 上达到 SOTA，并承认在 10 上更差。Object 上最高的是 π0（98.8），Goal 上最高的是 OpenVLA-OFT。</p>
+  <div class="num">
+    <span class="v">SOTA 来自“从通才微调”，不是方法本身</span>
+    <p class="r">从头训练的 KI 在每一栏都没有领先：Spatial 96.6 低于 OFT 的 97.6，90 的 92.7 低于 MoDE 的 95.0。领先的是先在大规模多机器人数据和 VLM 数据上预训练、再微调的版本，所以这里分不清多少归功于隔离，多少归功于预训练数据。领先幅度也很小：Spatial 98.0 对 97.6，90 的 96.0 对 95.0。</p>
+  </div>
+  <div class="num">
+    <span class="v">LIBERO-10：85.8，对比 OFT 94.5 / MoDE 94.0</span>
+    <p class="r">差距约 9 个点，和 π0（85.2）几乎一样。长时程任务上，KI 没有超出 π0 结构本身的上限。</p>
+  </div>
+
+  <h3>真机与训练</h3>
+  <div class="num">
+    <span class="v">DROID · 0.55 ± 0.09，π0 0.49 ± 0.09，π0-FAST 0.45 ± 0.09</span>
+    <p class="r">方向对，但误差区间大幅重叠，更像“不差于”而非“稳定胜过”。另外论文自相矛盾：正文说用的是通才模型，附录 A.1 却说 DROID 和 LIBERO 评测的是只在各自数据上训练的专才模型。</p>
+  </div>
+  <div class="num">
+    <span class="v">训练步数 · π0 约需 7.5× 步数才达到同等的餐桌清理成绩（图 6b）</span>
+    <p class="r">这是步数效率。每步算力多约 20%（同时算两种输出），作者说收敛快足以抵消，墙钟时间仍比 π0 短得多。论文没有给出墙钟时间的具体数字。</p>
+  </div>
+  <div class="num">
+    <span class="v">同步数比较对 π0 不太公平</span>
+    <p class="r">移动操作的四个任务（图 9）是在相同训练步数下比较的，作者自己也指出 π0 是因为收敛慢才落后。所以那里的差距有一部分是“还没训完”，不全是“训不好”。</p>
+  </div>
+  <div class="num">
+    <span class="v">推理 · π0 约 10 Hz；自回归 VLA 约 1.3 Hz；π0-FAST 生成 1 秒动作块约 750 ms（RTX 4090）</span>
+    <p class="r">10 Hz 是 π0 的数字。KI 推理时和 π0 结构相同，论文只说它“推理时间低”，没有单独报数。餐桌清理任务上，π0-FAST 完成任务的墙钟时间约为 KI 的两倍（图 5）。</p>
+  </div>
+  <div class="num">
+    <span class="v">语言跟随 · 只有图，没有数</span>
+    <p class="r">图 4b、5、6a、7 的数值正文没有写出，我只能转述趋势。</p>
+  </div>
 </section>
 
 <!-- ============ 08 ============ -->
-<section>
-  <div class="n">08 · 我的追问</div>
-  <h2>读完之后留下的几个问题</h2>
-  <p>以下是我自己的推测，论文没有讨论，所以我把它们当作假设，而不是结论。</p>
+<section id="s8">
+  <div class="n">08 · 容易读错的地方</div>
+  <h2>六处容易误解</h2>
 
-  <div class="ask"><b>问题 A · 骨干的动作表示有没有天花板？</b>FAST 的 DCT 加量化是有损的。骨干学到的是“有损的动作语言”，它对力度、速度这类连续细节的表示，是否会被这个离散化误差卡住？论文证明了 FAST 比朴素分词好，但没有量化有损带来的上限。</div>
-  <div class="ask"><b>问题 B · 单向门的代价。</b>专家不能告诉骨干“你该看哪里”。如果动作误差能反馈回视觉注意力，模型也许会学到更主动的看法。stop-gradient 把这条路堵死了。论文把语言跟随“仍然不完美”归因于训练数据里的相关性；单向隔离是不是也是原因之一，论文没有排除。</div>
-  <div class="ask"><b>问题 C · 同一个工具，三种用途。</b>stop-gradient 在知识库的其他地方出现过好几次，用途各不相同：<a href="Qwen-VLA-论文解读.html">Qwen-VLA</a> 的价值头里，它用来保护骨干，免得价值信号冲坏表征；<a href="RL-100-论文解读.html">RL-100</a> 的一致性蒸馏里，它让 teacher 在被 RL 改进的同时仍然稳定；<a href="RL-Token-论文解读.html">RL Token</a> 的重建里，它把原特征当作常数。把它们放在一起看，三者共享的是同一个问题：<span class="hl-r">谁有资格改谁</span>。梯度不是越多越好。</div>
+  <div class="ask"><b>① KI 不是 π0.5 的两阶段。</b><a href="pi0.5_论文测验_精美版.html">π0.5</a> 先只用 FAST 训练，再在后训练里加入随机初始化的专家，一起训练。KI 从一开始就把两种动作表示放在同一个阶段里训练。论文的说法是：它把 π0.5 的做法“形式化”，并扩展成单阶段配方。</div>
+  <div class="ask"><b>② stop-gradient 不等于“专家看不见骨干”。</b>专家全程读取骨干每一层的 K/V，切断的只是回传。</div>
+  <div class="ask"><b>③ α = 1 不是调参调出来的。</b>论文说，有了 sg，流匹配损失作用在“一组独立的权重”上，所以直接设 α = 1。展开来看：交叉熵只更新骨干（骨干看不见专家），流匹配损失只更新专家（回传被切断），两项损失没有共享参数，不存在谁压过谁。α 只相当于缩放专家这一侧的梯度。</div>
+  <div class="mine">若优化器是 Adam 类（论文没写明），按参数归一化的更新会把这种整体缩放几乎抵消掉，α 取多少影响就更小了。</div>
+  <div class="ask"><b>④ 离散 token 只在训练时存在。</b>论文原话：自回归目标“只在训练时作为表征学习的目标”。推理时不生成 FAST token。它是脚手架，楼盖好了就拆掉。</div>
+  <div class="ask"><b>⑤ “知识隔离”的范围比 stop-gradient 大。</b>论文正文有时把切梯度和混 VLM 数据都叫作“knowledge insulation techniques”（见第 06 节）。读别的论文说“沿用 KI”时，要看它指的是哪一部分。</div>
+  <div class="ask"><b>⑥ 联合训练不切梯度，并不是一无是处。</b>它有 FAST 信号，加上 VLM 数据后语言跟随也不错，在专才的餐桌清理任务上“也表现良好”。它的问题主要出现在通才模型的任务完成度上，以及没有 VLM 数据时的语言跟随上。</div>
 </section>
 
 <!-- ============ 09 ============ -->
-<section>
-  <div class="n">09 · 在知识网里的位置</div>
+<section id="s9">
+  <div class="n">09 · 我的追问</div>
+  <h2>读完之后留下的几个问题</h2>
+  <p>这些是我自己的推测，论文没有讨论，所以当作假设，而不是结论。</p>
+
+  <div class="ask"><b>问题 A · “保住了 VLM 知识”是怎么测的？</b>论文标题说泛化更好，摘要说保住知识，但它从没在 VQA、图像描述这类 VLM 基准上评测训练后的骨干。它测的是机器人层面的语言跟随和新物体泛化。这是合理的代理指标，但“知识是否真的没丢”并没有被直接测量。</div>
+  <div class="ask"><b>问题 B · 骨干的动作表示有没有天花板？</b>FAST 的 DCT 加量化是有损的。骨干学的是“有损的动作语言”，它对力度、速度这类细节的表示，会不会被离散误差卡住？LIBERO-10 上 KI 和 π0 几乎一样（85.8 对 85.2），说明长时程上限主要不在隔离与否。</div>
+  <div class="ask"><b>问题 C · 单向门的代价。</b>专家不能告诉骨干“你该看哪里”。如果动作误差能反馈给视觉表征，模型也许会学到更贴合动作的看法。论文把语言跟随“仍远不完美”归因于训练数据中的相关性；单向隔离是不是也有一份，论文没有排除。</div>
+  <div class="ask"><b>问题 D · 同一个工具，几种用途。</b>stop-gradient 在知识库其他地方也出现过：<a href="Qwen-VLA-论文解读.html">Qwen-VLA</a> 的价值头对骨干隐状态做 sg，免得价值信号改坏表征；<a href="RL-100-论文解读.html">RL-100</a> 的一致性蒸馏用 sg，让 teacher 被 RL 改进的同时仍能当目标；<a href="RL-Token-论文解读.html">RL Token</a> 重建时对原特征做 sg，把它当作常数目标。它们背后是同一个问题：<span class="hl-r">谁有资格改谁</span>。</div>
+</section>
+
+<!-- ============ 10 ============ -->
+<section id="s10">
+  <div class="n">10 · 在知识网里的位置</div>
   <h2>从哪些概念进来，又通向哪里</h2>
 
   <div class="web">
     <div><span class="lbl">前置概念</span>
-      <a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a>（它为什么是随机初始化的新模块）·
+      <a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a>（为什么它是随机初始化的新模块）·
       <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">Flow matching</a>（推理时怎么从噪声走到动作）·
+      <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块</a>（专家一次输出 H = 50 步）·
       <a class="concept-link" href="VLA-发展历程.html#concept-vla">VLA</a>（骨干与动作头的分工从哪里来）
     </div>
     <div><span class="lbl">同一条线的前后</span>
-      <a class="concept-link" href="FAST-论文解读.html#concept-fast">FAST</a>（训练时的离散信号来源）·
+      <a class="concept-link" href="FAST-论文解读.html#concept-fast">FAST</a>（训练时离散信号的来源）·
       <a class="concept-link" href="pi0.5_论文测验_精美版.html#concept-fast">π0.5</a>（两阶段的前身）·
       <a href="PI-工作全景.html">Physical Intelligence 工作全景</a>（动作怎么出得又好又快）
     </div>
     <div><span class="lbl">推理侧</span>
-      <a class="concept-link" href="Realtime-VLA-论文解读.html#concept-kv-cache">KV 缓存</a>：骨干的 K/V 可以算一次、反复读取；专家每一步只需读它，与“只读不写”是同一种结构。这是我的类比，论文没有展开。
+      <a class="concept-link" href="Realtime-VLA-论文解读.html#concept-kv-cache">KV 缓存</a>：骨干的 K/V 可以算一次、反复读取，专家的每一步积分只需读它，这和“只读不写”是同一种结构。这是我的类比，论文没有展开。
     </div>
     <div><span class="lbl">下游</span>
-      <a class="concept-link" href="pi0.6-论文解读.html#concept-recap">π0.6 / RECAP</a>：π0.6 沿用了 KI 的训练方式，在它之上再做经验驱动的强化学习。
+      <a class="concept-link" href="pi0.6-论文解读.html#concept-recap">π0.6 / RECAP</a>：π0.6 沿用 KI 的训练方式，在它之上再做经验驱动的强化学习。
     </div>
     <div><span class="lbl">横向对照</span>
-      <a href="OpenVLA-vs-pi系列-对比.html">OpenVLA vs π 系列</a>（离散与连续输出的路线之争）·
-      <a href="VLA-发展历程.html">VLA 发展历程</a>（“离散还是连续”这个辩论的现状）
+      <a href="OpenVLA-vs-pi系列-对比.html">OpenVLA vs π 系列</a>（离散与连续输出之争）·
+      <a href="VLA-发展历程.html">VLA 发展历程</a>（“离散还是连续”辩论的现状）
     </div>
   </div>
 </section>
 
-<!-- ============ 10 ============ -->
-<section>
-  <div class="n">10 · 自测</div>
-  <h2>三个问题，看看你是不是真的懂</h2>
+<!-- ============ 11 ============ -->
+<section id="s11">
+  <div class="n">11 · 自测</div>
+  <h2>四个问题，看看你是不是真的懂</h2>
 
   <details>
-    <summary>如果把 stop-gradient 换成“专家完全不看骨干，只看自己的输入”，会怎样？</summary>
-    <p>专家失去了骨干的表征，就失去了 VLM 知识迁移的通道，等于丢掉了论文最核心的收益。它不会因此更稳定，只会更弱。论文的 stop-gradient 切的是回传，专家仍然读取骨干，这一点不能丢。</p>
+    <summary>如果把 stop-gradient 换成“专家完全不看骨干”，会怎样？</summary>
+    <p>专家失去了骨干的表征，也就失去了 VLM 知识迁移的通道，丢掉了这篇论文最核心的收益。它不会因此更稳，只会更弱。KI 切的是回传，读取必须保留。</p>
   </details>
   <details>
-    <summary>为什么离散 token 能替代被切断的梯度，而连续动作的梯度不行？</summary>
-    <p>论文的回答是：离散 token 的学习信号“不受动作专家未初始化权重的影响”。它通过和文字共享的输出口训练，形式上和 VLM 的预训练任务同构；连续动作的梯度则来自一个随机初始化的新 head，噪声大，方向也不可靠。</p>
+    <summary>为什么只在专家读骨干 K/V 的地方套 sg，就足以隔离整个骨干？</summary>
+    <p>因为骨干行看专家列的注意力被掩码置零，骨干的前向计算完全不依赖专家。专家损失影响骨干参数的唯一路径，就是专家行里的 K<sub>b</sub> 和 V<sub>b</sub>。堵住这一处，就全部堵住了。</p>
   </details>
   <details>
-    <summary>哪个消融最能说明，问题不只在“加了离散分支”，还在“两条分支能不能互相看见”？</summary>
-    <p>HybridVLA 式的设置：自回归 token 可以看到连续输入。在“items in drawer”任务上，它明显差于论文的掩码设计。同样是两种动作表示，只因为可见性不同，结果就差很多。</p>
+    <summary>去掉离散动作预测、只保留 stop-gradient，会怎样？</summary>
+    <p>骨干收不到任何机器人信号，效果接近冻结骨干，而冻结在论文里是 0%。这正是论文说 sg “当且仅当骨干同时预测动作时才合理”的原因。</p>
+  </details>
+  <details>
+    <summary>HybridVLA 的结果能证明“FAST 偷看连续动作”有害吗？</summary>
+    <p>只能算支持，不能算证明。论文把它的失败归因于注意力设置（自回归 token 能看连续输入），而且最接近的对照“不切梯度、无 VLM 数据的联合训练”被描述为“自回归 token 看不到连续输入的 HybridVLA 变体”。但 HybridVLA 用的是朴素分词，联合训练用的是 FAST，两者不止注意力一处不同。</p>
   </details>
 </section>
 
@@ -353,6 +447,7 @@
   <a href="https://arxiv.org/abs/2505.23705">arXiv 摘要</a>
   <a href="https://arxiv.org/html/2505.23705v1">HTML 版</a>
   <a href="pdfs/KI-2505.23705v1.pdf">本地 PDF</a>
+  <a href="https://pi.website/research/knowledge_insulation">项目页与视频</a>
   <a href="PI-工作全景.html">PI 工作全景</a>
   <br>
   本页由 Claude 生成，仅供学习参考。
