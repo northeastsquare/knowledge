@@ -406,7 +406,7 @@
           <div class="stage-body">
             <div class="grid4">
               <div class="blk"><div class="label">问题</div>VLM 推理慢，控制却要求高频；在陌生的家里执行长时程任务，需要拆解子任务和推理。</div>
-              <div class="blk"><div class="label">突破</div>Helix（S2 7–9Hz / S1 200Hz）、GR00T N1、Gemini Robotics、Hi Robot 都是分层或双系统结构；FAST 用频域压缩让动作 token 化重新变得可用；知识隔离（Knowledge Insulation）用离散 token 训练骨干、用 flow 推理，同时防止梯度破坏 VLM；π0.5 结合多源数据联合训练，在没见过的家庭环境里完成长时程任务。</div>
+              <div class="blk"><div class="label">突破</div>Helix（S2 7–9Hz / S1 200Hz）、GR00T N1、Gemini Robotics、Hi Robot 都是分层或双系统结构；FAST 用频域压缩让动作 token 化重新变得可用；<a class="concept-link" href="KI-知识隔离-论文解读.html#concept-knowledge-insulation">知识隔离（Knowledge Insulation）</a>用离散 token 训练骨干、用 flow 推理，同时防止梯度破坏 VLM；π0.5 结合多源数据联合训练，在没见过的家庭环境里完成长时程任务。</div>
               <div class="blk"><div class="label">代价</div>“会做一次”离“稳定地做很久”还很远；模型的表现仍受限于示范数据的质量，缺少自我改进的机制。</div>
               <div class="blk next"><div class="label">被谁接手 →</div>P7 把真实执行中的经验、奖励和人类纠正接回模型。</div>
             </div>

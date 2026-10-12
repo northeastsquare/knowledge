@@ -238,7 +238,7 @@
     <div class="card">
       <h3>模型与奖励设计</h3>
       <ul>
-        <li><strong>π0.6 架构</strong>：由 π0.5 进化而来——基础 VLM 换成 <strong>Gemma 3 4B</strong>，<a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a>增大到 <strong>860M 参数</strong>，预训练数据加入多个机器人平台；沿用 <strong>KI（Knowledge Insulation）</strong>训练法：flow matching 动作专家用 stop-gradient 隔离，离散动作走 <a class="concept-link" href="pi0.5_论文测验_精美版.html#concept-fast">FAST 分词</a>，语言子任务 <code>ŷ</code> 先预测、再条件化动作生成。</li>
+        <li><strong>π0.6 架构</strong>：由 π0.5 进化而来——基础 VLM 换成 <strong>Gemma 3 4B</strong>，<a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a>增大到 <strong>860M 参数</strong>，预训练数据加入多个机器人平台；沿用 <a class="concept-link" href="KI-知识隔离-论文解读.html#concept-knowledge-insulation"><strong>KI（Knowledge Insulation）</strong></a>训练法：flow matching 动作专家用 stop-gradient 隔离，离散动作走 <a class="concept-link" href="pi0.5_论文测验_精美版.html#concept-fast">FAST 分词</a>，语言子任务 <code>ŷ</code> 先预测、再条件化动作生成。</li>
         <li><strong>价值函数</strong>：与策略同架构、但用更小的 <strong>670M</strong> VLM 骨干（也初始化自 Gemma 3），分布式输出 201 个 bin；为防过拟合还混入少量多模态网页数据联合训练。</li>
         <li><strong>稀疏奖励</strong>：<code>r_t = 0</code>（成功那步）、<code>-C_fail</code>（失败那步）、否则 <code>-1</code>——等价于让价值函数预测"离完成还差多少步"的负值。</li>
       </ul>

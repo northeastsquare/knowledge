@@ -296,7 +296,7 @@
     <p>训练目标 = 流匹配动作损失 + 视觉语言下一 token 损失加权（<code>L = α<sub>act</sub>L<sub>act</sub> + α<sub>vl</sub>L<sub>vl</sub></code>），每个 mini-batch 按固定比例混合所有任务族。RL 阶段关键细节：</p>
     <ul>
       <li><a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块</a> <code>H=16</code>；128 个并行环境；每次迭代 8×128 步 → 8192 个 transition chunk；rollout 温度 τ=1.0，评测降到 0.6。</li>
-      <li>价值头直接挂在 VLM 骨干上（mean-pool + 线性），<strong>对 VLM hidden states 做 stop-gradient</strong>，价值头用独立学习率 1e-4（约为 actor 的 20 倍），快速收敛而策略更新保守。</li>
+      <li>价值头直接挂在 VLM 骨干上（mean-pool + 线性），<strong>对 VLM hidden states 做 <a class="concept-link" href="KI-知识隔离-论文解读.html#concept-stop-gradient">stop-gradient</a></strong>，价值头用独立学习率 1e-4（约为 actor 的 20 倍），快速收敛而策略更新保守。</li>
       <li>流匹配的 log-prob：把确定性概率流 ODE 转成 SDE（每个 Euler 步注入受控噪声），使每步转移成为显式高斯，可解析算重要性比，无需数值积分。</li>
     </ul>
   </section>

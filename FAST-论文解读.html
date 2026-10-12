@@ -345,7 +345,7 @@
       <li><strong>tokenizer 是模型的一部分</strong>：LLM 里 BPE 的选择影响很大，机器人也一样。动作表示决定了训练信号长什么样，比“换更大的骨干”更便宜、更有效。</li>
       <li><strong>先轮廓、后细节</strong>：低频优先展平让自回归的生成顺序变成“先定整体趋势，再补细节”，与扩散模型从粗到细的去噪相似，只是换成了在频域里按 token 生成。</li>
       <li><strong>训练快的来源</strong>：交叉熵 + 共享输出头，梯度直接落在 VLM 熟悉的“下一个 token”任务上，不需要随机初始化的动作专家从零学起，也不用学一个速度场。</li>
-      <li><strong>语言跟随更强</strong>：动作和文字共用同一个输出空间，VLM 的语言能力保留得更好。这个观察直接引出了后来的知识隔离（KI）。</li>
+      <li><strong>语言跟随更强</strong>：动作和文字共用同一个输出空间，VLM 的语言能力保留得更好。这个观察直接引出了后来的<a class="concept-link" href="KI-知识隔离-论文解读.html#concept-knowledge-insulation">知识隔离（KI）</a>。</li>
     </ul>
   </section>
 
@@ -363,7 +363,7 @@
     <h2>被谁接手</h2>
     <ul>
       <li><strong><a href="pi0.5_论文测验_精美版.html#concept-fast">π0.5</a></strong>：取两条路线之长。训练时用 FAST token 训 VLM 主干（训练快、语言好），推理时由 flow 动作专家出动作（推理快），两种动作表示之间用注意力 mask 隔开。</li>
-      <li><strong>知识隔离（KI）</strong>：FAST token 训练骨干，同时<b>阻断</b>动作专家回传到骨干的梯度，避免破坏 VLM 知识。见 <a href="PI-工作全景.html">Physical Intelligence 工作全景</a>。</li>
+      <li><strong><a class="concept-link" href="KI-知识隔离-论文解读.html#concept-knowledge-insulation">知识隔离（KI）</a></strong>：FAST token 训练骨干，同时<b>阻断</b>动作专家回传到骨干的梯度，避免破坏 VLM 知识。见 <a href="PI-工作全景.html">Physical Intelligence 工作全景</a>。</li>
       <li><strong>π0.6 / π0.7</strong>：沿用 π0.5 的“FAST 训骨干 + 动作专家出动作”底座。见 <a href="pi0.6-论文解读.html">π*0.6</a>、<a href="pi0.7_问答学习卡.html">π0.7</a>。</li>
       <li><strong>另一条路</strong>：OpenVLA-OFT 放弃逐 token 生成，改为并行解码加连续回归来提速。对比见 <a href="OpenVLA-vs-pi系列-对比.html">OpenVLA vs π 系列</a>。</li>
       <li><strong>放回全局</strong>：<a href="VLA-发展历程.html">VLA 发展史</a>中的“动作表示”主线，2025.01 节点。</li>

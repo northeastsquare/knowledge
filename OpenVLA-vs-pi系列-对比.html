@@ -211,7 +211,7 @@
     <ul>
       <li><strong>精度</strong>：每维 256 个 bin 是粗量化，细腻的连续控制会损失精度；flow 直接在连续空间建模，还能表达多峰分布（同一场景下有多种合理做法）。</li>
       <li><strong>速度</strong>：自回归每输出一个维度就要前向一次，7 维动作就要解码 7 个 token；动作块配合并行生成，一次推理就能覆盖未来多步。</li>
-      <li><strong>知识保留</strong>：离散 token 与文字共享输出空间，天然保留 VLM 的语言能力；独立动作专家的梯度会回传到骨干、破坏 VLM 知识，π0.5 后来用<a class="concept-link" href="pi0.5_论文测验_精美版.html#concept-fast">离散 FAST token</a>与知识隔离来补这一点。</li>
+      <li><strong>知识保留</strong>：离散 token 与文字共享输出空间，天然保留 VLM 的语言能力；独立动作专家的梯度会回传到骨干、破坏 VLM 知识，π0.5 后来用<a class="concept-link" href="pi0.5_论文测验_精美版.html#concept-fast">离散 FAST token</a>与<a class="concept-link" href="KI-知识隔离-论文解读.html#concept-knowledge-insulation">知识隔离</a>来补这一点。</li>
     </ul>
     <blockquote><p>口诀：OpenVLA 是"<strong>语言模型顺便说动作</strong>"，π0 是"<strong>语言模型看懂之后，交给专门的手去动</strong>"。</p></blockquote>
   </section>

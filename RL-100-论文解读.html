@@ -304,7 +304,7 @@
       <h3><span class="tag">设计二</span>一致性蒸馏：把多步去噪压成单步</h3>
       <p>训练时用多步采样（K 步），部署时蒸馏成一个<strong>一致性模型</strong>，一步出结果：<code>x⁰ ≈ C<sub>θ</sub>(x<sup>τ_K</sup>, τ_K)</code>，<code>x<sup>τ_K</sup> ~ N(0,I)</code>。</p>
       <ul>
-        <li><strong>和 RL 联合训练</strong>：<code>L_total = L_RL + λ_CD·L_CD</code>，用带 stop-gradient 的一致性蒸馏目标（Eq. 9），把扩散策略当 teacher。stop-gradient 的作用是<strong>让 teacher 在被 RL 持续改进的同时，仍能充当蒸馏目标</strong>。</li>
+        <li><strong>和 RL 联合训练</strong>：<code>L_total = L_RL + λ_CD·L_CD</code>，用带 <a class="concept-link" href="KI-知识隔离-论文解读.html#concept-stop-gradient">stop-gradient</a> 的一致性蒸馏目标（Eq. 9），把扩散策略当 teacher。stop-gradient 的作用是<strong>让 teacher 在被 RL 持续改进的同时，仍能充当蒸馏目标</strong>。</li>
         <li><strong>前提</strong>：teacher 必须遵循与 student 相同的子采样时间表 {τ<sub>k</sub>}。</li>
         <li><strong>收益</strong>：多步采样上获得 K× 加速，论文表述为"一个数量级的延迟下降，同时保住任务性能"，给出的具体例子是 <strong>100ms → 10ms</strong>。</li>
       </ul>

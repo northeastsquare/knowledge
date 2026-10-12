@@ -16,10 +16,10 @@ a{color:var(--accent)}a:focus-visible,button:focus-visible,input:focus-visible{o
 </head>
 <body>
 <main>
-  <header><div class="eyebrow">ROBOTIC LEARNING / CONCEPT INDEX</div><h1>从一个概念，读懂另一篇。<small>39 个关键概念 · 20 篇研读网页</small></h1><p class="intro">正文里的虚线下划线可以点击，直达相关讲解。这里按问题收录概念：点击标题阅读原文，沿“接着理解”继续串读。</p></header>
-  <aside class="route" aria-label="概念阅读路线"><strong>从你正在问的问题出发</strong><p>“target 和双 Q 是一回事吗？” <a href="#q-value">Q 值</a> → <a href="#target-network">target 副本</a> → <a href="#twin-q">双 Q</a></p><p>“VLA 怎么用 RL 变好？” <a href="#flow-matching">流匹配</a> → <a href="#denoising-mdp">去噪链 MDP</a> / <a href="#rl-token">RL Token</a> → <a href="#recap">RECAP</a></p></aside>
+  <header><div class="eyebrow">ROBOTIC LEARNING / CONCEPT INDEX</div><h1>从一个概念，读懂另一篇。<small>42 个关键概念 · 21 篇研读网页</small></h1><p class="intro">正文里的虚线下划线可以点击，直达相关讲解。这里按问题收录概念：点击标题阅读原文，沿“接着理解”继续串读。</p></header>
+  <aside class="route" aria-label="概念阅读路线"><strong>从你正在问的问题出发</strong><p>“target 和双 Q 是一回事吗？” <a href="#q-value">Q 值</a> → <a href="#target-network">target 副本</a> → <a href="#twin-q">双 Q</a></p><p>“VLA 怎么用 RL 变好？” <a href="#flow-matching">流匹配</a> → <a href="#denoising-mdp">去噪链 MDP</a> / <a href="#rl-token">RL Token</a> → <a href="#recap">RECAP</a></p><p>“知识隔离是什么？为什么梯度要切一半？” <a href="#knowledge-insulation">知识隔离</a> → <a href="#stop-gradient">Stop-gradient</a> → <a href="#co-training">VLM co-training</a></p></aside>
   <div class="search-area"><div class="search-field"><label for="concept-search">查找概念或相关问题</label><input id="concept-search" type="search" placeholder="例如：target、双 Q、奖励、动作块" autocomplete="off"></div><button id="clear-search" type="button">清空搜索</button></div>
-  <p class="count" id="result-count" role="status" aria-live="polite">共 39 个概念</p>
+  <p class="count" id="result-count" role="status" aria-live="polite">共 42 个概念</p>
   <p class="empty" id="empty-state" hidden>没有找到匹配概念。试试中文名称、英文缩写，或清空搜索查看全部。</p>
   <section class="term-group" aria-labelledby="group-0">
     <div class="group-heading"><span>01</span><h2 id="group-0">价值如何学出来</h2></div>
@@ -203,6 +203,24 @@ a{color:var(--accent)}a:focus-visible,button:focus-visible,input:focus-visible{o
         <div class="term-source">讲解位置：RLToken-漫画分镜解读</div>
         <div class="term-code"><span>代码在哪 · <a href="代码索引.html#action-chunk">索引</a></span> <a class="code-link" href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0_config.py#L25-L26" target="_blank" rel="noreferrer" title="openpi · action_horizon = 50">openpi · action_horizon = 50 ↗</a> <a class="code-link" href="https://github.com/moojink/openvla-oft/blob/e4287e94541f459edc4feabc4e181f537cd569a8/prismatic/models/action_heads.py#L84-L107" target="_blank" rel="noreferrer" title="openvla-oft · L1RegressionActionHead">openvla-oft · L1RegressionActionHead ↗</a> <a class="code-link" href="https://github.com/moojink/openvla-oft/blob/e4287e94541f459edc4feabc4e181f537cd569a8/prismatic/extern/hf/modeling_prismatic.py#L877-L942" target="_blank" rel="noreferrer" title="openvla-oft · 并行解码">openvla-oft · 并行解码 ↗</a></div>
         <div class="term-related"><span>接着理解</span> <a href="#flow-matching">Flow Matching</a> <a href="#sparse-reward">稀疏奖励</a> <a href="#latency">感知—执行时延</a></div>
+      </article>
+      <article class="term-card" id="knowledge-insulation">
+        <h3><a href="KI-知识隔离-论文解读.html#concept-knowledge-insulation">知识隔离 · Knowledge insulation<span aria-hidden="true"> ↗</span></a></h3>
+        <p>训练 VLA 时，骨干用离散动作 token 与 VLM 数据学习，连续动作专家只读取骨干、不回写梯度，保住预训练的语言能力。</p>
+        <div class="term-source">讲解位置：KI-知识隔离-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#stop-gradient">Stop-gradient</a> <a href="#co-training">VLM co-training</a> <a href="#fast">FAST</a></div>
+      </article>
+      <article class="term-card" id="stop-gradient">
+        <h3><a href="KI-知识隔离-论文解读.html#concept-stop-gradient">Stop-gradient · 梯度截断<span aria-hidden="true"> ↗</span></a></h3>
+        <p>前向照常计算，反向在某处被切断。在 KI 里，就是动作专家的梯度不回传骨干，专家仍然读取骨干的表征。</p>
+        <div class="term-source">讲解位置：KI-知识隔离-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#knowledge-insulation">知识隔离</a> <a href="#action-expert">Action expert</a> <a href="#co-training">VLM co-training</a></div>
+      </article>
+      <article class="term-card" id="co-training">
+        <h3><a href="KI-知识隔离-论文解读.html#concept-co-training">VLM co-training · 混合数据联训<span aria-hidden="true"> ↗</span></a></h3>
+        <p>把图文描述、问答、框选定位等不含动作的数据，与机器人数据放进同一训练，防止骨干在适配机器人时遗忘通用能力。</p>
+        <div class="term-source">讲解位置：KI-知识隔离-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#knowledge-insulation">知识隔离</a> <a href="#fast">FAST</a> <a href="#flow-matching">Flow Matching</a></div>
       </article>
       <article class="term-card" id="fast">
         <h3><a href="FAST-论文解读.html#concept-fast">FAST · 动作分词<span aria-hidden="true"> ↗</span></a></h3>
