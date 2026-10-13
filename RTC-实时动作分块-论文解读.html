@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>实时动作分块（RTC）· 论文解读</title>
+<meta name="description" content="Real-Time Execution of Action Chunking Flow Policies（arXiv 2506.07339）：为什么动作块会卡顿，RTC 如何把块与块的衔接当成 inpainting 来做，并用流程图讲清每一步。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@500;700&family=IBM+Plex+Mono:wght@400;500;600&family=Noto+Sans+SC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#eef3f8;
+    --grid:rgba(30,70,120,.09);
+    --paper:#ffffff;
+    --ink:#132a44;
+    --ink-2:#40566e;
+    --ink-3:#7d90a4;
+    --blue:#1f6fd1;
+    --blue-2:#8db8ef;
+    --teal:#138a7c;
+    --amber:#e09a16;
+    --red:#d24b3c;
+    --line:#b9cadc;
+    --shadow:0 10px 28px rgba(19,42,68,.10);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; color:var(--ink);
+    background-color:var(--bg);
+    background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+    background-size:24px 24px;
+    font-family:"Noto Sans SC","Microsoft YaHei","PingFang SC",system-ui,sans-serif;
+    line-height:1.8; font-size:16px; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:980px; margin:0 auto; padding:0 22px 110px;}
+  .topbar{max-width:980px; margin:0 auto; padding:18px 22px 0; display:flex; justify-content:space-between; align-items:center; font-size:13px;}
+  .topbar a{color:var(--blue); text-decoration:none; font-weight:700;}
+  .topbar span{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; color:var(--ink-3);}
+
+  /* hero */
+  .hero{padding:40px 0 10px; position:relative;}
+  .hero .tag{
+    display:inline-block; font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12px;
+    background:var(--ink); color:#eef3f8; padding:3px 10px; border-radius:4px; letter-spacing:.06em;
+  }
+  .hero h1{font-size:clamp(28px,4.8vw,44px); line-height:1.2; margin:16px 0 10px; letter-spacing:-.01em;}
+  .hero .q{
+    font-family:"Caveat","Noto Sans SC",cursive; font-size:30px; color:var(--red); margin:0 0 14px; line-height:1.3;
+  }
+  .hero .meta{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:13px; color:var(--ink-2);}
+  .hero .meta a{color:var(--blue);}
+  .one{
+    margin:24px 0 0; background:var(--paper); border:2px solid var(--ink); border-radius:14px;
+    padding:18px 20px; box-shadow:var(--shadow); font-size:17px;
+  }
+  .one b{color:var(--blue);}
+
+  h2{
+    font-size:24px; margin:58px 0 6px; display:flex; align-items:center; gap:12px;
+  }
+  h2 .no{
+    flex:none; width:38px; height:38px; border-radius:50%; background:var(--blue); color:#fff;
+    display:inline-flex; align-items:center; justify-content:center; font-size:17px; font-weight:900;
+  }
+  .sub{color:var(--ink-3); margin:0 0 18px; font-size:14.5px;}
+  h3{font-size:18px; margin:24px 0 8px;}
+  p{margin:0 0 12px;}
+  .hl{background:linear-gradient(transparent 60%, #ffe27a 60%); padding:0 2px;}
+  .card{background:var(--paper); border:1.5px solid var(--line); border-radius:14px; padding:18px 20px; box-shadow:var(--shadow); margin:14px 0;}
+  .card.warn{border-color:var(--red);}
+  .card.ok{border-color:var(--teal);}
+  .card h3{margin-top:0;}
+  .pill{display:inline-block; font-size:12.5px; font-weight:700; padding:2px 9px; border-radius:999px; margin-right:6px; color:#fff; vertical-align:2px;}
+  .p-blue{background:var(--blue);} .p-teal{background:var(--teal);} .p-amber{background:var(--amber);} .p-red{background:var(--red);}
+  a{color:var(--blue);}
+  a.concept-link{color:inherit; text-decoration:underline dotted; text-underline-offset:3px;}
+
+  /* diagram frame */
+  .diagram{background:var(--paper); border:1.5px solid var(--line); border-radius:16px; padding:18px; margin:16px 0; box-shadow:var(--shadow); overflow-x:auto;}
+  .diagram .cap{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12.5px; color:var(--ink-3); margin-top:10px;}
+  .diagram svg{display:block; width:100%; min-width:640px; height:auto;}
+  .diagram text{font-family:"Noto Sans SC","Microsoft YaHei",sans-serif; fill:var(--ink);}
+  .diagram .mono{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12px; fill:var(--ink-2);}
+
+  /* step flow (html) */
+  .steps{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:0; align-items:stretch; margin:12px 0;}
+  .step{
+    position:relative; background:#f7fbff; border:1.5px solid var(--blue); border-radius:12px; padding:12px 14px; margin:6px;
+    font-size:14.5px;
+  }
+  .step .k{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12px; color:var(--blue); font-weight:600;}
+  .step b{display:block; font-size:15.5px; margin:2px 0 4px;}
+  .step code{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12.5px; background:#eaf2fc; padding:1px 5px; border-radius:4px;}
+
+  /* analogy strip */
+  .analogy{display:grid; grid-template-columns:1fr 1fr; gap:14px; margin:12px 0;}
+  @media (max-width:680px){ .analogy{grid-template-columns:1fr;} }
+  .analogy .side{border:1.5px dashed var(--ink-3); border-radius:14px; padding:14px 16px; background:#fbfcfe;}
+  .analogy .side h4{margin:0 0 6px; font-size:15px;}
+
+  /* table */
+  table{width:100%; border-collapse:collapse; font-size:14px; margin:10px 0; background:var(--paper);}
+  th,td{padding:9px 11px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top;}
+  th{background:#e5eef9; font-size:13px; color:var(--ink);}
+  .tbl-wrap{overflow-x:auto; border-radius:12px; box-shadow:var(--shadow); border:1.5px solid var(--line);}
+  .tbl-wrap table{margin:0;}
+
+  /* interactive */
+  .lab{background:var(--paper); border:2px solid var(--ink); border-radius:16px; padding:18px 20px; box-shadow:var(--shadow);}
+  .lab .row{display:grid; grid-template-columns:150px 1fr 90px; gap:10px; align-items:center; margin:8px 0; font-size:14.5px;}
+  .lab input[type=range]{width:100%; accent-color:var(--blue);}
+  .lab .out{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:14px; text-align:right;}
+  .lab .result{margin-top:12px; padding:12px 14px; border-radius:10px; background:#eef6ff; border:1.5px solid var(--blue); font-size:15px;}
+  .lab .result.bad{background:#fff0ee; border-color:var(--red);}
+  .lab .tl{margin-top:14px;}
+  @media (max-width:640px){ .lab .row{grid-template-columns:1fr 70px;} .lab .row input{grid-column:1 / -1;} }
+
+  details{background:var(--paper); border:1.5px solid var(--line); border-radius:12px; padding:12px 16px; margin:10px 0;}
+  details summary{cursor:pointer; font-weight:700;}
+  details[open] summary{margin-bottom:8px;}
+
+  .ledger{display:grid; grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:12px; margin:14px 0;}
+  .stat{background:var(--paper); border:1.5px solid var(--line); border-radius:14px; padding:14px 16px; box-shadow:var(--shadow);}
+  .stat .n{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:24px; font-weight:600; color:var(--blue);}
+  .stat .l{font-size:13px; color:var(--ink-2);}
+
+  .related{display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px; margin-top:10px;}
+  .related a{display:block; background:var(--paper); border:1.5px solid var(--line); border-radius:12px; padding:10px 14px; text-decoration:none; color:var(--ink); font-weight:700; font-size:14.5px;}
+  .related a:hover{border-color:var(--blue);}
+  .related a small{display:block; font-weight:400; color:var(--ink-3); font-size:12.5px;}
+
+  footer{margin-top:60px; padding-top:18px; border-top:1.5px solid var(--line); font-size:13px; color:var(--ink-3); display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;}
+  footer a{color:var(--ink); font-weight:700; text-decoration:none;}
+</style>
+<link rel="stylesheet" href="concepts.css">
+</head>
+<body>
+
+<div class="topbar">
+  <a href="index.html">← 知识库</a>
+  <span>精读 · arXiv 2506.07339 · 2025.06</span>
+</div>
+
+<div class="wrap">
+
+<!-- ============ HERO ============ -->
+<header class="hero">
+  <span class="tag">动作 · 实时推理</span>
+  <h1>实时动作分块（RTC）</h1>
+  <p class="q">机器人边动边想，怎么做到不卡？</p>
+  <p class="meta">Real-Time Execution of Action Chunking Flow Policies · Kevin Black, Manuel Y. Galliker, Sergey Levine</p>
+  <div class="one"><b>一句话：</b>模型算动作要时间，机器人却不能停。RTC 让下一段动作块在生成时，把“已经注定会发生”的前几步当成已知条件，像补全一张图那样把剩下的部分接上去。它只改推理过程，不用重新训练，任何扩散或 flow 策略都能套。</div>
+</header>
+
+<!-- ============ 0 地图 ============ -->
+<h2><span class="no">0</span>先看地图</h2>
+<p class="sub">这篇论文可以拆成五个问题。读的时候按这个顺序走，比逐段读更省力。</p>
+<div class="diagram">
+<svg viewBox="0 0 900 230" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="论文阅读路线">
+  <defs>
+    <marker id="ar" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#40566e"/></marker>
+  </defs>
+  <g font-size="15" font-weight="700">
+    <rect x="10" y="60" width="150" height="90" rx="14" fill="#fde9e6" stroke="#d24b3c" stroke-width="2"/>
+    <text x="85" y="95" text-anchor="middle">① 为什么卡</text>
+    <text x="85" y="118" text-anchor="middle" font-size="12.5" font-weight="400" fill="#40566e">延迟 + 分块</text>
+    <rect x="195" y="60" width="150" height="90" rx="14" fill="#e6f0fd" stroke="#1f6fd1" stroke-width="2"/>
+    <text x="270" y="95" text-anchor="middle">② 核心想法</text>
+    <text x="270" y="118" text-anchor="middle" font-size="12.5" font-weight="400" fill="#40566e">衔接 = 补全</text>
+    <rect x="380" y="60" width="150" height="90" rx="14" fill="#e6f5f2" stroke="#138a7c" stroke-width="2"/>
+    <text x="455" y="95" text-anchor="middle">③ 怎么算</text>
+    <text x="455" y="118" text-anchor="middle" font-size="12.5" font-weight="400" fill="#40566e">去噪每步加引导</text>
+    <rect x="565" y="60" width="150" height="90" rx="14" fill="#fff4dc" stroke="#e09a16" stroke-width="2"/>
+    <text x="640" y="95" text-anchor="middle">④ 证不证明</text>
+    <text x="640" y="118" text-anchor="middle" font-size="12.5" font-weight="400" fill="#40566e">仿真 + 真机</text>
+    <rect x="750" y="60" width="140" height="90" rx="14" fill="#efeafc" stroke="#6b4fc4" stroke-width="2"/>
+    <text x="820" y="95" text-anchor="middle">⑤ 代价与边界</text>
+    <text x="820" y="118" text-anchor="middle" font-size="12.5" font-weight="400" fill="#40566e">算力 / 适用范围</text>
+  </g>
+  <line x1="160" y1="105" x2="195" y2="105" stroke="#40566e" stroke-width="2.5" marker-end="url(#ar)"/>
+  <line x1="345" y1="105" x2="380" y2="105" stroke="#40566e" stroke-width="2.5" marker-end="url(#ar)"/>
+  <line x1="530" y1="105" x2="565" y2="105" stroke="#40566e" stroke-width="2.5" marker-end="url(#ar)"/>
+  <line x1="715" y1="105" x2="750" y2="105" stroke="#40566e" stroke-width="2.5" marker-end="url(#ar)"/>
+  <text x="450" y="200" text-anchor="middle" font-size="13.5" fill="#7d90a4">读完 ① 就知道问题；②③ 是方法；④⑤ 决定你要不要用它</text>
+</svg>
+<div class="cap">图 0 · 阅读路线</div>
+</div>
+
+<!-- ============ 1 为什么卡 ============ -->
+<h2><span class="no">1</span>问题：为什么机器人会“卡”</h2>
+<p class="sub">先把时间画出来。卡顿不是模型不准，而是“想”和“做”没有排好队。</p>
+
+<h3>一个动作块是什么</h3>
+<p>VLA 或 flow 策略一次输出一整段未来动作，叫<a class="concept-link" href="concepts.html#action-chunk">动作块（action chunk）</a>。论文记号里：<b>H</b> 是预测长度（块有多长），<b>s</b> 是执行长度（每次真正执行几步），<b>Δt</b> 是控制周期。H 大于 s 的部分是“多想的”，等下一次推理时再用或丢弃。</p>
+
+<h3>三种执行方式，画成时间线</h3>
+<div class="diagram">
+<svg viewBox="0 0 900 330" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="同步、朴素异步、RTC 三种时间线对比">
+  <defs>
+    <pattern id="hatch" width="8" height="8" patternTransform="rotate(45)" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="#fde9e6"/><line x1="0" y1="0" x2="0" y2="8" stroke="#d24b3c" stroke-width="3"/></pattern>
+  </defs>
+  <!-- row 1 -->
+  <text x="20" y="40" font-size="15" font-weight="700">A 同步</text>
+  <text x="20" y="58" font-size="12" fill="#7d90a4">想完再动</text>
+  <rect x="150" y="26" width="200" height="26" rx="6" fill="url(#hatch)" stroke="#d24b3c"/>
+  <text x="250" y="44" text-anchor="middle" font-size="12.5">推理（机器人停着）</text>
+  <rect x="350" y="26" width="300" height="26" rx="6" fill="#1f6fd1"/>
+  <text x="500" y="44" text-anchor="middle" font-size="12.5" fill="#fff">执行第 1 块（s 步）</text>
+  <rect x="650" y="26" width="200" height="26" rx="6" fill="url(#hatch)" stroke="#d24b3c"/>
+  <text x="750" y="44" text-anchor="middle" font-size="12.5">又停一下</text>
+
+  <!-- row 2 -->
+  <text x="20" y="120" font-size="15" font-weight="700">B 朴素异步</text>
+  <text x="20" y="138" font-size="12" fill="#7d90a4">边做边想，直接接</text>
+  <rect x="150" y="106" width="260" height="26" rx="6" fill="#1f6fd1"/>
+  <text x="280" y="124" text-anchor="middle" font-size="12.5" fill="#fff">执行第 1 块</text>
+  <rect x="150" y="136" width="200" height="22" rx="6" fill="#8db8ef" opacity=".9"/>
+  <text x="250" y="151" text-anchor="middle" font-size="12" fill="#132a44">推理第 2 块（与执行重叠）</text>
+  <rect x="410" y="106" width="260" height="26" rx="6" fill="#138a7c"/>
+  <text x="540" y="124" text-anchor="middle" font-size="12.5" fill="#fff">执行第 2 块</text>
+  <path d="M410,96 L410,140" stroke="#d24b3c" stroke-width="3" stroke-dasharray="5 4"/>
+  <text x="410" y="90" text-anchor="middle" font-size="12.5" fill="#d24b3c" font-weight="700">接缝：突然跳变</text>
+
+  <!-- row 3 -->
+  <text x="20" y="220" font-size="15" font-weight="700">C RTC</text>
+  <text x="20" y="238" font-size="12" fill="#7d90a4">接缝前 d 步已锁定</text>
+  <rect x="150" y="206" width="260" height="26" rx="6" fill="#1f6fd1"/>
+  <text x="280" y="224" text-anchor="middle" font-size="12.5" fill="#fff">执行第 1 块</text>
+  <rect x="150" y="236" width="200" height="22" rx="6" fill="#8db8ef" opacity=".9"/>
+  <text x="250" y="251" text-anchor="middle" font-size="12" fill="#132a44">推理第 2 块（带前缀引导）</text>
+  <rect x="410" y="206" width="260" height="26" rx="6" fill="#138a7c"/>
+  <text x="540" y="224" text-anchor="middle" font-size="12.5" fill="#fff">执行第 2 块（顺滑衔接）</text>
+  <path d="M410,196 L410,240" stroke="#138a7c" stroke-width="3" stroke-dasharray="5 4"/>
+  <text x="410" y="190" text-anchor="middle" font-size="12.5" fill="#138a7c" font-weight="700">接缝：平滑</text>
+</svg>
+<div class="cap">图 1 · 三种执行方式的时间线（示意，不按比例）</div>
+</div>
+
+<div class="steps">
+  <div class="step"><span class="k">A 同步</span><b>安全但会停</b>每次推理期间机器人停着，动作一顿一顿。</div>
+  <div class="step"><span class="k">B 朴素异步</span><b>不停但会跳</b>新块与旧块没有约束，接缝处突然换方向。</div>
+  <div class="step"><span class="k">C RTC</span><b>不停也不跳</b>新块在生成时就“看见”即将执行的动作，只补剩下的部分。</div>
+</div>
+
+<div class="card warn">
+  <h3>朴素异步为什么一定会跳？</h3>
+  <p>推理需要时间，所以机器人执行旧块时，新块就得开始算。等新块算完，它的第一步对应的时刻，旧块其实已经执行了一部分。问题是：新块从纯噪声出发，生成时并不知道“机器人此刻已经在哪”。两块的起点各自为政，接缝处自然跳变。</p>
+</div>
+
+<!-- ============ 2 核心想法 ============ -->
+<h2><span class="no">2</span>核心想法：把衔接当成补全</h2>
+<p class="sub">这是全文最值得记住的一句话。</p>
+
+<div class="analogy">
+  <div class="side">
+    <h4>图像补全（inpainting）</h4>
+    <p>一张照片挖掉一块，周围像素已知。补全模型生成中间那块时，会让它的边缘与周围颜色、纹理接上。已知像素是“硬条件”，中间区域是“自由生成”。</p>
+  </div>
+  <div class="side">
+    <h4>动作块补全</h4>
+    <p>新块的前 d 步是“已经被执行、不可改”的动作，相当于已知像素。后面的步数是要生成的区域。去噪时让它们与前缀连贯，就得到无缝衔接的动作。</p>
+  </div>
+</div>
+
+<div class="diagram">
+<svg viewBox="0 0 900 200" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="动作块中的前缀与自由部分">
+  <!-- axis -->
+  <line x1="60" y1="120" x2="860" y2="120" stroke="#40566e" stroke-width="2"/>
+  <text x="60" y="150" class="mono" font-size="12" fill="#7d90a4">t = 0</text>
+  <text x="860" y="150" text-anchor="end" font-size="12" fill="#7d90a4" font-family="IBM Plex Mono">t = H</text>
+
+  <!-- zones -->
+  <rect x="60" y="70" width="180" height="36" rx="8" fill="#d24b3c" opacity=".9"/>
+  <text x="150" y="94" text-anchor="middle" fill="#fff" font-size="13.5" font-weight="700">已锁定前缀 d 步</text>
+  <rect x="240" y="70" width="330" height="36" rx="8" fill="#e09a16" opacity=".85"/>
+  <text x="405" y="94" text-anchor="middle" fill="#132a44" font-size="13.5" font-weight="700">重叠区：软约束，逐渐放手</text>
+  <rect x="570" y="70" width="290" height="36" rx="8" fill="#1f6fd1" opacity=".9"/>
+  <text x="715" y="94" text-anchor="middle" fill="#fff" font-size="13.5" font-weight="700">自由生成区</text>
+
+  <!-- arrows -->
+  <text x="60" y="58" font-size="12.5" fill="#40566e">新块的动作（按时间排列）</text>
+  <path d="M60,176 L240,176" stroke="#d24b3c" stroke-width="3"/>
+  <text x="150" y="194" text-anchor="middle" font-size="12.5" fill="#d24b3c">必须与上一块已执行部分一致</text>
+  <path d="M240,176 L570,176" stroke="#e09a16" stroke-width="3"/>
+  <text x="405" y="194" text-anchor="middle" font-size="12.5" fill="#b07a0c">越靠后，越少约束</text>
+</svg>
+<div class="cap">图 2 · 新动作块的三个区域（示意）</div>
+</div>
+
+<p>关键在于：前缀并不是简单“复制”进去。论文用的是<b>引导（guidance）</b>：在生成过程中不断检查当前的预测是否偏离前缀，偏了就往回拉。所以前缀是软硬兼施的约束，而不是硬拼接。</p>
+
+<!-- ============ 3 怎么做 ============ -->
+<h2><span class="no">3</span>怎么做：去噪的每一步都要加一次“拉回”</h2>
+<p class="sub">RTC 不改模型的权重，改的是 flow 的采样过程。下面是一个去噪步的完整流程。</p>
+
+<div class="diagram">
+<svg viewBox="0 0 900 380" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="RTC 单个去噪步的流程图">
+  <defs>
+    <marker id="ar2" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#132a44"/></marker>
+  </defs>
+  <!-- inputs -->
+  <rect x="20" y="30" width="160" height="56" rx="12" fill="#fff" stroke="#132a44" stroke-width="2"/>
+  <text x="100" y="54" text-anchor="middle" font-size="14" font-weight="700">当前带噪动作 A_τ</text>
+  <text x="100" y="72" text-anchor="middle" font-size="12" fill="#7d90a4">+ 观测、时间 τ</text>
+
+  <rect x="20" y="160" width="160" height="56" rx="12" fill="#fde9e6" stroke="#d24b3c" stroke-width="2"/>
+  <text x="100" y="184" text-anchor="middle" font-size="14" font-weight="700">上一块的剩余动作 Y</text>
+  <text x="100" y="202" text-anchor="middle" font-size="12" fill="#7d90a4">（前缀的目标）</text>
+
+  <!-- step 1 -->
+  <rect x="230" y="30" width="200" height="56" rx="12" fill="#e6f0fd" stroke="#1f6fd1" stroke-width="2"/>
+  <text x="330" y="52" text-anchor="middle" font-size="14" font-weight="700">① 估计终点 Â¹</text>
+  <text x="330" y="72" text-anchor="middle" font-size="12" class="mono">Â¹ = A_τ + (1−τ)·v</text>
+
+  <!-- step 2 -->
+  <rect x="230" y="160" width="200" height="56" rx="12" fill="#e6f0fd" stroke="#1f6fd1" stroke-width="2"/>
+  <text x="330" y="182" text-anchor="middle" font-size="14" font-weight="700">② 算前缀误差 e</text>
+  <text x="330" y="202" text-anchor="middle" font-size="12" class="mono">e = (Y − Â¹) · W</text>
+
+  <!-- step 3 -->
+  <rect x="490" y="95" width="200" height="66" rx="12" fill="#e6f5f2" stroke="#138a7c" stroke-width="2"/>
+  <text x="590" y="118" text-anchor="middle" font-size="14" font-weight="700">③ 误差反传回动作</text>
+  <text x="590" y="138" text-anchor="middle" font-size="12" class="mono">修正 = (∂Â¹/∂A_τ)ᵀ · e</text>
+
+  <!-- step 4 -->
+  <rect x="720" y="95" width="160" height="66" rx="12" fill="#fff4dc" stroke="#e09a16" stroke-width="2"/>
+  <text x="800" y="118" text-anchor="middle" font-size="14" font-weight="700">④ 加到速度上</text>
+  <text x="800" y="138" text-anchor="middle" font-size="12" class="mono">v ← v + 引导系数·修正</text>
+
+  <!-- output -->
+  <rect x="720" y="260" width="160" height="56" rx="12" fill="#132a44"/>
+  <text x="800" y="284" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">Euler 积分一步</text>
+  <text x="800" y="302" text-anchor="middle" font-size="12" fill="#8db8ef">A_τ ← A_τ + Δτ·v</text>
+
+  <!-- arrows -->
+  <path d="M180,58 L230,58" stroke="#132a44" stroke-width="2.2" marker-end="url(#ar2)"/>
+  <path d="M180,188 L230,188" stroke="#132a44" stroke-width="2.2" marker-end="url(#ar2)"/>
+  <path d="M330,86 L330,160" stroke="#132a44" stroke-width="2.2" marker-end="url(#ar2)"/>
+  <path d="M430,188 L470,188 L470,130 L490,130" stroke="#132a44" stroke-width="2.2" fill="none" marker-end="url(#ar2)"/>
+  <path d="M690,128 L720,128" stroke="#132a44" stroke-width="2.2" marker-end="url(#ar2)"/>
+  <path d="M800,161 L800,260" stroke="#132a44" stroke-width="2.2" marker-end="url(#ar2)"/>
+  <!-- W note -->
+  <rect x="230" y="236" width="200" height="40" rx="8" fill="#fff" stroke="#7d90a4" stroke-dasharray="4 3"/>
+  <text x="330" y="260" text-anchor="middle" font-size="12" fill="#40566e">W：逐位置权重（前缀处为 1）</text>
+  <path d="M330,216 L330,236" stroke="#7d90a4" stroke-width="1.5" stroke-dasharray="3 3"/>
+  <!-- loop -->
+  <path d="M800,316 L800,350 L100,350 L100,226" stroke="#7d90a4" stroke-width="2" fill="none" stroke-dasharray="6 4" marker-end="url(#ar2)"/>
+  <text x="450" y="368" text-anchor="middle" font-size="12.5" fill="#7d90a4">重复 n 步（论文实验中 n = 5），每步都重新执行 ①–④</text>
+</svg>
+<div class="cap">图 3 · RTC 的一个去噪步（符号按论文约定：τ = 1 为干净动作）</div>
+</div>
+
+<h3>每一步在做什么，用人话说</h3>
+<div class="steps">
+  <div class="step"><span class="k">①</span><b>先猜终点</b>用当前速度直接跳到 τ=1，看看如果现在停止去噪，动作会是什么样。</div>
+  <div class="step"><span class="k">②</span><b>对比前缀</b>把猜出的终点和“上一块剩下的动作”比一比，差多少、哪些位置要紧。</div>
+  <div class="step"><span class="k">③</span><b>倒推修正</b>用反向传播把误差沿网络传回去，算出动作该怎么微调才能减少误差。这一步就是“引导”的成本所在。</div>
+  <div class="step"><span class="k">④</span><b>修正速度</b>把修正量加到速度上，再走一个欧拉步。下一步去噪从这里继续。</div>
+</div>
+
+<div class="card">
+  <h3>为什么用“跳到终点”来算误差？</h3>
+  <p>如果只在带噪的中间状态上比较，噪声会把误差淹没。先用当前速度估计干净的终点，误差才有意义。这是 ΠGDM（伪逆引导）的思路：把修正量近似为线性投影，不需要额外训练网络。</p>
+</div>
+
+<h3>权重 W：不是硬截断，而是软掩码</h3>
+<p>一个容易忽略的细节。如果只约束前 d 步，引导信号会很弱，后面的块仍可能“换了一个策略”。论文因此让所有与旧块重叠的位置都参与，但权重不同：</p>
+
+<div class="diagram">
+<svg viewBox="0 0 900 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="软掩码权重分三段">
+  <line x1="60" y1="200" x2="860" y2="200" stroke="#40566e" stroke-width="2"/>
+  <line x1="60" y1="200" x2="60" y2="40" stroke="#40566e" stroke-width="2"/>
+  <text x="50" y="50" text-anchor="end" font-size="12.5" fill="#40566e">权重</text>
+  <text x="50" y="206" text-anchor="end" font-size="12.5" fill="#40566e">0</text>
+  <text x="50" y="128" text-anchor="end" font-size="12.5" fill="#40566e">0.5</text>
+  <text x="50" y="56" text-anchor="end" font-size="12.5" fill="#40566e">1</text>
+
+  <!-- zone 1: 1 -->
+  <rect x="60" y="56" width="180" height="144" fill="#fde9e6" opacity=".9"/>
+  <text x="150" y="235" text-anchor="middle" font-size="13" font-weight="700" fill="#d24b3c">i &lt; d：权重 1</text>
+  <text x="150" y="252" text-anchor="middle" font-size="12" fill="#7d90a4">已锁定前缀</text>
+
+  <!-- zone 2: decay -->
+  <rect x="240" y="56" width="330" height="144" fill="#fff4dc" opacity=".9"/>
+  <path d="M240,56 C 320,56 360,190 570,196" stroke="#e09a16" stroke-width="4" fill="none"/>
+  <text x="405" y="235" text-anchor="middle" font-size="13" font-weight="700" fill="#b07a0c">d ≤ i &lt; H−s：指数衰减</text>
+  <text x="405" y="252" text-anchor="middle" font-size="12" fill="#7d90a4">重叠但可自由调整的部分</text>
+
+  <!-- zone 3: 0 -->
+  <rect x="570" y="56" width="290" height="144" fill="#e6f0fd" opacity=".9"/>
+  <text x="715" y="235" text-anchor="middle" font-size="13" font-weight="700" fill="#1f6fd1">i ≥ H−s：权重 0</text>
+  <text x="715" y="252" text-anchor="middle" font-size="12" fill="#7d90a4">新出现的、完全自由</text>
+</svg>
+<div class="cap">图 4 · 软掩码的三段式（示意，纵轴为相对权重；论文中衰减的具体公式见原文）</div>
+</div>
+
+<p>这样做的好处：前缀处强约束保证接缝；重叠区逐渐放手，让新块在靠后的位置可以更自然地生成，而不是被旧块硬拽着。论文的消融实验显示，软掩码比只用硬掩码的效果更好，尤其是在延迟小、执行长度短的时候。</p>
+
+<div class="card warn">
+  <h3>为什么要“裁剪引导系数”？</h3>
+  <p>在去噪最开始（τ 接近 0）时，引导系数会趋于无穷大，数值不稳定。论文把它截断在一个上限 β 上（实验中 β = 5）。截断只影响最早的几步，去噪后期基本不受影响。</p>
+</div>
+
+<!-- ============ 4 工程流水线 ============ -->
+<h2><span class="no">4</span>工程上怎么跑：异步循环</h2>
+<p class="sub">算法之外，还要把“什么时候开始算下一块”排好。</p>
+
+<div class="diagram">
+<svg viewBox="0 0 900 290" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="RTC 异步循环时间线">
+  <!-- axis -->
+  <line x1="110" y1="60" x2="880" y2="60" stroke="#40566e" stroke-width="1.5" stroke-dasharray="4 4"/>
+  <text x="110" y="46" font-size="12" class="mono" fill="#7d90a4">控制时钟（每个 Δt 一步）</text>
+  <text x="880" y="46" text-anchor="end" font-size="12" class="mono" fill="#7d90a4">时间 →</text>
+
+  <!-- robot row -->
+  <text x="20" y="110" font-size="14" font-weight="700">机器人执行</text>
+  <rect x="110" y="92" width="330" height="30" rx="6" fill="#1f6fd1"/>
+  <text x="275" y="112" text-anchor="middle" fill="#fff" font-size="13">第 k 块的前 s 步</text>
+  <rect x="440" y="92" width="330" height="30" rx="6" fill="#138a7c"/>
+  <text x="605" y="112" text-anchor="middle" fill="#fff" font-size="13">第 k+1 块的前 s 步</text>
+
+  <!-- inference row -->
+  <text x="20" y="176" font-size="14" font-weight="700">模型推理</text>
+  <rect x="110" y="158" width="150" height="30" rx="6" fill="#8db8ef"/>
+  <text x="185" y="178" text-anchor="middle" font-size="12.5">算第 k+1 块</text>
+  <rect x="260" y="158" width="180" height="30" rx="6" fill="#e6f0fd" stroke="#8db8ef" stroke-dasharray="4 3"/>
+  <text x="350" y="178" text-anchor="middle" font-size="12.5" fill="#40566e">继续去噪（带引导）</text>
+
+  <!-- delay bracket -->
+  <path d="M110,206 L260,206" stroke="#d24b3c" stroke-width="3"/>
+  <text x="185" y="226" text-anchor="middle" font-size="12.5" fill="#d24b3c" font-weight="700">推理耗时 δ ≈ d 步</text>
+  <path d="M260,206 L440,206" stroke="#7d90a4" stroke-width="2" stroke-dasharray="4 3"/>
+  <text x="350" y="226" text-anchor="middle" font-size="12" fill="#7d90a4">等待到 s−d 之后再开始</text>
+
+  <!-- lock marker -->
+  <rect x="110" y="250" width="150" height="26" rx="6" fill="#fde9e6" stroke="#d24b3c"/>
+  <text x="185" y="268" text-anchor="middle" font-size="12.5" fill="#d24b3c">这 d 步已经锁定</text>
+  <text x="600" y="268" font-size="12.5" fill="#40566e">→ 新块的前 d 步 = 锁定的动作，作为前缀喂给引导</text>
+</svg>
+<div class="cap">图 5 · 异步循环（示意）：推理在执行中途开始，前缀由“即将被执行、已被确定”的那几步组成</div>
+</div>
+
+<div class="steps">
+  <div class="step"><span class="k">步骤 1</span><b>估计延迟 d</b>用最近一段时间观测到的延迟，取最大值作为预测（论文用一个滑动缓冲区）。</div>
+  <div class="step"><span class="k">步骤 2</span><b>决定何时开始</b>在执行到第 s−d 步时启动下一次推理，保证新块刚好赶上接缝。</div>
+  <div class="step"><span class="k">步骤 3</span><b>取前缀</b>从上一块里取出接下来 d 步的动作，作为新块的已知前缀。</div>
+  <div class="step"><span class="k">步骤 4</span><b>跑 RTC 去噪</b>n 步去噪，每步带上前缀引导，得到新块；执行长度取 max(d, s_min)。</div>
+</div>
+
+<h3>可行性条件</h3>
+<p>异步能成立，要求延迟不能超过“预测长度减执行长度”，即 <b>d ≤ H − s</b>。这说明：块越长、每次执行越短，能容忍的延迟越大。</p>
+
+<div class="lab" id="lab">
+  <h3 style="margin-top:0">小实验：延迟多大，RTC 还能用？</h3>
+  <p class="sub" style="margin-bottom:10px">拖动滑块，看看在你选的参数下，能不能异步、需要锁定几步。默认值接近论文的真机设置（H=50，Δt=20 ms，s=25）。</p>
+  <div class="row"><span>推理延迟 δ（ms）</span><input id="lat" type="range" min="0" max="600" step="10" value="120"><span class="out" id="latO"></span></div>
+  <div class="row"><span>预测长度 H</span><input id="hH" type="range" min="8" max="100" step="1" value="50"><span class="out" id="hHO"></span></div>
+  <div class="row"><span>执行长度 s</span><input id="sS" type="range" min="1" max="80" step="1" value="25"><span class="out" id="sSO"></span></div>
+  <div class="row"><span>控制周期 Δt（ms）</span><input id="dt" type="range" min="5" max="50" step="1" value="20"><span class="out" id="dtO"></span></div>
+  <div class="result" id="labOut"></div>
+  <p class="sub" style="margin-top:10px">计算方式：d = ⌊δ / Δt⌋；可行条件 d ≤ H − s；异步时在执行第 s − d 步时开始推理。示意计算，不代表论文的实测曲线。</p>
+</div>
+
+<!-- ============ 5 方法对比 ============ -->
+<h2><span class="no">5</span>和其他方法比</h2>
+<p class="sub">论文比较的三类“解决延迟”的思路：各有什么代价。</p>
+
+<div class="tbl-wrap">
+<table>
+  <thead><tr><th>方法</th><th>怎么衔接</th><th>优点</th><th>代价 / 问题</th></tr></thead>
+  <tbody>
+    <tr><td>同步推理</td><td>想完再执行</td><td>简单、无接缝</td><td>机器人周期性停顿，延迟越大越慢</td></tr>
+    <tr><td>朴素异步</td><td>直接接上新块</td><td>不停</td><td>接缝跳变，分布外的抖动</td></tr>
+    <tr><td>Temporal Ensembling（TE）</td><td>对多个重叠块的预测做加权平均</td><td>平滑</td><td>在论文实验中，即使延迟为 0 也表现差；延迟大时振荡，触发安全停机</td></tr>
+    <tr><td>BID（双向解码）</td><td>用强、弱两个策略采样多个块并选择</td><td>对延迟更稳</td><td>每步要采样大量块，算力开销大，真机上延迟约为 RTC 的 2.3 倍（论文报告）</td></tr>
+    <tr><td><b>RTC（本文）</b></td><td>把前缀当作补全条件，推理时引导</td><td>不改模型、无需训练；延迟变大也稳</td><td>每个去噪步要多一次反向传播，有额外算力开销</td></tr>
+  </tbody>
+</table>
+</div>
+
+<div class="card">
+  <h3>一句话区分 RTC 和 TE</h3>
+  <p>TE 是“事后把几个预测平均”，RTC 是“事前让新预测就得与已知动作一致”。前者在时间上做平滑，后者在生成过程中做约束，所以 RTC 在延迟变大时仍能保持稳定。</p>
+</div>
+
+<!-- ============ 6 实验 ============ -->
+<h2><span class="no">6</span>实验：怎么证明它有用</h2>
+<p class="sub">两组实验：仿真里系统地扫延迟；真机上用 π0.5 跑六个任务。</p>
+
+<div class="ledger">
+  <div class="stat"><div class="n">12</div><div class="l">仿真任务（Kinetix）：投掷、接住、平衡等动态任务</div></div>
+  <div class="stat"><div class="n">0–4</div><div class="l">仿真中扫描的延迟（单位：控制步），受 H=8 限制</div></div>
+  <div class="stat"><div class="n">6</div><div class="l">真机任务（双臂 π0.5）：点蜡烛、插网线、铺床、叠衬衫等</div></div>
+  <div class="stat"><div class="n">480</div><div class="l">真机回合总数，约 28 小时机器人运行</div></div>
+</div>
+
+<h3>仿真：延迟越大，RTC 的优势越明显</h3>
+<p>在带噪声的动态任务中，RTC 对延迟最稳健，优于 BID；随着延迟增大，它与其他方法的差距变大。软掩码优于硬掩码，在延迟小、执行短的设置下差别最明显。</p>
+
+<h3>真机：三档延迟</h3>
+<div class="diagram">
+<svg viewBox="0 0 900 250" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="真机三档延迟设置">
+  <!-- lanes -->
+  <text x="20" y="54" font-size="14" font-weight="700">自然延迟</text>
+  <text x="20" y="72" font-size="12" fill="#7d90a4">局域网 + 模型，d ≈ 6</text>
+  <rect x="200" y="36" width="60" height="28" rx="6" fill="#1f6fd1"/>
+  <text x="230" y="55" text-anchor="middle" fill="#fff" font-size="12">d=6</text>
+
+  <text x="20" y="130" font-size="14" font-weight="700">注入 +100 ms</text>
+  <text x="20" y="148" font-size="12" fill="#7d90a4">d ≈ 11</text>
+  <rect x="200" y="112" width="110" height="28" rx="6" fill="#e09a16"/>
+  <text x="255" y="131" text-anchor="middle" fill="#132a44" font-size="12">d=11</text>
+
+  <text x="20" y="206" font-size="14" font-weight="700">注入 +200 ms</text>
+  <text x="20" y="224" font-size="12" fill="#7d90a4">d ≈ 16</text>
+  <rect x="200" y="188" width="180" height="28" rx="6" fill="#d24b3c"/>
+  <text x="290" y="207" text-anchor="middle" fill="#fff" font-size="12">d=16</text>
+
+  <text x="520" y="130" font-size="13" fill="#40566e">随着延迟增大：</text>
+  <text x="520" y="152" font-size="13" fill="#40566e">同步推理线性变慢</text>
+  <text x="520" y="174" font-size="13" fill="#40566e">RTC 基本不退化</text>
+</svg>
+<div class="cap">图 6 · 真机实验中的三档延迟（示意，d 为控制步数）</div>
+</div>
+
+<div class="card ok">
+  <h3>论文报告的主要结论（真机）</h3>
+  <ul>
+    <li>RTC 的平均任务吞吐在各档延迟下都最好，在 +100 ms 与 +200 ms 下差异具有统计显著性。</li>
+    <li>同步推理随延迟线性退化；RTC 在 +200 ms（超过预测长度的 30%）下仍能完成如点蜡烛这类精细任务。</li>
+    <li>两种 TE 设置在 +100 ms 和 +200 ms 下无法运行：振荡触发了机器人的保护性停机。</li>
+    <li>即使去掉推理停顿，RTC 也比同步推理更快，论文的图 1 给出约 20% 的加速（以同样动作的执行时间计）。</li>
+  </ul>
+</div>
+
+<div class="card warn">
+  <h3>读的时候要保留的疑问</h3>
+  <ul>
+    <li>真机任务是精心挑选的六个，没有覆盖更动态的场景（例如腿足运动，论文只在仿真中做了类似测试）。</li>
+    <li>真机的训练数据和运行代码未公开，复现要靠仿真部分提供的代码与说明。</li>
+    <li>“吞吐”是进度除以耗时，它衡量的是效率的综合，不等于成功率。</li>
+  </ul>
+</div>
+
+<!-- ============ 7 边界 ============ -->
+<h2><span class="no">7</span>代价与边界</h2>
+<div class="steps">
+  <div class="step"><span class="k">算力</span><b>每步多一次反传</b>推理更慢，论文中 π0.5 的模型延迟从 76 ms 升到 97 ms。这正是后来 <a href="RTC-训练时-论文解读.html">训练时 RTC</a> 想要消掉的开销。</div>
+  <div class="step"><span class="k">模型</span><b>只适用于扩散 / flow</b>需要“去噪过程”才能做引导。自回归离散 token 模型不直接适用。</div>
+  <div class="step"><span class="k">前缀</span><b>前缀越长越吃力</b>引导依赖局部线性化，前缀越长，近似误差越大。</div>
+  <div class="step"><span class="k">场景</span><b>仿真之外的动态任务</b>论文主要验证操作类任务，更剧烈的动态场景尚需验证。</div>
+</div>
+
+<!-- ============ 8 回顾 ============ -->
+<h2><span class="no">8</span>回顾：把全文压成一张图</h2>
+<div class="diagram">
+<svg viewBox="0 0 900 260" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="全文脉络总结">
+  <rect x="20" y="100" width="170" height="60" rx="14" fill="#fde9e6" stroke="#d24b3c" stroke-width="2"/>
+  <text x="105" y="126" text-anchor="middle" font-size="14" font-weight="700">问题</text>
+  <text x="105" y="146" text-anchor="middle" font-size="12" fill="#40566e">推理慢 → 动作卡 / 跳</text>
+
+  <rect x="230" y="100" width="170" height="60" rx="14" fill="#e6f0fd" stroke="#1f6fd1" stroke-width="2"/>
+  <text x="315" y="126" text-anchor="middle" font-size="14" font-weight="700">洞见</text>
+  <text x="315" y="146" text-anchor="middle" font-size="12" fill="#40566e">衔接 = 补全</text>
+
+  <rect x="440" y="100" width="170" height="60" rx="14" fill="#e6f5f2" stroke="#138a7c" stroke-width="2"/>
+  <text x="525" y="126" text-anchor="middle" font-size="14" font-weight="700">做法</text>
+  <text x="525" y="146" text-anchor="middle" font-size="12" fill="#40566e">去噪每步引导 + 软掩码</text>
+
+  <rect x="650" y="100" width="230" height="60" rx="14" fill="#fff4dc" stroke="#e09a16" stroke-width="2"/>
+  <text x="765" y="126" text-anchor="middle" font-size="14" font-weight="700">结果</text>
+  <text x="765" y="146" text-anchor="middle" font-size="12" fill="#40566e">延迟大也稳，不停也不跳</text>
+
+  <path d="M190,130 L230,130" stroke="#132a44" stroke-width="2.5" fill="none"/>
+  <path d="M400,130 L440,130" stroke="#132a44" stroke-width="2.5" fill="none"/>
+  <path d="M610,130 L650,130" stroke="#132a44" stroke-width="2.5" fill="none"/>
+
+  <text x="450" y="210" text-anchor="middle" font-size="14" fill="#40566e">代价：每去噪步多一次反传 · 只适用于扩散 / flow 策略</text>
+  <text x="450" y="236" text-anchor="middle" font-size="13" fill="#7d90a4">后续：训练时 RTC（学会接着已执行的动作写，推理零额外开销）</text>
+</svg>
+<div class="cap">图 7 · 全文脉络</div>
+</div>
+
+<!-- ============ 自测 ============ -->
+<h2><span class="no">9</span>自测</h2>
+<details>
+  <summary>为什么朴素异步一定会在接缝处跳？</summary>
+  <p>新块在生成时不知道机器人此刻已经执行到哪里，两块的起点互不约束，所以接缝处会不连续。</p>
+</details>
+<details>
+  <summary>RTC 的“前缀”和图像补全中的“已知像素”对应什么？</summary>
+  <p>对应上一块里接下来 d 步、必然会被执行的动作。这些动作已经确定，新块要以它们为条件生成。</p>
+</details>
+<details>
+  <summary>为什么 d ≤ H − s 是异步可行的条件？</summary>
+  <p>新块的前 d 步要落在旧块的预测范围里（即 H − s 个重叠位置之内），否则没有可用的前缀。延迟超过这个范围，就必须接受停顿或降低执行长度。</p>
+</details>
+
+<!-- ============ 相关 ============ -->
+<h2><span class="no">10</span>接着读</h2>
+<div class="related">
+  <a href="RTC-训练时-论文解读.html">训练时 RTC<small>把推理时的补全搬进训练，推理零额外开销</small></a>
+  <a href="concepts.html#rtc">概念：RTC<small>在概念索引里看它和其他概念的关系</small></a>
+  <a href="concepts.html#latency">概念：感知—执行时延<small>为什么推理慢会变成卡顿</small></a>
+  <a href="代码索引.html#latency">代码索引：RTC 源码<small>推理引导与训练版 loss 的官方实现行号</small></a>
+  <a href="PI-工作全景.html">π 工作全景<small>RTC 在 π 系列发展中的位置</small></a>
+  <a href="pi0-论文解读.html">π0 精读<small>RTC 最初运行的模型家族</small></a>
+</div>
+
+<footer>
+  <span>精读 · 实时动作分块（RTC）· arXiv 2506.07339</span>
+  <a href="index.html">返回知识库 →</a>
+</footer>
+</div>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var lat = $('lat'), hH = $('hH'), sS = $('sS'), dt = $('dt');
+
+  function update() {
+    var l = +lat.value, H = +hH.value, s = +sS.value, t = +dt.value;
+    if (s > H) s = H;
+    sS.max = H;
+    $('latO').textContent = l + ' ms';
+    $('hHO').textContent = H;
+    $('sSO').textContent = s;
+    $('dtO').textContent = t + ' ms';
+
+    var d = Math.floor(l / t);
+    var room = H - s;
+    var box = $('labOut');
+    var lines = [];
+    lines.push('延迟折算：d = ⌊' + l + ' / ' + t + '⌋ = <b>' + d + '</b> 步（需锁定的前缀长度）');
+    if (d <= room) {
+      box.className = 'result';
+      lines.push('可行性：d ≤ H − s，即 ' + d + ' ≤ ' + room + '，<b>可以异步</b>。');
+      lines.push('推理应在执行到第 <b>' + Math.max(0, s - d) + '</b> 步时开始（s − d）。');
+    } else {
+      box.className = 'result bad';
+      lines.push('可行性：d > H − s（' + d + ' > ' + room + '），<b>前缀不够覆盖延迟</b>。');
+      lines.push('办法：增大 H、减小 s，或降低延迟（更小的模型、更快的硬件）。');
+    }
+    box.innerHTML = lines.join('<br>');
+  }
+
+  [lat, hH, sS, dt].forEach(function (el) { el.addEventListener('input', update); });
+  update();
+})();
+</script>
+</body>
+</html>

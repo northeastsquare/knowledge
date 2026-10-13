@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>π0 论文中英对照 · 译文</title>
+<meta name="description" content="π0（A Vision-Language-Action Flow Model for General Robot Control）中文译述与英文原文要点对照，关键模块链接到 openpi 源码。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f1f4f6;
+    --surface:#fbfcfd;
+    --surface-2:#eaf0f4;
+    --ink:#16222e;
+    --ink-2:#51626f;
+    --ink-3:#83919c;
+    --accent:#0e6e8a;
+    --accent-strong:#0a4c60;
+    --signal:#c4572a;
+    --line:#d8e1e7;
+    --line-strong:#c3d0d9;
+    --grid-line:rgba(22,34,46,.05);
+    --shadow:0 1px 2px rgba(22,34,46,.04),0 14px 34px rgba(22,34,46,.07);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+      --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+      --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+      --line:#1e2d3a; --line-strong:#2b3d4b;
+      --grid-line:rgba(231,238,244,.045);
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+    }
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Sans",-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+    line-height:1.78; font-size:16px; -webkit-font-smoothing:antialiased;
+  }
+  .grid{
+    position:fixed; inset:0; z-index:-1; pointer-events:none;
+    background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);
+    background-size:28px 28px;
+  }
+  .wrap{max-width:1040px; margin:0 auto; padding:0 24px 96px;}
+  .masthead{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px 24px 0; max-width:1040px; margin:0 auto; gap:12px; flex-wrap:wrap;
+  }
+  .back{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:13px; color:var(--accent); text-decoration:none; letter-spacing:.03em;
+  }
+  .back:hover{text-decoration:underline;}
+  .ref{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12.5px; color:var(--ink-3); letter-spacing:.04em;
+  }
+  .toggle{
+    font:500 12.5px "IBM Plex Mono",ui-monospace,Consolas,monospace; color:var(--accent);
+    background:var(--surface); border:1px solid var(--line-strong); border-radius:8px;
+    padding:5px 12px; cursor:pointer;
+  }
+  .toggle:hover{border-color:var(--accent);}
+
+  .hero{padding:48px 0 30px; border-bottom:1px solid var(--line-strong);}
+  .eyebrow{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent);
+    margin-bottom:16px;
+  }
+  .hero h1{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:clamp(28px,4.6vw,40px); font-weight:700; line-height:1.2;
+    margin:0 0 14px; text-wrap:balance;
+  }
+  .hero .summary{font-size:17px; color:var(--ink-2); max-width:680px; margin:0 0 22px;}
+  .meta{
+    border:1px solid var(--line); border-radius:12px; background:var(--surface);
+    padding:14px 18px; font-size:13.5px; display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:8px 24px; box-shadow:var(--shadow);
+  }
+  .meta .m{display:flex; flex-direction:column; gap:1px;}
+  .meta .k{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:11px;
+    color:var(--ink-3); letter-spacing:.08em; text-transform:uppercase;
+  }
+  .meta .v{color:var(--ink); font-weight:500;}
+
+  .note{
+    margin:26px 0 0; padding:14px 18px; border-radius:10px;
+    background:var(--surface-2); border-left:3px solid var(--signal); font-size:14px; color:var(--ink-2);
+  }
+  .note strong{color:var(--ink);}
+
+  .legend{display:flex; gap:16px; flex-wrap:wrap; margin:28px 0 0; font-size:13px; color:var(--ink-3);}
+  .legend span::before{content:""; display:inline-block; width:8px; height:8px; border-radius:2px; margin-right:6px; background:var(--accent); transform:rotate(45deg);}
+  .legend .code::before{background:var(--signal);}
+
+  section.block{margin-top:44px;}
+  h2{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:22px; font-weight:600; margin:0 0 6px; color:var(--ink);
+    display:flex; align-items:center; gap:12px;
+  }
+  h2::before{
+    content:""; width:10px; height:10px; flex:none;
+    background:var(--accent); border-radius:2px; transform:rotate(45deg);
+  }
+  h3.sub{font-size:16px; font-weight:700; margin:22px 0 8px; color:var(--accent-strong);}
+  .en-title{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12.5px;
+    color:var(--ink-3); letter-spacing:.03em; margin:0 0 14px 22px;
+  }
+
+  .pair{
+    display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.5fr); gap:0;
+    border:1px solid var(--line); border-radius:14px; overflow:hidden;
+    background:var(--surface); box-shadow:var(--shadow); margin:0 0 16px;
+  }
+  .pair > div{padding:18px 20px;}
+  .en{
+    background:var(--surface-2); border-right:1px solid var(--line);
+    font-family:"IBM Plex Sans",-apple-system,"Segoe UI",sans-serif; font-size:14.5px; color:var(--ink-2); line-height:1.7;
+  }
+  .en .lbl, .zh .lbl{
+    display:block; font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:11px;
+    letter-spacing:.12em; text-transform:uppercase; color:var(--ink-3); margin-bottom:8px;
+  }
+  .en p{margin:0 0 10px; font-size:14.5px;}
+  .en q{font-style:italic; color:var(--ink); quotes:none;}
+  .zh{font-size:15.5px; color:var(--ink);}
+  .zh p{margin:0 0 12px;}
+  .zh p:last-child{margin-bottom:0;}
+  .zh ul{margin:0 0 12px; padding-left:20px;}
+  .zh li{margin-bottom:6px;}
+  .zh li::marker{color:var(--accent);}
+  .hl{color:var(--accent); font-weight:600;}
+
+  body.hide-en .pair{grid-template-columns:1fr;}
+  body.hide-en .en{display:none;}
+  body.hide-en .pair > .zh{border-left:0;}
+
+  table{width:100%; border-collapse:collapse; font-size:14px; margin:10px 0 4px;}
+  th,td{padding:8px 10px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12.5px;
+    color:var(--accent-strong); background:var(--surface-2); font-weight:600;
+  }
+  tr:last-child td{border-bottom:none;}
+  .tbl-wrap{overflow-x:auto;}
+
+  code{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:13px;
+    background:var(--surface-2); border:1px solid var(--line); border-radius:5px; padding:1px 6px;
+  }
+  .formula{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:13.5px;
+    background:var(--surface-2); border:1px solid var(--line); border-radius:8px;
+    padding:9px 14px; margin:10px 0; overflow-x:auto; white-space:nowrap;
+  }
+
+  .code-jump{
+    font:12px ui-monospace,Consolas,monospace; white-space:nowrap; text-decoration:none;
+    border:1px dashed var(--signal); color:var(--signal); border-radius:4px; padding:0 5px; margin-left:4px;
+  }
+  .code-jump:hover{background:color-mix(in srgb, var(--signal) 10%, transparent);}
+
+  .codemap{margin-top:14px;}
+  .codemap td:first-child{white-space:nowrap; font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12.5px;}
+
+  .concept-related a{color:inherit;}
+  footer{
+    margin-top:56px; padding-top:20px; border-top:1px solid var(--line-strong);
+    display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; font-size:13px; color:var(--ink-3);
+  }
+  footer a{color:var(--accent); text-decoration:none;}
+  footer a:hover{text-decoration:underline;}
+
+  @media (max-width:760px){
+    .pair{grid-template-columns:1fr;}
+    .en{border-right:0; border-bottom:1px solid var(--line);}
+  }
+</style>
+<link rel="stylesheet" href="concepts.css">
+</head>
+<body>
+<div class="grid" aria-hidden="true"></div>
+
+<header class="masthead">
+  <a class="back" href="index.html">← 返回知识库</a>
+  <button class="toggle" type="button" id="toggle-en" aria-pressed="false">隐藏英文，只看译文</button>
+  <span class="ref">arXiv 2410.24164</span>
+</header>
+
+<div class="wrap">
+
+  <section class="hero">
+    <div class="eyebrow">中英对照 · 译文 · π 系列 VLA</div>
+    <h1>π0：面向通用机器人控制的视觉-语言-动作流模型</h1>
+    <p class="summary">把预训练视觉语言模型接上一个 3 亿参数的“动作专家”，用流匹配生成高频连续动作块，在约 1 万小时灵巧操作数据上预训练，再用少量高质量数据后训练到复杂多阶段任务。</p>
+    <div class="meta">
+      <div class="m"><span class="k">英文标题</span><span class="v">A Vision-Language-Action Flow Model for General Robot Control</span></div>
+      <div class="m"><span class="k">机构</span><span class="v">Physical Intelligence</span></div>
+      <div class="m"><span class="k">arXiv</span><span class="v">2410.24164</span></div>
+      <div class="m"><span class="k">原文 PDF</span><span class="v"><a href="pdfs/pi0.pdf">pdfs/pi0.pdf</a></span></div>
+    </div>
+    <div class="note">
+      <strong>阅读说明。</strong>右侧（中文）是对全文的逐节译述，保留原文的论证结构、数字和实验设置，但不是逐句直译。左侧（英文）只放每节标题和关键术语、短句，完整英文原文请看 <a href="pdfs/pi0.pdf">pdfs/pi0.pdf</a>。模型名原文图中的希腊字母 π 在 PDF 文本中丢失，统一写作 π0。
+    </div>
+    <div class="legend">
+      <span>概念链接：点击跳到对应概念解释</span>
+      <span class="code">代码链接：跳到 openpi 固定提交的源码行</span>
+    </div>
+  </section>
+
+  <!-- ============ 摘要 ============ -->
+  <section class="block">
+    <h2>摘要</h2>
+    <div class="pair">
+      <div class="en">
+        <span class="lbl">Abstract</span>
+        <p>Robot learning holds tremendous promise to unlock the full potential of flexible, general, and dexterous robot systems.</p>
+        <p>The paper proposes a novel flow matching architecture, built on a pre-trained VLM, trained on cross-embodiment data.</p>
+      </div>
+      <div class="zh">
+        <span class="lbl">中文译述</span>
+        <p>机器人学习有望释放灵活、通用、灵巧的机器人系统的潜力，但要达到真实世界可用的通用性，仍在数据、泛化和鲁棒性上遇到重大障碍。论文讨论通用机器人策略（即机器人基础模型）如何应对这些挑战，并提出一种新的<a class="concept-link" href="concepts.html#flow-matching">流匹配</a>架构：以预训练视觉语言模型为底座，继承互联网规模的语义知识；在来自多种灵巧机器人平台（单臂、双臂、移动操作机）的大规模数据上训练；评估其直接提示执行、跟随人类或高层 VLM 的语言指令、以及通过微调学习新技能的能力，任务涵盖叠衣服、清理桌面和组装纸箱。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ I 引言 ============ -->
+  <section class="block">
+    <h2>I. 引言</h2>
+    <div class="en-title">INTRODUCTION</div>
+    <div class="pair">
+      <div class="en">
+        <span class="lbl">Key sentences</span>
+        <p>Large language and vision-language models are pre-trained on diverse web data and then aligned, but "they are not truly situated in a physical world".</p>
+        <p>Three bottlenecks: <q>scale</q>, <q>model architectures</q>, and <q>training recipe</q>.</p>
+      </div>
+      <div class="zh">
+        <span class="lbl">中文译述</span>
+        <p>作者先做类比：大语言模型和视觉语言模型在海量多样的网络图文上预训练，再用精选数据对齐，已经展现出广泛的指令跟随和问题求解能力。但它们对物理交互的理解完全来自抽象描述，并不真正处于物理世界之中。要让 AI 具备人那样的物理情境下的通用性，就需要具身机器人数据。</p>
+        <p>通用机器人策略要跨过三道坎：</p>
+        <ul>
+          <li><strong>规模</strong>：大规模预训练的好处在小规模下不显现，研究必须在足够大的规模上进行；</li>
+          <li><strong>架构</strong>：模型要能同时利用多源数据，又能表达精细、微妙的物理行为；</li>
+          <li><strong>训练配方</strong>：作者认为这是最关键的一环，因为大模型在 NLP 和视觉中的进步，很大程度依赖精心设计的预训练与后训练数据策略。</li>
+        </ul>
+        <p>论文提出的 π0 框架分别回应这三点：用 VLM 底座引入互联网经验以覆盖多样数据源；用跨本体训练（<a class="concept-link" href="concepts.html#cross-embodiment">跨本体</a>）合并不同机器人的动作空间；用带<a class="concept-link" href="concepts.html#action-chunk">动作块</a>的流匹配输出高频动作（最高约 50 Hz），这是灵巧任务的关键。与之相比，自回归离散化的 VLA（如 OpenVLA）很难胜任这类高频灵巧任务。作者认为自己的贡献是“整合性”的：不只是一个架构，还包括预训练配方、预训练与后训练阶段，以及大量真实世界实验。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ II 相关工作 ============ -->
+  <section class="block">
+    <h2>II. 相关工作</h2>
+    <div class="en-title">RELATED WORK</div>
+    <div class="pair">
+      <div class="en">
+        <span class="lbl">Key sentences</span>
+        <p>Closest work: VLAs that fine-tune a pre-trained VLM for control, using <q>autoregressive discretization</q>.</p>
+        <p>Borrowed ideas: <q>flow-matching loss</q> on sequence elements, and a <q>separate set of weights</q> for diffusion tokens.</p>
+      </div>
+      <div class="zh">
+        <span class="lbl">中文译述</span>
+        <p>与本文最接近的是 VLA 模型：用预训练 VLM 微调来做机器人控制，并且通常把动作用自回归离散化表示，就像处理文本 token 一样。本文不同，它用流匹配（扩散的一种变体）微调 VLM 直接输出连续动作。作者指出，这让模型能处理高频动作块，并能应对灵巧任务，而这正是此前自回归 VLA 的难点。</p>
+        <p>在“大语言模型 + 扩散”的混合模型中，作者借鉴了两点：一是把扩散式（流匹配）损失施加在序列中的每个元素上，而不是常规解码器的交叉熵；二是为扩散相关的 token 单独使用一套权重。作者因此声称，这是据他们所知首个能为灵巧控制输出高频动作块的流匹配 VLA。</p>
+        <p>在数据规模方面，以往灵巧操作研究通常只有几十到几百条轨迹（约 10 小时以内），而本文使用了约 1 万小时的示范数据，并结合开源的 OXE 数据集，作者称这是迄今机器人操作领域最大规模的实验之一。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ III 概览 ============ -->
+  <section class="block">
+    <h2>III. 概览</h2>
+    <div class="en-title">OVERVIEW</div>
+    <div class="pair">
+      <div class="en">
+        <span class="lbl">Key sentences</span>
+        <p>The pre-training mixture covers <q>7 different robot configurations</q> and <q>68 different tasks</q>, plus the entire OXE dataset (22 robots).</p>
+        <p>Base VLM: <q>PaliGemma</q>, chosen for its small size.</p>
+      </div>
+      <div class="zh">
+        <span class="lbl">中文译述</span>
+        <ul>
+          <li><strong>预训练混合数据</strong>：作者自有的灵巧操作数据（7 种机器人构型、68 个任务）加上整个 OXE 数据集（涵盖 22 种机器人）。语言标签包括任务名和细粒度分段标注（每段约 2 秒）。</li>
+          <li><strong>预训练的目标</strong>是得到一个能力广、泛化强但不专精的基础模型，它能听懂语言指令，并以初级熟练度完成多种任务。</li>
+          <li><strong>后训练</strong>用高质量精选数据把基础模型适配到具体的下游任务，既研究少量到中等数据量的高效后训练，也研究叠衣服、移动操作等复杂任务所需的大规模高质量后训练。</li>
+        </ul>
+        <p>模型基于 PaliGemma VLM，并用上述数据混合继续训练。作者加入流匹配动作输出，把 VLM 变成 π0。作者选择 PaliGemma 是因为它体量较小、适合实时控制；但框架本身兼容任何预训练 VLM。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ IV 模型 ============ -->
+  <section class="block">
+    <h2>IV. π0 模型</h2>
+    <div class="en-title">THE π0 MODEL</div>
+    <div class="pair">
+      <div class="en">
+        <span class="lbl">Key sentences</span>
+        <p>Follows the <q>late fusion VLM recipe</q>; image encoders embed observations into the same space as language tokens.</p>
+        <p>Robot-specific inputs and outputs (state, actions) get <q>a separate set of weights</q>: the <q>action expert</q>.</p>
+        <p>Model distribution <q>p(A_t | o_t)</q>, with an action chunk of <q>H = 50</q>.</p>
+      </div>
+      <div class="zh">
+        <span class="lbl">中文译述</span>
+        <p><strong>骨干</strong>是一个语言模型 Transformer。按照标准的“后融合”VLM 做法，图像编码器把机器人的图像观测映射到与语言 token 相同的嵌入空间。在此基础上加入机器人专用的输入（关节状态）和输出（动作）。连续动作分布由<a class="concept-link" href="concepts.html#flow-matching">条件流匹配</a>建模。</p>
+        <p>架构受 Transfusion 启发：同一个 Transformer 用两种目标训练，连续输出用流匹配损失，离散输出用交叉熵。作者的改进是：对机器人专用的 token（状态和动作）使用另一套权重。这相当于一个两元素的混合专家（MoE）结构，第一组处理图像和文本，第二组处理机器人输入输出，作者把第二组权重称为<a class="concept-link" href="concepts.html#action-expert">动作专家（action expert）</a>。</p>
+        <p><strong>建模目标</strong>：给定观测 o_t（多张 RGB 图像、语言指令、关节状态 q_t），预测未来 H = 50 步的动作块 A_t，即建模 p(A_t | o_t)。图像和状态分别经过编码器，再线性投影到语言 token 的同一嵌入空间。动作块里每一步动作对应一个动作 token，经过动作专家处理。</p>
+        <p><strong>训练</strong>：对每个动作 token 施加条件流匹配损失。采样高斯噪声 ε，构造带噪动作 A^τ = τ·A + (1−τ)·ε（τ=1 为干净动作，τ=0 为纯噪声），让网络 v 去拟合去噪向量场 u = A − ε。动作专家使用<strong>全双向注意力</strong>，动作 token 之间互相可见。流匹配时间步 τ 不从均匀分布采样，而是采自偏向高噪声段的 Beta 分布（细节见附录 B）。</p>
+        <p><strong>推理</strong>：从随机噪声 A^0 出发，沿学到的向量场做前向欧拉积分，从 τ=0 积分到 τ=1，步长 0.1，共 10 步。前缀（图像与语言）的注意力 key/value 可以缓存，每步只重算动作 token，这就是<a class="concept-link" href="concepts.html#kv-cache">KV cache</a>的用处。</p>
+        <p><strong>规模</strong>：PaliGemma 约 30 亿参数，动作专家新增 3 亿参数（从头初始化），总计约 33 亿参数。另外作者还训练了一个不使用 VLM 初始化的对照模型 π0-small，约 4.7 亿参数，用于验证 VLM 预训练的收益。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ V 数据与训练 ============ -->
+  <section class="block">
+    <h2>V. 数据收集与训练配方</h2>
+    <div class="en-title">DATA COLLECTION AND TRAINING RECIPE</div>
+    <div class="pair">
+      <div class="en">
+        <span class="lbl">Key sentences</span>
+        <p><q>pre-training and post-training</q>, as in LLM training.</p>
+        <p>Pre-training data should cover <q>as many tasks as possible</q>; post-training data should show <q>a consistent and fluent strategy</q>.</p>
+      </div>
+      <div class="zh">
+        <span class="lbl">中文译述</span>
+        <p>作者认为，要得到能力广的机器人基础模型，除了好架构，还需要合适的数据和训练配方。与大语言模型类似，训练分为两阶段，目标不同，对数据的要求也不同：</p>
+        <ul>
+          <li><strong>预训练</strong>：覆盖尽可能多的任务，每个任务内部的行为也要多样。数据质量可以较低，因为多样性让模型学会从错误中恢复、应对高度多变的情境，而这些在高质量数据里不会出现。</li>
+          <li><strong>后训练</strong>：数据要体现一致、流畅的任务策略，目的是教模型把任务做好。</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 class="sub">A. 预训练与后训练数据</h3>
+    <div class="pair">
+      <div class="en">
+        <span class="lbl">Key figures</span>
+        <p>Open-source data is <q>9.1%</q> of the mixture (OXE, Bridge v2, DROID).</p>
+        <p>Own data: <q>903M timesteps</q> (106M single-arm, 797M dual-arm), 68 tasks.</p>
+        <p>Weighting: <q>n^0.43</q> per task-robot combination.</p>
+      </div>
+      <div class="zh">
+        <span class="lbl">中文译述</span>
+        <ul>
+          <li><strong>混合比例</strong>：训练样本以“时间步”为单位，每个时间步是一个 (观测, 动作块) 对。其中约 9.1% 来自开源数据（OXE、Bridge v2、DROID），其余来自作者自有数据，共 9.03 亿时间步：106M 来自单臂机器人，797M 来自双臂机器人，涵盖 68 个任务。</li>
+          <li><strong>任务定义更粗</strong>：这里的“任务”是一组复杂行为的集合，比如“收拾餐桌”需要把各种餐具放进餐具筐、把各种垃圾放进垃圾桶。这和以往“拿起杯子”“拿起盘子”这种名词加动词的细粒度任务定义不同，所以实际覆盖的行为范围比“68 个任务”听起来宽得多。</li>
+          <li><strong>加权</strong>：各任务-机器人组合的样本量很不均衡（比如更难的叠衣服数据过多），因此按样本数 n 的 0.43 次方加权，压低样本多的组合。</li>
+          <li><strong>维度统一</strong>：状态向量和动作向量统一为数据集中最大机器人的维度（18 维，覆盖两臂、两个夹爪、移动底盘和可升降躯干）。维度较低的机器人补零；图像不足 3 张的机器人，缺失的图像位置用掩码屏蔽。</li>
+          <li><strong>后训练数据量</strong>：每个下游任务需要的数据从约 5 小时到 100 小时以上不等。</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 class="sub">B. 语言与高层策略</h3>
+    <div class="pair">
+      <div class="en">
+        <span class="lbl">Key sentence</span>
+        <p>A high-level VLM decomposes tasks into subtasks, <q>analogous to LLM/VLM planning</q> such as SayCan.</p>
+      </div>
+      <div class="zh">
+        <span class="lbl">中文译述</span>
+        <p>像“收拾餐桌”这样需要语义推理和高层策略的任务，可以借助高层策略把大任务拆成子任务，例如“拿起餐巾纸”“把餐巾纸扔进垃圾桶”。由于 π0 能处理语言输入，高层 VLM 就能完成这类语义推理，思路类似 SayCan 那样的 LLM/VLM 规划。实验部分的若干任务正是这样使用的。</p>
+      </div>
+    </div>
+
+    <h3 class="sub">C. 机器人系统</h3>
+    <div class="pair">
+      <div class="en">
+        <span class="lbl">Key sentences</span>
+        <p>Seven configurations, from a single <q>UR5e</q> arm to a <q>Mobile Fibocom</q> holonomic base.</p>
+      </div>
+      <div class="zh">
+        <span class="lbl">中文译述</span>
+        <p>数据来自 7 种机器人构型，π0 在它们上联合训练。下表按论文描述整理了每种构型的相机数和配置/动作维度：</p>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>构型</th><th>描述</th><th>相机</th><th>配置维度</th><th>动作维度</th></tr></thead>
+            <tbody>
+              <tr><td>UR5e</td><td>单臂，平行夹爪，腕部与肩部相机</td><td>2</td><td>7</td><td>7</td></tr>
+              <tr><td>双 UR5e</td><td>两套 UR5e</td><td>3</td><td>14</td><td>14</td></tr>
+              <tr><td>Franka</td><td>Franka 单臂</td><td>2</td><td>8</td><td>8</td></tr>
+              <tr><td>双 Trossen</td><td>ALOHA 式，两台 ViperX 6 自由度臂</td><td>3</td><td>14</td><td>14</td></tr>
+              <tr><td>双 ARX / AgileX</td><td>两台 6 自由度臂，两种臂型运动学相近</td><td>3</td><td>14</td><td>14</td></tr>
+              <tr><td>移动 Trossen / ARX</td><td>Mobile ALOHA 式，非完整约束底盘（+2 维）</td><td>3</td><td>14</td><td>16</td></tr>
+              <tr><td>移动 Fibocom</td><td>两台 ARX 臂 + 全向底盘（+3 维）</td><td>未写明</td><td>14</td><td>17</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>表中的维度与相机数取自原文的文字描述；原文没有写明 Fibocom 移动机器人的相机数，故标为“未写明”。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ VI 实验 ============ -->
+  <section class="block">
+    <h2>VI. 实验评估</h2>
+    <div class="en-title">EXPERIMENTAL EVALUATION</div>
+    <div class="pair">
+      <div class="en">
+        <span class="lbl">Research questions</span>
+        <p>(1) How well does π0 perform after pre-training alone? (2) Does it follow language? (3) How does it compare on dexterous tasks? (4) Can it do complex multi-stage tasks?</p>
+      </div>
+      <div class="zh">
+        <span class="lbl">中文译述</span>
+        <p>实验围绕四个问题展开：</p>
+        <ol>
+          <li>只做预训练、不做任何后训练，基础模型表现如何？</li>
+          <li>它跟随语言指令的能力如何（与 π0-small 对比，并比较人类指令与高层 VLM 指令）？</li>
+          <li>与专为灵巧操作设计的方法相比，它的表现如何（对新任务做微调或从零训练）？</li>
+          <li>能否完成长达 5 到 20 分钟的复杂多阶段任务，如叠衣服和收拾餐桌？</li>
+        </ol>
+      </div>
+    </div>
+
+    <h3 class="sub">A. 基础模型的开箱评估</h3>
+    <div class="pair">
+      <div class="en">
+        <span class="lbl">Tasks & baselines</span>
+        <p>Shirt folding, bussing easy/hard, grocery bagging, toast out of toaster. Baselines: <q>OpenVLA</q> (7B), <q>Octo</q> (93M, diffusion), and π0-small.</p>
+      </div>
+      <div class="zh">
+        <span class="lbl">中文译述</span>
+        <p>评估任务有五个：叠 T 恤、简单清理桌面（7 件物品）、困难清理桌面（12 件物品，包括把筷子压在垃圾上等更难的布局）、杂货装袋、从烤面包机取出吐司。每个任务用语言指令下达给同一个基础模型。</p>
+        <p>直接比较的基线很少，因为能在这个规模上运行的模型不多。作者选了：</p>
+        <ul>
+          <li><strong>OpenVLA</strong>（7B 参数，原本在 OXE 上训练）：在完整混合数据上重新训练。作者指出这对 OpenVLA 很困难，因为它不支持动作块和高频控制；</li>
+          <li><strong>Octo</strong>（93M，非 VLA，但用扩散生成动作），同样在该数据混合上训练，作为流匹配 VLA 的参照；</li>
+          <li><strong>π0-small</strong>：不含 VLM 初始化的小模型；</li>
+          <li><strong>算力对齐的 π0</strong>：只训练 16 万步（主模型是 70 万步），与 OpenVLA（16 万步）、Octo（32 万步）的训练步数大致对齐。</li>
+        </ul>
+        <p>评分为归一化分数，每个任务、每种方法做 10 个回合取平均，满分 1.0，部分完成按比例给分。作者的结论是：π0 在所有开箱任务上都明显领先，叠衣服和较简单的清理桌面接近满分；算力对齐的 16 万步版本仍优于所有基线；甚至 π0-small 也超过 OpenVLA 和 Octo。OpenVLA 表现差，主要因为其自回归离散化结构不支持动作块。仅用 UR5e 数据微调的 OpenVLA 表现好一些，但仍明显不如 π0。</p>
+      </div>
+    </div>
+
+    <h3 class="sub">B. 语言指令跟随</h3>
+    <div class="pair">
+      <div class="en">
+        <span class="lbl">Conditions</span>
+        <p><q>flat</q> (task description only), <q>human</q> (expert intermediate commands), <q>HL</q> (high-level VLM commands).</p>
+      </div>
+      <div class="zh">
+        <span class="lbl">中文译述</span>
+        <p>这一组实验把 π0 在三个语言条件任务上微调：收拾餐桌、摆餐桌、打包购物袋。每个任务由多段约 2 秒的指令组成，指令内容是“抓哪个物体、放到哪里”。对比五种条件：</p>
+        <ul>
+          <li><strong>flat</strong>：只给任务描述（如“把杂货装袋”），没有中间指令；</li>
+          <li><strong>human</strong>：由专家人类给出中间指令；</li>
+          <li><strong>HL</strong>：由高层 VLM 给出指令，全程自主，不需要人类专家。</li>
+        </ul>
+        <p>结果（每任务 10 次）显示：π0 的语言跟随准确率显著高于 π0-small，说明 VLM 预训练确实提升了语言理解能力。作者提醒，π0-small 也更小，这两点无法完全分开。带有人类中间指令时表现更好，而由高层 VLM 给出指令的自主模式也能把语言跟随能力转化为复杂任务上的实际表现。</p>
+      </div>
+    </div>
+
+    <h3 class="sub">C. 学习新的灵巧任务</h3>
+    <div class="pair">
+      <div class="en">
+        <span class="lbl">Tasks</span>
+        <p>New tasks <q>differ significantly</q> from pre-training: stacking bowls, towel folding, microwaving Tupperware, paper towel replacement, items in drawer.</p>
+      </div>
+      <div class="zh">
+        <span class="lbl">中文译述</span>
+        <p>这一组实验在与预训练数据差异较大的新任务上，对 π0 做微调，并与为灵巧操作专门设计的方法比较（如 Diffusion Policy、Octo、OpenVLA、ACT 等）。任务包括：叠碗、叠毛巾、把保鲜盒放进微波炉、更换纸巾卷、把物品放进抽屉。评分细则见附录 E。具体数值以原文图表为准，这里不复述细节。作者的结论是：π0 在这些任务上整体优于对比方法，说明灵巧任务既受益于架构，也受益于预训练。</p>
+      </div>
+    </div>
+
+    <h3 class="sub">D. 复杂多阶段任务</h3>
+    <div class="pair">
+      <div class="en">
+        <span class="lbl">Tasks</span>
+        <p>Laundry folding, mobile laundry, dryer unloading (in pre-training); table bussing, box building, to-go box, packing eggs (not in pre-training).</p>
+      </div>
+      <div class="zh">
+        <span class="lbl">中文译述</span>
+        <p>最后一组实验，用微调和语言的组合，挑战长时程的多阶段任务。其中一部分在预训练中有数据，另一部分没有：</p>
+        <ul>
+          <li><strong>叠衣服</strong>（固定双臂）：衣物从随机揉皱的状态开始，取出、叠好、放到已叠好的衣堆上。（预训练中有）</li>
+          <li><strong>移动叠衣服</strong>：Fibocom 移动机器人完成同样的任务，还要控制朝向和平移。（预训练中有）</li>
+          <li><strong>烘干机取衣</strong>：移动机器人把衣服从烘干机里取出，放进洗衣篮。（预训练中有）</li>
+          <li><strong>收拾餐桌</strong>：处理杂乱场景中大量没见过的物品，需要拧转夹爪拿大盘子、小心抓取玻璃杯，还要先把盘子里的垃圾倒掉再放回餐具筐。（预训练中没有）</li>
+          <li><strong>组装纸箱</strong>、<strong>打包外带盒</strong>、<strong>装鸡蛋进纸盒</strong>：分别需要双臂配合折叠纸板、把食物装得不突出并合上盒子，以及从碗里一次取 6 个鸡蛋并小心放入纸盒。（均不在预训练中）</li>
+        </ul>
+        <p>作者的结论是：完整的预训练加微调配方在所有任务上表现最好；对更难的任务，预训练带来的提升尤其显著；在这些任务上，完全自主运行的表现达到了作者所说的学习型灵巧操作的新水平。作者建议读者观看项目网站上的视频。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ VII 讨论 ============ -->
+  <section class="block">
+    <h2>VII. 讨论、局限与未来工作</h2>
+    <div class="en-title">DISCUSSION, LIMITATIONS, AND FUTURE WORK</div>
+    <div class="pair">
+      <div class="en">
+        <span class="lbl">Key sentences</span>
+        <p>Training only on high-quality data <q>results in a brittle model</q>; zero-shot pre-trained models <q>do not always exhibit the fluent strategies</q>.</p>
+        <p>Open question: <q>what type of data is more helpful</q>.</p>
+      </div>
+      <div class="zh">
+        <span class="lbl">中文译述</span>
+        <p>作者总结说，框架大体遵循大语言模型的训练流程：先在海量多样数据上预训练，再通过后训练让模型遵循指令。大语言模型的大部分“知识”来自预训练，后训练主要告诉模型如何运用这些知识。实验提示，机器人基础模型可能有类似现象：预训练模型有一些零样本能力，但叠衣服这类复杂任务仍需要高质量数据微调。仅用高质量数据训练得到的模型很脆弱，不能可靠地从错误中恢复；而零样本运行预训练模型，又不一定能呈现后训练数据中那种流畅的策略。</p>
+        <p>论文也列出了局限：</p>
+        <ul>
+          <li>预训练数据该如何组合、加权，还没有完整的答案；</li>
+          <li>部分任务不稳定，很难预测要达到接近完美的表现需要多少、哪种数据；</li>
+          <li>差异很大的数据（不同任务、不同机器人）混合后，正迁移到底有多少还不清楚；通用的预训练机器人基础模型能否扩展到自动驾驶、导航和腿足运动等差异更大的领域，有待未来研究。</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 附录 ============ -->
+  <section class="block">
+    <h2>附录 B. 模型结构细节</h2>
+    <div class="en-title">B. MODEL ARCHITECTURE DETAILS</div>
+    <div class="pair">
+      <div class="en">
+        <span class="lbl">Key sentences</span>
+        <p>Follows PaliGemma with three differences: robotics projections, a timestep MLP, and a smaller action expert.</p>
+        <p>Attention: <q>blockwise causal attention mask</q> with 3 blocks.</p>
+      </div>
+      <div class="zh">
+        <span class="lbl">中文译述</span>
+        <p><strong>与 PaliGemma 的差异</strong>有三点：(1) 为状态和动作增加输入、输出投影；(2) 增加一个 MLP 把流匹配时间步编码进动作 token；(3) 增加一套较小的独立权重（动作专家）。</p>
+        <p><strong>输入</strong>：PaliGemma 的输入是图像序列加语言提示；此外增加状态 q_t（线性投影到嵌入维度）和带噪动作块 A^τ（动作 token 数等于动作长度 H = 50）。模型只读取对应带噪动作的 Transformer 输出，经线性投影得到向量场 v。</p>
+        <p><strong>时间步注入</strong>：每个带噪动作的嵌入由一个小 MLP 生成。动作先经过一层线性投影；时间步先做正弦位置编码；两者拼接后，经过第二层线性层、一次 swish 激活，再经过第三层线性层，得到输入动作专家的 token。</p>
+        <p><strong>注意力掩码</strong>：分成三块：[图像与语言]、[状态]、[动作]。块内全双向，块与块之间只能看到自己及之前的块。图像与语言块不能看到后面的新输入，以尽量保持 VLM 预训练时的分布；状态单独成块，因为它在去噪的每一步都不变，因此它的 key/value 可以缓存；动作块可以看到全部输入。</p>
+        <p><strong>动作专家</strong>：π0 是一个 Transformer，有两套权重（即两个“专家”），每个 token 只走其中一套，两者只在自注意力层中交互。图像与语言走较大的 VLM 骨干（初始化自 PaliGemma，即 Gemma 2B：宽 2048、深 18、多查询注意力，1 个 KV 头）；状态与动作走动作专家。为了加速推理（需要多次前向），作者把动作专家缩小为宽 1024、MLP 宽 4096，参数约 3 亿。</p>
+        <p><strong>时间步采样</strong>：原始流匹配论文采用均匀分布；Stable Diffusion 3 所用的 logit-normal 分布偏向中间时间步。作者认为动作预测与高分辨率图像生成不同：给定机器人观测，动作分布的约束比文字标签约束图像要强得多，因此他们让采样偏向高噪声一端，并截断到 s = 0.999 以上不采样。采样分布为 Beta(1.5, 1) 的变换。因为超过 s 的时间步永远不会被采样，只要积分步长大于 1 − s = 0.001（即最多 1000 步积分）就足够了。</p>
+        <p><strong>代码对照</strong>：在 openpi 的训练损失里，时间步采样与带噪动作的构造直接对应上面这些公式。注意代码里的 t 是噪声比例（t=1 为纯噪声），与论文 τ 的方向相反，但两者描述的是同一个构造。</p>
+      </div>
+    </div>
+
+    <h3 class="sub">附录 C. 非 VLM 基线 π0-small</h3>
+    <div class="pair">
+      <div class="en">
+        <span class="lbl">Key sentence</span>
+        <p>About 470M parameters; <q>DistilBERT</q> for language; action expert uses <q>DiT</q> with <q>AdaLN-Zero</q>.</p>
+      </div>
+      <div class="zh">
+        <span class="lbl">中文译述</span>
+        <p>π0-small 约 4.7 亿参数，不以 VLM 为底座，设计目标是在大数据集上有足够表达力、又能从零训练得到较好效果。与主模型的主要区别：用 DistilBERT 编码语言指令；动作专家通过交叉注意力读取观测编码器的输出，类似传统编码器-解码器结构，而主模型是仅解码器的混合专家；图像用较小的预训练 ViT 混合编码器，不共享权重；观测编码器不做互联网预训练；动作专家采用 DiT 结构，用 AdaLN-Zero 注入时间步。两者的共同点是：都用预训练 ViT 图像编码器，都为观测编码器和动作专家使用独立权重，都做 10 步流匹配。</p>
+      </div>
+    </div>
+
+    <h3 class="sub">附录 D. 推理与时延</h3>
+    <div class="pair">
+      <div class="en">
+        <span class="lbl">Key sentences</span>
+        <p>Images are encoded once, the prefix runs once, then <q>10 steps of flow matching</q>.</p>
+        <p>Temporal ensembling <q>hurt policy performance</q>, so actions are executed open-loop.</p>
+      </div>
+      <div class="zh">
+        <span class="lbl">中文译述</span>
+        <p>每次生成一个新动作块，需要：编码每张图像，对观测 token 做一次前向（其 KV 被缓存），然后做 10 步流匹配，每步对动作 token 做一次前向。在 RTX 4090 上用 3 张相机测得的时延如下：</p>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>环节</th><th>耗时</th></tr></thead>
+            <tbody>
+              <tr><td>图像编码器</td><td>14 ms</td></tr>
+              <tr><td>观测前向（一次）</td><td>32 ms</td></tr>
+              <tr><td>动作前向（×10 步流匹配）</td><td>27 ms</td></tr>
+              <tr><td>网络延迟（仅远程/离机推理）</td><td>13 ms</td></tr>
+              <tr><td><strong>板载合计</strong></td><td><strong>73 ms</strong></td></tr>
+              <tr><td><strong>离机合计</strong></td><td><strong>86 ms</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>因为一次输出完整的 H 步动作块，机器人可以连续执行最多 H 步再重新推理。作者早期试过时间集成（temporal ensembling），发现会损害性能，因此不做动作聚合，而是开环执行动作块。执行节奏：20 Hz 的 UR5e 和 Franka 每执行 16 步（约 0.8 秒）重新推理一次；其余以 50 Hz 运行的机器人每执行 25 步（约 0.5 秒）重新推理一次。</p>
+        <p>作者补充说，量化等优化还能进一步降低时延。</p>
+      </div>
+    </div>
+
+    <h3 class="sub">附录 E. 评分细则</h3>
+    <div class="pair">
+      <div class="en">
+        <span class="lbl">Key sentence</span>
+        <p>Each task has a score rubric measuring progress; partial credit is given.</p>
+      </div>
+      <div class="zh">
+        <span class="lbl">中文译述</span>
+        <p>每个任务都设计了衡量进度的评分细则，并用于定量比较。例如：叠 T 恤按成功或失败计分；简单清理桌面满分 7 分（每正确分拣一件得 1 分），困难清理桌面满分 12 分；杂货装袋满分 7 分；取吐司满分 4 分（取出与放盘各 1 分）。叠衣服满分 4 分（取、摊平、折叠、放置各 1 分），评测每件衣物两次，每次最多 15000 步（约 5 分钟）。组装纸箱满分 5 分，装鸡蛋满分 7 分（每个蛋 1 分，加上盖子 1 分）。</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 代码对照 ============ -->
+  <section class="block" id="code-map">
+    <h2>模块与代码对照</h2>
+    <div class="en-title">MODULE → SOURCE (openpi @ 215abfb)</div>
+    <p style="margin:0 0 6px;color:var(--ink-2);font-size:14.5px;">下表把论文的关键模块映射到 openpi 官方实现（固定提交 <code>215abfb</code>）。行号与 <a href="代码索引.html">代码索引</a> 页一致。</p>
+    <div class="tbl-wrap codemap">
+      <table>
+        <thead><tr><th>论文模块</th><th>对应代码</th><th>说明</th></tr></thead>
+        <tbody>
+          <tr><td>骨干 + 动作专家配置</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0_config.py#L19-L26" target="_blank" rel="noreferrer">pi0_config.py · Pi0Config</a></td><td>paligemma_variant = gemma_2b；action_expert_variant = gemma_300m；action_horizon = 50</td></tr>
+          <tr><td>两套权重的 Gemma 配置</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/gemma.py#L58-L109" target="_blank" rel="noreferrer">gemma.py · get_config</a></td><td>附录 B 中 2B 与 300M 两套宽度、深度等超参</td></tr>
+          <tr><td>注意力掩码（三块）</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L19-L46" target="_blank" rel="noreferrer">pi0.py · make_attn_mask</a></td><td>[图像+语言]、[状态]、[动作] 三块的块级因果掩码</td></tr>
+          <tr><td>正弦位置编码</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L48-L64" target="_blank" rel="noreferrer">pi0.py · posemb_sincos</a></td><td>时间步的正弦编码，用于注入流匹配时间</td></tr>
+          <tr><td>前缀编码（图像与语言）</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L106-L139" target="_blank" rel="noreferrer">pi0.py · embed_prefix</a></td><td>图像和语言映射到 VLM 嵌入空间</td></tr>
+          <tr><td>后缀编码（状态 + 带噪动作 + 时间）</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L140-L186" target="_blank" rel="noreferrer">pi0.py · embed_suffix</a></td><td>附录 B 的时间步 MLP 与动作投影，对应动作专家的输入</td></tr>
+          <tr><td>时间步采样与带噪动作</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L196-L200" target="_blank" rel="noreferrer">pi0.py · compute_loss（采样）</a></td><td>Beta(1.5,1) 变换到截断区间；x_t 为噪声与动作的线性插值</td></tr>
+          <tr><td>流匹配训练损失</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L189-L214" target="_blank" rel="noreferrer">pi0.py · compute_loss</a></td><td>回归速度场 u = 噪声 − 动作 的均方误差</td></tr>
+          <tr><td>推理：欧拉积分 + KV 缓存</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L217-L280" target="_blank" rel="noreferrer">pi0.py · sample_actions</a></td><td>num_steps = 10，dt = −1/num_steps；前缀 KV 只算一次</td></tr>
+          <tr><td>离散化对照：FAST</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/tokenizer.py#L51-L145" target="_blank" rel="noreferrer">tokenizer.py · FASTTokenizer</a></td><td>论文 II 节批评的自回归离散化路线，openpi 另有 FAST 版本</td></tr>
+          <tr><td>跨本体的观测/动作映射</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/policies/aloha_policy.py" target="_blank" rel="noreferrer">policies/aloha_policy.py</a></td><td>把各机器人的观测与动作统一到固定维度（对应 V-A 的维度补零与掩码）</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p style="margin:18px 0 0;color:var(--ink-2);font-size:14.5px;">
+      相关的深入解读：<a href="pi0-论文解读.html">π0 精读笔记</a> · <a href="代码索引.html#action-expert">代码索引 · 动作专家</a> · <a href="代码索引.html#flow-matching">代码索引 · 流匹配</a> · <a href="代码索引.html#kv-cache">代码索引 · KV cache</a>
+    </p>
+  </section>
+
+  <footer>
+    <span>中英对照 · π0（arXiv 2410.24164）· 译文为译述，英文原文见 pdfs/pi0.pdf</span>
+    <a href="index.html">返回知识库 →</a>
+  </footer>
+</div>
+<script src="nav.js"></script>
+<script>
+  (function () {
+    var btn = document.getElementById('toggle-en');
+    btn.addEventListener('click', function () {
+      var on = document.body.classList.toggle('hide-en');
+      btn.setAttribute('aria-pressed', String(on));
+      btn.textContent = on ? '显示英文对照' : '隐藏英文，只看译文';
+    });
+  })();
+</script>
+</body>
+</html>

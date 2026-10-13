@@ -26,7 +26,9 @@
     {
       id: '01', name: 'π 系列 VLA', items: [
         { t: 'π0', h: 'pi0-论文解读.html' },
+        { t: 'π0 · 中英对照译文', h: 'pi0-论文中英对照.html' },
         { t: 'FAST / π0-FAST', h: 'FAST-论文解读.html' },
+        { t: '实时动作分块（RTC）· 论文解读', h: 'RTC-实时动作分块-论文解读.html' },
         { t: '训练时 RTC', h: 'RTC-训练时-论文解读.html' },
         { t: 'π0.5', h: 'pi0.5_论文测验_精美版.html' },
         { t: '知识隔离（KI）', h: 'KI-知识隔离-论文解读.html' },
@@ -36,6 +38,7 @@
     },
     {
       id: '02', name: 'VLA 与强化学习', items: [
+        { t: 'VLA × RL 路线图（总览）', h: 'VLA-RL-路线图.html' },
         { t: 'RL Token', h: 'RL-Token-论文解读.html' },
         { t: 'RL Token · 漫画分镜版', h: 'RLToken-漫画分镜解读.html' },
         { t: 'πRL', h: 'piRL-论文解读.html' },
