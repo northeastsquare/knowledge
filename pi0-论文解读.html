@@ -266,6 +266,38 @@
   </section>
 
   <section>
+    <h2>流匹配推理细节：从纯噪声到干净动作</h2>
+    <p><strong>两个"时间"别混</strong>：下标 <code>t</code>（如 <code>A_t</code>、<code>q_t</code>）是机器人真实时间；<code>τ</code>（如 <code>A^τ</code>）是<b>一次推理内部的去噪进度</b>，每次推理都从 0 走到 1，不是跨推理累加。</p>
+    <p><strong>训练里两个式子是同一条直线</strong>：混合公式 <code>A^τ = τ·A + (1-τ)ε</code> 回答"点在哪"；对 τ 求导得 <code>dA^τ/dτ = A - ε = u</code>，回答"朝哪走、多快"。直线速度处处相同，所以目标 <code>u</code> 里不含 τ，但 τ 要作为<b>网络输入</b>，让网络知道当前处于哪一段噪声程度。方向 <code>A - ε</code>（噪声→数据）是 π0 的约定（τ=0 为噪声、τ=1 为数据）；扩散模型常用相反约定，只要训练与推理一致即可。</p>
+    <p><strong>动作专家每一步的输入与输出</strong>：</p>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>项</th><th>内容</th></tr>
+        <tr><td>输入①：观测前缀</td><td>图像、语言，由 3B VLM 主干处理；10 步中不变，KV 可缓存</td></tr>
+        <tr><td>输入②：机器人状态 <code>q_t</code></td><td>进入动作专家一侧</td></tr>
+        <tr><td>输入③：带噪动作块 <code>A^τ</code> 与 <code>τ</code></td><td>形状 <code>H×d</code>（<code>H=50</code>，<code>d</code> 为动作维度，页面未给具体数值）</td></tr>
+        <tr><td>输出</td><td><b>速度向量 <code>v_θ</code></b>（与 <code>A^τ</code> 同形状），不是干净动作；干净动作是 10 步积分的结果</td></tr>
+      </table>
+    </div>
+    <p>两套权重只在 self-attention 里交互：动作专家的 token 直接读 VLM 的内部表示，而不是"把 VLM 输出取出来再拼噪声"。</p>
+    <p><strong>起点 <code>A^0</code> 从哪来</strong>：推理开始时从 <code>N(0, I)</code> 直接采 <code>H×d</code> 个随机数，即 <code>A^0 = ε</code>；<b>不是任何网络的输出</b>，每次推理都重新抽，与上一次无关。观测信息不通过起点注入，而是通过条件（注意力读 VLM 表示）决定速度方向。不同噪声起点会落到不同的合理模式，这是多模态的来源。训练时 ε 与真实动作 A 是两个量；推理时没有 A，τ=0 代入混合公式即得 <code>A^0 = ε</code>。</p>
+    <p><strong>一次推理的循环</strong>：</p>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>步</th><th>τ</th><th>网络输入的动作</th><th>更新</th></tr>
+        <tr><td>0</td><td>0.0</td><td>纯噪声 <code>ε</code>（即 <code>A^0.0</code>）</td><td><code>A^0.1 = A^0.0 + 0.1·v₀</code></td></tr>
+        <tr><td>1</td><td>0.1</td><td>上一步结果</td><td><code>A^0.2 = A^0.1 + 0.1·v₁</code></td></tr>
+        <tr><td>…</td><td>…</td><td>…</td><td>…</td></tr>
+        <tr><td>9</td><td>0.9</td><td>上一步结果</td><td><code>A^1.0 = A^0.9 + 0.1·v₉</code></td></tr>
+      </table>
+    </div>
+    <p>走完得到的 <code>A^1.0</code> 即交给机器人执行的动作块。</p>
+    <p><strong>欧拉积分就是微积分里解微分方程的最简数值法</strong>。精确写法是解 ODE：<code>dA^τ/dτ = v_θ(A^τ, τ, 观测)，A^0 = ε</code>，即 <code>A^1 = ε + ∫₀¹ v_θ(A^τ, τ, 观测) dτ</code>。注意被积的 <code>v</code> 不是事先画好的曲线：它取决于当前位置 <code>A^τ</code>，而 <code>A^τ</code> 又是前面各步积出来的，边走边生成，所以没有解析解，只能数值解。欧拉法把时间切成 <code>Δτ=0.1</code> 的小段、每段假设速度不变——几何上就是用 10 个矩形近似面积（对 <code>H×d</code> 个分量各自做）。选它是因为最简单、每步只调一次网络，且路径接近直线，大步走也不易偏。</p>
+    <p><strong>为什么还要 10 步而不是一步 <code>ε + v₀</code></strong>：路径若严格是直线，一步就够。但网络学到的是各位置的"平均方向"，同一观测下有多个合理动作，路径中途会有弯曲，所以要边走边重新看当前位置、修正方向。步数越多越准越慢，10 步是精度与延迟的折中。想彻底去掉积分，要么让路径更直，要么像 consistency 那样让网络直接学终点（代价是训练更难）。</p>
+    <div class="note"><b>说明</b>：本节是按标准 flow matching 的写法整理的补充，论文原页只写了"10 步前向欧拉积分"；<code>d</code> 的具体数值和积分为什么能把噪声搬运到数据分布的严格推导，仍属下方"补概念"待办。</div>
+  </section>
+
+  <section>
     <h2>关键结果</h2>
     <p>论文的量化结论以"任务进度分"（rubric，满分 1.0）为主，下面按四组实验汇总：</p>
     <div class="tbl-wrap">

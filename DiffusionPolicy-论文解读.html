@@ -245,6 +245,51 @@ $\sigma=0$ 时完全确定</div>
 </table>
 <div class=”note”><b>读后思考：</b>迭代去噪有延迟（后续的 consistency / flow matching / π0 的 action expert 都在压缩这一步）；纯模仿仍受示范质量上限约束（后续才有 RL 微调的工作）。把它看成<b>”现代 VLA 动作头”的原型</b>，就很容易理解 π0 等为什么都用扩散/流匹配出动作块。</div>
 
+<h2>#6.5 从扩散策略到 consistency / flow matching / π0：同一件事的演化</h2>
+<div class="note"><b>一句话</b>：它们都在做同一件事——<b>学一个"从噪声到动作"的搬运规则，推理时从噪声出发、把它搬到示范动作的分布上</b>。变的是"路怎么走、网络预测什么、要走几步"；不变的是"生成 = 从噪声出发 + 以观测为条件 + 一次输出整段动作块"。</div>
+
+<h3>① 内在不变的东西</h3>
+<table>
+<tr><td>目标不变</td><td>学条件分布 $p(\mathbf{A}|\mathbf{O})$，而不是回归一个动作 → 保留多模态</td></tr>
+<tr><td>起点不变</td><td>推理从高斯噪声出发（$\mathbf{A}^K\sim\mathcal{N}(0,I)$）</td></tr>
+<tr><td>训练套路不变</td><td>取干净动作块 → 掺入随机噪声 → 让网络回答"怎么往干净方向走" → MSE 回归。不估归一化常数 $Z$</td></tr>
+<tr><td>输出形式不变</td><td>一次联合生成整段动作块（$T_p$ 步），只执行前一部分（receding horizon）</td></tr>
+<tr><td>条件方式不变</td><td>观测只编码一次，每一步去噪复用（FiLM 或交叉注意力）</td></tr>
+</table>
+
+<h3>② 它们之间的关系（一条演化线）</h3>
+<p><b>Diffusion Policy（DDPM/DDIM）</b> → <b>Flow Matching</b>（换"路"和"目标"）→ <b>π0 的 action expert</b>（把 flow matching 装进 VLM 里当动作头）；另一条支线 <b>Consistency</b>（直接学"一步到位"）。</p>
+<table>
+<tr><th></th><th>Diffusion Policy</th><th>Flow Matching</th><th>Consistency</th><th>π0 action expert</th></tr>
+<tr><td>网络预测</td><td>噪声 ε</td><td>速度场 v（往干净数据走的方向）</td><td>直接预测干净动作 $\mathbf{A}^0$</td><td>速度场 v（flow matching）</td></tr>
+<tr><td>加噪路径</td><td>$\mathbf{A}^k=\sqrt{\bar\alpha_k}\mathbf{A}^0+\sqrt{1-\bar\alpha_k}\,\varepsilon$（曲线，由日程决定）</td><td>直线插值：$\mathbf{A}^\tau=\tau\mathbf{A}^0+(1-\tau)\varepsilon$</td><td>沿扩散/ODE 轨迹，要求同轨迹上输出一致</td><td>同 flow matching，直线插值</td></tr>
+<tr><td>推理</td><td>迭代去噪，DDIM 约 10~16 步</td><td>解 ODE，常用欧拉法，约 5~10 步</td><td>1~2 步</td><td>约 10 步欧拉积分</td></tr>
+<tr><td>网络骨架</td><td>CNN-UNet 或 Transformer</td><td>任意</td><td>任意</td><td>独立的小 Transformer，与 VLM 主干共享注意力</td></tr>
+</table>
+
+<h3>③ 它们究竟在改进什么：一个字——"步数"，外加"路径更直"</h3>
+<p>扩散策略的瓶颈在<b>推理要反复调用网络</b>（几十步），而机器人要实时闭环。每一步去噪都是一次前向，步数越多延迟越高。三条改进线分别从不同角度压缩它：</p>
+<p><b>A. Flow Matching：把弯路改成直路。</b>扩散的加噪路径是弯的，从噪声到数据要走很多小步才不偏。flow matching 直接规定路径是<b>直线</b>：</p>
+<p>　Aτ = τ · A⁰ + (1−τ) · ε，　网络目标 v = A⁰ − ε（直线的方向，恒定）</p>
+<p>训练仍是 MSE（猜 v），但路径是直的，所以推理时<b>积分几步欧拉就够</b>。直觉：直线上每一步的方向几乎不变，大步走也不会偏；曲线上必须小步走。DDIM 其实已经是"确定性 ODE"，flow matching 可以看成把这个 ODE 的路径设计得更直、训练目标更简洁。</p>
+<p><b>B. Consistency：干脆不走中间步。</b>训练网络使得<b>同一条轨迹上任何位置的输出都指向同一个干净动作</b>：</p>
+<p>　f(Aᵏ, k) = A⁰，　且对同一轨迹上的 k、k′ 有 f(Aᵏ, k) = f(Aᵏ′, k′)</p>
+<p>于是推理时从噪声直接一步映射到动作（需要时再多走 1~2 步提质量）。代价是训练更复杂（需要蒸馏或一致性约束），质量与步数之间要权衡。</p>
+<p><b>C. π0 的 action expert：把动作头做成 VLM 的一部分。</b>这一步改进的不是步数，而是<b>条件怎么来、规模怎么放大</b>：</p>
+<p>· 扩散策略里观测是 ResNet-18 小编码器；π0 里观测是预训练 VLM（图像+语言+机器人状态）的内部表示，带来语义与语言泛化。<br>
+· 动作 token 由一个<b>单独的小 Transformer（action expert）</b>处理，和 VLM 共享注意力，但权重分开，避免动作训练破坏 VLM 的知识。<br>
+· 生成算法换成 flow matching，一次输出约 50 步的动作块，推理约 10 步积分即可达到实时频率。</p>
+
+<h3>④ 压缩"这一步"的几条路对比</h3>
+<table>
+<tr><td>少走几步（改日程/跳步）</td><td>DDIM：同一网络，只改采样器，无需重训</td></tr>
+<tr><td>把路修直</td><td>flow matching：改训练路径与目标，少步即可</td></tr>
+<tr><td>一步到位</td><td>consistency：训练时强制一致，推理 1~2 步</td></tr>
+<tr><td>换条件与骨架</td><td>π0：不减少"去噪思想"，而是把它放进大模型里，实用上靠 flow matching 的少步积分满足实时</td></tr>
+</table>
+
+<div class="note"><b>怎么记</b>：Diffusion Policy 回答了"<b>该用什么生成动作</b>"（生成式模型 + 动作块）；flow matching / consistency 回答"<b>怎么生成得更快</b>"；π0 回答"<b>怎么把它接到大模型上</b>"。三个问题互相独立，所以能自由组合。<br><b>没核对的</b>：上表里各方法的具体步数（如 π0 的 10 步、flow matching 的 5~10 步）是常见设置的典型值，不同论文和实现会有差异，我没逐篇核对。</div>
+
 <hr class=”dbl”>
 <h2>📝 自测题（答案在下方）</h2>
 <div class=”note” style=”background:#fff8e1”>
