@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Diffusion Policy · 热敏小票版解读</title>
+<script>
+MathJax={tex:{inlineMath:[['$','$']],displayMath:[['$$','$$']]}};
+</script>
+<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+<style>
+:root{--ink:#222;--faint:#8a8a8a;--hot:#d9362b;--paper:#fdfcf8}
+*{box-sizing:border-box}
+body{margin:0;padding:30px 12px 80px;background:repeating-linear-gradient(45deg,#c9c6bd 0 6px,#d3d0c7 6px 12px);font-family:"Courier New","Noto Sans Mono CJK SC","Microsoft YaHei Mono",monospace;color:var(--ink);line-height:1.75;font-size:14.5px}
+.receipt{max-width:640px;margin:0 auto;background:var(--paper);padding:34px 32px 46px;position:relative;box-shadow:0 10px 30px rgba(0,0,0,.25);
+ -webkit-mask:conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) 50%/14px 100%;mask:conic-gradient(from -45deg at bottom,#0000,#000 1deg 89deg,#0000 90deg) 50%/14px 100%}
+.receipt::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 2px,rgba(0,0,0,.025) 2px 3px);pointer-events:none}
+h1{text-align:center;font-size:22px;letter-spacing:.12em;margin:0;line-height:1.4}
+.c{text-align:center}.sub{color:var(--faint);font-size:12.5px}
+.dash{border:none;border-top:2px dashed #555;margin:20px 0}
+.dbl{border:none;border-top:4px double #555;margin:20px 0}
+h2{font-size:15px;margin:26px 0 8px;background:var(--ink);color:var(--paper);padding:2px 10px;display:inline-block;letter-spacing:.08em}
+.row{display:flex;gap:6px}.row b{white-space:nowrap}.row i{flex:1;border-bottom:2px dotted #999;transform:translateY(-6px);min-width:12px}
+.note{border:2px solid var(--ink);padding:8px 12px;margin:12px 0;background:#fff}
+.note.hot{border-color:var(--hot);color:var(--hot)}
+.fm{background:#f1efe6;padding:8px 12px;margin:10px 0;overflow-x:auto;font-size:13px;border-left:5px solid var(--ink)}.fm mjx-container{font-size:14px!important}
+.lab{border:2px dashed var(--hot);padding:12px;margin:16px 0;background:#fff}
+.lab h3{margin:0 0 8px;font-size:14px;color:var(--hot)}
+canvas{width:100%;display:block;background:#faf8f0;border:1px solid #bbb}
+button{font:inherit;background:var(--ink);color:var(--paper);border:0;padding:4px 12px;margin:6px 6px 0 0;cursor:pointer}
+button:hover{background:var(--hot)}
+input[type=range]{width:55%;accent-color:var(--hot);vertical-align:middle}
+.out{font-size:13px;color:#444;margin-top:6px;min-height:2.6em}
+table{width:100%;border-collapse:collapse;font-size:13px}td,th{border-bottom:1px dotted #999;padding:4px 6px;text-align:left;vertical-align:top}
+.stamp{display:inline-block;border:3px solid var(--hot);color:var(--hot);padding:2px 12px;transform:rotate(-6deg);font-weight:bold;letter-spacing:.15em}
+.bar{height:46px;background:repeating-linear-gradient(90deg,#222 0 2px,transparent 2px 5px,#222 5px 6px,transparent 6px 10px,#222 10px 13px,transparent 13px 15px);margin:18px auto 4px;width:70%}
+</style>
+</head>
+<body>
+<div class="receipt">
+
+<h1>★ DIFFUSION POLICY ★<br>结 账 小 票</h1>
+<div class="c sub">Chi et al. · RSS 2023 · Columbia / TRI / MIT<br>Visuomotor Policy Learning via Action Diffusion</div>
+<hr class="dbl">
+<div class="note hot" style="text-align:left"><b>📋 带着这些问题往下看</b><br>
+① 为什么回归方法在多模态示范里会「撞上障碍」？<br>
+② 去噪公式里为什么是<b>减法</b>，减的是什么？<br>
+③ 推理要迭代很多次，怎么做到实时的？<br>
+④ spatial softmax 输出的「关键点」是谁标的？<br>
+⑤ 为什么要预测 16 步但只执行 8 步？<br>
+⑥ DDIM 怎么把 100 步压到 10 步还不丢多样性？</div>
+<hr class="dash">
+<div class="row"><b>商品</b><i></i><b>把动作当图像去噪</b></div>
+<div class="row"><b>单价</b><i></i><b>仿真 100 步，真机 DDIM 约 10–16 步</b></div>
+<div class="row"><b>战绩</b><i></i><b>4 个基准 15 个任务平均 +46.9%</b></div>
+<div class="row"><b>收银员</b><i></i><b>DDPM + U-Net/Transformer</b></div>
+<hr class="dash">
+
+<h2>#1 要解决什么</h2>
+<p>模仿学习（行为克隆）就是：看观测 <b>O</b>，输出动作 <b>A</b>。听着像回归，但人类示范有三个麻烦：</p>
+<table>
+<tr><th>麻烦</th><th>后果</th></tr>
+<tr><td>① 多模态<br>（绕障碍可左可右）</td><td>MSE 回归会学到<b>平均值</b>——直直撞上去</td></tr>
+<tr><td>② 动作序列高维<br>（一次出 16 步×自由度）</td><td>逐步独立预测，前后不一致、抖动</td></tr>
+<tr><td>③ 训练不稳定</td><td>IBC（能量模型）要估计归一化常数、采负样本，易崩</td></tr>
+</table>
+<div class=”note”>核心想法：不直接输出动作，而是学一个<b>「动作分布的梯度场」</b>，推理时从高斯噪声出发，沿梯度一步步”洗”出一条动作序列 $\mathbf{A}$。</div>
+
+<h2>#2 方法：一句话 + 一个公式</h2>
+<p>把图像生成里的 DDPM 搬过来，唯一改动：<b>以观测 $\mathbf{O}$ 为条件</b>，生成对象从图像换成<b>动作序列</b>。</p>
+<div class="note" style="background:#ffe1de"><b>「扩散学的是梯度场」是什么意思？</b><br>
+<b>score / 梯度场</b>：$\nabla_{\mathbf{A}} \log p(\mathbf{A})$，即"在 $\mathbf{A}$ 这个点，往哪个方向走，概率密度会增大"。score 是概率论里的术语，梯度场是它的几何理解——每个位置 $\mathbf{A}$ 都有一个向量，合起来是向量场。<br>
+<b>能量视角（更直观）</b>：定义能量函数 $E(\mathbf{A}) = -\log p(\mathbf{A})$，概率高的地方能量低（谷底），概率低的地方能量高（山顶）。示范数据集中的动作在谷底。网络 $\varepsilon_\theta$ 预测的是噪声，它近似 $\nabla E(\mathbf{A}^k)$（能量的梯度）。去噪公式 $\mathbf{A} \gets \mathbf{A} - \gamma \varepsilon_\theta$ 就是<b>梯度下降，从山顶滚到谷底</b>（能量低 = 概率高）。<br>
+<b>概率视角</b>：把 $p(\mathbf{A})$ 想象成山峰（概率高的地方是峰顶）。$\varepsilon_\theta \approx -\nabla \log p$（注意负号），所以 $\mathbf{A} \gets \mathbf{A} - \gamma \varepsilon_\theta = \mathbf{A} + \gamma \nabla \log p$，<b>沿 score 爬山到峰顶</b>。<br>
+<b>两种说法都对</b>：能量视角说"下山到谷底"，概率视角说"爬山到峰顶"，指的是同一回事——从随机点走到示范动作所在的高概率区域。推理时顺着这个场"流"过去。</div>
+<div class="fm">推理（去噪 K 步）：
+$$\mathbf{A}^{k-1} = \alpha \cdot\big( \mathbf{A}^k - \gamma\cdot\varepsilon_\theta(\mathbf{O}, \mathbf{A}^k, k) + \mathcal{N}(0, \sigma^2\mathbf{I}) \big)$$
+
+训练（极其简单的 MSE）：
+取示范动作 $\mathbf{A}^0$，随机选 $k$，加噪声 $\varepsilon^k$
+$$\mathcal{L} = \text{MSE}\big( \varepsilon^k ,  \varepsilon_\theta(\mathbf{O}, \mathbf{A}^0+\varepsilon^k, k) \big)$$</div>
+<div class="note"><b>怎么读这个公式</b><br>
+<b>A 是什么</b>：一段动作序列（$T_p \times$ 动作维度，默认 16 步）。$\mathbf{A}^k$ 是被加了 $k$ 级噪声的动作；<b>$k$ 是噪声级别，不是时间</b>。$\mathbf{A}^K$ 是纯噪声，$\mathbf{A}^0$ 是干净动作。<br>
+<b>方向为什么是 $k \to k-1$</b>：$k-1 \to k$ 是加噪，只掺高斯噪声，训练时直接做，不需要网络；生成要从噪声得到动作，所以推理走 $k \to k-1$，$\varepsilon_\theta$ 学的也是这个方向。<br>
+<b>为什么是减法</b>：$\mathbf{A}^k$ = 干净动作 + 噪声，$\varepsilon_\theta$ 预测的正是这份噪声，减掉它动作就更干净一点。$\gamma$ 控制每步只减一小部分（所以要走多步），$\alpha$ 做整体缩放。例：$\mathbf{A}^k=1.0$，预测噪声 $0.3$，$\gamma=0.5$ → $1.0-0.5\times 0.3=0.85$，朝干净方向走一步。也可看成梯度下降 $\mathbf{A} \gets \mathbf{A} - \gamma\nabla E(\mathbf{A})$，$\varepsilon_\theta$ 就是那个梯度。<br>
+<b>末尾 $\mathcal{N}(0,\sigma^2\mathbf{I})$</b>：每步再注入一点小噪声。注意<b>多样性并不主要靠它</b>：起点 $\mathbf{A}^K$ 本来就是随机抽的，起点不同终点就不同，DDIM（$\sigma=0$，完全确定）照样多样。这一项的作用是：<br>
+· <b>让每步分布与加噪过程匹配</b>——第 $k-1$ 步的目标分布本来就带随机性，加噪声是目标的一部分，不算「误差」。<br>
+· <b>冲淡前面步的误差</b>——某步被网络推偏后，后续步的去噪会把点往数据区域拉，噪声让点不被一条固定路径锁死（与 Langevin 动力学同理）。前提是噪声不能太大、步数够多；步数很少时，噪声自身引入的偏差反而更大。<br>
+· <b>直接删掉 DDPM 公式里的噪声项是不对的</b>：只剩减法就是纯梯度下降，样本会被推向高密度中心、散布变窄。<b>并不是</b>必然「比例偏向一边」——对称双峰例子里起点随机就是各 50%，这点我之前说过头了。<br>
+· <b>DDIM 为什么能只跑 10 步且不丢多样性</b>：它不是删噪声项，而是换了一套更新公式（对应概率流 ODE），保证确定性路径下每步的边缘分布仍然正确。<br>
+<b>EMA 是什么</b>：训练时另存一份权重副本 $\theta_{\text{ema}} \gets m \cdot \theta_{\text{ema}} + (1-m) \cdot \theta$（$m \approx 0.999$）。minibatch 梯度有噪声，$\theta$ 会来回抖，平均后的副本更平滑；梯度只更新 $\theta$，<b>推理用 $\theta_{\text{ema}}$</b>。</div>
+<p>网络 $\varepsilon_\theta$ 只干一件事：<b>猜出被加进去的噪声</b>。猜得出噪声 ≈ 知道往哪个方向走能回到”像示范”的区域。因为学的是梯度（score），<b>不用算归一化常数</b>——这就是它比 IBC 稳的根本原因。</p>
+<div class=”note” style=”background:#ffe1de”><b>IBC 是什么？为什么需要归一化常数？</b><br>
+<b>IBC（Implicit Behavior Cloning）</b>：用能量函数 $E(\mathbf{A}|\mathbf{O})$ 建模，概率正比于 $e^{-E(\mathbf{A}|\mathbf{O})}$。<br>
+<b>直觉</b>：能量低的地方 = 好动作，能量高的地方 = 坏动作。示范数据所在的 $\mathbf{A}$ 应该能量低。<br>
+<b>问题</b>：$$p(\mathbf{A}|\mathbf{O}) = \frac{e^{-E(\mathbf{A}|\mathbf{O})}}{Z(\mathbf{O})}, \quad Z(\mathbf{O}) = \int e^{-E(\mathbf{A}|\mathbf{O})} d\mathbf{A}$$这个<b>归一化常数 $Z$</b>（配分函数）算不出来（积分没有解析解），训练很难：要么估计 $Z$（蒙特卡洛采样，慢且不稳定），要么用对比学习（需要采负样本，采不好就崩）。<br>
+<b>扩散为什么稳</b>：学梯度 $\nabla E$ 而不是 $E$ 本身，梯度场不需要归一化（$\nabla \log p = -\nabla E / Z$ 的 $Z$ 是常数，求导后消掉），训练就是简单的 MSE，不用采样、不估 $Z$。</div>
+<div class=”note” style=”background:#e8f4f8”><b>起点噪声 $\mathbf{A}^K$ 的维度有限制吗？</b><br>
+<b>完全确定，没有选择余地</b>：必须和最终输出的动作序列维度一样。Diffusion Policy 预测 $T_p$ 步动作，每步 $d$ 维（如 7 自由度机械臂），所以 $\mathbf{A}^K \in \mathbb{R}^{T_p \times d}$（如 $16 \times 7 = 112$ 维），从 $\mathcal{N}(0, \mathbf{I}_{112})$ 抽样。<br>
+<b>为什么</b>：<br>
+① 加噪公式 $\mathbf{A}^k = \sqrt{\bar{\alpha}_k}\mathbf{A}^0 + \sqrt{1-\bar{\alpha}_k}\varepsilon$ 要求 $\varepsilon$ 和 $\mathbf{A}^0$ 同形状。<br>
+② 去噪网络输入 $\mathbf{A}^k$，输出 $\varepsilon_\theta$，形状相同。起点维度错了，输出就对不上。<br>
+③ 一路去噪维度不变：$\mathbf{A}^{100} \to \mathbf{A}^{99} \to \cdots \to \mathbf{A}^0$，最后 $\mathbf{A}^0$ 就是那 $T_p \times d$ 的动作。<br>
+<b>对比 VAE</b>：VAE 的隐变量 $z$ 可以比数据低维（数据 784 维，$z$ 只 20 维），解码器膨胀回去。扩散模型没有这种”压缩再解压”，输入输出始终同维度。</div>
+
+<div class=”lab”>
+<h3>🧪 实验 A：多模态——回归 vs 扩散</h3>
+<div class="sub">场景：障碍在 x=0，示范里一半绕左（−1）一半绕右（+1）。<br>下面的“去噪网络”用<b>解析解</b>代替（这个双峰分布的噪声预测可精确算出），去噪流程就是论文的 DDPM。</div>
+<canvas id="cA" width="560" height="190"></canvas>
+<button onclick="A.reset()">重置为纯噪声</button><button onclick="A.step()">去噪 1 步</button><button onclick="A.play()">自动播放</button><button onclick="A.finish()">一键到底</button>
+<div class="out" id="oA"></div>
+</div>
+<div class="note hot">观察：红线（MSE 回归）停在 0 = 撞障碍。扩散的点云一开始是一团雾，去噪中途“裂”成两堆，最终<b>每个样本只落在一个模式上</b>。多次采样可左可右，但<b>单次采样绝不折中</b>。</div>
+
+<h2>#3 加噪长什么样</h2>
+<p>动作序列 $\mathbf{A}$（$T_p=16$ 个点）被当成”一维图像”。$k$ 越大，信号越少、噪声越多；训练时网络要在<b>所有 $k$</b> 上还原噪声。</p>
+<div class="lab">
+<h3>🧪 实验 B：拖动噪声级别 k</h3>
+<canvas id="cB" width="560" height="150"></canvas>
+<input type="range" id="kB" min="0" max="60" value="0" oninput="drawB()"> <span id="vB"></span>
+<div class="out" id="oB"></div>
+</div>
+
+<h2>#4 三个让它真能用的工程设计</h2>
+<hr class="dash">
+<p><b>① 滚动时域控制（Receding Horizon）</b><br>
+看过去 $T_o$ 步观测 → 预测未来 $T_p$ 步 → 只执行前 $T_a$ 步 → 重新规划。论文默认 $T_o=2, T_p=16, T_a=8$。<br>
+预测一长段 = 行为连贯、能在某个模式上”坚持”（不会这步向左下步向右）；只执行一半 = 保持对新观测的反应。</p>
+<div class="lab">
+<h3>🧪 实验 C：拨 $T_o$ / $T_p$ / $T_a$</h3>
+<div>$T_o$ <input type="range" id="to" min="1" max="4" value="2" oninput="drawC()" style="width:30%"> <span id="vto"></span></div>
+<div>$T_p$ <input type="range" id="tp" min="4" max="32" value="16" oninput="clampTa();drawC()" style="width:30%"> <span id="vtp"></span></div>
+<div>$T_a$ <input type="range" id="ta" min="1" max="16" value="8" oninput="drawC()" style="width:30%"> <span id="vta"></span></div>
+<canvas id="cC" width="560" height="130"></canvas>
+<div class="out" id="oC"></div>
+</div>
+<p><b>② 观测只作条件，视觉编码器只跑一次</b><br>
+建模的是 $p(\mathbf{A}|\mathbf{O})$ 而不是联合分布 $p(\mathbf{A},\mathbf{O})$。ResNet-18 提特征一次，之后每一步去噪都复用它——这是能实时的关键。视觉编码器与扩散网络<b>端到端</b>训练。ResNet-18 有两处改动：</p>
+<div class="note"><b>改动 1：全局平均池化 → spatial softmax</b><br>
+<b>做法</b>：最后一层特征图是 $C \times H \times W$。对每个通道，在 $H \times W$ 上做 softmax 得到概率图 $p$，再取期望坐标 $(x,y) = \sum p \cdot$ 坐标，于是每通道变成一个「关键点」，总共输出 $2C$ 个数。<br>
+<b>小例子（一行 3 个格子，坐标 0,1,2）</b>：某通道激活值 $[0, 2, 3]$ → softmax 得 $p=[0.035, 0.259, 0.705]$（和为 1，当作「目标在此格的概率」）→ $x=0\times 0.035+1\times 0.259+2\times 0.705=$<b>1.67</b>。就是按概率加权求平均坐标；二维时 $x$、$y$ 各算一次：$x=\sum p \cdot$ 列号，$y=\sum p \cdot$ 行号。激活越集中，坐标越接近峰值位置。<br>
+<b>常见疑问：一个通道不就剩两个数吗，为什么还会变？</b>个数固定（$2C$ 个），但<b>值是激活图峰值的坐标</b>。物体在画面里移动 → 激活图的峰值移动 → $(x,y)$ 跟着变。后面的策略拿到的就是「物体在哪」。例：学会对「杯子」亮起的通道，杯子在左输出约 $(3,8)$，挪到右输出约 $(12,8)$。平均池化同样压成一个数，但那是整图平均值，峰值在哪都一样，位置丢了。<br>
+<b>关键点从哪来</b>：没有人标注。每个通道学出什么由端到端训练决定，网络自己会让某些通道在「夹爪」「物体边缘」等对动作有用的位置亮起来，所以 $C$ 个通道就是 $C$ 个自学出来的关键点。<br>
+<b>为什么</b>：平均池化把 H×W 压成一个数，只剩「有没有」，丢掉「在哪」。而操作任务里动作恰恰取决于物体、夹爪的位置。spatial softmax 是可微分的 soft-argmax，能把「位置」直接变成数值喂给策略。</div>
+<div class="lab">
+<h3>🧪 实验 D：点一下画面，移动目标</h3>
+<canvas id="cD" width="560" height="170" style="cursor:crosshair"></canvas>
+<div class="out" id="oD"></div>
+</div>
+<div class="note"><b>改动 2：BatchNorm → GroupNorm</b><br>
+<b>做法</b>：GroupNorm 把通道分组，在<b>单个样本</b>内按组算均值方差，不依赖 batch，也没有 running 统计量。<br>
+<b>为什么</b>：论文原文只说「为了训练稳定，尤其是与 EMA 一起用时」，下面的机理是我的解释，不是论文原话。扩散策略训练时会维护一份权重的滑动平均（EMA），推理用 EMA 权重。BatchNorm 的 running 均值方差是在「当前权重」下累积的，与 EMA 平均后的权重对不上，输出被错误地缩放平移，效果变差。GroupNorm 没有这类外部状态，训练与推理的计算完全一致，所以与 EMA 配合稳定。<br>
+<b>能不能用固定统计量</b>：理论上可以固定 $\mu=0, \sigma=1$，但网络前面几层的输出分布会漂移，固定值对不上真实分布，归一化就错了。LayerNorm / GroupNorm 在单样本内部算，不累积外部状态，推理时和训练时的计算一致。</div>
+<p><b>③ 两种去噪网络</b></p>
+<table>
+<tr><th></th><th>CNN（1D 时序 U-Net）</th><th>Transformer</th></tr>
+<tr><td>条件注入</td><td>FiLM 调制每层</td><td>交叉注意力</td></tr>
+<tr><td>特点</td><td>几乎不用调参，<b>首选</b></td><td>动作变化剧烈时更好，但更挑超参</td></tr>
+<tr><td>短板</td><td>偏向低频、平滑，高频突变不擅长</td><td>训练更敏感</td></tr>
+</table>
+<p><b>另外：位置控制 vs 速度控制</b><br>
+动作空间用<b>位置控制</b>（而非速度）—— 与别的方法相反，扩散对多模态的处理使位置控制反而更好，也更少累积误差。</p>
+<div class="note" style="background:#fff8e1"><b>为什么大部分模仿学习用速度控制？这里为什么位置更好？</b><br>
+<b>传统模仿学习（BCRNN、BET 等）用速度控制</b>：<br>
+① <b>累积误差</b>：位置控制下，一步预测偏了 $\Delta x$，下一步基于偏后的位置预测，误差累积（开环）。速度控制每步只预测增量，误差堆叠慢。<br>
+② <b>平滑性</b>：速度控制输出变化量，天然平滑；位置控制可能跳变。<br>
+<b>Diffusion Policy 里位置控制反而更好（Fig 4 实测）</b>：<br>
+① <b>多模态处理</b>：速度控制下，多模态体现在"每步往哪走"的分布上，连续多步速度不一致会让轨迹扭曲。位置控制直接输出目标位置序列，扩散生成的一整段轨迹内部连贯，单个样本落在一个模式上。<br>
+② <b>累积误差少</b>：扩散输出未来 16 步完整轨迹，每 8 步重新规划（滚动时域），实际只盲跑 8 步，误差不会开环累积太久。扩散本身对噪声鲁棒（训练见过各种噪声级别）。<br>
+③ <b>序列一致性</b>（我的理解，论文没明说）：扩散"生成一整段序列"，位置序列的内部一致性（"一直向左"）比速度序列（每步速度正负交替导致抖动）更容易保持。<br>
+<b>对比</b>：论文 Fig 4 显示，BCRNN 和 BET 用位置控制性能<b>下降</b>，Diffusion Policy 用位置控制性能<b>提升</b>。这是扩散独有的优势。</div>
+<p><b>训练细节</b>：仿真基准用 iDDPM，训练和推理都是 100 步；真机为降延迟换成 <b>DDIM</b>，训练仍 100 步，推理减少步数。正文写 10 步、RTX 3080 上约 0.1 s，附录写 16 步，论文前后不一致，以实际配置为准。</p>
+
+<h2>#4.5 DDPM · iDDPM · DDIM 对比</h2>
+<div class="note" style="background:#e8f4f8"><b>三个缩写的全称与记忆</b><br>
+· <b>DDPM</b> = Denoising Diffusion Probabilistic Models（去噪扩散概率模型）—— 扩散策略的<b>基础框架</b>，Ho 2020<br>
+· <b>iDDPM</b> = improved DDPM（改进版 DDPM）—— 把噪声日程换成<b>平方余弦</b>，Nichol & Dhariwal 2021<br>
+· <b>DDIM</b> = Denoising Diffusion <b>Implicit</b> Models（去噪扩散<b>隐式</b>模型）—— 可以<b>跳步采样</b>、加速推理，Song 2021<br>
+记忆：DDPM 是老祖宗，iDDPM 改日程（improved），DDIM 能跳步（implicit = 不显式走马尔可夫链）。</div>
+<p>三者<b>共用同一个训练目标</b>（猜噪声的 MSE），差别只在「怎么加噪的日程」和「怎么用网络往回走」。</p>
+<table>
+<tr><th></th><th>DDPM</th><th>iDDPM</th><th>DDIM</th></tr>
+<tr><td>角色</td><td>基础框架</td><td>DDPM 的改进版（Nichol &amp; Dhariwal）</td><td>只改采样，不改训练</td></tr>
+<tr><td>本文用在</td><td>公式 #2 的原型</td><td>仿真：训练、推理都 100 步</td><td>真机：训练 100 步，推理少步</td></tr>
+<tr><td>采样</td><td>随机马尔可夫链，必须逐步走完</td><td>同 DDPM</td><td>可确定性（σ=0），能跳步</td></tr>
+<tr><td>关键点</td><td>线性 β 日程</td><td>平方余弦日程（论文实测最适合控制任务）</td><td>重用同一个网络，无需重训</td></tr>
+</table>
+<div class=”note hot”><b>「日程」是什么</b>：noise schedule 的直译。就是 $\alpha_k, \beta_k, \bar{\alpha}_k, \sigma_k$ 这些系数<b>随步数 $k$ 怎么变化</b>。线性日程是 $\beta_k$ 从 0.0001 线性增到 0.02；平方余弦日程让 $\bar{\alpha}_k = \cos^2(\cdots)$，噪声加得更均匀，高频信号保留得更久。可以类比学习率调度（learning rate schedule）：同样是控制「每一步怎么走」的参数表。</div>
+<div class=”fm”>【加噪（三者相同）】
+$$\mathbf{A}^k = \sqrt{\bar{\alpha}_k} \cdot \mathbf{A}^0 + \sqrt{1-\bar{\alpha}_k} \cdot \varepsilon$$
+
+【DDPM 去噪，每步随机】
+$$\mathbf{A}^{k-1} = \frac{1}{\sqrt{\alpha_k}} \left( \mathbf{A}^k - \frac{1-\alpha_k}{\sqrt{1-\bar{\alpha}_k}} \cdot \varepsilon_\theta \right) + \sigma_k \cdot \mathbf{z}$$
+
+【iDDPM】同上，只把日程换成
+$$\bar{\alpha}_k = \cos^2\left( \frac{k/K + s}{1+s} \cdot \frac{\pi}{2} \right) \quad \text{（噪声加得更均匀）}$$
+
+【DDIM】先用网络估出干净动作，再直接”跳”到更靠前的某一步：
+$$\hat{\mathbf{A}}^0 = \frac{\mathbf{A}^k - \sqrt{1-\bar{\alpha}_k} \cdot \varepsilon_\theta}{\sqrt{\bar{\alpha}_k}}$$
+$$\mathbf{A}^{k'} = \sqrt{\bar{\alpha}_{k'}} \cdot \hat{\mathbf{A}}^0 + \sqrt{1-\bar{\alpha}_{k'}-\sigma^2} \cdot \varepsilon_\theta + \sigma \cdot \mathbf{z} \quad (k' < k\text{，可隔很多步})$$
+$\sigma=0$ 时完全确定</div>
+<div class=”note hot”><b>为什么不直接用 $\hat{\mathbf{A}}^0$，还要再”跳”？</b><br>
+因为 $\hat{\mathbf{A}}^0$ 只是<b>网络在当前噪声级 $k$ 下的单次猜测</b>，可能不准。DDIM 的策略是：先猜一个干净版，再<b>故意给它加回一点噪声</b>到 $k'$（$k'$ 比 $k$ 更干净，但不是完全干净），下一步网络在 $k'$ 上重新猜，逐步修正。<br>
+<b>具体步骤（$k=100 \to k'=90$）</b>：<br>
+① 手里有 $\mathbf{A}^{100}$（噪声很重）<br>
+② 网络猜：用 $\varepsilon_\theta$ 算出 $\hat{\mathbf{A}}^0$（如果完全去噪会是什么）<br>
+③ <b>不直接用</b>，而是故意给 $\hat{\mathbf{A}}^0$ 加回噪声，让它变成”噪声级 90 该有的样子”：$\mathbf{A}^{90}$<br>
+④ 下一步拿 $\mathbf{A}^{90}$ 重复，跳到 80 → ⋯ → 0<br>
+<b>方向永远是 $k$ 大→小（噪声多→少）</b>，”加噪到 90”不是往回跳，90 比 100 干净；加噪是为了<b>不要一步到位</b>，给后面步骤留修正空间。<br>
+· <b>类比</b>：蒙眼猜杯子位置，第一次猜可能偏。正确做法：猜一个位置 → 稍微睁开眼（降到 $k'$，看到模糊轮廓）→ 根据模糊信息重新猜（而不是盯着第一次猜的位置）→ 再睁开一点 → ⋯ 累积修正。<br>
+· <b>直接用 $\hat{\mathbf{A}}^0$</b> = one-step generation，效果通常很差。DDIM 能跳步是说可以只取 100, 90, 80, ⋯, 0 这 10 个点，而不是 $k=100$ 直接蹦到 0。</div>
+<p><b>怎么理解区别</b>：DDPM 每步只能退一小步，因为它假设相邻两级噪声之间的转移是小的高斯，所以必须走满 $K$ 步。DDIM 观察到：训练目标并没有规定「只能一步一步走」，只要每一级的边缘分布对，就能换成一条非马尔可夫的路径，于是可以只取 100 步里的 10–16 个点（如 100, 90, …, 10, 0）去噪，网络不用重训。</p>
+<div class="note hot"><b>$\sigma=0$ 是什么意思？为什么只剩起点那一份随机性？</b><br>
+回看 DDIM 公式第二行：$\mathbf{A}^{k'} = \sqrt{\bar{\alpha}_{k'}} \cdot \hat{\mathbf{A}}^0 + \sqrt{1-\bar{\alpha}_{k'}-\sigma^2} \cdot \varepsilon_\theta + \sigma \cdot \mathbf{z}$<br>
+最后一项 $\sigma \cdot \mathbf{z}$ 是每一步重新抽的随机噪声（$\mathbf{z} \sim \mathcal{N}(0,\mathbf{I})$）。<br>
+· <b>$\sigma > 0$</b>：每步都注入新的随机性 → 即使起点 $\mathbf{A}^{100}$ 相同，中途的随机扰动也会让终点 $\mathbf{A}^0$ 不同 → 随机采样。<br>
+· <b>$\sigma = 0$</b>：最后一项消失，公式变成 $\mathbf{A}^{k'} = \sqrt{\bar{\alpha}_{k'}} \cdot \hat{\mathbf{A}}^0 + \sqrt{1-\bar{\alpha}_{k'}} \cdot \varepsilon_\theta$，每一步都是<b>确定性计算</b>，没有随机项。<br>
+<b>「只剩起点那一份」</b>：起点 $\mathbf{A}^{100}$ 是从 $\mathcal{N}(0,\mathbf{I})$ 随机抽的（这一份随机性还在），但之后每步 $100 \to 90 \to \cdots \to 0$ 都是确定性的函数。所以：<b>同一个起点 $\mathbf{A}^{100}$ 永远走到同一个终点 $\mathbf{A}^0$</b>。多样性完全来自起点的随机抽样，中途不再注入新的随机性。<br>
+<b>为什么 Diffusion Policy 真机用 $\sigma=0$</b>：确定性采样更稳定、可复现，推理也快一点点（不用每步抽 $\mathbf{z}$）。多样性够了——起点随机，10 次采样就是 10 条不同轨迹。</div>
+<div class="note" style="background:#fff8e1"><b>「边缘分布」深挖：为什么是它，怎么保证，凭什么有效？</b><br>
+<b>① 边缘分布是什么</b>：$p(\mathbf{A}^k)$ = 只看第 $k$ 级本身的分布，不考虑它和别的级的关系。对比：联合分布 $p(\mathbf{A}^0, \mathbf{A}^1, \ldots, \mathbf{A}^K)$ 包含所有级的依赖关系；边缘分布是从联合分布里把第 $k$ 级"提取"出来，积掉其他变量。<b>简单说：边缘 = 单独看某一级</b>。<br>
+
+<b>② 训练只加噪，测试为什么会去噪</b>：训练时给干净 $\mathbf{A}^0$，随机选 $k$，加噪得 $\mathbf{A}^k = \sqrt{\bar{\alpha}_k}\mathbf{A}^0 + \sqrt{1-\bar{\alpha}_k}\varepsilon$，让网络猜 $\varepsilon$。网络在每个 $k$ 上都见过"噪声级 $k$ 该长什么样"的数据，学会了 $\varepsilon_\theta(\mathbf{A}^k, k)$。测试时，只要手里的 $\mathbf{A}^k$ 的分布和训练时一致（$p(\mathbf{A}^k)$ 匹配），网络预测就有效，就能用它去噪。从 $\mathbf{A}^{100} \sim \mathcal{N}(0,\mathbf{I})$ 开始，去噪到 $\mathbf{A}^{99}$，如果 $p(\mathbf{A}^{99})$ 对，网络在 99 上的预测仍有效 → 一路去到 $\mathbf{A}^0$。<br>
+
+<b>③ 为什么要保证每一级边缘分布一致</b>：因为<b>网络是在每一级 $k$ 上分别训练的</b>（$k$ 随机选），它在 $k=50$ 上见到的输入服从训练时的 $p(\mathbf{A}^{50})$。测试时如果你手里的 $\mathbf{A}^{50}$ 分布偏离了，网络没见过这种"画风"，预测就错。DDIM 换了路径，但保证每一级落点的 $p(\mathbf{A}^k)$ 仍和训练时一样，所以网络不用重训。<br>
+
+<b>④ 为什么是边缘分布，不是全分布</b>：DDPM 和 DDIM 的<b>联合分布</b> $p(\mathbf{A}^0, \ldots, \mathbf{A}^K)$ 完全不同（前者马尔可夫 $p(\mathbf{A}^{k-1}|\mathbf{A}^k)$，后者非马尔可夫依赖 $\hat{\mathbf{A}}^0$），但训练目标（MSE 猜噪声）只看<b>单个 $k$ 级上的输入输出</b>，不管你从哪条路径来。只要 $p(\mathbf{A}^k)$ 一样，网络输入分布就一样，预测就有效。<b>所以只需保证边缘分布，不需保证联合分布</b>——这是 DDIM 能换路径但不用重训的根本原因。<br>
+
+<b>直觉</b>：网络是个"分级去噪专家"：在 $k=100$ 级会去一点噪，在 $k=50$ 级会去另一点噪。只要你喂给它的 $\mathbf{A}^k$ "看起来像"它训练时见过的第 $k$ 级数据（边缘分布对），它就能干活。你可以逐级走（DDPM），也可以跳着走（DDIM），只要每次落点的分布对就行，中间怎么跳它不关心。</div>
+<div class="note"><b>论文里还有一层说法（Langevin/分数视角）</b>：把去噪看成 $\mathbf{A} \gets \mathbf{A} - \gamma\nabla E(\mathbf{A}) + \text{噪声}$，即带噪声的梯度下降，$\alpha$、$\gamma$、$\sigma$ 都随 $k$ 变化，合起来就是「噪声日程」，可当作学习率调度。上面的 DDPM/DDIM 是同一件事的两种具体算法。<br><b>没核对的</b>：iDDPM 的可学习方差论文是否启用，我没查到，页面只写了论文明确说的平方余弦日程。</div>
+
+<h2>#5 结果与读法</h2>
+<div class="row"><b>基准</b><i></i><b>Robomimic / Push-T / BlockPush / Kitchen</b></div>
+<div class="row"><b>对手</b><i></i><b>LSTM-GMM · IBC · BET</b></div>
+<div class="row"><b>平均提升</b><i></i><b>+46.9%</b></div>
+<div class="row"><b>真机</b><i></i><b>推 T、翻杯、倒酱、抹酱、双臂</b></div>
+<p>真机上的 Push-T 对手扰动、倒酱汁（需要精细控制+流体）展示了对多模态与闭环纠错的好处。</p>
+
+<h2>#6 为什么它赢——一张表收尾</h2>
+<table>
+<tr><td>多模态</td><td>采样而不是回归，单次落入一个模式</td></tr>
+<tr><td>高维输出</td><td>整段动作联合去噪，天然时序一致</td></tr>
+<tr><td>稳定性</td><td>MSE 训练，不估归一化常数</td></tr>
+<tr><td>速度</td><td>观测编码一次 + 真机用 DDIM 少步去噪（10 或 16 步）+ 只执行 Ta 步</td></tr>
+</table>
+<div class=”note”><b>读后思考：</b>迭代去噪有延迟（后续的 consistency / flow matching / π0 的 action expert 都在压缩这一步）；纯模仿仍受示范质量上限约束（后续才有 RL 微调的工作）。把它看成<b>”现代 VLA 动作头”的原型</b>，就很容易理解 π0 等为什么都用扩散/流匹配出动作块。</div>
+
+<hr class=”dbl”>
+<h2>📝 自测题（答案在下方）</h2>
+<div class=”note” style=”background:#fff8e1”>
+<b>Q1.</b> MSE 回归在双峰示范数据上会输出什么？为什么会「撞障碍」？<br>
+<b>Q2.</b> 训练时网络 $\varepsilon_\theta$ 要预测什么？损失函数是什么？<br>
+<b>Q3.</b> 推理公式 $\mathbf{A}^{k-1} = \alpha(\mathbf{A}^k - \gamma \varepsilon_\theta + \text{噪声})$ 里，为什么要<b>减去</b>网络预测的 $\varepsilon_\theta$？<br>
+<b>Q4.</b> 为什么扩散策略比 IBC（能量模型）训练更稳定？<br>
+<b>Q5.</b> ResNet-18 的两处改动：spatial softmax 和 GroupNorm 各解决什么问题？<br>
+<b>Q6.</b> spatial softmax 输出的「关键点」是人工标注的吗？每个通道输出几个数？<br>
+<b>Q7.</b> 滚动时域控制：预测 $T_p=16$ 步，只执行 $T_a=8$ 步。为什么不执行全部？<br>
+<b>Q8.</b> 为什么论文用<b>位置控制</b>而不是速度控制？这和别的模仿学习方法相反吗？<br>
+<b>Q9.</b> DDPM 训练 100 步，DDIM 推理 10 步。DDIM 做了什么让步数减少 10 倍？<br>
+<b>Q10.</b> 去噪公式末尾的 $\mathcal{N}(0,\sigma^2\mathbf{I})$ 有什么用？DDIM 的 $\sigma=0$ 为什么不会丢多样性？
+</div>
+
+<hr class=”dash”>
+<h2>✅ 答案</h2>
+<div class=”note” style=”background:#f0f7f0”>
+<b>A1.</b> MSE 回归输出所有示范的<b>平均值</b>。双峰例子里左右各一半，平均值就是中间的障碍位置 $x \approx 0$，所以机器人会直直撞上去。<span style=”color:#999”>→ #1 表格、实验 A</span><br><br>
+
+<b>A2.</b> 预测<b>被加进去的噪声 $\varepsilon^k$</b>。损失是 $\mathcal{L} = \text{MSE}(\varepsilon^k, \varepsilon_\theta(\mathbf{O}, \mathbf{A}^0+\varepsilon^k, k))$。<span style=”color:#999”>→ #2 公式框</span><br><br>
+
+<b>A3.</b> 因为 $\mathbf{A}^k = \text{干净动作} + \text{噪声}$，网络预测出噪声，减掉它就能让动作更干净一点，朝”像示范”的方向走。也可以看成梯度下降：$\varepsilon_\theta$ 扮演梯度 $\nabla E(\mathbf{A})$。<span style=”color:#999”>→ #2 说明框「为什么是减法」</span><br><br>
+
+<b>A4.</b> 扩散学的是<b>梯度场（score）</b>，不用算归一化常数 $Z = \int e^{-E(\mathbf{A})} d\mathbf{A}$。IBC 是能量模型，要估 $Z$ 或采负样本，训练容易崩。<span style=”color:#999”>→ #2 最后一句</span><br><br>
+
+<b>A5.</b> spatial softmax 保留<b>位置信息</b>（输出关键点坐标，而不是平均池化的一个数）；GroupNorm 没有 running 统计量，与 EMA 权重配合稳定（BatchNorm 的统计量在当前权重下累积，与 EMA 平均后的权重对不上）。<span style=”color:#999”>→ #4 改动 1、2 + 实验 D</span><br><br>
+
+<b>A6.</b> <b>不是人工标注的</b>，端到端训练时网络自己学出来（比如某些通道对夹爪亮、某些对物体边缘亮）。每个通道输出 <b>2 个数</b>：$(x, y)$ 坐标，所以 $C$ 个通道输出 $2C$ 个数。<span style=”color:#999”>→ #4 改动 1「关键点从哪来」</span><br><br>
+
+<b>A7.</b> 预测长段（16 步）让行为<b>连贯</b>，能在一个模式上”坚持”（不会这步向左下步向右）；只执行一半（8 步）保持对<b>新观测的反应</b>，不会开环盲跑太久。<span style=”color:#999”>→ #4 ① 滚动时域</span><br><br>
+
+<b>A8.</b> 扩散对多模态的处理使位置控制反而更好，也更少累积误差。论文实测位置控制性能更高。是的，与大部分模仿学习方法（BCRNN、BET 等）用速度控制相反。<span style=”color:#999”>→ #4 ③ 末尾「另外」</span><br><br>
+
+<b>A9.</b> DDIM 换了一套更新公式（对应概率流 ODE）：先用网络估出干净动作 $\hat{\mathbf{A}}^0$，再直接”跳”到更靠前的步（比如从 $k=100$ 跳到 $k'=90$），只要每一级的<b>边缘分布</b>对就行，不需要逐步马尔可夫链。网络不用重训。<span style=”color:#999”>→ #4.5 对比表 + 公式框 + 「怎么理解区别」</span><br><br>
+
+<b>A10.</b> 让每步分布与加噪过程匹配；能冲淡前面步的预测误差（类似 Langevin 动力学）。<b>多样性主要来自随机起点 $\mathbf{A}^K$</b>，不靠这一项——起点不同，终点就不同。DDIM 的 $\sigma=0$ 是确定性采样，但起点仍然随机，所以多样性还在。<span style=”color:#999”>→ #2 说明框「末尾 $\mathcal{N}(0,\sigma^2\mathbf{I})$」</span>
+</div>
+
+<hr class=”dash”>
+<div class="c"><span class="stamp">PAID · 已读完</span></div>
+<div class="bar"></div>
+<div class="c sub">THANK YOU · 请保留小票<br>arXiv 2303.04137</div>
+</div>
+
+<script>
+// ---- 共用噪声表（线性 beta，T=60）----
+const T=60,beta=[],ab=[];let p=1;
+for(let i=0;i<T;i++){const b=1e-4+(0.15-1e-4)*i/(T-1);beta.push(b);p*=1-b;ab.push(p);}
+const gauss=()=>{let u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v)};
+const S0=0.08;
+
+// ---- 实验 A ----
+const A=(()=>{
+ const cv=document.getElementById('cA'),g=cv.getContext('2d'),N=400;
+ let xs,k,timer=null,ys=Array.from({length:N},()=>Math.random());
+ const X=x=>(x+2.2)/4.4*cv.width;
+ function eps(x,i){const a=ab[i],m=Math.sqrt(a),v=a*S0*S0+(1-a);const score=(-x+m*Math.tanh(m*x/v))/v;return -Math.sqrt(1-a)*score;}
+ function draw(){
+  g.clearRect(0,0,cv.width,cv.height);
+  g.fillStyle='#ffe1de';g.fillRect(X(-.06),0,X(.06)-X(-.06),cv.height-40);
+  g.fillStyle='#d9362b';g.font='12px monospace';g.fillText('障碍',X(0)-12,14);
+  const bins=44,h=new Array(bins).fill(0);
+  xs.forEach((x,i)=>{g.fillStyle='rgba(34,34,34,.55)';g.fillRect(X(x)-1.5,30+ys[i]*(cv.height-90),3,3);
+   const b=Math.floor((x+2.2)/4.4*bins);if(b>=0&&b<bins)h[b]++;});
+  const mh=Math.max(...h,1);g.fillStyle='#8a8a8a';
+  h.forEach((c,b)=>g.fillRect(b*cv.width/bins+1,cv.height-4-c/mh*34,cv.width/bins-2,c/mh*34));
+  g.strokeStyle='#d9362b';g.lineWidth=3;g.beginPath();g.moveTo(X(0),cv.height-40);g.lineTo(X(0),cv.height-4);g.stroke();
+  const L=xs.filter(x=>x<0).length,R=N-L,mid=xs.filter(x=>Math.abs(x)<.3).length;
+  document.getElementById('oA').innerHTML=`去噪步 $k=${k}/${T}$　|　左 ${L}　右 ${R}　|　落在障碍附近($|x|<0.3$)：<b>${mid}</b> 个${k==0?'　<br>MSE 回归的输出 = 均值 ≈ 0，即全部”撞上”。':''}`;
+ }
+ return{
+  reset(){clearInterval(timer);timer=null;xs=Array.from({length:N},gauss);k=T;draw();},
+  step(){if(k<=0)return false;const i=k-1,a=Math.sqrt(1-beta[i]);
+   xs=xs.map(x=>{const mu=(x-beta[i]/Math.sqrt(1-ab[i])*eps(x,i))/a;return mu+(i>0?Math.sqrt(beta[i])*gauss():0)});k--;draw();return true;},
+  play(){if(timer)return;timer=setInterval(()=>{if(!this.step()){clearInterval(timer);timer=null}},120)},
+  finish(){while(this.step());}
+ };
+})();
+A.reset();
+
+// ---- 实验 B ----
+const a0=Array.from({length:16},(_,i)=>Math.sin(i/15*Math.PI*1.6)*.8);
+const e0=Array.from({length:16},gauss);
+function drawB(){
+ const cv=document.getElementById('cB'),g=cv.getContext('2d'),k=+document.getElementById('kB').value;
+ const a=k==0?1:ab[k-1],W=cv.width,H=cv.height;g.clearRect(0,0,W,H);
+ const xy=i=>[20+i*(W-40)/15,H/2-0];
+ g.strokeStyle='#ccc';g.beginPath();g.moveTo(0,H/2);g.lineTo(W,H/2);g.stroke();
+ g.strokeStyle='#bbb';g.setLineDash([4,4]);g.beginPath();a0.forEach((v,i)=>{const[x]=xy(i);i?g.lineTo(x,H/2-v*H*.32):g.moveTo(x,H/2-v*H*.32)});g.stroke();g.setLineDash([]);
+ g.strokeStyle='#d9362b';g.lineWidth=2;g.beginPath();
+ const nz=a0.map((v,i)=>Math.sqrt(a)*v+Math.sqrt(1-a)*e0[i]);
+ nz.forEach((v,i)=>{const[x]=xy(i);const y=H/2-Math.max(-1.4,Math.min(1.4,v))*H*.32;i?g.lineTo(x,y):g.moveTo(x,y)});g.stroke();
+ nz.forEach((v,i)=>{const[x]=xy(i);g.fillStyle='#222';g.beginPath();g.arc(x,H/2-Math.max(-1.4,Math.min(1.4,v))*H*.32,3,0,7);g.fill()});
+ document.getElementById('vB').textContent='k='+k;
+ document.getElementById('oB').innerHTML=`信号占比 $\\sqrt{\\bar{\\alpha}}=${Math.sqrt(a).toFixed(2)}$，噪声占比 $\\sqrt{1-\\bar{\\alpha}}=${Math.sqrt(1-a).toFixed(2)}$。<br>灰虚线=真实示范动作 $\\mathbf{A}^0$，红线=$\\mathbf{A}^0$+噪声。网络的任务：看见红线 + $k$ + 图像 → 说出加了什么噪声。`;
+}
+drawB();
+
+// ---- 实验 D ----
+(function(){
+ const cv=document.getElementById('cD'),g=cv.getContext('2d'),n=16,cs=cv.height/n;
+ let px=4,py=5;
+ function draw(){
+  const f=[];let sum=0;
+  for(let y=0;y<n;y++)for(let x=0;x<n;x++){const v=Math.exp(-((x-px)**2+(y-py)**2)/3)*5;f.push(v);sum+=v;}
+  const avg=sum/f.length,ex=f.map(v=>Math.exp(v)),Z=ex.reduce((a,b)=>a+b);
+  let kx=0,ky=0;ex.forEach((e,i)=>{kx+=e/Z*(i%n);ky+=e/Z*Math.floor(i/n)});
+  g.clearRect(0,0,cv.width,cv.height);
+  f.forEach((v,i)=>{g.fillStyle=`rgba(217,54,43,${Math.min(1,v/5)})`;g.fillRect((i%n)*cs,Math.floor(i/n)*cs,cs-1,cs-1);g.strokeStyle='#ddd';g.strokeRect((i%n)*cs,Math.floor(i/n)*cs,cs,cs)});
+  g.fillStyle='#222';g.beginPath();g.arc((kx+.5)*cs,(ky+.5)*cs,5,0,7);g.fill();
+  g.font='13px monospace';g.fillText('◀ 点击 = 模拟「物体移到了别处」（改的是输入）',n*cs+14,40);g.fillText('黑点 = spatial softmax 关键点',n*cs+14,62);
+  document.getElementById('oD').innerHTML=`<b>平均池化</b>输出：${avg.toFixed(3)}（无论点在哪都相同，位置信息丢失）<br><b>spatial softmax</b>输出：$(x,y)=(${kx.toFixed(1)}, ${ky.toFixed(1)})$（随目标移动）`;
+ }
+ cv.onclick=e=>{const r=cv.getBoundingClientRect(),s=cv.width/r.width;px=Math.min(n-1,Math.max(0,Math.floor((e.clientX-r.left)*s/cs)));py=Math.min(n-1,Math.max(0,Math.floor((e.clientY-r.top)*s/cs)));draw()};
+ draw();
+})();
+
+// ---- 实验 C ----
+function clampTa(){const tp=+document.getElementById('tp').value,ta=document.getElementById('ta');ta.max=tp;if(+ta.value>tp)ta.value=tp}
+function drawC(){
+ const To=+document.getElementById('to').value,Tp=+document.getElementById('tp').value,Ta=+document.getElementById('ta').value;
+ ['to','tp','ta'].forEach(id=>document.getElementById('v'+id).textContent=document.getElementById(id).value);
+ const cv=document.getElementById('cC'),g=cv.getContext('2d'),rows=3,cols=(rows-1)*Ta+To+Tp,cw=cv.width/cols,ch=26;
+ g.clearRect(0,0,cv.width,cv.height);
+ for(let r=0;r<rows;r++){const y=r*(ch+10)+6,s=r*Ta;
+  for(let c=0;c<To+Tp;c++){const x=(s+c)*cw;
+   g.fillStyle=c<To?'#4a7bd0':c<To+Ta?'#d9362b':'#ccc';g.fillRect(x+.5,y,cw-1,ch);}
+  g.fillStyle='#222';g.font='11px monospace';g.fillText('第'+(r+1)+'次推理',4+s*cw,y+ch+9);}
+ document.getElementById('oC').innerHTML=`<span style="color:#4a7bd0">■ 观测 $T_o$</span>　<span style="color:#d9362b">■ 实际执行 $T_a$</span>　<span style="color:#999">■ 预测了但丢弃</span><br>每 ${Ta} 步推理一次；开环盲跑 ${Ta} 步；${Tp-Ta} 步预测被浪费（${Math.round((Tp-Ta)/Tp*100)}%）。<br>$T_a$ 太小→推理频繁、易在模式间摇摆；$T_a$ 太大→反应迟钝。论文取 $T_o=2/T_p=16/T_a=8$。`;
+}
+drawC();
+if(window.MathJax)MathJax.typesetPromise().catch(e=>console.log(e));
+</script>
+</body>
+</html>
