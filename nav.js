@@ -16,6 +16,8 @@
       id: '00', name: '专题 · 方法对比', items: [
         { t: '为什么要取 log？（交互推导）', h: '为什么取log.html' },
         { t: '主干 A / 主干 B：两台机器拆开看', h: '两条主干-拆机手册.html' },
+        { t: 'Beta 分布：别慌球星卡（交互）', h: 'Beta分布-球星卡.html' },
+        { t: '概率分布博物馆：从赌局到 AI', h: '概率分布博物馆.html' },
         { t: 'RLinf RL 方法：原理视角对比', h: 'RLinf-RL原理对比.html' },
         { t: 'RLinf 里的 RL 方法详细对比', h: 'RLinf-RL方法对比.html' },
         { t: 'VLA 强化学习方法全景对比', h: 'VLA-RL-方法全景对比.html' },

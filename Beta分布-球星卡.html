@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Beta 分布 · 别慌球星卡</title>
+<meta name="description" content="用棒球球星卡讲清 Beta 分布：它只是 0~1 上的一个形状旋钮，附 5 个可动手的小实验">
+<script>
+MathJax={tex:{inlineMath:[['$','$']],displayMath:[['$$','$$']]}};
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bangers&family=ZCOOL+KuaiLe&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{--navy:#14213d;--red:#e63946;--gold:#ffc300;--cream:#fff6dc;--sky:#8ecae6;--grass:#2a9d5c;--ink:#14213d;}
+  *{box-sizing:border-box;}
+  body{margin:0;color:var(--ink);font-family:"ZCOOL KuaiLe","PingFang SC","Microsoft YaHei",sans-serif;font-size:17px;line-height:1.75;
+    background-color:var(--sky);
+    background-image:radial-gradient(rgba(20,33,61,.22) 1.6px,transparent 1.8px);background-size:14px 14px;}
+  .wrap{max-width:900px;margin:0 auto;padding:18px 18px 80px;}
+  .back{display:inline-block;font:600 13px "IBM Plex Mono",monospace;color:var(--navy);text-decoration:none;background:var(--cream);border:3px solid var(--navy);border-radius:999px;padding:3px 14px;box-shadow:3px 3px 0 var(--navy);}
+  .back:hover{background:var(--gold);}
+  /* 封面卡 */
+  .cover{margin:22px 0 10px;border:6px solid var(--navy);border-radius:22px;background:var(--cream);box-shadow:8px 8px 0 var(--navy);overflow:hidden;position:relative;}
+  .cover .band{background:linear-gradient(100deg,var(--red),#ff7b54 40%,var(--gold) 70%,var(--red));background-size:200% 100%;animation:foil 6s linear infinite;padding:10px 20px;display:flex;justify-content:space-between;align-items:center;border-bottom:6px solid var(--navy);}
+  @keyframes foil{to{background-position:200% 0;}}
+  .band b{font:400 22px Bangers,cursive;letter-spacing:.12em;color:#fff;text-shadow:2px 2px 0 var(--navy);}
+  .band i{font:600 12px "IBM Plex Mono",monospace;color:var(--navy);font-style:normal;background:var(--cream);border:2px solid var(--navy);border-radius:6px;padding:1px 8px;}
+  .cover h1{font:400 clamp(34px,7vw,60px)/1.1 Bangers,"ZCOOL KuaiLe",cursive;margin:18px 22px 4px;letter-spacing:.04em;color:var(--navy);text-shadow:3px 3px 0 var(--gold);}
+  .cover p.sub{margin:0 22px 18px;font-size:18px;}
+  .dont{display:flex;flex-wrap:wrap;gap:8px;margin:0 22px 20px;}
+  .dont span{background:var(--navy);color:var(--gold);border-radius:8px;padding:2px 12px;font-size:15px;transform:rotate(-1.2deg);}
+  .dont span:nth-child(even){transform:rotate(1.4deg);background:var(--red);color:#fff;}
+  /* 章节卡 */
+  .card{margin:30px 0;border:5px solid var(--navy);border-radius:18px;background:var(--cream);box-shadow:7px 7px 0 var(--navy);padding:0 0 18px;position:relative;}
+  .card>h2{margin:0 0 14px;padding:8px 18px;border-bottom:5px solid var(--navy);background:var(--gold);border-radius:12px 12px 0 0;font:400 26px Bangers,"ZCOOL KuaiLe",cursive;letter-spacing:.06em;display:flex;gap:12px;align-items:center;}
+  .card>h2 .no{background:var(--navy);color:var(--gold);border-radius:50%;width:38px;height:38px;display:grid;place-items:center;font-size:22px;flex:none;}
+  .card>*:not(h2){margin-left:20px;margin-right:20px;}
+  .card p{margin-top:0;margin-bottom:12px;}
+  .big{font-size:21px;background:#fff;border:3px dashed var(--navy);border-radius:12px;padding:10px 16px;}
+  .hl{background:linear-gradient(transparent 55%,var(--gold) 55%);font-weight:700;}
+  code{font:600 14px "IBM Plex Mono",monospace;background:#fff;border:2px solid var(--navy);border-radius:5px;padding:0 6px;}
+  /* 手写批注 */
+  .tag{display:inline-block;background:var(--red);color:#fff;border:3px solid var(--navy);border-radius:8px;padding:0 10px;font:400 16px Bangers,cursive;letter-spacing:.08em;transform:rotate(-2deg);margin-right:6px;}
+  .tip{background:#fff;border:3px solid var(--navy);border-left:14px solid var(--grass);border-radius:8px;padding:8px 14px;margin-bottom:12px;}
+  .warn{background:#fff;border:3px solid var(--navy);border-left:14px solid var(--red);border-radius:8px;padding:8px 14px;margin-bottom:12px;}
+  /* 实验台 */
+  .lab{background:var(--navy);color:#fff;border-radius:14px;padding:14px 16px;border:3px solid var(--navy);}
+  .lab h3{margin:0 0 8px;font:400 20px Bangers,"ZCOOL KuaiLe",cursive;letter-spacing:.08em;color:var(--gold);}
+  .lab canvas{width:100%;height:auto;background:var(--cream);border-radius:10px;border:3px solid var(--gold);display:block;}
+  .row{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;margin:10px 0 0;}
+  .row label{font:600 13px "IBM Plex Mono",monospace;display:flex;align-items:center;gap:8px;}
+  .row input[type=range]{accent-color:var(--gold);width:160px;}
+  .btn{font:400 17px Bangers,"ZCOOL KuaiLe",cursive;letter-spacing:.06em;background:var(--gold);color:var(--navy);border:3px solid #fff;border-radius:9px;padding:2px 14px;cursor:pointer;box-shadow:3px 3px 0 #000;}
+  .btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 #000;}
+  .read{font:600 13.5px "IBM Plex Mono",monospace;background:rgba(255,255,255,.1);border-radius:8px;padding:6px 12px;margin-top:10px;line-height:1.7;}
+  .read b{color:var(--gold);}
+  .qa{background:#fff;border:3px solid var(--navy);border-radius:10px;padding:10px 14px;margin-bottom:12px;}
+  .qa .q{margin:0 0 6px;}
+  .qa .q small{font:600 12px "IBM Plex Mono",monospace;color:#51626f;margin-left:6px;}
+  .qa summary{cursor:pointer;font:400 17px Bangers,"ZCOOL KuaiLe",cursive;letter-spacing:.06em;color:var(--red);}
+  .qa .ans{margin-top:6px;border-top:2px dashed var(--navy);padding-top:6px;}
+  .qa .ans p{margin:0 0 6px;}
+  .mono{font-family:"IBM Plex Mono",monospace;}
+  table.t{border-collapse:collapse;width:calc(100% - 40px);background:#fff;font-size:15px;}
+  table.t th,table.t td{border:3px solid var(--navy);padding:4px 10px;text-align:left;}
+  table.t th{background:var(--gold);}
+  footer{margin-top:30px;text-align:center;font:600 13px "IBM Plex Mono",monospace;}
+  footer a{color:var(--navy);}
+  @media (prefers-reduced-motion:reduce){.cover .band{animation:none;}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<a class="back" href="index.html">← 返回知识库</a>
+
+<div class="cover">
+  <div class="band"><b>BETA ROOKIE CARD</b><i>No.01 · 0~1 之间的选手</i></div>
+  <h1>Beta 分布：别慌</h1>
+  <p class="sub">它不是一个新世界，只是"在 0 到 1 之间抽数"时，能拧形状的一个旋钮。</p>
+  <div class="dont"><span>不用背 Γ 函数</span><span>不用先会积分</span><span>只认两个数：α、β</span><span>5 个小实验自己玩</span></div>
+</div>
+
+<div class="card">
+  <h2><span class="no">0</span>先搞懂：分布、横轴、纵轴</h2>
+  <p class="big">分布回答一个问题：<span class="hl">一个不确定的数，会取哪些值，各自有多容易出现？</span></p>
+  <ul>
+    <li><b>横轴</b>：这个数可能取的值，记作 $x$。</li>
+    <li><b>纵轴</b>：<b>概率密度</b>，不是概率。曲线越高，$x$ 附近的值越容易出现。</li>
+    <li><b>概率是面积</b>：$x$ 落在 $a$ 到 $b$ 之间的概率 = 曲线在这一段下的面积。整条曲线下的总面积 = 1。</li>
+    <li><b>单个点的概率是 0</b>（一条线没有面积），所以只能问"落在某一段的概率"。</li>
+    <li><b>密度可以大于 1</b>：它不是概率。例如 Beta(1.5, 1) 在 $x=1$ 处高度是 1.5，但总面积仍是 1。</li>
+  </ul>
+  <div class="tip">对比骰子：骰子是离散的，柱子高度本身就是概率（每面 1/6）。连续的量没法给每个点一个概率，所以改用"密度 + 面积"。</div>
+  <p><b>具体到 Beta</b>：横轴 $x$ 在 0 到 1 之间，它本身是一个比例或概率；纵轴是"$x$ 取这个值有多可能"。不同场景里横轴含义不同：</p>
+  <table class="t">
+    <tr><th>场景</th><th>横轴 $x$ 是什么</th><th>曲线高低表示</th></tr>
+    <tr><td>球员卡</td><td>投手<b>真实</b>好球率 $p$（未知）</td><td>你觉得 $p$ 等于这个值有多可能</td></tr>
+    <tr><td>π0 时间步</td><td>训练时抽到的噪声程度</td><td>这个噪声程度被抽到的频繁程度</td></tr>
+  </table>
+  <div class="warn" style="margin-top:12px">球员卡最容易绕：你是在对<b>一个概率本身</b>有多不确定，可称为"概率的概率"。Beta(8, 4) 峰在 0.7 附近，意思是"他的真实好球率大概率在 0.7 左右"，不是"他每球有 0.7 的概率"。</div>
+  <div class="lab">
+    <h3>实验 0 · 用面积读概率</h3>
+    <canvas id="cE" width="800" height="300" role="img" aria-label="拖动区间读取曲线下面积"></canvas>
+    <div class="row">
+      <label>分布 <select id="eP" style="font:600 13px 'IBM Plex Mono',monospace;border:2px solid #fff;border-radius:6px;padding:1px 4px;background:#fff;color:#14213d">
+        <option value="1.5,1">π0 Beta(1.5,1)</option>
+        <option value="8,4">球员 Beta(8,4)</option>
+        <option value="2,2">钟形 Beta(2,2)</option>
+        <option value="1,1">均匀 Beta(1,1)</option></select></label>
+      <label>左端 a <input type="range" id="eL" min="0" max="1" step="0.01" value="0.5"><span id="eLv">0.50</span></label>
+      <label>右端 b <input type="range" id="eR" min="0" max="1" step="0.01" value="1"><span id="eRv">1.00</span></label>
+    </div>
+    <div class="read" id="eOut"></div>
+  </div>
+  <p style="margin-top:12px"><span class="tag">玩法</span>默认是 π0 的分布、区间 0.5 到 1：黄色面积约 0.646，就是"训练时偏噪声（噪声程度 ≥ 0.5）"的概率。把 a、b 拉到同一点，面积变成 0；拉满 0 到 1，面积是 1。换成 Beta(1.5,1) 看"最高处"读数：它大于 1，但面积不会超过 1。</p>
+</div>
+
+<div class="card">
+  <h2><span class="no">1</span>一张球员卡搞懂它</h2>
+  <p class="big">投手投了 <code>h</code> 个好球、<code>k</code> 个坏球，他<span class="hl">真实好球率</span>是多少？不是一个数，而是一条<b>曲线</b>：越靠近峰顶越可能。这条曲线就是 Beta 分布。</p>
+  <p><span class="tag">口诀</span>好球 h 个、坏球 k 个 → 曲线是 <code>Beta(h+1, k+1)</code>。</p>
+  <div class="tip"><b>先验、后验是什么？</b>就是"看成绩前"和"看成绩后"的两条曲线：
+    <br>• <b>先验</b>（起点）：看成绩<b>之前</b>，你对好球率的判断。一无所知就是平线 $\mathrm{Beta}(1,1)$。
+    <br>• <b>后验</b>：看了成绩<b>之后</b>，更新出来的新判断。它又是一条 Beta 曲线，所以每来一批成绩，只要把参数加一下就行：
+    $$\text{后验}=\mathrm{Beta}(\alpha_{\text{先验}}+h,\ \beta_{\text{先验}}+k)$$
+    “后”是指“在看到数据之后”，没有别的含义。</div>
+  <div class="tip"><b>那个 +1 是什么？</b>开赛前你对这个投手<b>一无所知</b>：好球率是 0.1 还是 0.9，你觉得一样可能，所以"起点"是一条<b>平线</b>。这条平线就是 $\mathrm{Beta}(1,1)$（代入公式 $x^0(1-x)^0=1$）。拿到成绩后，把"起点"和"成绩"相乘：
+    <br>• 假设真实好球率是 $p$，出现 $h$ 好 $k$ 坏的可能性正比于 $p^{h}(1-p)^{k}$；
+    <br>• 起点是平线（乘 1），乘完还是 $p^{h}(1-p)^{k}$；
+    <br>• <b>对照 Beta 公式</b>：Beta 密度的形状是 $x^{\alpha-1}(1-x)^{\beta-1}$（忽略归一化常数），把 $p^{h}(1-p)^{k}$ 和它配对，<b>指数要相等</b>：$h=\alpha-1,\ k=\beta-1$；
+    <br>• 移项得 $\alpha=h+1,\ \beta=k+1$。
+    <br>所以 +1 有两层来历：公式里的指数本来就是 $\alpha-1$（这样 $\alpha=\beta=1$ 时是平线），而起点平线对应 $\alpha=\beta=1$（相当于"开赛前虚拟记账 0 好 0 坏"）。</div>
+  <div class="warn" style="margin-top:10px;"><b>为什么 Beta 公式的指数是 α-1 而不是 α？</b>标准写法。这样 $\alpha=\beta=1$ 时 $x^0(1-x)^0=1$ 是平线（均匀分布）。如果写成 $x^\alpha(1-x)^\beta$，就要 $\alpha=\beta=0$ 才是均匀，但 $0^0$ 未定义。写成 $\alpha-1$ 让"0 次成功"对应参数 1，更自然。</div>
+  <div class="tip">起点不一定是平线。如果赛前听说他是强投，起点可以换成偏右的曲线 $\mathrm{Beta}(a_0,b_0)$，结果就是 $\mathrm{Beta}(a_0+h,\ b_0+k)$：<b>起点相当于开赛前就记在账上的"虚拟成绩"</b>。在下面实验里切换"起点"试试：成绩少时，起点影响很大；成绩多了，起点会被冲淡。</div>
+  <div class="lab">
+    <h3>实验 1 · 给球员记成绩</h3>
+    <canvas id="cA" width="800" height="300" role="img" aria-label="球员好球率的 Beta 曲线"></canvas>
+    <div class="row">
+      <label>好球 h <input type="range" id="aH" min="0" max="40" value="7"><span id="aHv">7</span></label>
+      <label>坏球 k <input type="range" id="aK" min="0" max="40" value="3"><span id="aKv">3</span></label>
+      <label>起点 <select id="aP" style="font:600 13px 'IBM Plex Mono',monospace;border:2px solid #fff;border-radius:6px;padding:1px 4px;background:#fff;color:#14213d">
+        <option value="1,1">一无所知 Beta(1,1)</option>
+        <option value="6,2">听说是强投 Beta(6,2)</option>
+        <option value="2,6">听说是弱投 Beta(2,6)</option></select></label>
+      <button class="btn" id="aX10">成绩 ×10</button>
+    </div>
+    <div class="read" id="aOut"></div>
+  </div>
+  <p style="margin-top:12px"><span class="tag">看什么</span>先选"一无所知"起点，拉到 h=0、k=0：曲线是一条平线（啥也不知道）。再点几次"成绩 ×10"：比例不变，但曲线<span class="hl">越来越瘦</span>，这就是"数据多了，把握变大"。</p>
+</div>
+<div class="card">
+  <h2><span class="no">2</span>两个旋钮 α、β 怎么拧</h2>
+  <p class="big">α 往右拉，β 往左拉。<span class="hl">α 大偏向 1，β 大偏向 0</span>，两个都大就挤向中间。</p>
+  <div class="lab">
+    <h3>实验 2 · 形状旋钮</h3>
+    <canvas id="cB" width="800" height="300" role="img" aria-label="可调 α β 的 Beta 密度曲线"></canvas>
+    <div class="row">
+      <label>α <input type="range" id="bA" min="0.3" max="40" step="0.1" value="1.5"><span id="bAv">1.5</span></label>
+      <label>β <input type="range" id="bB" min="0.3" max="40" step="0.1" value="1"><span id="bBv">1</span></label>
+      <button class="btn" data-p="1,1">均匀</button>
+      <button class="btn" data-p="1.5,1">π0</button>
+      <button class="btn" data-p="2,5">偏小</button>
+      <button class="btn" data-p="5,2">偏大</button>
+      <button class="btn" data-p="0.5,0.5">U 形</button>
+      <button class="btn" data-p="4,4">钟形</button>
+      <button class="btn" id="bX2">α、β 同时 ×2</button>
+    </div>
+    <div class="read" id="bOut"></div>
+  </div>
+  <p style="margin-top:12px"><span class="tag">读法</span>$\alpha=\beta=1$ 是平线；两者都大于 1 是钟形；两者都小于 1 是 U 形（两头高）；只有一个大于 1 就是斜坡。均值只由比例决定：$\dfrac{\alpha}{\alpha+\beta}$。</p>
+  <div class="tip"><b>"α+β 越大曲线越瘦"是什么意思？</b>"瘦"就是又窄又高，值都挤在均值附近，即<b>把握更大</b>。位置和宽窄分开管：
+    <br>• 位置（均值）：$m=\dfrac{\alpha}{\alpha+\beta}$，只看 α 与 β 的<b>比例</b>；
+    <br>• 宽窄（方差）：$\dfrac{m(1-m)}{\alpha+\beta+1}$，分母里的 $\alpha+\beta$ 越大，方差越小。
+    <br>所以比例不变、同时放大 α 和 β，中心不动，只会变瘦。点上面的"α、β 同时 ×2"，看读数栏里均值不变、标准差一直缩小。
+    <table class="t" style="width:100%;margin:8px 0">
+      <tr><th>分布（均值都是 0.5）</th><th>α+β</th><th>标准差</th></tr>
+      <tr><td>Beta(2, 2)</td><td>4</td><td>约 0.22</td></tr>
+      <tr><td>Beta(20, 20)</td><td>40</td><td>约 0.08</td></tr>
+      <tr><td>Beta(200, 200)</td><td>400</td><td>约 0.025</td></tr>
+    </table>
+    球员的例子里 $\alpha-1$ 是好球数、$\beta-1$ 是坏球数，所以 $\alpha+\beta$ 约等于"已经看过多少球"（再加 2）。7 好 3 坏和 70 好 30 坏比例相同，但后者窄得多，这就是实验 1 里"成绩 ×10"的现象。π0 的 Beta(1.5, 1) 只有 $\alpha+\beta=2.5$，很宽，所以偏置温和。</div>
+</div>
+
+<div class="card">
+  <h2><span class="no">3</span>公式拆开就不吓人</h2>
+  $$f(x)=\frac{x^{\alpha-1}\,(1-x)^{\beta-1}}{B(\alpha,\beta)}$$
+  <table class="t">
+    <tr><th>部件</th><th>作用</th></tr>
+    <tr><td>$x^{\alpha-1}$</td><td>x 越大它越大：把曲线往<b>右</b>拉</td></tr>
+    <tr><td>$(1-x)^{\beta-1}$</td><td>x 越小它越大：把曲线往<b>左</b>拉</td></tr>
+    <tr><td>$B(\alpha,\beta)$</td><td>只是除一个常数，让面积等于 1，<b>不影响形状</b></td></tr>
+  </table>
+  <p style="margin-top:12px"><span class="tag">π0</span>$\alpha=1.5,\ \beta=1$ 时，左边那项 $(1-x)^0=1$ 消失，只剩 $f(x)=1.5\,x^{0.5}$：一条缓缓上升的曲线。</p>
+  <div class="tip">实验 2 里把 β 拉到 1，再动 α，就是在看"只剩 $x^{\alpha-1}$"这一项在起作用。</div>
+</div>
+<div class="card">
+  <h2><span class="no">4</span>一个直观例子：n 个数取最大</h2>
+  <p class="big"><b>Beta 分布有很多来源，这是最直观的一个</b>。抽 <code>n</code> 个 0~1 的均匀随机数，只留<span class="hl">最大的那个</span>，它服从 <code>Beta(n, 1)</code>。这只是 $\beta=1$ 的特例，但能帮你理解 $\alpha$ 的作用。</p>
+  <p>直觉：n 个数全都小于 x 的概率是 $x^n$，所以"最大值 ≤ x"的概率也是 $x^n$。n 越大，最大值越挤向 1。π0 的 $\alpha=1.5$ 就是介于"抽 1 个"和"抽 2 个取大"之间。</p>
+  <div class="tip"><b>这只是 Beta 的一个来源，不是全部</b>。更一般的 Beta(α, β) 来自：球员成绩更新（贝叶斯后验，见第 1 张卡）、n 个数排序后第 k 个（见 π0 精读页）、两个 Gamma 变量的比值。这个例子只覆盖 β=1，但最直观。</div>
+  <div class="warn"><b>Beta 分布的历史来源</b>：1676 年前后，雅各布·伯努利（Jakob Bernoulli）研究"抛硬币 n 次看到 h 个正面，下次抛正的概率是多少"，发现更新前后都是 [0,1] 上的一条曲线，这就是 Beta 作为<b>二项分布共轭先验</b>的起点。后来欧拉（Euler, 1730s）定义了 Beta 函数 $B(\alpha,\beta)=\int_0^1 x^{\alpha-1}(1-x)^{\beta-1}dx$，用来算组合数和阶乘的推广。皮尔逊（Karl Pearson, 1895）把它系统化成"Pearson I 型分布"，也就是今天的 Beta(α, β)。所以 Beta 的数学起源是贝叶斯推断 + 积分变换，后来才发现它和顺序统计量、Gamma 比值等场景联系在一起。</div>
+  <div class="lab">
+    <h3>实验 3 · 抽数取最大</h3>
+    <canvas id="cC" width="800" height="300" role="img" aria-label="n 个均匀数取最大的直方图与 Beta(n,1) 曲线"></canvas>
+    <div class="row">
+      <label>n <input type="range" id="cN" min="1" max="6" step="1" value="2"><span id="cNv">2</span></label>
+      <button class="btn" id="cGo">抽 2000 次</button>
+      <button class="btn" id="cClr">清空</button>
+    </div>
+    <div class="read" id="cOut"></div>
+  </div>
+  <p style="margin-top:12px"><span class="tag">验证</span>柱子是实际抽出来的，橙线是公式 $n\,x^{n-1}$。多点几次"抽 2000 次"，柱子会越来越贴线。</p>
+</div>
+
+<div class="card">
+  <h2><span class="no">5</span>回到 π0：它到底在抽什么</h2>
+  <p>训练时，π0 每个样本抽一个"噪声程度"$t$：</p>
+  $$t=0.999\,x+0.001,\qquad x\sim\mathrm{Beta}(1.5,\,1)$$
+  <p>openpi 里 $t=1$ 是纯噪声，所以 $t$ 偏大就是偏噪声。累积分布 $F(x)=x^{1.5}$，反过来就能抽样：$x=u^{1/1.5}$（$u$ 是 0~1 均匀数）。</p>
+  <div class="lab">
+    <h3>实验 4 · π0 的时间步抽样器</h3>
+    <canvas id="cD" width="800" height="300" role="img" aria-label="π0 时间步抽样直方图"></canvas>
+    <div class="row">
+      <label>α <input type="range" id="dA" min="0.5" max="4" step="0.1" value="1.5"><span id="dAv">1.5</span></label>
+      <button class="btn" id="dGo">抽 5000 个 t</button>
+      <button class="btn" id="dClr">清空</button>
+    </div>
+    <div class="read" id="dOut"></div>
+  </div>
+  <div class="warn" style="margin-top:12px">只有训练的时间步这样抽。推理仍是均匀的 10 段，步长 0.1。</div>
+  <div class="tip">偏置很温和：噪声程度 ≥ 0.5 的概率约 0.65，而均匀是 0.5。把 α 拉到 1 会回到均匀，拉到 3 就能看到强偏置。</div>
+  <div class="card" style="background:#fff;border:3px solid var(--navy);border-radius:12px;padding:14px 18px;margin-top:14px;">
+    <h3 style="font:400 20px Bangers,'ZCOOL KuaiLe',cursive;letter-spacing:.06em;color:var(--red);margin:0 0 10px;">累积分布 CDF：从左边累积到这里的概率</h3>
+    <p style="margin:0 0 8px;"><b>定义</b>：累积分布函数 $F(x)=P(X\le x)$，就是"随机量 $X$ 小于等于 $x$ 的概率"。</p>
+    <ul style="margin:0 0 10px;padding-left:22px;">
+      <li>密度 $f(x)$ 回答：$x$ 这个点有多高（单点概率是 0，但密度有意义）</li>
+      <li>累积 $F(x)$ 回答：从最左边到 $x$ 这里，累积了多少概率</li>
+    </ul>
+    <p style="margin:0 0 8px;"><b>和密度的关系</b>：$F(x)=\int_0^x f(t)\,dt$（CDF 是密度曲线从 0 到 $x$ 这段的面积）；反过来 $f(x)=\frac{dF(x)}{dx}$（密度是累积的导数）。</p>
+    <p style="margin:0 0 8px;"><b>Beta(1.5, 1) 的例子</b>：密度 $f(x)=1.5\,x^{0.5}$，求累积：</p>
+    $$F(x)=\int_0^x 1.5\,t^{0.5}\,dt = t^{1.5}\Big|_0^x = x^{1.5}$$
+    <p style="margin:0 0 8px;">验证：$F(0)=0$，$F(1)=1$，$F(0.5)=0.5^{1.5}\approx0.354$（从 0 到 0.5 的概率约 35.4%，从 0.5 到 1 约 64.6%）。</p>
+    <p style="margin:0 0 8px;"><b>为什么要 CDF：逆变换抽样</b>。计算机只会生成 0~1 的均匀随机数 $u$。要抽服从 Beta(1.5, 1) 的 $x$：</p>
+    <ol style="margin:0 0 10px;padding-left:22px;">
+      <li>抽均匀数 $u\sim U(0,1)$</li>
+      <li>令 $F(x)=u$，解出 $x$（CDF 的反函数）</li>
+      <li>这个 $x$ 就服从目标分布</li>
+    </ol>
+    <p style="margin:0 0 8px;">对 Beta(1.5, 1)：$u=x^{1.5}$ $\Rightarrow$ $x=u^{2/3}$。实验 4 里的抽样器就是这么做的。</p>
+    <p style="margin:0 0 8px;"><b>为什么这样抽是对的</b>：如果 $u$ 均匀分布在 [0,1]，$u\le0.354$ 的概率是 0.354；而 $F(x)\le0.354$ 对应 $x\le0.5$，所以 $x\le0.5$ 的概率也是 0.354。两者吻合。这叫<b>概率积分变换</b>：把均匀随机数通过 $F^{-1}$ 映射，得到目标分布。</p>
+    <p style="margin:0;font-size:16px;"><b>π0 为什么选 $\beta=1$</b>：除了形状合适（单调上升偏向 1），还因为 CDF 有解析形式 $x^\alpha$，逆变换只要算一次幂，快。如果选 Beta(1.5, 1.2)，就得查表或迭代求解 $F(x)=u$，慢很多。</p>
+  </div>
+  <div class="card" style="background:#fff;border:3px solid var(--navy);border-radius:12px;padding:14px 18px;margin-top:14px;">
+    <h3 style="font:400 20px Bangers,'ZCOOL KuaiLe',cursive;letter-spacing:.06em;color:var(--red);margin:0 0 10px;">为什么训练随机抽、推理均匀走？</h3>
+    <p style="margin:0 0 8px;"><b>训练时随机抽</b>（从 Beta(1.5, 1) 抽 $t$）：</p>
+    <ul style="margin:0 0 10px;padding-left:22px;">
+      <li><b>每个 batch 覆盖全程</b>：如果按 0, 0.1, 0.2 顺序来，前面的 batch 只见高噪声，后面只见低噪声，学得不均衡。随机抽保证每个 batch 里高、中、低噪声都有。</li>
+      <li><b>防止过拟合到固定顺序</b>：模型可能记住"τ=0.3 后面接 0.4"，而不是真正学会"给定 τ=0.3 的噪声，速度场该指向哪"。</li>
+      <li><b>高噪声段更难，多练</b>：低噪声段接近恒等映射（不用怎么调），高噪声段信息弱、方向难判断。Beta(1.5, 1) 让高噪声段样本多约 30%，是隐式的重要性采样。</li>
+    </ul>
+    <p style="margin:0 0 8px;"><b>推理时均匀走</b>（固定步长 0.1，τ = 0, 0.1, ..., 0.9）：</p>
+    <ul style="margin:0 0 10px;padding-left:22px;">
+      <li><b>路径连续</b>：推理要解 ODE $\frac{dA^\tau}{d\tau}=v_\theta(A^\tau,\tau)$，从 $A^0$（噪声）积分到 $A^1$（数据）。欧拉法的公式 $A^{\tau+\Delta\tau}=A^\tau+\Delta\tau\cdot v_\theta(A^\tau,\tau)$ 假设每步的起点 $A^\tau$ 是前一步积出来的，方向才对。随机抽 $\tau$（比如 0.2 → 0.7 → 0.3）会破坏连续性：时间乱序、步长乱跳、每步的起点不是前面积出来的，速度场方向对不上当前状态，累积误差大。类比开车：均匀走是"每 100 米报一次路"，随机跳是"200 米处左转、700 米处右转、300 米处掉头"，起点和方向都不对。</li>
+      <li><b>可复现</b>：同一个起点噪声，每次结果一样，方便调试和对比。</li>
+      <li><b>够准</b>：流匹配路径接近直线，10 段已经足够。扩散模型早期用过随机采样，后来发现 deterministic 更快更稳（DDIM）。</li>
+    </ul>
+    <p style="margin:0;font-size:16px;"><b>如果训练也用均匀顺序</b>：循环遍历太慢（梯度更新不均衡），每样本走完整路径显存爆炸（要算 10 次前向）。所以标准做法是每样本随机抽一个 τ，只算一次。</p>
+  </div>
+</div>
+
+<div class="card">
+  <h2><span class="no">6</span>别慌清单</h2>
+  <table class="t">
+    <tr><th>你看到</th><th>就想成</th></tr>
+    <tr><td>Beta(α, β)</td><td>0~1 上的曲线，α 往右拉、β 往左拉</td></tr>
+    <tr><td>Beta(h+1, k+1)</td><td>好球 h、坏球 k 之后对好球率的把握</td></tr>
+    <tr><td>Beta(n, 1)</td><td>n 个均匀数里最大的那个</td></tr>
+    <tr><td>Beta(1.5, 1)</td><td>温和偏向 1，均值 0.6</td></tr>
+    <tr><td>$B(\alpha,\beta)$</td><td>让面积为 1 的常数，不用管</td></tr>
+  </table>
+  <p style="margin-top:12px">要深入的话，推导（第 k 小的点、Gamma 比值）在 <a href="pi0-论文解读.html">π0 精读页</a> 的 Beta 补充一节里。</p>
+</div>
+
+<div class="card">
+  <h2><span class="no">7</span>过关题：9 道，答对就算懂了</h2>
+  <p>先自己想，再点"看答案"。每题标了对应的卡片，卡住就回去看那一张。</p>
+  <div class="qa"><p class="q"><span class="tag">Q1</span>球员卡里的 Beta(h+1, k+1)，那个 +1 是从哪来的？<small>第 1 张卡</small></p>
+    <details><summary>看答案</summary><div class="ans">
+      <p>两处：Beta 公式的指数本来就是 $\alpha-1$，所以 $\alpha-1=h$；而"一无所知"的起点是平线，对应 $\mathrm{Beta}(1,1)$（指数为 0，相当于开赛前 0 好 0 坏）。</p>
+      <p>起点不是平线时，结果是 $\mathrm{Beta}(a_0+h,\ b_0+k)$。</p></div></details></div>
+  <div class="qa"><p class="q"><span class="tag">Q2</span>投手 5 好 5 坏、起点（先验）是平线，看完成绩后的新曲线（后验）是什么？再换成 50 好 50 坏呢？<small>第 1 张卡</small></p>
+    <details><summary>看答案</summary><div class="ans">
+      <p>后验 = 先验参数加成绩：平线是 $\mathrm{Beta}(1,1)$，所以</p>
+      <p>5 好 5 坏：$\mathrm{Beta}(1+5,\ 1+5)=\mathrm{Beta}(6,6)$；50 好 50 坏：$\mathrm{Beta}(1+50,\ 1+50)=\mathrm{Beta}(51,51)$。</p>
+      <p>均值都是 0.5，标准差约 0.139 和 0.049。</p>
+      <p>比例没变，成绩多了十倍，曲线瘦了很多：把握变大。</p></div></details></div>
+  <div class="qa"><p class="q"><span class="tag">Q3</span>7 好 3 坏。起点（先验）分别用平线 Beta(1,1) 和"强投" Beta(6,2)，看完成绩后的后验与均值各是多少？<small>第 1 张卡</small></p>
+    <details><summary>看答案</summary><div class="ans">
+      <p>平线：$\mathrm{Beta}(8,4)$，均值 $8/12\approx0.667$。强投：$\mathrm{Beta}(13,5)$，均值 $13/18\approx0.722$。</p>
+      <p>Beta(6,2) 相当于开赛前已记账 5 好 1 坏，所以被拉向更高。</p></div></details></div>
+  <div class="qa"><p class="q"><span class="tag">Q4</span>不画图：Beta(3,1) 和 Beta(1,3)，哪个偏向 1？均值各是多少？<small>第 2、3 张卡</small></p>
+    <details><summary>看答案</summary><div class="ans">
+      <p>Beta(3,1) 偏向 1。$\beta=1$ 时只剩 $x^{\alpha-1}$，密度是 $3x^2$，均值 $\frac{3}{4}$。</p>
+      <p>Beta(1,3) 是镜像，密度 $3(1-x)^2$，均值 $\frac{1}{4}$。</p></div></details></div>
+  <div class="qa"><p class="q"><span class="tag">Q5</span>Beta(2,2) 和 Beta(20,20)，谁更瘦？均值呢？<small>第 2 张卡</small></p>
+    <details><summary>看答案</summary><div class="ans">
+      <p>均值都是 0.5。Beta(20,20) 更瘦：标准差约 0.078，Beta(2,2) 约 0.224。</p>
+      <p>原因：方差 $\frac{m(1-m)}{\alpha+\beta+1}$，$\alpha+\beta$ 从 4 变到 40。</p></div></details></div>
+  <div class="qa"><p class="q"><span class="tag">Q6</span>Beta(0.5, 0.5) 长什么样？均值是 0.5，那 0.5 附近是最容易被抽到的吗？<small>第 2 张卡</small></p>
+    <details><summary>看答案</summary><div class="ans">
+      <p>U 形，两头高中间低。均值是 0.5，但 0.5 处的密度只有 $\frac{1}{\pi/2}\approx0.64$，低于均匀分布的 1，反而是最不容易抽到的地方。</p>
+      <p>结论：均值不等于最常出现的值。</p></div></details></div>
+  <div class="qa"><p class="q"><span class="tag">Q7</span>抽 5 个均匀随机数取最大，服从什么分布？它小于 0.5 的概率是多少？<small>第 4 张卡</small></p>
+    <details><summary>看答案</summary><div class="ans">
+      <p>$\mathrm{Beta}(5,1)$。5 个数全都小于 $x$ 的概率是 $x^5$，所以 $P(\max\le0.5)=0.5^5=0.03125$，约 3%。</p></div></details></div>
+  <div class="qa"><p class="q"><span class="tag">Q8</span>π0 的 Beta(1.5, 1) 累积分布是 $x^{1.5}$。如果均匀随机数 $u=0.25$，抽到的 $x$ 和 $t$ 是多少？<small>第 5 张卡</small></p>
+    <details><summary>看答案</summary><div class="ans">
+      <p>令 $x^{1.5}=u$，得 $x=u^{1/1.5}=0.25^{2/3}\approx0.397$。检验：$0.397^{1.5}\approx0.25$。</p>
+      <p>再代入 $t=0.999x+0.001\approx0.398$。这就是实验 4 里抽样器的做法。</p></div></details></div>
+  <div class="qa"><p class="q"><span class="tag">Q9</span>π0 训练时 $t\ge0.5$（偏噪声）的概率约多大？推理时的 10 步也是这样抽的吗？<small>第 5 张卡</small></p>
+    <details><summary>看答案</summary><div class="ans">
+      <p>约 0.647，均匀抽样是 0.5，高噪声段多约三成，偏置温和。</p>
+      <p>不是。Beta 只用在训练的时间步采样；推理是均匀的 10 步，步长 0.1。</p></div></details></div>
+  <div class="tip">自测标准：Q1、Q4、Q5、Q8 都能不看答案答对，就抓住了 Beta 的核心：α、β 当旋钮，α+β 管宽窄，会把 CDF 反过来抽样。</div>
+</div>
+
+<footer>Beta 分布 · 别慌球星卡 · <a href="index.html">返回知识库 →</a></footer>
+</div>
+<script>
+const G=[676.5203681218851,-1259.1392167224028,771.32342877765313,-176.61502916214059,12.507343278686905,-0.13857109526572012,9.9843695780195716e-6,1.5056327351493116e-7];
+function lgam(z){if(z<.5)return Math.log(Math.PI/Math.sin(Math.PI*z))-lgam(1-z);z-=1;let x=.99999999999980993;for(let i=0;i<8;i++)x+=G[i]/(z+i+1);const t=z+7.5;return .5*Math.log(2*Math.PI)+(z+.5)*Math.log(t)-t+Math.log(x);}
+const lbeta=(a,b)=>lgam(a)+lgam(b)-lgam(a+b);
+const pdf=(x,a,b)=>Math.exp((a-1)*Math.log(x)+(b-1)*Math.log(1-x)-lbeta(a,b));
+const N=400,xs=Array.from({length:N},(_,i)=>(i+.5)/N);
+const $=id=>document.getElementById(id);
+const C={navy:'#14213d',red:'#e63946',gold:'#ffc300',grass:'#2a9d5c',grid:'rgba(20,33,61,.15)'};
+// 通用画布：bars 为直方图密度数组(可选)，curve 为 [{f,color}]
+function plot(cv,curves,bars,cap){const g=cv.getContext('2d'),W=cv.width,H=cv.height,L=40,R=14,T=14,B=30;
+  let ym=0;curves.forEach(c=>xs.forEach(x=>{ym=Math.max(ym,c.f(x));}));if(bars)bars.forEach(v=>{ym=Math.max(ym,v);});ym=Math.min(ym,cap||6)*1.12||1;
+  g.clearRect(0,0,W,H);g.font='600 12px IBM Plex Mono,monospace';g.fillStyle=C.navy;g.strokeStyle=C.grid;g.lineWidth=1;
+  for(let i=0;i<=5;i++){const x=L+(W-L-R)*i/5;g.beginPath();g.moveTo(x,T);g.lineTo(x,H-B);g.stroke();g.fillText((i/5).toFixed(1),x-9,H-10);}
+  const X=x=>L+(W-L-R)*x,Y=y=>H-B-(H-B-T)*Math.min(y,ym)/ym;
+  g.beginPath();g.moveTo(L,T);g.lineTo(L,H-B);g.lineTo(W-R,H-B);g.strokeStyle=C.navy;g.lineWidth=2.5;g.stroke();
+  if(bars){const n=bars.length;g.fillStyle='rgba(42,157,92,.55)';bars.forEach((v,i)=>{const x0=X(i/n),w=(W-L-R)/n-1;g.fillRect(x0,Y(v),w,H-B-Y(v));});}
+  curves.forEach(c=>{g.beginPath();xs.forEach((x,i)=>{i?g.lineTo(X(x),Y(c.f(x))):g.moveTo(X(x),Y(c.f(x)));});g.strokeStyle=c.color;g.lineWidth=3.5;g.stroke();});
+  return {X,Y,g,W,H,L,R,T,B};}
+// 实验1：球员成绩
+function runA(){const h=+$('aH').value,k=+$('aK').value,[a0,b0]=$('aP').value.split(',').map(Number),a=h+a0,b=k+b0;$('aHv').textContent=h;$('aKv').textContent=k;
+  const f=x=>pdf(x,a,b);let s=0;const cdf=xs.map(x=>(s+=f(x)/N));const q=p=>xs[Math.max(0,cdf.findIndex(v=>v>=p*s))]||1;
+  const P=plot($('cA'),[{f,color:C.red}],null,1e3);const m=a/(a+b),lo=q(.025),hi=q(.975);
+  const x0=P.X(lo),x1=P.X(hi);P.g.fillStyle='rgba(255,195,0,.35)';P.g.fillRect(x0,P.T,x1-x0,P.H-P.B-P.T);
+  plot2(P,f);
+  $('aOut').innerHTML=`起点 Beta(${a0}, ${b0}) + 成绩 (${h}好, ${k}坏) = Beta(${a}, ${b}) · 均值 <b>${m.toFixed(3)}</b> · 95% 区间 <b>${lo.toFixed(2)} ~ ${hi.toFixed(2)}</b>（宽 ${(hi-lo).toFixed(2)}）`;}
+function plot2(P,f){const g=P.g;let ym=0;xs.forEach(x=>{ym=Math.max(ym,f(x));});ym=ym*1.12;g.beginPath();xs.forEach((x,i)=>{const y=P.H-P.B-(P.H-P.B-P.T)*Math.min(f(x),ym)/ym,X=P.L+(P.W-P.L-P.R)*x;i?g.lineTo(X,y):g.moveTo(X,y);});g.strokeStyle=C.red;g.lineWidth=3.5;g.stroke();}
+['aH','aK','aP'].forEach(i=>$(i).addEventListener('input',runA));
+$('aX10').onclick=()=>{const h=Math.min(400,$('aH').value*10),k=Math.min(400,$('aK').value*10);
+  $('aH').max=Math.max(40,h);$('aK').max=Math.max(40,k);$('aH').value=h;$('aK').value=k;runA();};
+runA();
+// 实验2：形状旋钮
+function runB(){const a=+$('bA').value,b=+$('bB').value;$('bAv').textContent=a;$('bBv').textContent=b;
+  plot($('cB'),[{f:x=>pdf(x,a,b),color:C.red}],null,(a<1||b<1)?5:1e3);
+  const m=a/(a+b),sd=Math.sqrt(a*b/((a+b)**2*(a+b+1)));
+  const shape=(a>1&&b>1)?'钟形':(a<1&&b<1)?'U 形':(a===1&&b===1)?'平线':(a>=1&&b<=1)?'向右上斜':(a<=1&&b>=1)?'向左上斜':'边缘翘起';
+  $('bOut').innerHTML=`Beta(${a}, ${b}) · α+β = <b>${(a+b).toFixed(1)}</b> · 形状 <b>${shape}</b> · 均值 <b>${m.toFixed(3)}</b> · 标准差 <b>${sd.toFixed(3)}</b>`;}
+['bA','bB'].forEach(i=>$(i).addEventListener('input',runB));
+document.querySelectorAll('[data-p]').forEach(el=>el.onclick=()=>{const [a,b]=el.dataset.p.split(',');$('bA').value=a;$('bB').value=b;runB();});
+$('bX2').onclick=()=>{$('bA').value=Math.min(40,+$('bA').value*2);$('bB').value=Math.min(40,+$('bB').value*2);runB();};
+runB();
+// 实验3：n 个均匀数取最大
+const BINS=20;let cH=new Array(BINS).fill(0),cT=0;
+function runC(){const n=+$('cN').value;$('cNv').textContent=n;
+  const bars=cH.map(v=>cT?v/cT*BINS:0);
+  plot($('cC'),[{f:x=>n*Math.pow(x,n-1),color:C.red}],bars,6);
+  $('cOut').innerHTML=`n=${n} · 已抽 <b>${cT}</b> 次 · 理论均值 <b>${(n/(n+1)).toFixed(3)}</b>`+(cT?` · 实测均值 <b>${(cS/cT).toFixed(3)}</b>`:'');}
+let cS=0;
+$('cN').addEventListener('input',()=>{cH.fill(0);cT=0;cS=0;runC();});
+$('cGo').onclick=()=>{const n=+$('cN').value;for(let i=0;i<2000;i++){let m=0;for(let j=0;j<n;j++)m=Math.max(m,Math.random());cH[Math.min(BINS-1,Math.floor(m*BINS))]++;cT++;cS+=m;}runC();};
+$('cClr').onclick=()=>{cH.fill(0);cT=0;cS=0;runC();};
+runC();
+// 实验4：π0 时间步抽样器（逆变换：x=u^(1/α)）
+let dH=new Array(BINS).fill(0),dT=0,dHi=0;
+function runD(){const a=+$('dA').value;$('dAv').textContent=a;
+  const f=t=>{const x=(t-.001)/.999;return x<=0||x>=1?0:pdf(x,a,1)/.999;};
+  plot($('cD'),[{f,color:C.red}],dH.map(v=>dT?v/dT*BINS:0),6);
+  const pm=1-Math.pow(.499/.999,a);
+  $('dOut').innerHTML=`Beta(${a}, 1) · 理论 P(t≥0.5) = <b>${pm.toFixed(3)}</b>`+(dT?` · 实测 <b>${(dHi/dT).toFixed(3)}</b>（已抽 ${dT}）`:'')+` · 均匀时为 0.500`;}
+$('dA').addEventListener('input',()=>{dH.fill(0);dT=0;dHi=0;runD();});
+$('dGo').onclick=()=>{const a=+$('dA').value;for(let i=0;i<5000;i++){const t=Math.pow(Math.random(),1/a)*.999+.001;dH[Math.min(BINS-1,Math.floor(t*BINS))]++;dT++;if(t>=.5)dHi++;}runD();};
+$('dClr').onclick=()=>{dH.fill(0);dT=0;dHi=0;runD();};
+runD();
+// 实验0：用面积读概率
+function runE(){const [al,be]=$('eP').value.split(',').map(Number);let lo=+$('eL').value,hi=+$('eR').value;if(lo>hi)[lo,hi]=[hi,lo];
+  $('eLv').textContent=(+$('eL').value).toFixed(2);$('eRv').textContent=(+$('eR').value).toFixed(2);
+  const f=x=>pdf(x,al,be);const P=plot($('cE'),[{f,color:C.red}],null,1e3);const g=P.g;
+  g.beginPath();g.moveTo(P.X(lo),P.Y(0));xs.forEach(x=>{if(x>=lo&&x<=hi)g.lineTo(P.X(x),P.Y(f(x)));});g.lineTo(P.X(hi),P.Y(0));g.closePath();g.fillStyle='rgba(255,195,0,.55)';g.fill();
+  let area=0,peak=0;xs.forEach(x=>{const v=f(x);peak=Math.max(peak,v);if(x>=lo&&x<=hi)area+=v/N;});
+  $('eOut').innerHTML=`Beta(${al}, ${be}) · P(${lo.toFixed(2)} ≤ x ≤ ${hi.toFixed(2)}) = 面积 = <b>${area.toFixed(3)}</b> · 全部面积 = <b>1</b> · 曲线最高处 <b>${peak.toFixed(2)}</b>（密度，不是概率）`;}
+['eP','eL','eR'].forEach(i=>$(i).addEventListener('input',runE));
+runE();
+if(window.MathJax&&MathJax.typesetPromise)MathJax.typesetPromise().catch(e=>console.log(e));
+</script>
+
