@@ -130,6 +130,16 @@
   .node.dark{background:var(--ink); color:var(--card); box-shadow:3px 3px 0 var(--ink-3);}
   .arrow{font-family:"Space Mono",monospace; font-weight:700; color:var(--ink-3);}
 
+  /* ---------- 探索卡：先猜、再做、后讲 ---------- */
+  .explore{border:3px dashed var(--ink); background:var(--card); margin:30px 0; padding:16px 20px 8px;}
+  .explore .ex-title{font-family:"Space Mono",monospace; font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--red); margin:0 0 4px;}
+  .explore .step{padding:12px 0; border-top:1.5px solid var(--ink-3);}
+  .explore .step > b{font-family:"Space Mono",monospace; font-size:13px; color:var(--blue);}
+  .explore .step p{margin:6px 0 0; font-size:15px; color:var(--ink-2);}
+  .explore details{margin-top:8px;}
+  .explore summary{cursor:pointer; font-family:"Space Mono",monospace; font-size:12.5px; color:var(--ink); font-weight:700;}
+  .explore details p{margin-top:6px; padding-left:12px; border-left:3px solid var(--yellow);}
+
   /* ---------- 实验台 ---------- */
   .lab{border:3px solid var(--ink); background:var(--card-2); margin:24px 0; box-shadow:6px 6px 0 var(--ink);}
   .lab-head{
@@ -272,6 +282,28 @@
   </section>
   <!-- ==================== 1. 主干 A ==================== -->
   <div class="tape"></div>
+  <section class="explore" aria-label="探索卡 · 主干 A">
+    <p class="ex-title">探索卡 · 主干 A · 读之前先做</p>
+    <div class="step">
+      <b>① 读前预测</b>
+      <p>如果每个动作拿到的回报都是正数（比如 10、11、12），直接按它们做梯度上升，会发生什么？哪个动作被推得最多？</p>
+      <details><summary>看提示</summary>
+        <p>所有动作都会被推高，但概率总和必须是 1，所以它们只能相对变化。问题在于“推高”是相对于什么而言的，这正是下面要引入 baseline 的原因。</p>
+      </details>
+    </div>
+    <div class="step">
+      <b>② 动手</b>
+      <p>先别读下面的文字，直接去做实验 1：拖动 baseline，看每个动作是被“推”还是被“拉”。再试着把三个回报改成有负数的情况。代码入口：<a href="代码索引.html#advantage">代码索引 · advantage</a>。</p>
+    </div>
+    <div class="step">
+      <b>③ 收尾：讲给别人听</b>
+      <p>用两三句话解释：为什么减去 baseline 不会让梯度的期望方向跑偏，却能降低方差？</p>
+      <details><summary>对照答案</summary>
+        <p>baseline 只依赖状态，不依赖当前采样的动作，它的期望贡献为零（对动作求期望时 ∇log π 的平均为零）。但它能让单次采样的权重有正有负，波动变小。</p>
+      </details>
+    </div>
+  </section>
+
   <section class="sheet tilt2">
     <span class="plate">§1 · 主干 A · 策略梯度定理</span>
     <h2>一台「拧概率」的机器</h2>
@@ -334,6 +366,28 @@ STEAM      → 从演示的<span class="b">时间顺序</span>自监督出 A    
       <p style="margin:0"><b>死穴 2 · 必须能算出 <a class="concept-link" href="为什么取log.html#concept-log-trick">log π</a>。</b>高斯策略白给。但<a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">流匹配</a> / 扩散策略是「噪声→动作」的确定性 ODE，<strong>log π 根本写不出来</strong>。主干 A 直接卡死——这就是原理页里家族 ③（SAC-Flow / DSRL / πRL）存在的全部理由。</p>
     </div>
   </section>
+  <section class="explore" aria-label="探索卡 · 主干 B">
+    <p class="ex-title">探索卡 · 主干 B · 读之前先做</p>
+    <div class="step">
+      <b>① 读前预测</b>
+      <p>只有最右边的终点有奖励。起点的值要过多少轮才会变成非零？先猜一个数，再数一数从终点到起点有几格。</p>
+      <details><summary>看提示</summary>
+        <p>每轮只能把信息往回传一格。数清楚格子数，再想想第几轮才会轮到起点。</p>
+      </details>
+    </div>
+    <div class="step">
+      <b>② 动手</b>
+      <p>实验 2 只能点按钮观察。想改参数，打开页面源码，搜索 <code>GAMMA</code>，把它从 0.9 改成 0.5，刷新后再看要几轮才收敛。想延长走廊，需要同时改 <code>N</code> 以及 <code>REW</code>、<code>V</code> 两个数组的长度。实验 3 可以反复点击，观察 max 为什么总把结果推高。</p>
+    </div>
+    <div class="step">
+      <b>③ 收尾：讲给别人听</b>
+      <p>用自己的话讲一遍 on-policy 和 off-policy 的区别，并举一个你熟悉的例子。</p>
+      <details><summary>对照答案</summary>
+        <p>学习时用的数据是否必须来自当前正在学的策略。是，就是 on-policy；不一定，就是 off-policy。例如用上周的旧录像继续训练，就是 off-policy。</p>
+      </details>
+    </div>
+  </section>
+
   <!-- ==================== 2. 主干 B ==================== -->
   <div class="tape"></div>
   <section class="sheet tilt">
@@ -350,7 +404,7 @@ STEAM      → 从演示的<span class="b">时间顺序</span>自监督出 A    
     </div>
 
     <h3 id="concept-bellman" class="concept-anchor">价目表必须自己跟自己对得上 <a class="code-jump" href="代码索引.html#bellman" style="font:12px ui-monospace,Consolas,monospace;white-space:nowrap;text-decoration:none;border:1px dashed currentColor;border-radius:4px;padding:0 5px;margin-left:4px;opacity:.8">⟨/⟩ 代码</a></h3>
-    <p>怎么学这张表？不需要跑完整条轨迹。因为一张<strong>正确</strong>的价目表必然满足一条自洽条件——今天的价，等于今天的钱加上明天最好的价（打个折）：</p>
+    <p>怎么学这张表？不需要跑完整条轨迹。因为一张<strong>正确</strong>的价目表必然满足一条自洽条件——今天的预期总收益，等于这一步拿到的奖励，加上明天最好的预期总收益（打个折）：</p>
     <div class="fml big">Q(s,a) = r + γ · <span class="r">max</span><sub>a'</sub> Q(s', a')</div>
     <p>于是训练方式变成：<em>把右边算出来当「标准答案」，让左边去拟合它</em>。反复迭代直到不动为止（不动点迭代）。这个「用自己算出的答案训练自己」的把戏叫 <strong><a class="concept-link" href="RLToken-漫画分镜解读.html#concept-bootstrap">bootstrapping</a></strong>，是主干 B 的心脏。</p>
 
