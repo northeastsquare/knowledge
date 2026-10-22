@@ -229,7 +229,7 @@
       </div>
       <div class="zh">
         <span class="lbl">中文译述</span>
-        <p>机器人学习有望释放灵活、通用、灵巧的机器人系统的潜力，但要达到真实世界可用的通用性，仍在数据、泛化和鲁棒性上遇到重大障碍。论文讨论通用机器人策略（即机器人基础模型）如何应对这些挑战，并提出一种新的<a class="concept-link" href="concepts.html#flow-matching">流匹配</a>架构：以预训练视觉语言模型为底座，继承互联网规模的语义知识；在来自多种灵巧机器人平台（单臂、双臂、移动操作机）的大规模数据上训练；评估其直接提示执行、跟随人类或高层 VLM 的语言指令、以及通过微调学习新技能的能力，任务涵盖叠衣服、清理桌面和组装纸箱。</p>
+        <p>机器人学习有望释放灵活、通用、灵巧的机器人系统的潜力，但要达到真实世界可用的通用性，仍在数据、泛化和鲁棒性上遇到重大障碍。论文讨论通用机器人策略（即机器人基础模型）如何应对这些挑战，并提出一种新的<a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">流匹配</a>架构：以预训练视觉语言模型为底座，继承互联网规模的语义知识；在来自多种灵巧机器人平台（单臂、双臂、移动操作机）的大规模数据上训练；评估其直接提示执行、跟随人类或高层 VLM 的语言指令、以及通过微调学习新技能的能力，任务涵盖叠衣服、清理桌面和组装纸箱。</p>
       </div>
     </div>
   </section>
@@ -253,7 +253,7 @@
           <li><strong>架构</strong>：模型要能同时利用多源数据，又能表达精细、微妙的物理行为；</li>
           <li><strong>训练配方</strong>：作者认为这是最关键的一环，因为大模型在 NLP 和视觉中的进步，很大程度依赖精心设计的预训练与后训练数据策略。</li>
         </ul>
-        <p>论文提出的 π0 框架分别回应这三点：用 VLM 底座引入互联网经验以覆盖多样数据源；用跨本体训练（<a class="concept-link" href="concepts.html#cross-embodiment">跨本体</a>）合并不同机器人的动作空间；用带<a class="concept-link" href="concepts.html#action-chunk">动作块</a>的流匹配输出高频动作（最高约 50 Hz），这是灵巧任务的关键。与之相比，自回归离散化的 VLA（如 OpenVLA）很难胜任这类高频灵巧任务。作者认为自己的贡献是“整合性”的：不只是一个架构，还包括预训练配方、预训练与后训练阶段，以及大量真实世界实验。</p>
+        <p>论文提出的 π0 框架分别回应这三点：用 VLM 底座引入互联网经验以覆盖多样数据源；用跨本体训练（<a class="concept-link" href="Qwen-VLA-论文解读.html#concept-cross-embodiment">跨本体</a>）合并不同机器人的动作空间；用带<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块</a>的流匹配输出高频动作（最高约 50 Hz），这是灵巧任务的关键。与之相比，自回归离散化的 VLA（如 <a class="concept-link" href="OpenVLA-vs-pi系列-对比.html#concept-action-binning">OpenVLA</a>）很难胜任这类高频灵巧任务。作者认为自己的贡献是“整合性”的：不只是一个架构，还包括预训练配方、预训练与后训练阶段，以及大量真实世界实验。</p>
       </div>
     </div>
   </section>
@@ -312,11 +312,11 @@
       </div>
       <div class="zh">
         <span class="lbl">中文译述</span>
-        <p><strong>骨干</strong>是一个语言模型 Transformer。按照标准的“后融合”VLM 做法，图像编码器把机器人的图像观测映射到与语言 token 相同的嵌入空间。在此基础上加入机器人专用的输入（关节状态）和输出（动作）。连续动作分布由<a class="concept-link" href="concepts.html#flow-matching">条件流匹配</a>建模。</p>
-        <p>架构受 Transfusion 启发：同一个 Transformer 用两种目标训练，连续输出用流匹配损失，离散输出用交叉熵。作者的改进是：对机器人专用的 token（状态和动作）使用另一套权重。这相当于一个两元素的混合专家（MoE）结构，第一组处理图像和文本，第二组处理机器人输入输出，作者把第二组权重称为<a class="concept-link" href="concepts.html#action-expert">动作专家（action expert）</a>。</p>
+        <p><strong>骨干</strong>是一个语言模型 Transformer。按照标准的“后融合”VLM 做法，图像编码器把机器人的图像观测映射到与语言 token 相同的嵌入空间。在此基础上加入机器人专用的输入（关节状态）和输出（动作）。连续动作分布由<a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">条件流匹配</a>建模。</p>
+        <p>架构受 Transfusion 启发：同一个 Transformer 用两种目标训练，连续输出用流匹配损失，离散输出用交叉熵。作者的改进是：对机器人专用的 token（状态和动作）使用另一套权重。这相当于一个两元素的混合专家（MoE）结构，第一组处理图像和文本，第二组处理机器人输入输出，作者把第二组权重称为<a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家（action expert）</a>。</p>
         <p><strong>建模目标</strong>：给定观测 o_t（多张 RGB 图像、语言指令、关节状态 q_t），预测未来 H = 50 步的动作块 A_t，即建模 p(A_t | o_t)。图像和状态分别经过编码器，再线性投影到语言 token 的同一嵌入空间。动作块里每一步动作对应一个动作 token，经过动作专家处理。</p>
-        <p><strong>训练</strong>：对每个动作 token 施加条件流匹配损失。采样高斯噪声 ε，构造带噪动作 A^τ = τ·A + (1−τ)·ε（τ=1 为干净动作，τ=0 为纯噪声），让网络 v 去拟合去噪向量场 u = A − ε。动作专家使用<strong>全双向注意力</strong>，动作 token 之间互相可见。流匹配时间步 τ 不从均匀分布采样，而是采自偏向高噪声段的 Beta 分布（细节见附录 B）。</p>
-        <p><strong>推理</strong>：从随机噪声 A^0 出发，沿学到的向量场做前向欧拉积分，从 τ=0 积分到 τ=1，步长 0.1，共 10 步。前缀（图像与语言）的注意力 key/value 可以缓存，每步只重算动作 token，这就是<a class="concept-link" href="concepts.html#kv-cache">KV cache</a>的用处。</p>
+        <p><strong>训练</strong>：对每个动作 token 施加条件流匹配损失。采样高斯噪声 ε，构造带噪动作 A^τ = τ·A + (1−τ)·ε（τ=1 为干净动作，τ=0 为纯噪声），让网络 v 去拟合去噪向量场 u = A − ε。动作专家使用<strong>全双向注意力</strong>，动作 token 之间互相可见。流匹配时间步 τ 不从均匀分布采样，而是采自偏向高噪声段的 <a class="concept-link" href="pi0-论文解读.html#concept-beta-noise-sampling">Beta 分布</a>（细节见附录 B）。</p>
+        <p><strong>推理</strong>：从随机噪声 A^0 出发，沿学到的向量场做<a class="concept-link" href="pi0-论文解读.html#concept-euler-integration">前向欧拉积分</a>，从 τ=0 积分到 τ=1，步长 0.1，共 10 步。前缀（图像与语言）的注意力 key/value 可以缓存，每步只重算动作 token，这就是<a class="concept-link" href="Realtime-VLA-论文解读.html#concept-kv-cache">KV cache</a>的用处。</p>
         <p><strong>规模</strong>：PaliGemma 约 30 亿参数，动作专家新增 3 亿参数（从头初始化），总计约 33 亿参数。另外作者还训练了一个不使用 VLM 初始化的对照模型 π0-small，约 4.7 亿参数，用于验证 VLM 预训练的收益。</p>
       </div>
     </div>
@@ -469,7 +469,7 @@
       </div>
       <div class="zh">
         <span class="lbl">中文译述</span>
-        <p>这一组实验在与预训练数据差异较大的新任务上，对 π0 做微调，并与为灵巧操作专门设计的方法比较（如 Diffusion Policy、Octo、OpenVLA、ACT 等）。任务包括：叠碗、叠毛巾、把保鲜盒放进微波炉、更换纸巾卷、把物品放进抽屉。评分细则见附录 E。具体数值以原文图表为准，这里不复述细节。作者的结论是：π0 在这些任务上整体优于对比方法，说明灵巧任务既受益于架构，也受益于预训练。</p>
+        <p>这一组实验在与预训练数据差异较大的新任务上，对 π0 做微调，并与为灵巧操作专门设计的方法比较（如 <a class="concept-link" href="DiffusionPolicy-论文解读.html#concept-diffusion-policy">Diffusion Policy</a>、Octo、OpenVLA、ACT 等）。任务包括：叠碗、叠毛巾、把保鲜盒放进微波炉、更换纸巾卷、把物品放进抽屉。评分细则见附录 E。具体数值以原文图表为准，这里不复述细节。作者的结论是：π0 在这些任务上整体优于对比方法，说明灵巧任务既受益于架构，也受益于预训练。</p>
       </div>
     </div>
 
@@ -534,7 +534,7 @@
         <p><strong>时间步注入</strong>：每个带噪动作的嵌入由一个小 MLP 生成。动作先经过一层线性投影；时间步先做正弦位置编码；两者拼接后，经过第二层线性层、一次 swish 激活，再经过第三层线性层，得到输入动作专家的 token。</p>
         <p><strong>注意力掩码</strong>：分成三块：[图像与语言]、[状态]、[动作]。块内全双向，块与块之间只能看到自己及之前的块。图像与语言块不能看到后面的新输入，以尽量保持 VLM 预训练时的分布；状态单独成块，因为它在去噪的每一步都不变，因此它的 key/value 可以缓存；动作块可以看到全部输入。</p>
         <p><strong>动作专家</strong>：π0 是一个 Transformer，有两套权重（即两个“专家”），每个 token 只走其中一套，两者只在自注意力层中交互。图像与语言走较大的 VLM 骨干（初始化自 PaliGemma，即 Gemma 2B：宽 2048、深 18、多查询注意力，1 个 KV 头）；状态与动作走动作专家。为了加速推理（需要多次前向），作者把动作专家缩小为宽 1024、MLP 宽 4096，参数约 3 亿。</p>
-        <p><strong>时间步采样</strong>：原始流匹配论文采用均匀分布；Stable Diffusion 3 所用的 logit-normal 分布偏向中间时间步。作者认为动作预测与高分辨率图像生成不同：给定机器人观测，动作分布的约束比文字标签约束图像要强得多，因此他们让采样偏向高噪声一端，并截断到 s = 0.999 以上不采样。采样分布为 Beta(1.5, 1) 的变换。因为超过 s 的时间步永远不会被采样，只要积分步长大于 1 − s = 0.001（即最多 1000 步积分）就足够了。</p>
+        <p><strong><a class="concept-link" href="pi0-论文解读.html#concept-beta-noise-sampling">时间步采样</a></strong>：原始流匹配论文采用均匀分布；Stable Diffusion 3 所用的 logit-normal 分布偏向中间时间步。作者认为动作预测与高分辨率图像生成不同：给定机器人观测，动作分布的约束比文字标签约束图像要强得多，因此他们让采样偏向高噪声一端，并截断到 s = 0.999 以上不采样。采样分布为 Beta(1.5, 1) 的变换。因为超过 s 的时间步永远不会被采样，只要积分步长大于 1 − s = 0.001（即最多 1000 步积分）就足够了。</p>
         <p><strong>代码对照</strong>：在 openpi 的训练损失里，时间步采样与带噪动作的构造直接对应上面这些公式。注意代码里的 t 是噪声比例（t=1 为纯噪声），与论文 τ 的方向相反，但两者描述的是同一个构造。</p>
       </div>
     </div>
@@ -574,7 +574,7 @@
             </tbody>
           </table>
         </div>
-        <p>因为一次输出完整的 H 步动作块，机器人可以连续执行最多 H 步再重新推理。作者早期试过时间集成（temporal ensembling），发现会损害性能，因此不做动作聚合，而是开环执行动作块。执行节奏：20 Hz 的 UR5e 和 Franka 每执行 16 步（约 0.8 秒）重新推理一次；其余以 50 Hz 运行的机器人每执行 25 步（约 0.5 秒）重新推理一次。</p>
+        <p>因为一次输出完整的 H 步动作块，机器人可以连续执行最多 H 步再重新推理。作者早期试过<a class="concept-link" href="RTC-实时动作分块-论文解读.html#concept-temporal-ensembling">时间集成（temporal ensembling）</a>，发现会损害性能，因此不做动作聚合，而是开环执行动作块。执行节奏：20 Hz 的 UR5e 和 Franka 每执行 16 步（约 0.8 秒）重新推理一次；其余以 50 Hz 运行的机器人每执行 25 步（约 0.5 秒）重新推理一次。</p>
         <p>作者补充说，量化等优化还能进一步降低时延。</p>
       </div>
     </div>
@@ -610,7 +610,7 @@
           <tr><td>时间步采样与带噪动作</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L196-L200" target="_blank" rel="noreferrer">pi0.py · compute_loss（采样）</a></td><td>Beta(1.5,1) 变换到截断区间；x_t 为噪声与动作的线性插值</td></tr>
           <tr><td>流匹配训练损失</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L189-L214" target="_blank" rel="noreferrer">pi0.py · compute_loss</a></td><td>回归速度场 u = 噪声 − 动作 的均方误差</td></tr>
           <tr><td>推理：欧拉积分 + KV 缓存</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L217-L280" target="_blank" rel="noreferrer">pi0.py · sample_actions</a></td><td>num_steps = 10，dt = −1/num_steps；前缀 KV 只算一次</td></tr>
-          <tr><td>离散化对照：FAST</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/tokenizer.py#L51-L145" target="_blank" rel="noreferrer">tokenizer.py · FASTTokenizer</a></td><td>论文 II 节批评的自回归离散化路线，openpi 另有 FAST 版本</td></tr>
+          <tr><td>离散化对照：FAST</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/tokenizer.py#L51-L145" target="_blank" rel="noreferrer">tokenizer.py · FASTTokenizer</a></td><td>论文 II 节批评的自回归离散化路线，openpi 另有 <a class="concept-link" href="FAST-论文解读.html#concept-fast">FAST</a> 版本</td></tr>
           <tr><td>跨本体的观测/动作映射</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/policies/aloha_policy.py" target="_blank" rel="noreferrer">policies/aloha_policy.py</a></td><td>把各机器人的观测与动作统一到固定维度（对应 V-A 的维度补零与掩码）</td></tr>
         </tbody>
       </table>
@@ -621,7 +621,16 @@
     </p>
   </section>
 
-  <footer>
+    <aside class="concept-related" aria-label="相关概念">
+    <strong>相关概念</strong>
+    <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">流匹配：训练与推理拆解</a>
+    <a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家如何读取 VLM</a>
+    <a class="concept-link" href="KI-知识隔离-论文解读.html#concept-knowledge-insulation">后续：知识隔离如何保护骨干</a>
+    <a class="concept-link" href="RTC-实时动作分块-论文解读.html#concept-inpainting">实时执行：RTC</a>
+    <a class="concept-link" href="concepts.html">全部概念 →</a>
+  </aside>
+
+<footer>
     <span>中英对照 · π0（arXiv 2410.24164）· 译文为译述，英文原文见 pdfs/pi0.pdf</span>
     <a href="index.html">返回知识库 →</a>
   </footer>

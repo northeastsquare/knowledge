@@ -174,14 +174,14 @@
   <p>新人不直接处理图像和文字 token。它在每一层通过注意力，读取老师在这一层算出的 key 和 value。这就是 <a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a>的工作方式。两者能逐层对接，是因为它们深度相同（18 层）、注意力头维度相同（256），只是专家更窄（宽 1024，骨干宽 2048）。<span class="src">附录 B</span></p>
   <p>问题出在回流。新人写错了一个动作，误差会沿着它读笔记的那条路<strong>倒着</strong>传回去，改的恰恰是老师的笔记本身。新人还没学会，老师先被改坏了。</p>
 
-  <div class="aside">“倒着传回去”不是比喻。训练时，流匹配损失的梯度经过专家的注意力，穿回骨干的 K、V 投影，再穿进骨干的全部权重。这篇论文讲的，就是这一条反向路径。</div>
+  <div class="aside">“倒着传回去”不是比喻。训练时，<a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">流匹配损失</a>的梯度经过专家的注意力，穿回骨干的 K、V 投影，再穿进骨干的全部权重。这篇论文讲的，就是这一条反向路径。</div>
 </section>
 
 <!-- ============ 02 ============ -->
 <section id="s2">
   <div class="n">02 · 病理</div>
   <h2>梯度是信使，也可能是污染源</h2>
-  <p>在 <a href="pi0-论文解读.html">π0</a> 的训练方式里，骨干和动作专家之间有两条通道：前向的 K/V（读），以及反向的梯度（写）。直觉上人们更关注前向，因为它是“知识从 VLM 流向动作”的那一条。论文指出，反向那条路同样存在，而且在新专家刚初始化时最危险。</p>
+  <p>在 <a class="concept-link" href="pi0-论文解读.html#concept-action-expert">π0</a> 的训练方式里，骨干和动作专家之间有两条通道：前向的 K/V（读），以及反向的梯度（写）。直觉上人们更关注前向，因为它是“知识从 VLM 流向动作”的那一条。论文指出，反向那条路同样存在，而且在新专家刚初始化时最危险。</p>
 
   <div class="rig" role="img" aria-label="骨干向动作专家前向传递 K 和 V；动作专家的梯度被剪断，不回传到骨干">
     <div class="box"><b>VLM 骨干</b><small>2B LM + 视觉 · 已预训练</small></div>
@@ -201,7 +201,7 @@
   <p>论文没有直接测量梯度或表征的变化，它的证据都是行为层面的：几组对照实验，每组只改一个地方。把它们排在一起，结论才站得住。</p>
 
   <div class="chain">
-    <div class="ev"><b>让梯度回流的，语言都差</b><p>“items in drawer” 任务（图 4b）里，凡是让专家梯度进入骨干的方案（π0、不切梯度的联合训练），语言跟随都明显变差。π0-FAST 没有专家，语言跟随反而保持得好。</p></div>
+    <div class="ev"><b>让梯度回流的，语言都差</b><p>“items in drawer” 任务（图 4b）里，凡是让专家梯度进入骨干的方案（π0、不切梯度的联合训练），语言跟随都明显变差。<a class="concept-link" href="FAST-论文解读.html#concept-pi0-fast">π0-FAST</a> 没有专家，语言跟随反而保持得好。</p></div>
     <div class="ev"><b>新增的随机参数越少，伤害越小</b><p>Transfusion 直接用骨干权重去噪连续动作，唯一新增的随机参数是动作投影层。它的语言跟随好于带专家的 π0（图 5）。</p></div>
     <div class="ev"><b>不切梯度时，VLM 数据最能救场</b><p>通才模型上，去掉 VLM 数据对“不切梯度的联合训练”打击最大（图 6a）。作者的解释是：没有隔离时，这些数据格外需要，用来避免对预训练表征的灾难性干扰。</p></div>
     <div class="ev"><b>排除一个混淆因素：状态表示</b><p>π0 用连续状态，KI 默认用文本状态。附录图 10 把两种状态表示都试了：KI 两种都行，π0 两种都差。所以差距不是状态表示带来的。顺带一个旁证：“特殊 token 状态”同样是随机初始化的新嵌入，它的表现最差。</p></div>
@@ -219,7 +219,7 @@
   <ul class="cut3">
     <li data-k="I">
       <h3>联合训练：骨干也预测离散动作</h3>
-      <p>把动作用 <a class="concept-link" href="FAST-论文解读.html#concept-fast">FAST</a> 压缩成离散 token，让骨干做普通的 next-token 预测，同时专家用流匹配预测连续动作。FAST token 和文字共用同一个输出口，不需要新加 head。</p>
+      <p>把动作用 <a class="concept-link" href="FAST-论文解读.html#concept-fast">FAST</a> 压缩成离散 token，让骨干做普通的 next-token 预测，同时专家用<a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">流匹配</a>预测连续动作。FAST token 和文字共用同一个输出口，不需要新加 head。</p>
       <p class="why">论文原话：离散 token 提供了一个“不受动作专家未初始化权重影响”的替代学习信号。它是骨干预训练时就熟悉的任务形式，所以能接替被切断的那条梯度，继续教骨干表示机器人任务。消融里，换成朴素的逐 bin 离散化：仍比纯连续训练好，但不如 FAST；按步长 5 稀疏采样又比稠密版本好。</p>
     </li>
     <li data-k="II">
@@ -263,7 +263,7 @@
   <h3>损失怎么合在一起</h3>
   <p>式 (4)：<code>L = 交叉熵(文字 + FAST token) + α · 流匹配损失</code>，两项各带掩码，所以一个 batch 里可以混合纯 VLM 样本、纯动作样本、语言加动作样本。训练时三类 token 共用一次前向，靠掩码分开；推理时只跑专家的几步 flow 积分，<strong>不生成 FAST token</strong>。</p>
 
-  <div class="aside">流匹配的写法：<code>a<sup>τ</sup> = τ·a + (1−τ)·ω</code>，网络预测 <code>ω − a</code>。在这个约定下 τ→0 是纯噪声，所以论文说时间步分布“偏向低 τ”，等价于 <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">π0 页</a>所说的“偏向高噪声段”，只是 τ 的方向记法相反。分布为 <code>Beta((s−τ)/s; 1.5, 1)</code>，s = 0.999。<span class="src">附录 B</span></div>
+  <div class="aside">流匹配的写法：<code>a<sup>τ</sup> = τ·a + (1−τ)·ω</code>，网络预测 <code>ω − a</code>。在这个约定下 τ→0 是纯噪声，所以论文说<a class="concept-link" href="pi0-论文解读.html#concept-beta-noise-sampling">时间步分布</a>“偏向低 τ”，等价于 <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">π0 页</a>所说的“偏向高噪声段”，只是 τ 的方向记法相反。分布为 <code>Beta((s−τ)/s; 1.5, 1)</code>，s = 0.999。<span class="src">附录 B</span></div>
 </section>
 
 <!-- ============ 05 ============ -->
@@ -368,7 +368,7 @@
   <div class="n">08 · 容易读错的地方</div>
   <h2>六处容易误解</h2>
 
-  <div class="ask"><b>① KI 不是 π0.5 的两阶段。</b><a href="pi0.5_论文测验_精美版.html">π0.5</a> 先只用 FAST 训练，再在后训练里加入随机初始化的专家，一起训练。KI 从一开始就把两种动作表示放在同一个阶段里训练。论文的说法是：它把 π0.5 的做法“形式化”，并扩展成单阶段配方。</div>
+  <div class="ask"><b>① KI 不是 π0.5 的两阶段。</b><a class="concept-link" href="pi0.5_论文测验_精美版.html#concept-two-stage-training">π0.5</a> 先只用 FAST 训练，再在后训练里加入随机初始化的专家，一起训练。KI 从一开始就把两种动作表示放在同一个阶段里训练。论文的说法是：它把 π0.5 的做法“形式化”，并扩展成单阶段配方。</div>
   <div class="ask"><b>② stop-gradient 不等于“专家看不见骨干”。</b>专家全程读取骨干每一层的 K/V，切断的只是回传。</div>
   <div class="ask"><b>③ α = 1 不是调参调出来的。</b>论文说，有了 sg，流匹配损失作用在“一组独立的权重”上，所以直接设 α = 1。展开来看：交叉熵只更新骨干（骨干看不见专家），流匹配损失只更新专家（回传被切断），两项损失没有共享参数，不存在谁压过谁。α 只相当于缩放专家这一侧的梯度。</div>
   <div class="mine">若优化器是 Adam 类（论文没写明），按参数归一化的更新会把这种整体缩放几乎抵消掉，α 取多少影响就更小了。</div>
@@ -441,6 +441,15 @@
     <p>只能算支持，不能算证明。论文把它的失败归因于注意力设置（自回归 token 能看连续输入），而且最接近的对照“不切梯度、无 VLM 数据的联合训练”被描述为“自回归 token 看不到连续输入的 HybridVLA 变体”。但 HybridVLA 用的是朴素分词，联合训练用的是 FAST，两者不止注意力一处不同。</p>
   </details>
 </section>
+
+  <aside class="concept-related" aria-label="相关概念">
+    <strong>相关概念</strong>
+    <a class="concept-link" href="pi0.5_论文测验_精美版.html#concept-two-stage-training">π0.5：两阶段动作训练</a>
+    <a class="concept-link" href="FAST-论文解读.html#concept-fast">FAST：离散动作监督信号</a>
+    <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">流匹配：连续动作专家的目标</a>
+    <a class="concept-link" href="#concept-co-training">VLM co-training：通用语义数据</a>
+    <a class="concept-link" href="concepts.html">全部概念 →</a>
+  </aside>
 
 <footer>
   论文：Knowledge Insulating Vision-Language-Action Models: Train Fast, Run Fast, Generalize Better · arXiv:2505.23705 (cs.LG)<br>

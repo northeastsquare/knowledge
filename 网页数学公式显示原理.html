@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>网页数学公式显示原理 · 从 LaTeX 到浏览器</title>
+<meta name="description" content="深入理解 KaTeX、MathJax、预渲染三种方案：工作原理、性能对比、如何选择">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<link rel="stylesheet" href="concepts.css">
+<style>
+:root {
+  --bg: #0a0e27;
+  --surface: #1a1f3a;
+  --surface-lift: #252b4a;
+  --border: #3d4563;
+  --text: #e4e7f0;
+  --text-dim: #9ca3bf;
+  --accent: #64ffda;
+  --accent-alt: #ff6b9d;
+  --code-bg: #151a35;
+  --warn: #ffb86c;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+  line-height: 1.7;
+  overflow-x: hidden;
+}
+
+.stars {
+  position: fixed;
+  inset: 0;
+  background-image:
+    radial-gradient(2px 2px at 20% 30%, white, transparent),
+    radial-gradient(2px 2px at 60% 70%, white, transparent),
+    radial-gradient(1px 1px at 50% 50%, white, transparent),
+    radial-gradient(1px 1px at 80% 10%, white, transparent),
+    radial-gradient(2px 2px at 90% 60%, white, transparent),
+    radial-gradient(1px 1px at 33% 80%, white, transparent);
+  background-size: 200% 200%, 250% 250%, 300% 300%, 150% 150%, 180% 180%, 220% 220%;
+  background-position: 0% 0%, 100% 100%, 50% 50%, 80% 20%, 10% 90%, 40% 60%;
+  animation: twinkle 120s ease-in-out infinite;
+  pointer-events: none;
+  opacity: 0.4;
+  z-index: -1;
+}
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.6; }
+}
+
+header {
+  padding: 80px 24px 60px;
+  text-align: center;
+  position: relative;
+}
+
+header::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, var(--accent) 0%, transparent 70%);
+  opacity: 0.1;
+  filter: blur(60px);
+}
+
+.back-link {
+  display: inline-block;
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 14px;
+  margin-bottom: 20px;
+  font-family: "Courier New", monospace;
+  letter-spacing: 0.05em;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+h1 {
+  font-size: clamp(32px, 6vw, 56px);
+  font-weight: 800;
+  background: linear-gradient(135deg, var(--accent), var(--accent-alt));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 16px;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  font-size: 18px;
+  color: var(--text-dim);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.wrap {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 24px 100px;
+}
+
+.section {
+  margin-bottom: 60px;
+}
+
+h2 {
+  font-size: 32px;
+  color: var(--accent);
+  margin-bottom: 24px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+h2::before {
+  content: "//";
+  font-family: "Courier New", monospace;
+  font-size: 24px;
+  opacity: 0.6;
+}
+
+h3 {
+  font-size: 24px;
+  color: var(--text);
+  margin: 32px 0 16px;
+  font-weight: 600;
+}
+
+h4 {
+  font-size: 18px;
+  color: var(--accent-alt);
+  margin: 24px 0 12px;
+  font-weight: 600;
+}
+
+p {
+  margin-bottom: 16px;
+  color: var(--text);
+}
+
+strong {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.highlight {
+  background: var(--surface);
+  border-left: 4px solid var(--accent);
+  padding: 20px 24px;
+  margin: 24px 0;
+  border-radius: 0 8px 8px 0;
+}
+
+.demo-box {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 28px;
+  margin: 32px 0;
+  position: relative;
+}
+
+.demo-box::before {
+  content: attr(data-label);
+  position: absolute;
+  top: -12px;
+  left: 20px;
+  background: var(--bg);
+  padding: 4px 12px;
+  font-size: 12px;
+  color: var(--accent);
+  font-family: "Courier New", monospace;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.demo-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--accent-alt);
+  margin-bottom: 16px;
+}
+
+code {
+  font-family: "Courier New", "Consolas", monospace;
+  background: var(--code-bg);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 14px;
+  color: var(--accent);
+}
+
+pre {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 20px;
+  overflow-x: auto;
+  margin: 16px 0;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+pre code {
+  background: none;
+  padding: 0;
+  color: var(--text);
+}
+
+.code-block {
+  position: relative;
+}
+
+.code-label {
+  position: absolute;
+  top: -10px;
+  right: 20px;
+  background: var(--surface-lift);
+  padding: 4px 12px;
+  font-size: 11px;
+  color: var(--text-dim);
+  font-family: "Courier New", monospace;
+  border-radius: 4px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 24px 0;
+  font-size: 15px;
+}
+
+th {
+  background: var(--surface);
+  color: var(--accent);
+  padding: 12px 16px;
+  text-align: left;
+  border: 1px solid var(--border);
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 13px;
+  letter-spacing: 0.05em;
+}
+
+td {
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+
+tr:hover {
+  background: var(--surface);
+}
+
+ul, ol {
+  margin: 16px 0 16px 32px;
+}
+
+li {
+  margin-bottom: 10px;
+  color: var(--text);
+}
+
+li strong {
+  color: var(--accent-alt);
+}
+
+.comparison {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  margin: 32px 0;
+}
+
+.card {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  transition: all 0.3s ease;
+}
+
+.card:hover {
+  border-color: var(--accent);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(100, 255, 218, 0.1);
+}
+
+.card h4 {
+  margin-top: 0;
+  font-size: 20px;
+}
+
+.card ul {
+  margin: 12px 0 0 20px;
+  font-size: 14px;
+}
+
+.card li {
+  margin-bottom: 8px;
+}
+
+.pros {
+  color: var(--accent);
+}
+
+.cons {
+  color: var(--accent-alt);
+}
+
+.note {
+  background: var(--surface-lift);
+  border-left: 4px solid var(--warn);
+  padding: 16px 20px;
+  margin: 24px 0;
+  border-radius: 0 8px 8px 0;
+  font-size: 15px;
+}
+
+.note strong {
+  color: var(--warn);
+}
+
+.workflow {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: 12px;
+  padding: 24px;
+  margin: 24px 0;
+}
+
+.step {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 20px;
+  padding-bottom: 20px;
+  border-bottom: 1px dashed var(--border);
+}
+
+.step:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.step-num {
+  flex: none;
+  width: 32px;
+  height: 32px;
+  background: var(--accent);
+  color: var(--bg);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.step-content {
+  flex: 1;
+}
+
+.step-title {
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+
+.step-desc {
+  color: var(--text-dim);
+  font-size: 14px;
+}
+
+footer {
+  margin-top: 80px;
+  padding-top: 32px;
+  border-top: 1px solid var(--border);
+  text-align: center;
+  color: var(--text-dim);
+  font-size: 14px;
+}
+
+footer a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+footer a:hover {
+  text-decoration: underline;
+}
+
+.formula-demo {
+  background: var(--code-bg);
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  padding: 24px;
+  margin: 20px 0;
+  text-align: center;
+  font-size: 18px;
+}
+
+@media (max-width: 768px) {
+  .comparison {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="stars"></div>
+
+<header>
+  <a href="index.html" class="back-link">← 返回知识库</a>
+  <h1>网页数学公式显示原理</h1>
+  <p class="subtitle">深入理解 KaTeX、MathJax、预渲染三种方案：工作原理、性能对比、如何选择</p>
+</header>
+
+<div class="wrap">
+
+<div class="section">
+  <h2>核心问题</h2>
+  <div class="highlight">
+    <p><strong>浏览器只认 HTML/CSS/JavaScript</strong>，但数学公式通常用 LaTeX 写成（如 <code>\frac{1}{2}</code>）。如何让浏览器显示出标准数学书籍里的样式？</p>
+    <div class="formula-demo">
+      $$f(x) = \frac{\lambda^k \cdot x^{k-1} \cdot e^{-\lambda x}}{\Gamma(k)}$$
+    </div>
+    <p style="margin-top:16px;">这个漂亮的公式，背后经历了什么？</p>
+  </div>
+</div>
+
+<div class="section">
+  <h2>三种解决方案</h2>
+
+  <div class="comparison">
+    <div class="card">
+      <h4>方案 1：预渲染</h4>
+      <p style="font-size:14px;color:var(--text-dim);">构建时转换，静态 HTML</p>
+      <ul class="pros">
+        <li>✅ 加载最快</li>
+        <li>✅ 不依赖 JS</li>
+        <li>✅ SEO 友好</li>
+      </ul>
+      <ul class="cons">
+        <li>❌ 文件巨大</li>
+        <li>❌ 需要构建工具</li>
+        <li>❌ 维护成本高</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h4>方案 2：KaTeX 自动渲染</h4>
+      <p style="font-size:14px;color:var(--text-dim);">客户端实时转换，快速</p>
+      <ul class="pros">
+        <li>✅ 源文件小</li>
+        <li>✅ 渲染速度快</li>
+        <li>✅ 维护简单</li>
+      </ul>
+      <ul class="cons">
+        <li>❌ 需要下载 JS</li>
+        <li>❌ 不支持极复杂公式</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h4>方案 3：MathJax</h4>
+      <p style="font-size:14px;color:var(--text-dim);">客户端实时转换，全能</p>
+      <ul class="pros">
+        <li>✅ 支持所有 LaTeX</li>
+        <li>✅ 源文件小</li>
+        <li>✅ 功能最强</li>
+      </ul>
+      <ul class="cons">
+        <li>❌ 渲染较慢</li>
+        <li>❌ 文件更大 (~600KB)</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>方案 1：预渲染（概率分布博物馆用的）</h2>
+
+  <h3>什么是预渲染？</h3>
+  <p>在生成 HTML 文件时，就把数学公式转换成完整的 HTML 标签。用户打开页面看到的已经是渲染好的样式，<strong>不需要运行 JavaScript</strong>。</p>
+
+  <h3>工作流程</h3>
+  <div class="workflow">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <div class="step-title">写 LaTeX 源码</div>
+        <div class="step-desc">在某个工具或脚本中写公式：<code>\frac{1}{\beta}</code></div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <div class="step-title">构建时转换</div>
+        <div class="step-desc">运行 Node.js 脚本，调用 KaTeX API 把 LaTeX 转成 HTML</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <div class="step-title">生成巨大的 HTML</div>
+        <div class="step-desc">一个简单的分式变成几百字节的嵌套 span 标签</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <div class="step-title">上传到 GitHub</div>
+        <div class="step-desc">HTML 文件可能 400KB+，但用户打开就是最终效果</div>
+      </div>
+    </div>
+  </div>
+
+  <h3>HTML 对比示例</h3>
+  <div class="demo-box" data-label="LaTeX 源码">
+    <pre><code>$$f(x) = \frac{1}{\beta}$$</code></pre>
+  </div>
+
+  <div class="demo-box" data-label="预渲染后的 HTML（简化版）">
+    <div class="code-block">
+      <span class="code-label">展开后 ~800 字节</span>
+      <pre><code>&lt;span class="katex"&gt;
+  &lt;span class="katex-mathml"&gt;...&lt;/span&gt;
+  &lt;span class="katex-html"&gt;
+    &lt;span class="base"&gt;
+      &lt;span class="mord mathnormal"&gt;f&lt;/span&gt;
+      &lt;span class="mopen"&gt;(&lt;/span&gt;
+      &lt;span class="mord mathnormal"&gt;x&lt;/span&gt;
+      &lt;span class="mclose"&gt;)&lt;/span&gt;
+      &lt;span class="mspace"&gt;...&lt;/span&gt;
+      &lt;span class="mrel"&gt;=&lt;/span&gt;
+      &lt;span class="mspace"&gt;...&lt;/span&gt;
+      &lt;span class="mord"&gt;
+        &lt;span class="mfrac"&gt;
+          &lt;span class="vlist-t vlist-t2"&gt;
+            &lt;span class="vlist-r"&gt;
+              &lt;span class="vlist"&gt;
+                &lt;!-- 分子 --&gt;
+                &lt;span class="mord"&gt;1&lt;/span&gt;
+                &lt;!-- 分数线 --&gt;
+                &lt;span class="frac-line"&gt;&lt;/span&gt;
+                &lt;!-- 分母 --&gt;
+                &lt;span class="mord mathnormal"&gt;β&lt;/span&gt;
+              &lt;/span&gt;
+            &lt;/span&gt;
+          &lt;/span&gt;
+        &lt;/span&gt;
+      &lt;/span&gt;
+    &lt;/span&gt;
+  &lt;/span&gt;
+&lt;/span&gt;</code></pre>
+    </div>
+  </div>
+
+  <h3>如何实现？</h3>
+  <div class="demo-box" data-label="构建脚本示例">
+    <div class="code-block">
+      <span class="code-label">build.js</span>
+      <pre><code>const katex = require('katex');
+const fs = require('fs');
+
+// 读取模板
+let html = fs.readFileSync('template.html', 'utf8');
+
+// 找到所有公式并转换
+html = html.replace(/\$\$(.*?)\$\$/g, (match, latex) => {
+  return katex.renderToString(latex, {
+    displayMode: true,
+    throwOnError: false
+  });
+});
+
+// 写入最终 HTML
+fs.writeFileSync('output.html', html);</code></pre>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>⚠️ 为什么概率分布博物馆用这个？</strong><br>
+    因为那个页面有 17 个分布，每个分布有多个公式，还有 SVG 图表。预渲染后文件虽然大（400KB），但加载后<strong>完全不需要 JS 计算</strong>，打开就能看到最终效果，对复杂页面更稳定。
+  </div>
+</div>
+
+<div class="section">
+  <h2>方案 2：KaTeX 自动渲染（推荐）</h2>
+
+  <h3>什么是自动渲染？</h3>
+  <p>在 HTML 中写简单的 LaTeX 文本（如 <code>$$f(x) = \frac{1}{\beta}$$</code>），浏览器加载页面时，KaTeX 的 JS 找到这些公式，<strong>实时转换成 HTML</strong>。</p>
+
+  <h3>工作流程</h3>
+  <div class="workflow">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <div class="step-title">写 HTML 源码</div>
+        <div class="step-desc">直接在 HTML 中写 LaTeX：<code>&lt;p&gt;$$f(x) = \frac{1}{\beta}$$&lt;/p&gt;</code></div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <div class="step-title">上传到 GitHub</div>
+        <div class="step-desc">HTML 文件很小，只有几十 KB</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <div class="step-title">用户打开页面</div>
+        <div class="step-desc">浏览器下载 HTML，看到原始的 <code>$$...$$</code> 文本</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <div class="step-title">加载 KaTeX JS（从 CDN）</div>
+        <div class="step-desc">浏览器从 jsdelivr.net 下载 katex.min.js (~200KB，会缓存）</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-content">
+        <div class="step-title">自动查找和渲染</div>
+        <div class="step-desc">JS 运行：找到所有 <code>$$</code> 和 <code>$</code>，转换成 HTML</div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">6</div>
+      <div class="step-content">
+        <div class="step-title">用户看到漂亮公式</div>
+        <div class="step-desc">LaTeX 文本被替换成渲染好的数学符号</div>
+      </div>
+    </div>
+  </div>
+
+  <h3>完整代码示例</h3>
+  <div class="demo-box" data-label="完整 HTML 页面">
+    <div class="code-block">
+      <span class="code-label">your-page.html</span>
+      <pre><code>&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+  &lt;meta charset="UTF-8"&gt;
+  &lt;title&gt;我的数学笔记&lt;/title&gt;
+
+  &lt;!-- 1. 引入 KaTeX CSS --&gt;
+  &lt;link rel="stylesheet"
+    href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"&gt;
+&lt;/head&gt;
+&lt;body&gt;
+
+  &lt;h1&gt;Gamma 分布&lt;/h1&gt;
+
+  &lt;!-- 2. 直接写 LaTeX --&gt;
+  &lt;p&gt;密度函数：&lt;/p&gt;
+  &lt;div&gt;
+    $$f(t) = \frac{\lambda^k \cdot t^{k-1} \cdot e^{-\lambda t}}{(k-1)!}$$
+  &lt;/div&gt;
+
+  &lt;p&gt;行内公式：均值是 $\frac{k}{\lambda}$&lt;/p&gt;
+
+  &lt;!-- 3. 页面底部引入 KaTeX JS --&gt;
+  &lt;script defer
+    src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"&gt;
+  &lt;/script&gt;
+
+  &lt;!-- 4. 引入自动渲染插件 --&gt;
+  &lt;script defer
+    src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+    onload="renderMathInElement(document.body, {
+      delimiters: [
+        {left: '$$', right: '$$', display: true},
+        {left: '$', right: '$', display: false}
+      ],
+      throwOnError: false
+    });"&gt;
+  &lt;/script&gt;
+
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+    </div>
+  </div>
+
+  <h3>为什么能在 GitHub Pages 工作？</h3>
+  <div class="highlight">
+    <p><strong>GitHub Pages 就是静态文件托管</strong>，把你的 HTML/CSS/JS 文件原样放在服务器上。</p>
+    <ol style="margin-top:12px;">
+      <li>用户访问 <code>https://你的用户名.github.io/页面.html</code></li>
+      <li>浏览器从 GitHub 下载你的 HTML 文件</li>
+      <li>HTML 里引用了 CDN 的 KaTeX JS（<code>cdn.jsdelivr.net</code>）</li>
+      <li>浏览器再从 CDN 下载 KaTeX JS</li>
+      <li><strong>所有计算都在用户浏览器里完成</strong>，不需要服务器端运行代码</li>
+    </ol>
+    <p style="margin-top:12px;"><strong>关键</strong>：GitHub Pages 不需要处理任何公式，它只是提供 HTML 文件；公式渲染发生在用户浏览器中。</p>
+  </div>
+
+  <h3>性能数据</h3>
+  <table>
+    <tr>
+      <th>指标</th>
+      <th>数值</th>
+      <th>说明</th>
+    </tr>
+    <tr>
+      <td>HTML 文件大小</td>
+      <td>~50KB</td>
+      <td>包含 LaTeX 文本</td>
+    </tr>
+    <tr>
+      <td>KaTeX JS 大小</td>
+      <td>~200KB</td>
+      <td>首次加载，之后浏览器缓存</td>
+    </tr>
+    <tr>
+      <td>渲染速度</td>
+      <td>~10ms</td>
+      <td>渲染一个中等复杂公式</td>
+    </tr>
+    <tr>
+      <td>首次加载总时间</td>
+      <td>~0.5s</td>
+      <td>取决于网络速度</td>
+    </tr>
+    <tr>
+      <td>再次访问</td>
+      <td>~0.1s</td>
+      <td>JS 已缓存，只下载 HTML</td>
+    </tr>
+  </table>
+</div>
+
+<div class="section">
+  <h2>方案 3：MathJax</h2>
+
+  <h3>什么是 MathJax？</h3>
+  <p>另一个数学公式渲染库，比 KaTeX <strong>更强大但更慢</strong>。也是客户端实时渲染（工作原理类似 KaTeX 自动渲染）。</p>
+
+  <h3>使用示例</h3>
+  <div class="demo-box" data-label="MathJax 3.x">
+    <div class="code-block">
+      <span class="code-label">使用 MathJax</span>
+      <pre><code>&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+&lt;head&gt;
+  &lt;!-- 配置 MathJax --&gt;
+  &lt;script&gt;
+  MathJax = {
+    tex: {
+      inlineMath: [['$', '$']],
+      displayMath: [['$$', '$$']]
+    }
+  };
+  &lt;/script&gt;
+
+  &lt;!-- 引入 MathJax --&gt;
+  &lt;script async
+    src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"&gt;
+  &lt;/script&gt;
+&lt;/head&gt;
+&lt;body&gt;
+
+  &lt;p&gt;公式：$$\int_0^\infty e^{-x^2} dx = \frac{\sqrt{\pi}}{2}$$&lt;/p&gt;
+
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+    </div>
+  </div>
+
+  <h3>KaTeX vs MathJax 详细对比</h3>
+  <table>
+    <tr>
+      <th>特性</th>
+      <th>KaTeX</th>
+      <th>MathJax</th>
+    </tr>
+    <tr>
+      <td><strong>速度</strong></td>
+      <td>🚀 非常快（~10ms/公式）</td>
+      <td>🐢 较慢（~50-100ms/公式）</td>
+    </tr>
+    <tr>
+      <td><strong>文件大小</strong></td>
+      <td>~200KB</td>
+      <td>~600KB</td>
+    </tr>
+    <tr>
+      <td><strong>LaTeX 覆盖率</strong></td>
+      <td>~90% 常用命令</td>
+      <td>~99% 所有命令</td>
+    </tr>
+    <tr>
+      <td><strong>渲染质量</strong></td>
+      <td>优秀</td>
+      <td>优秀</td>
+    </tr>
+    <tr>
+      <td><strong>浏览器兼容性</strong></td>
+      <td>现代浏览器</td>
+      <td>所有浏览器（包括 IE11）</td>
+    </tr>
+    <tr>
+      <td><strong>维护状态</strong></td>
+      <td>活跃</td>
+      <td>活跃</td>
+    </tr>
+    <tr>
+      <td><strong>GitHub Stars</strong></td>
+      <td>~18k</td>
+      <td>~10k</td>
+    </tr>
+  </table>
+
+  <h3>何时选择 MathJax？</h3>
+  <ul>
+    <li><strong>需要极复杂的 LaTeX 命令</strong>（如自定义宏、复杂的多行公式）</li>
+    <li><strong>已有内容用了 MathJax 语法</strong>（迁移成本高）</li>
+    <li><strong>需要兼容老旧浏览器</strong>（IE11）</li>
+  </ul>
+
+  <div class="note">
+    <strong>💡 本知识库的选择</strong><br>
+    π0 论文解读等页面用 MathJax，<a class="concept-link" href="概率分布博物馆.html#concept-gamma-distribution">Gamma 分布</a>、<a class="concept-link" href="Beta分布-球星卡.html#concept-beta-distribution">Beta 分布</a>等新页面用 KaTeX。两者可以<strong>共存</strong>，只要不在同一个页面同时使用（会冲突）。
+  </div>
+</div>
+
+<div class="section">
+  <h2>三种方案对比总结</h2>
+
+  <table>
+    <tr>
+      <th>方案</th>
+      <th>HTML 文件大小</th>
+      <th>首次加载速度</th>
+      <th>再次访问速度</th>
+      <th>维护难度</th>
+      <th>GitHub Pages</th>
+    </tr>
+    <tr>
+      <td><strong>预渲染</strong></td>
+      <td>❌ 巨大 (400KB+)</td>
+      <td>✅ 最快（无 JS）</td>
+      <td>✅ 最快</td>
+      <td>❌ 高（需构建）</td>
+      <td>✅ 支持</td>
+    </tr>
+    <tr>
+      <td><strong>KaTeX 自动渲染</strong></td>
+      <td>✅ 小 (~50KB)</td>
+      <td>✅ 快 (~0.5s)</td>
+      <td>✅ 很快 (~0.1s)</td>
+      <td>✅ 低</td>
+      <td>✅ 支持</td>
+    </tr>
+    <tr>
+      <td><strong>MathJax</strong></td>
+      <td>✅ 小 (~50KB)</td>
+      <td>⚠️ 中等 (~1s)</td>
+      <td>✅ 快 (~0.2s)</td>
+      <td>✅ 低</td>
+      <td>✅ 支持</td>
+    </tr>
+  </table>
+
+  <h3>选择建议</h3>
+  <div class="comparison">
+    <div class="card">
+      <h4>个人知识库 / 笔记</h4>
+      <p style="font-size:14px;color:var(--text-dim);margin-bottom:12px;">你的场景</p>
+      <p><strong>推荐：KaTeX 自动渲染</strong></p>
+      <ul style="font-size:14px;">
+        <li>文件小，易维护</li>
+        <li>速度快，体验好</li>
+        <li>改公式只需改文本</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h4>大型文档站 / 电子书</h4>
+      <p style="font-size:14px;color:var(--text-dim);margin-bottom:12px;">公式多且固定</p>
+      <p><strong>推荐：预渲染</strong></p>
+      <ul style="font-size:14px;">
+        <li>公式不常变动</li>
+        <li>追求极致加载速度</li>
+        <li>有构建工具链</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h4>学术论文 / 复杂数学</h4>
+      <p style="font-size:14px;color:var(--text-dim);margin-bottom:12px;">LaTeX 命令复杂</p>
+      <p><strong>推荐：MathJax</strong></p>
+      <ul style="font-size:14px;">
+        <li>需要高级 LaTeX 特性</li>
+        <li>已有 MathJax 内容</li>
+        <li>对速度要求不苛刻</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h2>实战：给页面添加 KaTeX</h2>
+
+  <h3>步骤 1：添加 CSS</h3>
+  <div class="demo-box" data-label="在 <head> 中添加">
+    <pre><code>&lt;link rel="stylesheet"
+  href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css"&gt;</code></pre>
+  </div>
+
+  <h3>步骤 2：写公式</h3>
+  <div class="demo-box" data-label="在 <body> 中写 LaTeX">
+    <pre><code>&lt;!-- 块级公式（独立一行，居中） --&gt;
+&lt;div&gt;
+  $$f(x) = \frac{1}{\sqrt{2\pi}} e^{-\frac{x^2}{2}}$$
+&lt;/div&gt;
+
+&lt;!-- 行内公式（嵌入文本中） --&gt;
+&lt;p&gt;均值是 $\mu$，方差是 $\sigma^2$&lt;/p&gt;</code></pre>
+  </div>
+
+  <h3>步骤 3：添加 JS（页面底部）</h3>
+  <div class="demo-box" data-label="在 </body> 前添加">
+    <pre><code>&lt;script defer
+  src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"&gt;
+&lt;/script&gt;
+
+&lt;script defer
+  src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"
+  onload="renderMathInElement(document.body, {
+    delimiters: [
+      {left: '$$', right: '$$', display: true},
+      {left: '$', right: '$', display: false}
+    ],
+    throwOnError: false
+  });"&gt;
+&lt;/script&gt;</code></pre>
+  </div>
+
+  <h3>常用 LaTeX 命令速查</h3>
+  <table>
+    <tr>
+      <th>效果</th>
+      <th>LaTeX 代码</th>
+      <th>说明</th>
+    </tr>
+    <tr>
+      <td>$$\frac{a}{b}$$</td>
+      <td><code>\frac{a}{b}</code></td>
+      <td>分式</td>
+    </tr>
+    <tr>
+      <td>$$x^2$$</td>
+      <td><code>x^2</code></td>
+      <td>上标</td>
+    </tr>
+    <tr>
+      <td>$$x_i$$</td>
+      <td><code>x_i</code></td>
+      <td>下标</td>
+    </tr>
+    <tr>
+      <td>$$\sqrt{x}$$</td>
+      <td><code>\sqrt{x}</code></td>
+      <td>平方根</td>
+    </tr>
+    <tr>
+      <td>$$\sum_{i=1}^{n}$$</td>
+      <td><code>\sum_{i=1}^{n}</code></td>
+      <td>求和</td>
+    </tr>
+    <tr>
+      <td>$$\int_0^1$$</td>
+      <td><code>\int_0^1</code></td>
+      <td>积分</td>
+    </tr>
+    <tr>
+      <td>$$\alpha, \beta, \gamma$$</td>
+      <td><code>\alpha, \beta, \gamma</code></td>
+      <td>希腊字母</td>
+    </tr>
+    <tr>
+      <td>$$\leq, \geq, \neq$$</td>
+      <td><code>\leq, \geq, \neq</code></td>
+      <td>关系符号</td>
+    </tr>
+  </table>
+</div>
+
+<div class="section">
+  <h2>常见问题</h2>
+
+  <h3>Q1: 为什么页面加载时公式会闪一下？</h3>
+  <p><strong>A:</strong> 这是 KaTeX/MathJax 自动渲染的正常现象。页面先显示原始 LaTeX 文本，JS 加载完成后再替换成渲染好的公式。</p>
+  <p><strong>解决方法</strong>：</p>
+  <ul>
+    <li>方法 1：给公式容器加 CSS：<code>visibility: hidden;</code>，渲染完成后用 JS 设为 <code>visible</code></li>
+    <li>方法 2：使用预渲染（但失去灵活性）</li>
+    <li>方法 3：接受这个瞬间的闪烁（大多数网站的做法）</li>
+  </ul>
+
+  <h3>Q2: CDN 在中国大陆访问慢怎么办？</h3>
+  <p><strong>A:</strong> jsdelivr.net 在国内有 CDN 节点，通常很快。如果确实慢，可以：</p>
+  <ul>
+    <li>方法 1：下载 KaTeX 到本地，放在 <code>assets/katex/</code> 目录</li>
+    <li>方法 2：使用国内 CDN（如 unpkg.com 或 staticfile.org）</li>
+  </ul>
+
+  <h3>Q3: 能不能同时用 KaTeX 和 MathJax？</h3>
+  <p><strong>A:</strong> 不推荐在<strong>同一个页面</strong>同时使用，会冲突。但不同页面可以用不同的库（如你的知识库现状）。</p>
+
+  <h3>Q4: GitHub Pages 有什么限制？</h3>
+  <p><strong>A:</strong> GitHub Pages 的限制：</p>
+  <ul>
+    <li>仓库大小限制：1GB（数学公式网页通常远低于此）</li>
+    <li>单个文件限制：100MB（即使预渲染的 HTML 也不会这么大）</li>
+    <li>带宽限制：每月 100GB（个人网站足够）</li>
+    <li><strong>核心限制</strong>：只能托管静态文件，不能运行服务器端代码（但这对数学公式不是问题）</li>
+  </ul>
+
+  <h3>Q5: 公式渲染失败怎么办？</h3>
+  <p><strong>A:</strong> 常见原因：</p>
+  <ul>
+    <li>LaTeX 语法错误：检查括号是否匹配、命令是否拼写正确</li>
+    <li>特殊字符未转义：在 HTML 中 <code>&lt;</code> 要写成 <code>&amp;lt;</code></li>
+    <li>KaTeX 不支持某些高级命令：换用 MathJax 或简化公式</li>
+    <li>JS 加载失败：检查网络连接和 CDN 是否可访问</li>
+  </ul>
+  <p>设置 <code>throwOnError: false</code> 可以让渲染失败的公式显示为红色错误文本，而不是阻塞整个页面。</p>
+
+  <h3>Q6: 本地能渲染，GitHub Pages 不能渲染？</h3>
+  <p><strong>A:</strong> 这是最常见的坑！可能的原因：</p>
+
+  <div class="demo-box" data-label="原因 1：文件路径问题">
+    <p><strong>症状</strong>：本地打开 <code>file:///D:/knowledge/page.html</code> 正常，GitHub Pages 上显示不出来</p>
+    <p><strong>原因</strong>：路径写法不对</p>
+    <pre><code>❌ 错误写法（本地能用，GitHub 不行）：
+&lt;script src="/assets/katex/katex.min.js"&gt;&lt;/script&gt;
+// GitHub 会找 https://你的用户名.github.io/assets/katex/...
+// 但实际是 https://你的用户名.github.io/仓库名/assets/katex/...
+
+✅ 正确写法 1：相对路径
+&lt;script src="assets/katex/katex.min.js"&gt;&lt;/script&gt;
+
+✅ 正确写法 2：使用 CDN（推荐）
+&lt;script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"&gt;&lt;/script&gt;</code></pre>
+  </div>
+
+  <div class="demo-box" data-label="原因 2：HTTPS 混合内容">
+    <p><strong>症状</strong>：浏览器控制台显示 "Mixed Content" 错误</p>
+    <p><strong>原因</strong>：GitHub Pages 用 HTTPS，但你引用了 HTTP 的资源</p>
+    <pre><code>❌ 错误写法：
+&lt;script src="http://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"&gt;&lt;/script&gt;
+// 注意是 http:// 不是 https://
+
+✅ 正确写法：
+&lt;script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"&gt;&lt;/script&gt;
+// 或者省略协议（自动匹配）：
+&lt;script src="//cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"&gt;&lt;/script&gt;</code></pre>
+  </div>
+
+  <div class="demo-box" data-label="原因 3：文件未上传到 GitHub">
+    <p><strong>症状</strong>：用 CDN 的能渲染，用本地文件的不行</p>
+    <p><strong>原因</strong>：本地的 <code>assets/katex/</code> 文件夹忘记 commit 或 push 了</p>
+    <pre><code># 检查文件是否在 GitHub 上
+# 访问：https://github.com/你的用户名/仓库名/tree/main/assets/katex
+# 能看到文件吗？看不到就是没上传
+
+# 解决方法：
+git add assets/katex/
+git commit -m "Add KaTeX assets"
+git push</code></pre>
+  </div>
+
+  <div class="demo-box" data-label="原因 4：.gitignore 忽略了文件">
+    <p><strong>症状</strong>：明明 add 了，但 GitHub 上没有</p>
+    <p><strong>原因</strong>：<code>.gitignore</code> 把 KaTeX 文件排除了</p>
+    <pre><code># 检查 .gitignore
+cat .gitignore
+
+# 如果看到这样的规则：
+node_modules/
+dist/
+*.min.js
+
+# 那么 katex.min.js 会被忽略！
+
+# 解决方法 1：移除规则
+# 解决方法 2：强制添加
+git add -f assets/katex/katex.min.js</code></pre>
+  </div>
+
+  <div class="demo-box" data-label="原因 5：GitHub Pages 没有启用">
+    <p><strong>症状</strong>：访问 GitHub Pages URL 显示 404</p>
+    <p><strong>原因</strong>：仓库的 Pages 功能没有开启</p>
+    <ol style="margin:12px 0 0 24px;font-size:14px;">
+      <li>进入仓库 Settings</li>
+      <li>左侧找到 "Pages"</li>
+      <li>Source 选择 "Deploy from a branch"</li>
+      <li>Branch 选择 "main" 或 "master"，目录选 "/ (root)"</li>
+      <li>点 Save，等待 1-2 分钟</li>
+      <li>刷新页面，会显示网站 URL</li>
+    </ol>
+  </div>
+
+  <div class="demo-box" data-label="原因 6：浏览器缓存">
+    <p><strong>症状</strong>：改了代码，GitHub Pages 还是显示旧的</p>
+    <p><strong>原因</strong>：浏览器缓存了旧版本</p>
+    <pre><code># 解决方法：
+1. 按 Ctrl + Shift + R (Windows/Linux) 或 Cmd + Shift + R (Mac) 强制刷新
+2. 或者打开浏览器开发者工具（F12），右键刷新按钮，选 "清空缓存并硬性重新加载"
+3. 或者打开隐私浏览模式测试</code></pre>
+  </div>
+
+  <div class="demo-box" data-label="调试方法">
+    <p><strong>如何排查？</strong></p>
+    <ol style="margin:12px 0 0 24px;font-size:14px;">
+      <li>打开浏览器开发者工具（F12）</li>
+      <li>切换到 "Console" 标签页</li>
+      <li>刷新页面，看有没有报错：
+        <ul style="margin:8px 0 0 24px;">
+          <li>❌ <code>Failed to load resource: 404</code> → 文件路径错误或文件不存在</li>
+          <li>❌ <code>Mixed Content</code> → HTTP/HTTPS 混用</li>
+          <li>❌ <code>renderMathInElement is not defined</code> → JS 加载顺序错误或未加载</li>
+          <li>✅ 没有报错但公式不显示 → 可能是分隔符配置错误</li>
+        </ul>
+      </li>
+      <li>切换到 "Network" 标签页，刷新，检查 KaTeX 的 JS/CSS 文件是否成功加载（状态码应该是 200）</li>
+    </ol>
+  </div>
+
+  <h3>Q7: CDN 被墙了怎么办？</h3>
+  <p><strong>A:</strong> jsdelivr.net 在中国大陆通常可用，但有时会被短暂屏蔽。备选方案：</p>
+  <pre><code><!-- 方案 1: unpkg.com -->
+&lt;link rel="stylesheet" href="https://unpkg.com/katex@0.16.9/dist/katex.min.css"&gt;
+&lt;script src="https://unpkg.com/katex@0.16.9/dist/katex.min.js"&gt;&lt;/script&gt;
+
+<!-- 方案 2: cdnjs.cloudflare.com -->
+&lt;link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css"&gt;
+&lt;script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"&gt;&lt;/script&gt;
+
+<!-- 方案 3: 本地化（最可靠） -->
+&lt;link rel="stylesheet" href="assets/katex/katex.min.css"&gt;
+&lt;script src="assets/katex/katex.min.js"&gt;&lt;/script&gt;</code></pre>
+</div>
+
+<div class="section">
+  <h2>进阶：本地化 KaTeX（不依赖 CDN）</h2>
+
+  <h3>为什么本地化？</h3>
+  <ul>
+    <li>完全离线可用（不需要网络）</li>
+    <li>加载速度更可控（不依赖 CDN）</li>
+    <li>避免 CDN 服务中断</li>
+  </ul>
+
+  <h3>步骤</h3>
+  <div class="demo-box" data-label="下载 KaTeX">
+    <pre><code># 方法 1: 直接下载
+# 访问 https://github.com/KaTeX/KaTeX/releases
+# 下载 katex.zip，解压到 assets/katex/
+
+# 方法 2: 使用 npm
+npm install katex
+cp -r node_modules/katex/dist assets/katex/</code></pre>
+  </div>
+
+  <h3>修改引用路径</h3>
+  <div class="demo-box" data-label="使用本地文件">
+    <pre><code>&lt;!-- CSS --&gt;
+&lt;link rel="stylesheet" href="assets/katex/katex.min.css"&gt;
+
+&lt;!-- JS --&gt;
+&lt;script defer src="assets/katex/katex.min.js"&gt;&lt;/script&gt;
+&lt;script defer src="assets/katex/contrib/auto-render.min.js"
+  onload="..."&gt;
+&lt;/script&gt;</code></pre>
+  </div>
+
+  <div class="note">
+    <strong>💡 你的概率分布博物馆页面</strong><br>
+    已经本地化了 KaTeX CSS（<code>assets/katex/katex.min.css</code>），但使用的是预渲染 HTML，所以不需要 JS 文件。
+  </div>
+</div>
+
+<div class="concept-related">
+  <strong>相关概念 · 公式应用示例</strong>
+  <a class="concept-link" href="概率分布博物馆.html#concept-gamma-distribution">Gamma 分布</a>
+  <a class="concept-link" href="Beta分布-球星卡.html#concept-beta-distribution">Beta 分布</a>
+</div>
+
+<footer>
+  <p>网页数学公式显示原理 · <a href="index.html">返回知识库</a></p>
+  <p style="margin-top:12px;font-size:13px;">理解原理，选对方案，让数学公式在网页上优雅呈现</p>
+</footer>
+
+</div>
+
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {
+  delimiters: [
+    {left: '$$', right: '$$', display: true},
+    {left: '$', right: '$', display: false}
+  ],
+  throwOnError: false
+});"></script>
+
+<script src="nav.js"></script>
+</body>
+</html>

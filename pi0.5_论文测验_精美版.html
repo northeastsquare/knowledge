@@ -279,7 +279,7 @@
     <article class="card">
       <div class="q-row"><span class="q-num">Q03</span><span class="q-text">π0.5 直接采集的移动机械臂数据有多少小时、覆盖多少个家庭？凭这个量为什么还能泛化到全新的家？</span></div>
       <div class="peek"><button>点击显示答案 ▸</button></div>
-      <div class="answer"><span class="alab">A</span><span class="num">约 400 小时、约 100 个</span>不同家庭环境。靠从其他（非移动）机器人、实验室跨本体数据、高层语义预测、口头指令、网络数据等迁移知识，一个中等规模的目标数据也足以泛化到全新的家。
+      <div class="answer"><span class="alab">A</span><span class="num">约 400 小时、约 100 个</span>不同家庭环境。靠从其他（非移动）机器人、实验室<a class="concept-link" href="Qwen-VLA-论文解读.html#concept-cross-embodiment">跨本体</a>数据、高层语义预测、口头指令、网络数据等迁移知识，一个中等规模的目标数据也足以泛化到全新的家。
       <br><span class="cite">Sec I · Sec IV-C（MM）</span></div>
     </article>
   </section>
@@ -296,7 +296,7 @@
       <br><span class="cite">Fig 3 · Appendix E</span></div>
     </article>
 
-    <article class="card star">
+    <article class="concept-anchor card star" id="concept-hierarchical-policy">
       <div class="q-row"><span class="q-num">Q05</span><span class="q-text">联合分布 π(a, ℓ̂ | o, ℓ) 怎么分解？反直觉点：低层动作分布依赖总指令 ℓ，还是子任务 ℓ̂？</span><span class="star-tag">★ 精华</span></div>
       <div class="peek"><button>点击显示答案 ▸</button></div>
       <div class="answer"><span class="alab">A</span>分解为 <code>π(a, ℓ̂ | o, ℓ) = π(a | o, ℓ̂) · π(ℓ̂ | o, ℓ)</code>。反直觉点：低层动作分布 <span class="hl">只依赖预测出的子任务 ℓ̂，不直接依赖总指令 ℓ</span>——高层先把总指令变成子任务，低层再只看子任务出动作。
@@ -313,18 +313,18 @@
     <article class="card star">
       <div class="q-row"><span class="q-num">Q07</span><span class="q-text">为什么 flow-matching 连续动作 token 与 FAST 离散动作 token 不互相 attend？信息流方向如何？</span><span class="star-tag">★ 精华</span></div>
       <div class="peek"><button>点击显示答案 ▸</button></div>
-      <div class="answer"><span class="alab">A</span>用注意力 mask 隔开，是为了<b>避免两种动作表示之间的信息泄漏</b>。信息 <span class="hl">单向从 VLM 流向 action expert</span>——image/prompt/本体状态构成 prefix，FAST 动作 token 注意 prefix 并自回归注意之前动作 token，action expert 的 embedding 注意 prefix 和彼此、但不注意 FAST token；没有任何 VLM embedding 反过来注意 action expert。
+      <div class="answer"><span class="alab">A</span>用注意力 mask 隔开，是为了<b><a class="concept-link" href="KI-知识隔离-论文解读.html#concept-stop-gradient">避免两种动作表示之间的信息泄漏</a></b>。信息 <span class="hl">单向从 VLM 流向 action expert</span>——image/prompt/本体状态构成 prefix，FAST 动作 token 注意 prefix 并自回归注意之前动作 token，action expert 的 embedding 注意 prefix 和彼此、但不注意 FAST token；没有任何 VLM embedding 反过来注意 action expert。
       <br><span class="cite">Sec IV-B · Appendix E · Fig 18</span></div>
     </article>
 
     <article class="card concept-anchor" id="concept-fast">
       <div class="q-row"><span class="q-num">Q08</span><span class="q-text">为什么既用 FAST 离散 token 训练、又用 flow matching？两者各解决什么？</span></div>
       <div class="peek"><button>点击显示答案 ▸</button></div>
-      <div class="answer"><span class="alab">A</span><b>FAST 离散 token</b> 把连续动作块编码为离散 token 序列，让 <a class="concept-link" href="VLA-发展历程.html#concept-vla">VLA</a> 训练更快、更稳，且语言跟随更强，但推理要昂贵的自回归解码、慢；<b><a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">flow matching</a></b> 适合实时连续动作推理。所以结合两者：训练用离散 token（pre-training），推理用 flow matching 出连续动作，取两者之长。
+      <div class="answer"><span class="alab">A</span><b><a class="concept-link" href="FAST-论文解读.html#concept-fast">FAST 离散 token</a></b> 把连续动作块编码为离散 token 序列，让 <a class="concept-link" href="VLA-发展历程.html#concept-vla">VLA</a> 训练更快、更稳，且语言跟随更强，但推理要昂贵的自回归解码、慢；<b><a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">flow matching</a></b> 适合实时连续动作推理。所以结合两者：训练用离散 token（pre-training），推理用 flow matching 出连续动作，取两者之长。
       <br><a href="FAST-论文解读.html">FAST / π0-FAST 精读 →</a> <span class="cite">Sec IV-B · p.5</span></div>
     </article>
 
-    <article class="card">
+    <article class="concept-anchor card" id="concept-two-stage-training">
       <div class="q-row"><span class="q-num">Q09</span><span class="q-text">联合训练损失（Eq.1）由哪两部分组成？α 在 pre-training 与 post-training 分别取多少、各意味着什么？</span></div>
       <div class="peek"><button>点击显示答案 ▸</button></div>
       <div class="answer"><span class="alab">A</span>两部分：(i) 文本 token / FAST 动作 token 的<b>交叉熵 H</b>；(ii) <code>α × ‖ω − a − f^a‖²</code> 的 flow matching 向量场 MSE。α：<b>pre-training α=0</b>（只用离散 token、当标准 VLM 训，action expert 不参与）；<b>post-training α=10.0</b>（加入随机初始化的 action expert，开始训 flow matching）。
@@ -436,7 +436,7 @@
     <article class="card star">
       <div class="q-row"><span class="q-num">Q22</span><span class="q-text">高层推理消融（Fig 13）两个反直觉结果：(a) 完整 π0.5 与"人类专家当高层 oracle"谁强？(b) 第二好的配置是哪个、说明什么？另：GPT-4 当高层策略表现如何？</span><span class="star-tag">★ 精华</span></div>
       <div class="peek"><button>点击显示答案 ▸</button></div>
-      <div class="answer"><span class="alab">A</span>(a) 完整 π0.5 <span class="hl">甚至超过了"人类专家当高层 oracle"</span>这个基线。(b) 第二好的是 <b>implicit HL</b>（运行时不做显式高层推理、但训练数据含高层子任务预测）——说明 <span class="hl">很大一部分收益来自"训练混合里有子任务预测数据"本身</span>，而不仅是显式分层推理。<b>GPT-4 当高层策略表现最差</b>，说明必须用机器人数据适配 VLM，不能 zero-shot 直接套大模型。
+      <div class="answer"><span class="alab">A</span>(a) 完整 π0.5 <span class="hl">甚至超过了"人类专家当高层 oracle"</span>这个基线。(b) 第二好的是 <b>implicit HL</b>（运行时不做显式高层推理、但训练数据含<a class="concept-link" href="pi0.5_论文测验_精美版.html#concept-hierarchical-policy">高层子任务预测</a>）——说明 <span class="hl">很大一部分收益来自"训练混合里有子任务预测数据"本身</span>，而不仅是显式分层推理。<b>GPT-4 当高层策略表现最差</b>，说明必须用机器人数据适配 VLM，不能 zero-shot 直接套大模型。
       <br><span class="cite">Sec V-E · Fig 13</span></div>
     </article>
   </section>
@@ -474,7 +474,10 @@
     <a class="concept-link" href="pi0.6-论文解读.html#concept-recap">RECAP：从示范走向经验学习</a>
     <a class="concept-link" href="pi0.7_问答学习卡.html#concept-world-model">世界模型与视觉子目标</a>
     <a class="concept-link" href="concepts.html">全部概念 →</a>
-  </aside>
+      <a class="concept-link" href="FAST-论文解读.html#concept-fast">FAST：DCT 与 BPE 压缩动作</a>
+    <a class="concept-link" href="KI-知识隔离-论文解读.html#concept-knowledge-insulation">知识隔离：单阶段训练配方</a>
+    <a class="concept-link" href="pi0.6-论文解读.html#concept-recap">RECAP：从示范走向经验学习</a>
+</aside>
 
   <footer class="foot">
     <b>抓手</b>：⭐ 标的六题（Q02 / Q05 / Q07 / Q14 / Q20 / Q22）是 π0.5 区别于普通 VLA 的精华，反直觉、也最容易看漏。把下面这几点能脱口而出，这篇基本就吃透了：

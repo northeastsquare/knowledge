@@ -235,7 +235,7 @@
     <ol>
       <li><strong>动作分块与延迟</strong>：<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块</a>一次预测 H 步，执行其中 s 步后再重新推理。大模型推理一次要几十到上百毫秒（<a class="concept-link" href="DynamicVLA-论文解读.html#concept-latency">感知—执行时延</a>）。在 50Hz（每步 20ms）的机器人上，100ms 相当于 d≈5 步。</li>
       <li><strong>同步执行会停</strong>：执行完 s 步就停下来等新块，动作一顿一顿的，整体也慢。RTC 论文中，π0.5 用同步执行就能看到明显停顿。</li>
-      <li><strong>朴素异步会跳</strong>：推理从第 t 步开始，到第 t+d 步才出结果，这 d 步只能继续执行上一块。新块是根据新观测重新采样的，而 flow/扩散策略是<b>多模态</b>的（比如从左边绕还是从右边绕都合理），新块可能换了一种策略，切换时速度和方向会突变。平均两个块（temporal ensembling）也不行，把两种策略平均可能得到一个两边都不是的动作。</li>
+      <li><strong>朴素异步会跳</strong>：推理从第 t 步开始，到第 t+d 步才出结果，这 d 步只能继续执行上一块。新块是根据新观测重新采样的，而 flow/扩散策略是<b>多模态</b>的（比如从左边绕还是从右边绕都合理），新块可能换了一种策略，切换时速度和方向会突变。平均两个块（<a class="concept-link" href="RTC-实时动作分块-论文解读.html#concept-temporal-ensembling">temporal ensembling</a>）也不行，把两种策略平均可能得到一个两边都不是的动作。</li>
       <li><strong>约束</strong>：前缀要有效，必须满足 <code>d ≤ H − s</code>，也就是新块的前 d 步在上一块里还没用完。RTC 进一步要求 <code>d ≤ s ≤ H − d</code>。</li>
     </ol>
     <p class="hl-line">所以真正要解的是一个<b>条件生成</b>问题：已知新块的前 d 步一定等于上一块对应的动作，生成其余部分，使它既和前缀连贯，又能利用新观测。</p>
@@ -269,14 +269,14 @@
 
   <section id="concept-rtc" class="concept-anchor">
     <h2>推理时 RTC：把衔接当成“补全图像”，每一步去噪都做一次引导</h2>
-    <p>前作 <a href="https://arxiv.org/abs/2506.07339" target="_blank" rel="noreferrer">Real-Time Chunking（arXiv 2506.07339）</a> 把块间衔接看成<b>图像补全（inpainting）</b>：前 d 步像图像中已知的像素，其余部分要补全。它用的是不需要训练的伪逆引导（ΠGDM）。设 flow 约定为 <code>A<sup>τ</sup> = τ·A + (1−τ)·ε</code>，τ=1 时是干净动作。每个去噪步做四件事：</p>
+    <p>前作 <a href="https://arxiv.org/abs/2506.07339" target="_blank" rel="noreferrer">Real-Time Chunking（arXiv 2506.07339）</a> 把块间衔接看成<b><a class="concept-link" href="RTC-实时动作分块-论文解读.html#concept-inpainting">图像补全（inpainting）</a></b>：前 d 步像图像中已知的像素，其余部分要补全。它用的是不需要训练的伪逆引导（ΠGDM）。设 flow 约定为 <code>A<sup>τ</sup> = τ·A + (1−τ)·ε</code>，τ=1 时是干净动作。每个去噪步做四件事：</p>
     <div class="flow">
       <div class="st"><b>① 估计终点</b>用当前速度一步跳到 τ=1：<code>Â¹ = A<sup>τ</sup> + (1−τ)·v</code></div>
       <div class="st"><b>② 比较目标</b>误差 <code>(Y − Â¹)·W</code>，Y 是上一块的剩余动作，W 是逐位置权重</div>
       <div class="st"><b>③ 反向传播</b>把误差经网络的雅可比 <code>∂Â¹/∂A<sup>τ</sup></code> 传回去，得到修正量（向量-雅可比积，VJP）</div>
       <div class="st"><b>④ 加到速度上</b><code>v + min(β, (1−τ)/(τ·r²<sub>τ</sub>))·修正量</code>；β 是作者为少步数采样的稳定性加的上限</div>
     </div>
-    <p><strong>软掩码（soft masking）</strong>：只约束前 d 步时，引导信号太弱，新块仍可能换策略。所以 W 对前 d 步取 1，对重叠区按指数从 1 衰减到 0，对最后 s 个全新位置取 0。演示里“推理时 RTC”模式显示的就是这条权重曲线，公式和代码中的 <code>get_prefix_weights(..., "exp")</code> 一致。</p>
+    <p><strong><a class="concept-link" href="RTC-实时动作分块-论文解读.html#concept-soft-masking">软掩码（soft masking）</a></strong>：只约束前 d 步时，引导信号太弱，新块仍可能换策略。所以 W 对前 d 步取 1，对重叠区按指数从 1 衰减到 0，对最后 s 个全新位置取 0。演示里“推理时 RTC”模式显示的就是这条权重曲线，公式和代码中的 <code>get_prefix_weights(..., "exp")</code> 一致。</p>
     <p><strong>代价</strong>：每个去噪步都要多一次反向传播。RTC 论文里，π0.5 的模型延迟从 76ms 增加到 97ms。另外，引导依赖网络在当前点的<b>线性化</b>，前缀越长，补全越吃力。</p>
   </section>
 
@@ -284,7 +284,7 @@
     <h2>训练时 RTC：三处改动</h2>
     <p>目标是直接学习条件分布 <code>p(A<sub>t+d:H</sub> | o<sub>t</sub>, A<sub>t:t+d</sub>)</code>，前缀和后缀都取自同一条真实动作块。</p>
     <div class="flow">
-      <div class="st"><b>① 每个 token 有自己的 τ</b>标准 flow 中整个块共用一个 τ。现在 τ 变成形状 <code>(batch, H)</code>。对于 adaLN-zero 结构（π0.6 的动作专家、DiT），只需让 scale/shift/gate 逐 token 不同，<b>参数量不变</b>。</div>
+      <div class="st"><b>① 每个 token 有自己的 τ</b>标准 flow 中整个块共用一个 τ。现在 τ 变成形状 <code>(batch, H)</code>。对于 adaLN-zero 结构（π0.6 的<a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a>、DiT），只需让 scale/shift/gate 逐 token 不同，<b>参数量不变</b>。</div>
       <div class="st"><b>② 前缀填真值，τ=1</b>前 d 个位置直接放真实的干净动作，τ 设为 1；后缀照常加噪。τ=1 本来就表示“这是干净数据”，所以 τ 序列本身就告诉了模型延迟 d 是多少。</div>
       <div class="st"><b>③ 损失只算后缀</b>前缀位置的预测不计入损失，只学“已知前缀时怎么去噪后缀”。</div>
       <div class="st"><b>④ 延迟随机采样</b>真实延迟会波动，所以每个样本随机抽一个 d。真机实验用 0–10 均匀分布（50Hz 下最大 200ms）；仿真用 {0..4}，延迟越大权重越小（指数递减）。</div>
@@ -338,7 +338,7 @@ for _ in range(num_steps):
       <table>
         <tr><th>设置</th><th>结果</th></tr>
         <tr><td><strong>仿真</strong>：动态 Kinetix，H=8，4 层 MLP-Mixer，每个数据点 2048 次 rollout，<code>s=max(d,1)</code></td><td>d≥2 时训练时 RTC 优于推理时 RTC，延迟越大差距越大；d=0、1 时略差，因为前几个位置得到的监督变少了。为了让训练算力相同，训练时 RTC 从第 24 个 epoch 接着微调 8 个 epoch，对照组训练满 32 个 epoch</td></tr>
-        <tr><td><strong>真机</strong>：π0.6 基座，组装纸箱和做浓缩咖啡（来自 <a href="pi0.6-论文解读.html">π*0.6</a> 的任务），各微调 8000 步，batch 512</td><td>成功率和完成时长与推理时 RTC 持平；两种 RTC 都比同步执行快（同步执行在块之间有明显停顿）</td></tr>
+        <tr><td><strong>真机</strong>：π0.6 基座，组装纸箱和做浓缩咖啡（来自 <a class="concept-link" href="pi0.6-论文解读.html#concept-recap">π*0.6</a> 的任务），各微调 8000 步，batch 512</td><td>成功率和完成时长与推理时 RTC 持平；两种 RTC 都比同步执行快（同步执行在块之间有明显停顿）</td></tr>
         <tr><td><strong>延迟</strong>：远程 H100，5 个去噪步</td><td>端到端延迟：训练时 RTC 108ms（d≈5），推理时 RTC 135ms（d≈7）</td></tr>
       </table>
     </div>
@@ -349,7 +349,7 @@ for _ in range(num_steps):
     <ul>
       <li><strong>执行层的问题，可以在训练层解决。</strong>RTC 把实时性当作采样算法问题，训练时 RTC 把它变成数据增强：训练分布里本来就包含“带延迟的条件生成”这种情形。</li>
       <li><strong>flow 时间步是通用的条件接口。</strong>τ 不只是噪声日程，还可以逐 token 表达“这一位有多确定”。同样的思路可以推广到其他已知部分动作的场景，例如固定的末端位姿或安全约束。论文没有做这些实验，这里是推论。</li>
-      <li><strong>它让大模型也能实时控制。</strong>推理开销为零，所以模型变大或推理放到远端服务器时，只需要把延迟分布调大。<a href="pi0.7_问答学习卡.html">π0.7</a> 就用了训练时 RTC：模拟 0–12 步延迟（50Hz 下 240ms），最小变体的推理延迟降到 38ms。</li>
+      <li><strong>它让大模型也能实时控制。</strong>推理开销为零，所以模型变大或推理放到远端服务器时，只需要把延迟分布调大。<a class="concept-link" href="pi0.7_问答学习卡.html#concept-rtc-deployment">π0.7</a> 就用了训练时 RTC：模拟 0–12 步延迟（50Hz 下 240ms），最小变体的推理延迟降到 38ms。</li>
     </ul>
   </section>
 
@@ -369,7 +369,7 @@ for _ in range(num_steps):
     <ul>
       <li><strong>前作</strong>：<a href="https://arxiv.org/abs/2506.07339" target="_blank" rel="noreferrer">RTC</a>（推理时补全）；它之前有 ACT 的 temporal ensembling，以及 <a href="https://arxiv.org/abs/2506.01844" target="_blank" rel="noreferrer">SmolVLA</a> 的异步推理（不处理块间不连续）。</li>
       <li><strong>同期</strong>：<a href="https://arxiv.org/abs/2509.23224" target="_blank" rel="noreferrer">A2C2</a> 加一个轻量的修正头；<a href="https://arxiv.org/abs/2512.01031" target="_blank" rel="noreferrer">VLASH</a> 只以未来的一个动作为条件，训练时 RTC 则以完整前缀为条件。</li>
-      <li><strong>接手</strong>：<a href="pi0.7_问答学习卡.html">π0.7</a> 默认采用训练时 RTC；<a href="Realtime-VLA-论文解读.html">Realtime-VLA FLASH</a> 用投机推理进一步降低扩散 VLA 的延迟，并指出与 RTC 结合时需要处理可变延迟；<a href="DynamicVLA-论文解读.html">DynamicVLA</a> 处理运动物体带来的感知—执行错位。</li>
+      <li><strong>接手</strong>：<a class="concept-link" href="pi0.7_问答学习卡.html#concept-rtc-deployment">π0.7</a> 默认采用训练时 RTC；<a href="Realtime-VLA-论文解读.html">Realtime-VLA FLASH</a> 用<a class="concept-link" href="Realtime-VLA-论文解读.html#concept-speculative-inference">投机推理</a>进一步降低扩散 VLA 的延迟，并指出与 RTC 结合时需要处理可变延迟；<a href="DynamicVLA-论文解读.html">DynamicVLA</a> 处理运动物体带来的感知—执行错位。</li>
       <li><strong>在全景中的位置</strong>：见 <a href="PI-工作全景.html">π 公司线</a> 的“动作怎么出得又好又快”：FAST → 知识隔离 → RTC → 训练时 RTC。</li>
     </ul>
   </section>
@@ -390,7 +390,10 @@ for _ in range(num_steps):
     <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块</a>
     <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">Flow Matching</a>
     <a class="concept-link" href="concepts.html">全部概念 →</a>
-  </aside>
+      <a class="concept-link" href="RTC-实时动作分块-论文解读.html#concept-inpainting">图像补全：推理时 RTC 的直觉</a>
+    <a class="concept-link" href="RTC-实时动作分块-论文解读.html#concept-soft-masking">软掩码：如何约束重叠区域</a>
+    <a class="concept-link" href="pi0.7_问答学习卡.html#concept-rtc-deployment">π0.7：训练时 RTC 的使用方式</a>
+</aside>
 
   
 <p class="route-backlink" style="max-width:900px;margin:28px auto 0;padding:0 24px;font-size:14px;"><a href="RTC-实时动作分块-论文解读.html">→ 先读原理：实时动作分块（RTC）论文解读（流程图版）</a></p>

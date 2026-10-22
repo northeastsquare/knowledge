@@ -17,10 +17,14 @@
         { t: '为什么要取 log？（交互推导）', h: '为什么取log.html' },
         { t: '主干 A / 主干 B：两台机器拆开看', h: '两条主干-拆机手册.html' },
         { t: 'Beta 分布：别慌球星卡（交互）', h: 'Beta分布-球星卡.html' },
+        { t: 'Gamma 分布：等待时钟（交互）', h: 'Gamma分布-等待时钟.html' },
+        { t: '指数分布：等待的数学（交互）', h: '指数分布-等待的数学.html' },
         { t: '概率分布博物馆：从赌局到 AI', h: '概率分布博物馆.html' },
+        { t: '网页数学公式显示原理', h: '网页数学公式显示原理.html' },
         { t: 'RLinf RL 方法：原理视角对比', h: 'RLinf-RL原理对比.html' },
         { t: 'RLinf 里的 RL 方法详细对比', h: 'RLinf-RL方法对比.html' },
         { t: 'VLA 强化学习方法全景对比', h: 'VLA-RL-方法全景对比.html' },
+        { t: 'Diffusion Policy：扩散动作策略', h: 'DiffusionPolicy-论文解读.html' },
         { t: 'OpenVLA vs π 系列：动作怎么生成', h: 'OpenVLA-vs-pi系列-对比.html' },
         { t: '代码索引：关键概念的官方实现', h: '代码索引.html' }
       ]
@@ -155,9 +159,35 @@
     });
   }
 
+  // Concept destinations may live inside a quiz answer or a collapsed detail.
+  function revealConcept() {
+    var id;
+    try { id = decodeURIComponent(location.hash.slice(1)); } catch (e) { return; }
+    if (id.indexOf('concept-') !== 0) return;
+    var target = document.getElementById(id);
+    if (!target) return;
+    for (var node = target; node && node !== document.body; node = node.parentElement) {
+      if (node.tagName === 'DETAILS') node.open = true;
+      if (node.classList.contains('card')) node.classList.add('revealed');
+      if (node.classList.contains('qa')) node.classList.add('open');
+      if (node.classList.contains('anim')) node.classList.add('in');
+    }
+    requestAnimationFrame(function () { target.scrollIntoView({ block: 'start' }); });
+  }
+
+  function start() { mount(); revealConcept(); }
+  window.addEventListener('hashchange', revealConcept);
+  document.addEventListener('click', function (event) {
+    if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+    var link = event.target.closest('a[href]');
+    if (!link) return;
+    var url = new URL(link.href, location.href);
+    if (url.origin === location.origin && url.pathname === location.pathname &&
+        url.search === location.search && url.hash === location.hash) revealConcept();
+  });
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', mount);
+    document.addEventListener('DOMContentLoaded', start);
   } else {
-    mount();
+    start();
   }
 })();

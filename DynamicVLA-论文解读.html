@@ -168,7 +168,7 @@
   <section class="hero">
     <div class="eyebrow">精读笔记 · VLA</div>
     <h1>DynamicVLA：面向动态物体操作的 VLA</h1>
-    <p class="summary">面向移动/动态目标抓取的 VLA，解决动作时延导致的错位问题——用一个 0.4B 紧凑模型 + 连续推理 + 潜在感知的动作流，把动态抓取的成功率从基线约 13% 拉到 47%，并配套造了一个全自动的动态操作基准 DOM。</p>
+    <p class="summary">面向移动/动态目标抓取的 VLA，解决<a class="concept-link" href="#concept-latency">动作时延导致的错位问题</a>——用一个 0.4B 紧凑模型 + <a class="concept-link" href="#concept-continuous-inference">连续推理</a> + <a class="concept-link" href="#concept-laas">潜在感知的动作流</a>，把动态抓取的成功率从基线约 13% 拉到 47%，并配套造了一个全自动的动态操作基准 DOM。</p>
     <div class="meta">
       <div class="m"><span class="k">论文</span><span class="v">DynamicVLA: A Vision-Language-Action Model for Dynamic Object Manipulation</span></div>
       <div class="m"><span class="k">机构</span><span class="v">南洋理工大学 S-Lab</span></div>
@@ -202,9 +202,9 @@
     <p>DynamicVLA 的思路不是堆大模型，而是"<span class="hl">把时延当成首要敌人来打</span>"，主线四步：</p>
     <ol>
       <li><strong>造一个足够快的 0.4B VLA</strong>：用卷积视觉编码器 <code>FastViT</code>（高效空间压缩、结构保真、避免多帧输入下 token 二次增长）+ 截断到前 16 层的 <code>SmolLM2-360M</code> 语言骨干 + <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">Flow Matching</a> <a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a>，把推理压到 <span class="hl">~88Hz</span>（1.8GB 显存）。</li>
-      <li><strong>Continuous Inference（CI）</strong>：推理与执行重叠的流水线——上一次推理一完成就立刻触发下一次，不等动作序列执行完，消除块间等待。</li>
-      <li><strong>Latent-aware Action Streaming（LAAS）</strong>：一个显式的执行策略，丢弃过时动作、优先最新预测，恢复"感知-执行"的时间对齐。</li>
-      <li><strong>补上数据地基 DOM benchmark</strong>：用自动化管线（仿真 200K 集 + 真实世界 2K 集，无需遥操作）训练并评测，覆盖多本体（Franka、PiPER）。</li>
+      <li id="concept-continuous-inference" class="concept-anchor"><strong>Continuous Inference（CI）</strong>：推理与执行重叠的流水线——上一次推理一完成就立刻触发下一次，不等动作序列执行完，消除块间等待。</li>
+      <li id="concept-laas" class="concept-anchor"><strong>Latent-aware Action Streaming（LAAS）</strong>：一个显式的执行策略，丢弃过时动作、优先最新预测，恢复"感知-执行"的时间对齐。</li>
+      <li><strong>补上数据地基 DOM benchmark</strong>：用自动化管线（仿真 200K 集 + 真实世界 2K 集，无需遥操作）训练并评测，覆盖<a class="concept-link" href="Qwen-VLA-论文解读.html#concept-cross-embodiment">多本体</a>（Franka、PiPER）。</li>
     </ol>
     <p>三件创新对应当前动态 VLA 的三个瓶颈：紧凑骨干→推理速度；CI→消除块间等待；LAAS→消除感知-执行错位。数据管线→解决动态数据缺失。</p>
   </section>
@@ -216,7 +216,7 @@
     <div class="card">
       <table>
         <tr><th>环节</th><th>内容</th></tr>
-        <tr><td><strong>输入 · 观测</strong></td><td>时间窗口 <code>Ot = {ot-2, ot}</code>（默认稀疏两帧，多视角 RGB 按通道拼接，用于隐式感知速度）</td></tr>
+        <tr><td><strong>输入 · 观测</strong></td><td>时间窗口 <code>Ot = {ot-2, ot}</code>（默认稀疏两帧，多视角 RGB 按通道拼接，用于隐式<a class="concept-link" href="PUMA-论文解读.html#concept-motion-perception">感知速度</a>）</td></tr>
         <tr><td><strong>输入 · 语言</strong></td><td>指令 <code>Lt</code>，按长度 token 化</td></tr>
         <tr><td><strong>输入 · 本体</strong></td><td>32 维本体状态 <code>Pt</code>（末端笛卡尔位姿，未用项零填充），线性投影成单个 960 维 token</td></tr>
         <tr><td><strong>编码</strong></td><td>FastViT 输出 <span class="hl">36 个 960 维视觉 token</span>；三路 token 拼接后交给 SmolLM2-360M 前 16 层，<a class="concept-link" href="Realtime-VLA-论文解读.html#concept-kv-cache">KV 表示缓存复用</a></td></tr>
@@ -303,7 +303,7 @@
       <h3>三阶段训练（32×A100，batch 40/卡，AdamW，lr 1e-4，cosine + 1000 warmup）</h3>
       <ul>
         <li><strong>预训练（2 天）</strong>：只用视觉-语言对齐，在 COYO-700M 采样 150M 英文图文对上训练 FastViT + SmolLM2-360M。</li>
-        <li><strong>中训练（10 天）</strong>：在合成 DOM 数据集上训练完整 VLA，动作专家按 Flow Matching 目标（Eq.1）去噪。</li>
+        <li><strong>中训练（10 天）</strong>：在<a class="concept-link" href="InternData-A1-论文解读.html#concept-synthetic-data">合成</a> DOM 数据集上训练完整 VLA，动作专家按 Flow Matching 目标（Eq.1）去噪。</li>
         <li><strong>后训练（2 天）</strong>：用机器人本体相关的真实世界演示微调，适配新本体和传感配置。</li>
       </ul>
     </div>
@@ -329,8 +329,8 @@
         <tr><th>方法</th><th>平均成功率 SR (%)</th><th>路径长度 (m)</th><th>完成时间 (s)</th></tr>
         <tr><td>Diffusion Policy</td><td>0.38</td><td>1.34</td><td>10.89</td></tr>
         <tr><td>OpenVLA-OFT</td><td>1.33</td><td>1.08</td><td>10.83</td></tr>
-        <tr><td>π0</td><td>8.11</td><td>1.19</td><td>10.55</td></tr>
-        <tr><td>π0.5</td><td>11.06</td><td>1.28</td><td>10.62</td></tr>
+        <tr><td><a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">π0</a></td><td>8.11</td><td>1.19</td><td>10.55</td></tr>
+        <tr><td><a class="concept-link" href="pi0.5_论文测验_精美版.html#concept-hierarchical-policy">π0.5</a></td><td>11.06</td><td>1.28</td><td>10.62</td></tr>
         <tr><td>SmolVLA</td><td>12.67</td><td>1.30</td><td>10.65</td></tr>
         <tr><td>GR00T-N1.5</td><td>13.05</td><td>1.29</td><td>10.56</td></tr>
         <tr><td>VLA-Adapter-Pro</td><td>13.61</td><td>1.51</td><td>9.98</td></tr>
@@ -414,7 +414,7 @@
     <ul>
       <li><strong>读代码/项目页</strong>：<a href="https://haozhexie.com/project/dynamic-vla">https://haozhexie.com/project/dynamic-vla</a>，重点看 CI 与 LAAS 在推理循环里的具体调度实现。</li>
       <li><strong>复现最小实验</strong>：把 CI + LAAS 装到自己项目里的 VLA 上，在时延敏感场景测成功率变化（不改骨干、不重训即可验证）。</li>
-      <li><strong>补概念</strong>：Flow Matching / rectified flow 去噪目标；FastViT 的结构重参数化；EfficientTAM 分割跟踪；SmolVLA 的骨干截断技巧。</li>
+      <li><strong>补概念</strong>：<a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">Flow Matching / rectified flow 去噪目标</a>；FastViT 的结构重参数化；EfficientTAM 分割跟踪；SmolVLA 的骨干截断技巧。</li>
       <li><strong>理解量化约束</strong>：感知-执行 gap 的时延步数 <code>m</code> 如何测量；动作块尺寸需满足 <code>n &gt; m</code> 的设计前提。</li>
       <li><strong>做实验</strong>：在本项目的移动/动态抓取场景上验证"丢弃过时动作 + 最新预测覆盖"是否同样带来时序对齐收益；评估是否要复刻其真实世界"仿真器"采集管线。</li>
     </ul>
@@ -424,6 +424,8 @@
     <strong>相关概念</strong>
     <a href="Realtime-VLA-论文解读.html#concept-speculative-inference">投机推理：另一种降低推理时延的路线</a>
     <a href="PUMA-论文解读.html#concept-motion-perception">运动感知：历史光流与未来预测</a>
+    <a class="concept-link" href="RTC-训练时-论文解读.html#concept-rtc">动作块如何平滑接续：RTC</a>
+    <a class="concept-link" href="InternData-A1-论文解读.html#concept-synthetic-data">仿真示教如何规模化生成</a>
     <a href="concepts.html">全部概念 →</a>
   </aside>
 

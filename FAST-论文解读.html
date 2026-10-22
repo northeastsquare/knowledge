@@ -192,7 +192,7 @@
   <section class="hero">
     <div class="eyebrow">精读笔记 · 动作表示</div>
     <h1>FAST / π0-FAST：把动作像 JPEG 一样压缩成 token</h1>
-    <p class="summary">离散动作 token 在高频控制下学不动，问题不在“离散”本身，而在<b>每个 token 携带的信息太少</b>。FAST 用 DCT + BPE 把一段动作压成约 30 个高信息量 token，让自回归 <a class="concept-link" href="VLA-发展历程.html#concept-vla">VLA</a> 第一次能学会 50Hz 的叠衣服。</p>
+    <p class="summary">离散动作 token 在高频控制下学不动，问题不在“离散”本身，而在<b>每个 token 携带的信息太少</b>。FAST 用 <a class="concept-link" href="#concept-dct">DCT</a> + <a class="concept-link" href="#concept-bpe">BPE</a> 把一段动作压成约 30 个高信息量 token，让自回归 <a class="concept-link" href="VLA-发展历程.html#concept-vla">VLA</a> 第一次能学会 50Hz 的叠衣服。</p>
     <div class="meta">
       <div class="m"><span class="k">论文</span><span class="v">FAST: Efficient Action Tokenization for Vision-Language-Action Models</span></div>
       <div class="m"><span class="k">作者</span><span class="v">Pertsch*, Stachowicz*, Ichter, Driess, Nair, Vuong, Mees, Finn, Levine</span></div>
@@ -208,7 +208,7 @@
     <h2>先建立坐标：三种“动作怎么出”</h2>
     <div class="tbl-wrap">
       <table>
-        <tr><th></th><th>OpenVLA / RT-2：逐维分箱</th><th>π0：flow matching</th><th>π0-FAST：频域压缩 token</th></tr>
+        <tr><th></th><th><a class="concept-link" href="OpenVLA-vs-pi系列-对比.html#concept-action-binning">OpenVLA / RT-2：逐维分箱</a></th><th>π0：flow matching</th><th>π0-FAST：频域压缩 token</th></tr>
         <tr><td><strong>动作长什么样</strong></td><td>每步每维一个 256-bin token</td><td>连续向量，一次 50 步</td><td>一整段动作的 DCT 系数，经 BPE 合并成离散 token</td></tr>
         <tr><td><strong>谁生成</strong></td><td>LLM 自回归，复用词表末尾 256 个 token</td><td>独立的 300M <a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a>，10 步积分去噪</td><td>PaliGemma 2B 主干自回归，没有动作专家</td></tr>
         <tr><td><strong>1 秒 50Hz 双臂（14 维）的 token 数</strong></td><td>700</td><td>不是 token（50×14 个连续数）</td><td>约 53</td></tr>
@@ -217,12 +217,12 @@
         <tr><td><strong>弱点</strong></td><td>高频数据学不动</td><td>训练慢，梯度会伤 VLM 知识</td><td>推理慢（逐 token 解码）</td></tr>
       </table>
     </div>
-    <p class="hl-line"><b>一句话：</b>FAST 是一个<b>动作 tokenizer</b>（不是模型）；π0-FAST 是“π0 的 VLM 主干 + FAST token + 自回归解码”训出来的<b>模型</b>。它不是 flow matching，也不是 OpenVLA 那种逐维分箱。</p>
+    <p class="hl-line"><b>一句话：</b>FAST 是一个<b>动作 tokenizer</b>（不是模型）；π0-FAST 是“π0 的 VLM 主干 + FAST token + 自回归解码”训出来的<b>模型</b>。它不是 <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">flow matching</a>，也不是 OpenVLA 那种逐维分箱。</p>
   </section>
 
   <section id="s-problem">
     <h2>问题：为什么分箱 token 在高频下“学不动”</h2>
-    <p>分箱的做法是：对动作块 <code>a<sub>1:H</sub></code>（H 步 × D 维）的<b>每一步、每一维</b>独立离散成 256 个 bin 之一，得到 <code>H×D</code> 个 token：<code>[T<sub>1,1</sub>…T<sub>1,D</sub>, …, T<sub>H,1</sub>…T<sub>H,D</sub>]</code>。</p>
+    <p>分箱的做法是：对<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块</a> <code>a<sub>1:H</sub></code>（H 步 × D 维）的<b>每一步、每一维</b>独立离散成 256 个 bin 之一，得到 <code>H×D</code> 个 token：<code>[T<sub>1,1</sub>…T<sub>1,D</sub>, …, T<sub>H,1</sub>…T<sub>H,D</sub>]</code>。</p>
     <ol>
       <li><strong>玩具实验</strong>：让小 Transformer 根据 4 个点预测一条三次样条。曲线本身不变，只改采样率（每条 25 → 800 个点）。分箱 token 在低采样率下预测很准；采样率越高误差越大，最后模型干脆<b>一直复制第一个动作</b>。</li>
       <li><strong>原因在训练目标</strong>：自回归模型学的是“给定前面所有 token，下一个是什么”，学习信号正比于 <code>T<sub>i</sub></code> 相对 <code>T<sub>1:i-1</sub></code> 的<b>边际信息量</b>。信号越平滑、步长越短，相邻两步的差就越小，下一个 token 几乎等于上一个，边际信息趋近于 0。“抄上一个”这个捷径就能拿到很低的 loss。</li>
@@ -257,10 +257,10 @@
     <h2>FAST 算法五步（Frequency-space Action Sequence Tokenization）</h2>
     <div class="flow">
       <div class="st"><b>① 归一化</b><span>每个动作维度的训练集第 1 / 99 分位数映射到 [−1, 1]。用分位数是为了抗离群值，也方便不同机器人共用一个 tokenizer。</span></div>
-      <div class="st"><b>② 逐维 DCT</b><span>对 H×D 动作块的每一维沿时间轴做离散余弦变换。低频系数描述整体走势，高频系数描述突变。平滑的轨迹只需要少数几个系数。</span></div>
+      <div class="st concept-anchor" id="concept-dct"><b>② 逐维 DCT</b><span>对 H×D 动作块的每一维沿时间轴做离散余弦变换。低频系数描述整体走势，高频系数描述突变。平滑的轨迹只需要少数几个系数。</span></div>
       <div class="st"><b>③ 缩放取整</b><span><code>round(γ·C)</code>，γ 默认为 10。这是<b>唯一有损</b>的一步：小系数会变成 0，矩阵变得稀疏。γ 控制压缩率和精度之间的权衡。</span></div>
       <div class="st"><b>④ 低频优先展平</b><span>按“先所有维度的第 0 频，再所有维度的第 1 频……”展平（column-first）。这样自回归时先确定整体形状，再补细节，rollout 更稳。</span></div>
-      <div class="st"><b>⑤ BPE 合并</b><span>在整数序列上训练词表为 1024 的 BPE，无损地压掉成串的 0，并合并跨维度常一起出现的系数组合。输出是固定大小的词表，可以直接塞进 VLM 词表。</span></div>
+      <div class="st concept-anchor" id="concept-bpe"><b>⑤ BPE 合并</b><span>在整数序列上训练词表为 1024 的 BPE，无损地压掉成串的 0，并合并跨维度常一起出现的系数组合。输出是固定大小的词表，可以直接塞进 VLM 词表。</span></div>
     </div>
     <p><b>解码是完全逆过程</b>：BPE 解码 → reshape 成 H×D → 除以 γ → 逆 DCT → 反归一化，得到连续动作块。整个 tokenizer 只有两个超参（γ 与词表大小），论文发现都不敏感。唯一需要学习的是 BPE 词表，几分钟就能训完。</p>
     <div class="tbl-wrap">
@@ -289,7 +289,7 @@
       <li><strong>输入序列</strong>：<code>[图像 token] Task: 指令, State: 256-bin 离散状态;\n</code> 作为前缀，<code>Action: [FAST token…] |</code> 作为后缀。前缀内部双向注意力，后缀因果注意力。</li>
       <li><strong>词表映射</strong>：FAST 的 1024 个 token 映射到 PaliGemma 词表末尾，并跳过最后 128 个特殊 token：<code>pg_id = vocab_size − 1 − 128 − fast_id</code>。</li>
       <li><strong>训练</strong>：标准的下一个 token 交叉熵，<b>只在后缀（动作部分）上计 loss</b>。没有噪声、没有积分步数，和训练语言模型完全一样。</li>
-      <li><strong>推理</strong>：前缀先过一遍填 KV cache，然后逐 token 贪心解码（默认温度 0），遇到 EOS 停止 → 截取 “Action:” 与 “|” 之间的部分 → FAST 解码 → 连续动作块。</li>
+      <li><strong>推理</strong>：前缀先过一遍填 <a class="concept-link" href="Realtime-VLA-论文解读.html#concept-kv-cache">KV cache</a>，然后逐 token 贪心解码（默认温度 0），遇到 EOS 停止 → 截取 “Action:” 与 “|” 之间的部分 → FAST 解码 → 连续动作块。</li>
       <li><strong>规模</strong>：在 π0 的同一套跨本体数据（9.03 亿时间步自有数据，外加 9.1% 的 BridgeV2 / DROID / OXE）上训练，对标扩散/flow 版 π0。</li>
     </ol>
     <div class="diagram card">
@@ -362,8 +362,8 @@
   <section id="s-next">
     <h2>被谁接手</h2>
     <ul>
-      <li><strong><a href="pi0.5_论文测验_精美版.html#concept-fast">π0.5</a></strong>：取两条路线之长。训练时用 FAST token 训 VLM 主干（训练快、语言好），推理时由 flow 动作专家出动作（推理快），两种动作表示之间用注意力 mask 隔开。</li>
-      <li><strong><a class="concept-link" href="KI-知识隔离-论文解读.html#concept-knowledge-insulation">知识隔离（KI）</a></strong>：FAST token 训练骨干，同时<b>阻断</b>动作专家回传到骨干的梯度，避免破坏 VLM 知识。见 <a href="PI-工作全景.html">Physical Intelligence 工作全景</a>。</li>
+      <li><strong><a class="concept-link" href="pi0.5_论文测验_精美版.html#concept-fast">π0.5</a></strong>：取两条路线之长。训练时用 FAST token 训 VLM 主干（训练快、语言好），推理时由 flow 动作专家出动作（推理快），两种动作表示之间用注意力 mask 隔开。</li>
+      <li><strong><a class="concept-link" href="KI-知识隔离-论文解读.html#concept-knowledge-insulation">知识隔离（KI）</a></strong>：FAST token 训练骨干，同时<b><a class="concept-link" href="KI-知识隔离-论文解读.html#concept-stop-gradient">阻断</a></b>动作专家回传到骨干的梯度，避免破坏 VLM 知识。见 <a href="PI-工作全景.html">Physical Intelligence 工作全景</a>。</li>
       <li><strong>π0.6 / π0.7</strong>：沿用 π0.5 的“FAST 训骨干 + 动作专家出动作”底座。见 <a href="pi0.6-论文解读.html">π*0.6</a>、<a href="pi0.7_问答学习卡.html">π0.7</a>。</li>
       <li><strong>另一条路</strong>：OpenVLA-OFT 放弃逐 token 生成，改为并行解码加连续回归来提速。对比见 <a href="OpenVLA-vs-pi系列-对比.html">OpenVLA vs π 系列</a>。</li>
       <li><strong>放回全局</strong>：<a href="VLA-发展历程.html">VLA 发展史</a>中的“动作表示”主线，2025.01 节点。</li>
@@ -385,7 +385,10 @@
     <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">Flow Matching</a>
     <a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a>
     <a class="concept-link" href="concepts.html">全部概念 →</a>
-  </aside>
+      <a class="concept-link" href="#concept-dct">DCT：时间轨迹变为频率系数</a>
+    <a class="concept-link" href="#concept-bpe">BPE：合并冗余系数 token</a>
+    <a class="concept-link" href="pi0.5_论文测验_精美版.html#concept-fast">π0.5：训练用 FAST，推理用 flow</a>
+</aside>
 
   <footer>
     <span>精读笔记 · FAST / π0-FAST · 出处：Pertsch et al., <a href="https://arxiv.org/abs/2501.09747" target="_blank" rel="noreferrer">arXiv 2501.09747</a> · <a href="https://www.pi.website/research/fast" target="_blank" rel="noreferrer">官方博客</a></span>

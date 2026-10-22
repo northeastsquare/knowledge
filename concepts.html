@@ -16,10 +16,10 @@ a{color:var(--accent)}a:focus-visible,button:focus-visible,input:focus-visible{o
 </head>
 <body>
 <main>
-  <header><div class="eyebrow">ROBOTIC LEARNING / CONCEPT INDEX</div><h1>从一个概念，读懂另一篇。<small>42 个关键概念 · 21 篇研读网页</small></h1><p class="intro">正文里的虚线下划线可以点击，直达相关讲解。这里按问题收录概念：点击标题阅读原文，沿“接着理解”继续串读。</p></header>
-  <aside class="route" aria-label="概念阅读路线"><strong>从你正在问的问题出发</strong><p>“target 和双 Q 是一回事吗？” <a href="#q-value">Q 值</a> → <a href="#target-network">target 副本</a> → <a href="#twin-q">双 Q</a></p><p>“VLA 怎么用 RL 变好？” <a href="#flow-matching">流匹配</a> → <a href="#denoising-mdp">去噪链 MDP</a> / <a href="#rl-token">RL Token</a> → <a href="#recap">RECAP</a></p><p>“知识隔离是什么？为什么梯度要切一半？” <a href="#knowledge-insulation">知识隔离</a> → <a href="#stop-gradient">Stop-gradient</a> → <a href="#co-training">VLM co-training</a></p></aside>
+  <header><div class="eyebrow">ROBOTIC LEARNING / CONCEPT INDEX</div><h1>从一个概念，读懂另一篇。<small>96 个关键概念 · 27 篇研读网页</small></h1><p class="intro">正文里的虚线下划线可以点击，直达相关讲解。这里按问题收录概念：点击标题阅读原文，沿“接着理解”继续串读。</p></header>
+  <aside class="route" aria-label="概念阅读路线"><strong>从你正在问的问题出发</strong><p>“target 和双 Q 是一回事吗？” <a href="#q-value">Q 值</a> → <a href="#target-network">target 副本</a> → <a href="#twin-q">双 Q</a></p><p>“VLA 怎么用 RL 变好？” <a href="#flow-matching">流匹配</a> → <a href="#denoising-mdp">去噪链 MDP</a> / <a href="#rl-token">RL Token</a> → <a href="#recap">RECAP</a></p><p>“知识隔离是什么？为什么梯度要切一半？” <a href="#knowledge-insulation">知识隔离</a> → <a href="#stop-gradient">Stop-gradient</a> → <a href="#co-training">VLM co-training</a></p><p>“Beta 为什么出现在 π0 训练里？” <a href="#probability-density">密度与面积</a> → <a href="#beta-distribution">Beta 分布</a> → <a href="#noise-schedule">噪声采样</a> → <a href="#flow-matching">流匹配</a></p><p>“生成动作后怎样接上实时控制？” <a href="#diffusion-policy">扩散策略</a> → <a href="#receding-horizon">滚动执行</a> → <a href="#inpainting">动作补全</a> → <a href="#rtc">RTC</a></p></aside>
   <div class="search-area"><div class="search-field"><label for="concept-search">查找概念或相关问题</label><input id="concept-search" type="search" placeholder="例如：target、双 Q、奖励、动作块" autocomplete="off"></div><button id="clear-search" type="button">清空搜索</button></div>
-  <p class="count" id="result-count" role="status" aria-live="polite">共 42 个概念</p>
+  <p class="count" id="result-count" role="status" aria-live="polite">共 96 个概念</p>
   <p class="empty" id="empty-state" hidden>没有找到匹配概念。试试中文名称、英文缩写，或清空搜索查看全部。</p>
   <section class="term-group" aria-labelledby="group-0">
     <div class="group-heading"><span>01</span><h2 id="group-0">价值如何学出来</h2></div>
@@ -36,7 +36,7 @@ a{color:var(--accent)}a:focus-visible,button:focus-visible,input:focus-visible{o
         <p>把当前价值与即时奖励、后续价值联系起来，是时序差分学习的出发点。</p>
         <div class="term-source">讲解位置：两条主干-拆机手册</div>
         <div class="term-code"><span>代码在哪 · <a href="代码索引.html#bellman">索引</a></span> <a class="code-link" href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/workers/actor/fsdp_sac_policy_worker.py#L465-L476" target="_blank" rel="noreferrer" title="RLinf · TD 目标">RLinf · TD 目标 ↗</a></div>
-        <div class="term-related"><span>接着理解</span> <a href="#q-value">Q 值</a> <a href="#bootstrap">Bootstrap</a> <a href="#off-policy">Off-policy</a></div>
+        <div class="term-related"><span>接着理解</span> <a href="#q-value">Q 值</a> <a href="#bootstrap">Bootstrap</a> <a href="#off-policy">Off-policy</a> <a href="#td-learning">TD · 时序差分学习</a></div>
       </article>
       <article class="term-card" id="bootstrap">
         <h3><a href="RLToken-漫画分镜解读.html#concept-bootstrap">Bootstrap · TD 自举<span aria-hidden="true"> ↗</span></a></h3>
@@ -48,7 +48,7 @@ a{color:var(--accent)}a:focus-visible,button:focus-visible,input:focus-visible{o
         <h3><a href="RLToken-漫画分镜解读.html#concept-sparse-reward">稀疏奖励<span aria-hidden="true"> ↗</span></a></h3>
         <p>奖励只在少数时刻出现，学习需要把结果反馈传回之前的动作。</p>
         <div class="term-source">讲解位置：RLToken-漫画分镜解读</div>
-        <div class="term-related"><span>接着理解</span> <a href="#bootstrap">Bootstrap</a> <a href="#action-chunk">Action chunk</a> <a href="#replay-buffer">Replay buffer</a></div>
+        <div class="term-related"><span>接着理解</span> <a href="#bootstrap">Bootstrap</a> <a href="#action-chunk">Action chunk</a> <a href="#replay-buffer">Replay buffer</a> <a href="#credit-assignment">Credit assignment · 信用分配</a></div>
       </article>
       <article class="term-card" id="target-network">
         <h3><a href="RLToken-漫画分镜解读.html#concept-target-network">Target network · 目标网络<span aria-hidden="true"> ↗</span></a></h3>
@@ -76,7 +76,7 @@ a{color:var(--accent)}a:focus-visible,button:focus-visible,input:focus-visible{o
         <p>学习的目标策略可以不同于产生数据的行为策略，因此旧经验和其他策略的数据也可能被复用。</p>
         <div class="term-source">讲解位置：两条主干-拆机手册</div>
         <div class="term-code"><span>代码在哪 · <a href="代码索引.html#off-policy">索引</a></span> <a class="code-link" href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/data/storage/replay/buffer.py#L228" target="_blank" rel="noreferrer" title="RLinf · TrajectoryReplayBuffer">RLinf · TrajectoryReplayBuffer ↗</a></div>
-        <div class="term-related"><span>接着理解</span> <a href="#replay-buffer">Replay buffer</a> <a href="#sac">SAC</a> <a href="#iql">IQL</a></div>
+        <div class="term-related"><span>接着理解</span> <a href="#replay-buffer">Replay buffer</a> <a href="#sac">SAC</a> <a href="#iql">IQL</a> <a href="#on-policy">On-policy · 同策略学习</a></div>
       </article>
       <article class="term-card" id="replay-buffer">
         <h3><a href="RLToken-漫画分镜解读.html#concept-replay-buffer">Replay buffer · 经验回放池<span aria-hidden="true"> ↗</span></a></h3>
@@ -84,6 +84,30 @@ a{color:var(--accent)}a:focus-visible,button:focus-visible,input:focus-visible{o
         <div class="term-source">讲解位置：RLToken-漫画分镜解读</div>
         <div class="term-code"><span>代码在哪 · <a href="代码索引.html#replay-buffer">索引</a></span> <a class="code-link" href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/data/storage/replay/buffer.py#L228" target="_blank" rel="noreferrer" title="RLinf · TrajectoryReplayBuffer">RLinf · TrajectoryReplayBuffer ↗</a></div>
         <div class="term-related"><span>接着理解</span> <a href="#off-policy">Off-policy</a> <a href="#actor-critic">Actor–Critic</a> <a href="#sparse-reward">稀疏奖励</a></div>
+      </article>
+      <article class="term-card" id="td-learning">
+        <h3><a href="RLToken-漫画分镜解读.html#concept-td-learning">TD · 时序差分学习<span aria-hidden="true"> ↗</span></a></h3>
+        <p>用已观察到的即时奖励与后续价值估计，更新当前价值，不必每次都等完整轨迹结束。</p>
+        <div class="term-source">讲解位置：RLToken-漫画分镜解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#bootstrap">Bootstrap · TD 自举</a> <a href="#bellman">Bellman 关系</a> <a href="#n-step-return">n-step return · 多步回报</a></div>
+      </article>
+      <article class="term-card" id="n-step-return">
+        <h3><a href="RLToken-漫画分镜解读.html#concept-n-step-return">n-step return · 多步回报<span aria-hidden="true"> ↗</span></a></h3>
+        <p>先累加若干步真实奖励，再接后续价值估计；步数在 Monte Carlo 与 TD 的偏差、方差之间提供调节。</p>
+        <div class="term-source">讲解位置：RLToken-漫画分镜解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#td-learning">TD · 时序差分学习</a> <a href="#bootstrap">Bootstrap · TD 自举</a> <a href="#action-chunk">Action chunk · 动作块</a></div>
+      </article>
+      <article class="term-card" id="credit-assignment">
+        <h3><a href="RLToken-漫画分镜解读.html#concept-credit-assignment">Credit assignment · 信用分配<span aria-hidden="true"> ↗</span></a></h3>
+        <p>把后来的结果反馈分配给此前的动作。长序列与稀疏奖励使判断哪些动作有贡献更加困难。</p>
+        <div class="term-source">讲解位置：RLToken-漫画分镜解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#sparse-reward">稀疏奖励</a> <a href="#n-step-return">n-step return · 多步回报</a> <a href="#action-chunk">Action chunk · 动作块</a></div>
+      </article>
+      <article class="term-card" id="ope">
+        <h3><a href="RL-100-论文解读.html#concept-ope">OPE · 离线策略评估<span aria-hidden="true"> ↗</span></a></h3>
+        <p>不直接部署所有候选策略，而用数据估计其表现；RL-100 将它作为迭代离线强化学习的筛选闸门。</p>
+        <div class="term-source">讲解位置：RL-100-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#iql">IQL · 离线价值学习</a> <a href="#q-value">Q 值 · 动作价值</a> <a href="#behavior-cloning">BC · 行为克隆与正则</a></div>
       </article>
     </div>
   </section>
@@ -109,7 +133,7 @@ a{color:var(--accent)}a:focus-visible,button:focus-visible,input:focus-visible{o
         <p>衡量一个动作相对基线好多少；在策略更新中提供方向与权重。</p>
         <div class="term-source">讲解位置：两条主干-拆机手册</div>
         <div class="term-code"><span>代码在哪 · <a href="代码索引.html#advantage">索引</a></span> <a class="code-link" href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/algorithms/advantages.py#L25-L86" target="_blank" rel="noreferrer" title="RLinf · compute_gae_advantages_and_returns">RLinf · compute_gae_advantages_and_returns ↗</a></div>
-        <div class="term-related"><span>接着理解</span> <a href="#q-value">Q 值</a> <a href="#policy-gradient">策略梯度</a> <a href="#recap">RECAP</a></div>
+        <div class="term-related"><span>接着理解</span> <a href="#q-value">Q 值</a> <a href="#policy-gradient">策略梯度</a> <a href="#recap">RECAP</a> <a href="#gae">GAE · 广义优势估计</a></div>
       </article>
       <article class="term-card" id="actor-critic">
         <h3><a href="RLToken-漫画分镜解读.html#concept-actor-critic">Actor–Critic<span aria-hidden="true"> ↗</span></a></h3>
@@ -129,7 +153,7 @@ a{color:var(--accent)}a:focus-visible,button:focus-visible,input:focus-visible{o
         <p>用新旧策略概率比和裁剪目标限制更新幅度；在本库中还可接着看 πRL 如何为动作生成链构造概率。</p>
         <div class="term-source">讲解位置：RLinf-RL原理对比</div>
         <div class="term-code"><span>代码在哪 · <a href="代码索引.html#ppo">索引</a></span> <a class="code-link" href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/algorithms/losses.py#L179-L371" target="_blank" rel="noreferrer" title="RLinf · compute_ppo_actor_loss">RLinf · compute_ppo_actor_loss ↗</a> <a class="code-link" href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/algorithms/losses.py#L374-L449" target="_blank" rel="noreferrer" title="RLinf · compute_ppo_critic_loss">RLinf · compute_ppo_critic_loss ↗</a></div>
-        <div class="term-related"><span>接着理解</span> <a href="#policy-gradient">策略梯度</a> <a href="#advantage">Advantage</a> <a href="#denoising-mdp">去噪链 MDP</a></div>
+        <div class="term-related"><span>接着理解</span> <a href="#policy-gradient">策略梯度</a> <a href="#advantage">Advantage</a> <a href="#denoising-mdp">去噪链 MDP</a> <a href="#on-policy">On-policy · 同策略学习</a> <a href="#gae">GAE · 广义优势估计</a></div>
       </article>
       <article class="term-card" id="grpo">
         <h3><a href="RLinf-RL原理对比.html#concept-grpo">GRPO · 组内比较<span aria-hidden="true"> ↗</span></a></h3>
@@ -169,7 +193,31 @@ a{color:var(--accent)}a:focus-visible,button:focus-visible,input:focus-visible{o
         <h3><a href="ObjectCentric-RL-论文解读.html#concept-residual-rl">Residual RL · 残差强化学习<span aria-hidden="true"> ↗</span></a></h3>
         <p>在基础策略动作上学习修正量；对照整模型微调和 RL Token，可看清“到底更新哪里”。</p>
         <div class="term-source">讲解位置：ObjectCentric-RL-论文解读</div>
-        <div class="term-related"><span>接着理解</span> <a href="#behavior-cloning">BC</a> <a href="#sim-to-real">Sim-to-Real</a> <a href="#rl-token">RL Token</a></div>
+        <div class="term-related"><span>接着理解</span> <a href="#behavior-cloning">BC</a> <a href="#sim-to-real">Sim-to-Real</a> <a href="#rl-token">RL Token</a> <a href="#object-centric-observation">Object-centric · 物体中心观测</a></div>
+      </article>
+      <article class="term-card" id="gae">
+        <h3><a href="RLinf-RL原理对比.html#concept-gae">GAE · 广义优势估计<span aria-hidden="true"> ↗</span></a></h3>
+        <p>对多个时间尺度的 TD 残差加权累积，估计策略更新需要的优势，并调节偏差与方差。</p>
+        <div class="term-source">讲解位置：RLinf-RL原理对比</div>
+        <div class="term-related"><span>接着理解</span> <a href="#advantage">Advantage · 优势</a> <a href="#td-learning">TD · 时序差分学习</a> <a href="#ppo">PPO · 裁剪策略更新</a></div>
+      </article>
+      <article class="term-card" id="on-policy">
+        <h3><a href="RLinf-RL原理对比.html#concept-on-policy">On-policy · 同策略学习<span aria-hidden="true"> ↗</span></a></h3>
+        <p>这类更新依赖当前或近期策略收集的数据；策略变化后，旧数据通常不能不加修正地反复使用。</p>
+        <div class="term-source">讲解位置：RLinf-RL原理对比</div>
+        <div class="term-related"><span>接着理解</span> <a href="#off-policy">Off-policy · 异策略</a> <a href="#ppo">PPO · 裁剪策略更新</a> <a href="#replay-buffer">Replay buffer · 经验回放池</a></div>
+      </article>
+      <article class="term-card" id="dsrl">
+        <h3><a href="RLinf-RL原理对比.html#concept-dsrl">DSRL · 在噪声空间做 RL<span aria-hidden="true"> ↗</span></a></h3>
+        <p>保持生成策略冻结，让 RL 策略学习输入噪声，通过噪声间接改变最终动作，避开完整去噪链的动作似然。</p>
+        <div class="term-source">讲解位置：RLinf-RL原理对比</div>
+        <div class="term-related"><span>接着理解</span> <a href="#flow-matching">Flow Matching · 流匹配</a> <a href="#sac">SAC · 最大熵强化学习</a> <a href="#denoising-mdp">去噪链 MDP</a></div>
+      </article>
+      <article class="term-card" id="reference-dropout">
+        <h3><a href="RL-Token-论文解读.html#concept-reference-dropout">Reference dropout · 参考动作丢弃<span aria-hidden="true"> ↗</span></a></h3>
+        <p>训练时随机丢弃 VLA 的参考动作输入，减少轻量策略对参考动作的依赖。</p>
+        <div class="term-source">讲解位置：RL-Token-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#rl-token">RL Token · 状态表征</a> <a href="#behavior-cloning">BC · 行为克隆与正则</a> <a href="#residual-rl">Residual RL · 残差强化学习</a></div>
       </article>
     </div>
   </section>
@@ -188,7 +236,7 @@ a{color:var(--accent)}a:focus-visible,button:focus-visible,input:focus-visible{o
         <p>学习连续速度场，将噪声逐步变换为动作；在 π0 中由动作专家生成连续动作块。</p>
         <div class="term-source">讲解位置：pi0-论文解读</div>
         <div class="term-code"><span>代码在哪 · <a href="代码索引.html#flow-matching">索引</a></span> <a class="code-link" href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L189-L214" target="_blank" rel="noreferrer" title="openpi · Pi0.compute_loss">openpi · Pi0.compute_loss ↗</a> <a class="code-link" href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L217-L280" target="_blank" rel="noreferrer" title="openpi · Pi0.sample_actions">openpi · Pi0.sample_actions ↗</a></div>
-        <div class="term-related"><span>接着理解</span> <a href="#action-expert">Action expert</a> <a href="#action-chunk">Action chunk</a> <a href="#denoising-mdp">去噪链 MDP</a></div>
+        <div class="term-related"><span>接着理解</span> <a href="#action-expert">Action expert</a> <a href="#action-chunk">Action chunk</a> <a href="#denoising-mdp">去噪链 MDP</a> <a href="#normal-distribution">Normal / Gaussian · 正态分布</a> <a href="#noise-schedule">噪声时间步采样</a> <a href="#euler-integration">Euler · 前向欧拉积分</a> <a href="#diffusion-policy">Diffusion Policy · 扩散动作策略</a></div>
       </article>
       <article class="term-card" id="action-expert">
         <h3><a href="pi0-论文解读.html#concept-action-expert">Action expert · 动作专家<span aria-hidden="true"> ↗</span></a></h3>
@@ -202,7 +250,7 @@ a{color:var(--accent)}a:focus-visible,button:focus-visible,input:focus-visible{o
         <p>一次预测一段连续动作。动作块影响执行延迟，也改变 RL 的时间尺度和信用分配。</p>
         <div class="term-source">讲解位置：RLToken-漫画分镜解读</div>
         <div class="term-code"><span>代码在哪 · <a href="代码索引.html#action-chunk">索引</a></span> <a class="code-link" href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0_config.py#L25-L26" target="_blank" rel="noreferrer" title="openpi · action_horizon = 50">openpi · action_horizon = 50 ↗</a> <a class="code-link" href="https://github.com/moojink/openvla-oft/blob/e4287e94541f459edc4feabc4e181f537cd569a8/prismatic/models/action_heads.py#L84-L107" target="_blank" rel="noreferrer" title="openvla-oft · L1RegressionActionHead">openvla-oft · L1RegressionActionHead ↗</a> <a class="code-link" href="https://github.com/moojink/openvla-oft/blob/e4287e94541f459edc4feabc4e181f537cd569a8/prismatic/extern/hf/modeling_prismatic.py#L877-L942" target="_blank" rel="noreferrer" title="openvla-oft · 并行解码">openvla-oft · 并行解码 ↗</a></div>
-        <div class="term-related"><span>接着理解</span> <a href="#flow-matching">Flow Matching</a> <a href="#sparse-reward">稀疏奖励</a> <a href="#latency">感知—执行时延</a></div>
+        <div class="term-related"><span>接着理解</span> <a href="#flow-matching">Flow Matching</a> <a href="#sparse-reward">稀疏奖励</a> <a href="#latency">感知—执行时延</a> <a href="#diffusion-policy">Diffusion Policy · 扩散动作策略</a> <a href="#receding-horizon">Receding horizon · 滚动时域执行</a></div>
       </article>
       <article class="term-card" id="knowledge-insulation">
         <h3><a href="KI-知识隔离-论文解读.html#concept-knowledge-insulation">知识隔离 · Knowledge insulation<span aria-hidden="true"> ↗</span></a></h3>
@@ -227,33 +275,123 @@ a{color:var(--accent)}a:focus-visible,button:focus-visible,input:focus-visible{o
         <p>把连续动作序列压缩成离散 token 的表示方式；对照连续流匹配动作头理解两者分工。</p>
         <div class="term-source">讲解位置：FAST / π0-FAST · 精读（另见 <a href="pi0.5_论文测验_精美版.html#concept-fast">π0.5 测验</a>）</div>
         <div class="term-code"><span>代码在哪 · <a href="代码索引.html#fast">索引</a></span> <a class="code-link" href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/tokenizer.py#L51-L145" target="_blank" rel="noreferrer" title="openpi · FASTTokenizer">openpi · FASTTokenizer ↗</a> <a class="code-link" href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/tokenizer.py#L148-L243" target="_blank" rel="noreferrer" title="openpi · BinningTokenizer（对照）">openpi · BinningTokenizer（对照） ↗</a></div>
-        <div class="term-related"><span>接着理解</span> <a href="#action-expert">Action expert</a> <a href="#flow-matching">Flow Matching</a> <a href="#action-chunk">Action chunk</a></div>
+        <div class="term-related"><span>接着理解</span> <a href="#action-expert">Action expert</a> <a href="#flow-matching">Flow Matching</a> <a href="#action-chunk">Action chunk</a> <a href="#dct">DCT · 离散余弦变换</a> <a href="#bpe">BPE · 字节对编码</a> <a href="#action-binning">Action binning · 动作离散分箱</a></div>
       </article>
       <article class="term-card" id="rl-token">
         <h3><a href="RLToken-漫画分镜解读.html#concept-rl-token">RL Token · 状态表征<span aria-hidden="true"> ↗</span></a></h3>
         <p>从冻结 VLA 的内部信息提取紧凑表征，让轻量 actor-critic 在其上学习。</p>
         <div class="term-source">讲解位置：RLToken-漫画分镜解读</div>
         <div class="term-code"><span>代码在哪 · <a href="代码索引.html#rl-token">索引</a></span> <a class="code-link" href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/algorithms/rlt/rollout.py#L38-L85" target="_blank" rel="noreferrer" title="RLinf · predict_rlt_actions">复现 · RLinf · predict_rlt_actions ↗</a></div>
-        <div class="term-related"><span>接着理解</span> <a href="#actor-critic">Actor–Critic</a> <a href="#action-chunk">Action chunk</a> <a href="#residual-rl">Residual RL</a></div>
+        <div class="term-related"><span>接着理解</span> <a href="#actor-critic">Actor–Critic</a> <a href="#action-chunk">Action chunk</a> <a href="#residual-rl">Residual RL</a> <a href="#reference-dropout">Reference dropout · 参考动作丢弃</a></div>
       </article>
       <article class="term-card" id="denoising-mdp">
         <h3><a href="piRL-论文解读.html#concept-denoising-mdp">去噪链 MDP<span aria-hidden="true"> ↗</span></a></h3>
         <p>把动作生成过程的多个去噪步骤纳入策略学习，为流匹配 VLA 接入在线强化学习。</p>
         <div class="term-source">讲解位置：piRL-论文解读</div>
         <div class="term-code"><span>代码在哪 · <a href="代码索引.html#denoising-mdp">索引</a></span> <a class="code-link" href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/models/embodiment/openpi/sampling/rl_sampler.py#L30-L87" target="_blank" rel="noreferrer" title="RLinf · sample_mean_var">RLinf · sample_mean_var ↗</a> <a class="code-link" href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/models/embodiment/openpi/sampling/rl_sampler.py#L90-L102" target="_blank" rel="noreferrer" title="RLinf · gaussian_logprob">RLinf · gaussian_logprob ↗</a></div>
-        <div class="term-related"><span>接着理解</span> <a href="#flow-matching">Flow Matching</a> <a href="#ppo">PPO</a> <a href="#log-trick">Log 技巧</a></div>
+        <div class="term-related"><span>接着理解</span> <a href="#flow-matching">Flow Matching</a> <a href="#ppo">PPO</a> <a href="#log-trick">Log 技巧</a> <a href="#normal-distribution">Normal / Gaussian · 正态分布</a> <a href="#diffusion-policy">Diffusion Policy · 扩散动作策略</a></div>
       </article>
       <article class="term-card" id="prompt-conditioning">
         <h3><a href="pi0.7_问答学习卡.html#concept-prompt-conditioning">Prompt conditioning · 提示条件<span aria-hidden="true"> ↗</span></a></h3>
         <p>除任务文字外，用子目标、价值、示范等提示条件引导策略，理解 π0.7 的多样化 prompting。</p>
         <div class="term-source">讲解位置：pi0.7 · 问答卡</div>
-        <div class="term-related"><span>接着理解</span> <a href="#world-model">World model</a> <a href="#recap">RECAP</a> <a href="#vla">VLA</a></div>
+        <div class="term-related"><span>接着理解</span> <a href="#world-model">World model</a> <a href="#recap">RECAP</a> <a href="#vla">VLA</a> <a href="#hierarchical-policy">Hierarchical policy · 分层策略</a> <a href="#classifier-free-guidance">CFG · 无分类器引导</a> <a href="#embodiment-prompt">构型感知提示</a></div>
       </article>
       <article class="term-card" id="world-model">
         <h3><a href="pi0.7_问答学习卡.html#concept-world-model">World model · 世界模型<span aria-hidden="true"> ↗</span></a></h3>
         <p>在 π0.7 的具体语境中，利用预测的未来子目标图像辅助动作生成；不把它与所有价值模型混为一谈。</p>
         <div class="term-source">讲解位置：pi0.7 · 问答卡</div>
         <div class="term-related"><span>接着理解</span> <a href="#prompt-conditioning">Prompt conditioning</a> <a href="#motion-perception">运动感知与未来预测</a> <a href="#vla">VLA</a></div>
+      </article>
+      <article class="term-card" id="diffusion-policy">
+        <h3><a href="DiffusionPolicy-论文解读.html#concept-diffusion-policy">Diffusion Policy · 扩散动作策略<span aria-hidden="true"> ↗</span></a></h3>
+        <p>以观测为条件，通过多步去噪生成一段动作，可表达多种可行行为；与流匹配动作头对照理解。</p>
+        <div class="term-source">讲解位置：DiffusionPolicy-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#normal-distribution">Normal / Gaussian · 正态分布</a> <a href="#flow-matching">Flow Matching · 流匹配</a> <a href="#action-chunk">Action chunk · 动作块</a> <a href="#receding-horizon">Receding horizon · 滚动时域执行</a> <a href="#score">Score · 对数密度的梯度</a> <a href="#consistency">Consistency · 一致性模型</a> <a href="#diffusion-noise-schedule">扩散噪声日程</a></div>
+      </article>
+      <article class="term-card" id="receding-horizon">
+        <h3><a href="DiffusionPolicy-论文解读.html#concept-receding-horizon">Receding horizon · 滚动时域执行<span aria-hidden="true"> ↗</span></a></h3>
+        <p>预测一段未来动作，只执行其中一部分，再用新观测重新规划，形成反馈闭环。</p>
+        <div class="term-source">讲解位置：DiffusionPolicy-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#action-chunk">Action chunk · 动作块</a> <a href="#rtc">RTC · 实时动作分块</a> <a href="#latency">感知—执行时延</a></div>
+      </article>
+      <article class="term-card" id="ddim">
+        <h3><a href="DiffusionPolicy-论文解读.html#concept-ddim">DDIM · 扩散采样加速<span aria-hidden="true"> ↗</span></a></h3>
+        <p>使用更少的反向采样步骤生成动作，理解去噪质量与推理速度之间的取舍。</p>
+        <div class="term-source">讲解位置：DiffusionPolicy-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#diffusion-policy">Diffusion Policy · 扩散动作策略</a> <a href="#euler-integration">Euler · 前向欧拉积分</a> <a href="#latency">感知—执行时延</a></div>
+      </article>
+      <article class="term-card" id="euler-integration">
+        <h3><a href="pi0-论文解读.html#concept-euler-integration">Euler · 前向欧拉积分<span aria-hidden="true"> ↗</span></a></h3>
+        <p>从当前点沿预测速度前进一个小步，反复更新，把流匹配的初始噪声变为动作。</p>
+        <div class="term-source">讲解位置：pi0-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#flow-matching">Flow Matching · 流匹配</a> <a href="#noise-schedule">噪声时间步采样</a> <a href="#ddim">DDIM · 扩散采样加速</a></div>
+      </article>
+      <article class="term-card" id="inpainting">
+        <h3><a href="RTC-实时动作分块-论文解读.html#concept-inpainting">Inpainting · 已知前缀的动作补全<span aria-hidden="true"> ↗</span></a></h3>
+        <p>把已确定的动作前缀作为条件，生成接下来的动作，让异步推理的新动作块接续当前执行。</p>
+        <div class="term-source">讲解位置：RTC-实时动作分块-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#rtc">RTC · 实时动作分块</a> <a href="#action-chunk">Action chunk · 动作块</a> <a href="#receding-horizon">Receding horizon · 滚动时域执行</a> <a href="#soft-masking">Soft masking · 软掩码</a> <a href="#temporal-ensembling">Temporal ensembling · 时序集成</a></div>
+      </article>
+      <article class="term-card" id="dct">
+        <h3><a href="FAST-论文解读.html#concept-dct">DCT · 离散余弦变换<span aria-hidden="true"> ↗</span></a></h3>
+        <p>把动作序列从时间域变换到频率系数，为 FAST 的量化与压缩提供表示。</p>
+        <div class="term-source">讲解位置：FAST-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#fast">FAST · 动作分词</a> <a href="#bpe">BPE · 字节对编码</a> <a href="#action-chunk">Action chunk · 动作块</a></div>
+      </article>
+      <article class="term-card" id="bpe">
+        <h3><a href="FAST-论文解读.html#concept-bpe">BPE · 字节对编码<span aria-hidden="true"> ↗</span></a></h3>
+        <p>通过合并常见的相邻符号片段压缩序列；FAST 在变换和量化动作后用它形成紧凑 token。</p>
+        <div class="term-source">讲解位置：FAST-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#dct">DCT · 离散余弦变换</a> <a href="#fast">FAST · 动作分词</a> <a href="#action-expert">Action expert · 动作专家</a></div>
+      </article>
+      <article class="term-card" id="score">
+        <h3><a href="DiffusionPolicy-论文解读.html#concept-score">Score · 对数密度的梯度<span aria-hidden="true"> ↗</span></a></h3>
+        <p>描述对数概率密度在当前样本附近增加最快的方向，是理解扩散去噪方向的一条线索。</p>
+        <div class="term-source">讲解位置：DiffusionPolicy-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#diffusion-policy">Diffusion Policy · 扩散动作策略</a> <a href="#log-trick">Log 技巧 · 对数导数</a> <a href="#normal-distribution">Normal / Gaussian · 正态分布</a></div>
+      </article>
+      <article class="term-card" id="consistency">
+        <h3><a href="DiffusionPolicy-论文解读.html#concept-consistency">Consistency · 一致性模型<span aria-hidden="true"> ↗</span></a></h3>
+        <p>让同一生成轨迹上的不同噪声输入映射到一致的干净终点，以支持少步生成。</p>
+        <div class="term-source">讲解位置：DiffusionPolicy-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#diffusion-policy">Diffusion Policy · 扩散动作策略</a> <a href="#consistency-distillation">Consistency distillation · 一致性蒸馏</a> <a href="#ddim">DDIM · 扩散采样加速</a></div>
+      </article>
+      <article class="term-card" id="consistency-distillation">
+        <h3><a href="RL-100-论文解读.html#concept-consistency-distillation">Consistency distillation · 一致性蒸馏<span aria-hidden="true"> ↗</span></a></h3>
+        <p>把多步去噪教师策略的生成能力迁移到少步或单步学生策略，降低动作生成延迟。</p>
+        <div class="term-source">讲解位置：RL-100-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#consistency">Consistency · 一致性模型</a> <a href="#diffusion-policy">Diffusion Policy · 扩散动作策略</a> <a href="#latency">感知—执行时延</a></div>
+      </article>
+      <article class="term-card" id="hierarchical-policy">
+        <h3><a href="pi0.5_论文测验_精美版.html#concept-hierarchical-policy">Hierarchical policy · 分层策略<span aria-hidden="true"> ↗</span></a></h3>
+        <p>高层产生语义子任务，低层根据子任务与观测生成动作，把任务分解与动作控制联系起来。</p>
+        <div class="term-source">讲解位置：pi0.5_论文测验_精美版</div>
+        <div class="term-related"><span>接着理解</span> <a href="#vla">VLA · 视觉—语言—动作</a> <a href="#prompt-conditioning">Prompt conditioning · 提示条件</a> <a href="#action-expert">Action expert · 动作专家</a></div>
+      </article>
+      <article class="term-card" id="action-binning">
+        <h3><a href="OpenVLA-vs-pi系列-对比.html#concept-action-binning">Action binning · 动作离散分箱<span aria-hidden="true"> ↗</span></a></h3>
+        <p>将各动作维度的数值划分为离散区间，再生成相应 token；可与 FAST 压缩和连续动作头对照。</p>
+        <div class="term-source">讲解位置：OpenVLA-vs-pi系列-对比</div>
+        <div class="term-related"><span>接着理解</span> <a href="#fast">FAST · 动作分词</a> <a href="#action-expert">Action expert · 动作专家</a> <a href="#flow-matching">Flow Matching · 流匹配</a></div>
+      </article>
+      <article class="term-card" id="classifier-free-guidance">
+        <h3><a href="pi0.7_问答学习卡.html#concept-classifier-free-guidance">CFG · 无分类器引导<span aria-hidden="true"> ↗</span></a></h3>
+        <p>组合有条件与条件缺省的预测，增强提示条件对生成行为的影响。</p>
+        <div class="term-source">讲解位置：pi0.7_问答学习卡</div>
+        <div class="term-related"><span>接着理解</span> <a href="#prompt-conditioning">Prompt conditioning · 提示条件</a> <a href="#flow-matching">Flow Matching · 流匹配</a> <a href="#world-model">World model · 世界模型</a></div>
+      </article>
+      <article class="term-card" id="soft-masking">
+        <h3><a href="RTC-实时动作分块-论文解读.html#concept-soft-masking">Soft masking · 软掩码<span aria-hidden="true"> ↗</span></a></h3>
+        <p>对必然执行的动作前缀、重叠区和新动作区施加不同强度的约束，使新旧动作块平滑衔接。</p>
+        <div class="term-source">讲解位置：RTC-实时动作分块-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#inpainting">Inpainting · 已知前缀的动作补全</a> <a href="#rtc">RTC · 实时动作分块</a> <a href="#action-chunk">Action chunk · 动作块</a></div>
+      </article>
+      <article class="term-card" id="temporal-ensembling">
+        <h3><a href="RTC-实时动作分块-论文解读.html#concept-temporal-ensembling">Temporal ensembling · 时序集成<span aria-hidden="true"> ↗</span></a></h3>
+        <p>将多个重叠动作块对同一执行时刻的预测加权平均；它与以已知前缀为条件的动作补全机制不同。</p>
+        <div class="term-source">讲解位置：RTC-实时动作分块-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#action-chunk">Action chunk · 动作块</a> <a href="#inpainting">Inpainting · 已知前缀的动作补全</a> <a href="#rtc">RTC · 实时动作分块</a></div>
       </article>
     </div>
   </section>
@@ -270,28 +408,28 @@ a{color:var(--accent)}a:focus-visible,button:focus-visible,input:focus-visible{o
         <h3><a href="InternData-A1-论文解读.html#concept-synthetic-data">合成数据<span aria-hidden="true"> ↗</span></a></h3>
         <p>借助仿真和自动化流程生成机器人训练数据，研究覆盖面、质量与真实任务泛化的关系。</p>
         <div class="term-source">讲解位置：InternData-A1-论文解读</div>
-        <div class="term-related"><span>接着理解</span> <a href="#sim-to-real">Sim-to-Real</a> <a href="#vla">VLA</a> <a href="#cross-embodiment">Cross-embodiment</a></div>
+        <div class="term-related"><span>接着理解</span> <a href="#sim-to-real">Sim-to-Real</a> <a href="#vla">VLA</a> <a href="#cross-embodiment">Cross-embodiment</a> <a href="#domain-randomization">Domain randomization · 域随机化</a></div>
       </article>
       <article class="term-card" id="cross-embodiment">
         <h3><a href="Qwen-VLA-论文解读.html#concept-cross-embodiment">Cross-embodiment · 跨本体<span aria-hidden="true"> ↗</span></a></h3>
         <p>让策略处理不同机器人的形态、状态和动作空间；这是跨身体泛化，与仿真到现实的迁移维度不同。</p>
         <div class="term-source">讲解位置：Qwen-VLA-论文解读</div>
         <div class="term-code"><span>代码在哪 · <a href="代码索引.html#cross-embodiment">索引</a></span> <a class="code-link" href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/policies/aloha_policy.py" target="_blank" rel="noreferrer" title="openpi · aloha_policy">openpi · aloha_policy ↗</a></div>
-        <div class="term-related"><span>接着理解</span> <a href="#vla">VLA</a> <a href="#synthetic-data">合成数据</a> <a href="#action-expert">Action expert</a></div>
+        <div class="term-related"><span>接着理解</span> <a href="#vla">VLA</a> <a href="#synthetic-data">合成数据</a> <a href="#action-expert">Action expert</a> <a href="#embodiment-prompt">构型感知提示</a></div>
       </article>
       <article class="term-card" id="latency">
         <h3><a href="DynamicVLA-论文解读.html#concept-latency">感知—执行时延<span aria-hidden="true"> ↗</span></a></h3>
         <p>推理期间物体继续运动，旧观测对应的动作可能已经过时；需要同时考虑模型速度和动作执行调度。</p>
         <div class="term-source">讲解位置：DynamicVLA-论文解读</div>
         <div class="term-code"><span>代码在哪 · <a href="代码索引.html#latency">索引</a></span> <a class="code-link" href="https://github.com/Physical-Intelligence/real-time-chunking-kinetix/blob/9296f31d62d5bfeb5779dcb2f9bcf71ca37f448b/src/model.py#L219-L265" target="_blank" rel="noreferrer" title="RTC · realtime_action">RTC · realtime_action ↗</a> <a class="code-link" href="https://github.com/Physical-Intelligence/real-time-chunking-kinetix/blob/9296f31d62d5bfeb5779dcb2f9bcf71ca37f448b/src/model.py#L267-L289" target="_blank" rel="noreferrer" title="RTC · loss（训练时 RTC）">RTC · loss（训练时 RTC） ↗</a> <a class="code-link" href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/models/embodiment/openpi/sampling/rtc_guidance.py#L88-L163" target="_blank" rel="noreferrer" title="RLinf · RTC 引导采样">复现 · RLinf · RTC 引导采样 ↗</a></div>
-        <div class="term-related"><span>接着理解</span> <a href="#rtc">RTC</a> <a href="#action-chunk">Action chunk</a> <a href="#speculative-inference">投机推理</a> <a href="#motion-perception">运动感知与未来预测</a></div>
+        <div class="term-related"><span>接着理解</span> <a href="#rtc">RTC</a> <a href="#action-chunk">Action chunk</a> <a href="#speculative-inference">投机推理</a> <a href="#motion-perception">运动感知与未来预测</a> <a href="#ddim">DDIM · 扩散采样加速</a> <a href="#receding-horizon">Receding horizon · 滚动时域执行</a> <a href="#continuous-inference">CI · 连续推理</a> <a href="#laas">LAAS · 延迟感知动作流</a> <a href="#consistency-distillation">Consistency distillation · 一致性蒸馏</a></div>
       </article>
       <article class="term-card" id="rtc">
         <h3><a href="RTC-训练时-论文解读.html#concept-rtc">RTC · 实时动作分块<span aria-hidden="true"> ↗</span></a></h3>
         <p>边执行当前动作块边算下一块，新块以“推理期间会执行的前 d 步”为条件接上；推理时用梯度引导补全，训练时版本直接学条件生成、零推理开销。</p>
         <div class="term-source">讲解位置：训练时 RTC · 精读</div>
         <div class="term-code"><span>代码在哪 · <a href="代码索引.html#latency">索引</a></span> <a class="code-link" href="https://github.com/Physical-Intelligence/real-time-chunking-kinetix/blob/9296f31d62d5bfeb5779dcb2f9bcf71ca37f448b/src/model.py#L267-L289" target="_blank" rel="noreferrer" title="训练时 RTC · loss">训练时 RTC · loss ↗</a></div>
-        <div class="term-related"><span>接着理解</span> <a href="#latency">感知—执行时延</a> <a href="#action-chunk">Action chunk</a></div>
+        <div class="term-related"><span>接着理解</span> <a href="#latency">感知—执行时延</a> <a href="#action-chunk">Action chunk</a> <a href="#inpainting">Inpainting · 已知前缀的动作补全</a> <a href="#receding-horizon">Receding horizon · 滚动时域执行</a></div>
       </article>
       <article class="term-card" id="speculative-inference">
         <h3><a href="Realtime-VLA-论文解读.html#concept-speculative-inference">投机推理<span aria-hidden="true"> ↗</span></a></h3>
@@ -310,13 +448,204 @@ a{color:var(--accent)}a:focus-visible,button:focus-visible,input:focus-visible{o
         <h3><a href="PUMA-论文解读.html#concept-motion-perception">运动感知与未来预测<span aria-hidden="true"> ↗</span></a></h3>
         <p>把历史运动线索与未来预测引入操作策略，帮助处理动态环境。</p>
         <div class="term-source">讲解位置：PUMA-论文解读</div>
-        <div class="term-related"><span>接着理解</span> <a href="#latency">感知—执行时延</a> <a href="#4d-reconstruction">4D 重建</a> <a href="#world-model">World model</a></div>
+        <div class="term-related"><span>接着理解</span> <a href="#latency">感知—执行时延</a> <a href="#4d-reconstruction">4D 重建</a> <a href="#world-model">World model</a> <a href="#optical-flow">Optical flow · 光流</a> <a href="#future-feature-prediction">辅助未来特征预测</a></div>
       </article>
       <article class="term-card" id="4d-reconstruction">
         <h3><a href="D4RT_study_cards.html#concept-4d-reconstruction">4D 重建 · 时空几何<span aria-hidden="true"> ↗</span></a></h3>
         <p>从视频联合推理几何、时空对应和相机信息，把静态三维结构扩展到随时间变化的场景。</p>
         <div class="term-source">讲解位置：D4RT_study_cards</div>
-        <div class="term-related"><span>接着理解</span> <a href="#motion-perception">运动感知与未来预测</a> <a href="#world-model">World model</a> <a href="#vla">VLA</a></div>
+        <div class="term-related"><span>接着理解</span> <a href="#motion-perception">运动感知与未来预测</a> <a href="#world-model">World model</a> <a href="#vla">VLA</a> <a href="#query-decoding">可查询的时空解码</a></div>
+      </article>
+      <article class="term-card" id="continuous-inference">
+        <h3><a href="DynamicVLA-论文解读.html#concept-continuous-inference">CI · 连续推理<span aria-hidden="true"> ↗</span></a></h3>
+        <p>让推理与动作执行重叠，上一轮推理结束便启动下一轮，减少等待下一块动作的空档。</p>
+        <div class="term-source">讲解位置：DynamicVLA-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#latency">感知—执行时延</a> <a href="#laas">LAAS · 延迟感知动作流</a> <a href="#rtc">RTC · 实时动作分块</a></div>
+      </article>
+      <article class="term-card" id="laas">
+        <h3><a href="DynamicVLA-论文解读.html#concept-laas">LAAS · 延迟感知动作流<span aria-hidden="true"> ↗</span></a></h3>
+        <p>优先使用最新预测，丢弃已经过时的动作，将动作执行重新对齐到当前时刻。</p>
+        <div class="term-source">讲解位置：DynamicVLA-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#continuous-inference">CI · 连续推理</a> <a href="#latency">感知—执行时延</a> <a href="#action-chunk">Action chunk · 动作块</a></div>
+      </article>
+      <article class="term-card" id="optical-flow">
+        <h3><a href="PUMA-论文解读.html#concept-optical-flow">Optical flow · 光流<span aria-hidden="true"> ↗</span></a></h3>
+        <p>相邻视频帧之间像素的二维位移，表示图像中运动的方向与幅度。</p>
+        <div class="term-source">讲解位置：PUMA-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#motion-perception">运动感知与未来预测</a> <a href="#future-feature-prediction">辅助未来特征预测</a> <a href="#4d-reconstruction">4D 重建 · 时空几何</a></div>
+      </article>
+      <article class="term-card" id="future-feature-prediction">
+        <h3><a href="PUMA-论文解读.html#concept-future-feature-prediction">辅助未来特征预测<span aria-hidden="true"> ↗</span></a></h3>
+        <p>训练时使用未来帧的特征监督共享表示；推理时只使用当前和历史观测。</p>
+        <div class="term-source">讲解位置：PUMA-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#optical-flow">Optical flow · 光流</a> <a href="#motion-perception">运动感知与未来预测</a> <a href="#world-model">World model · 世界模型</a></div>
+      </article>
+      <article class="term-card" id="embodiment-prompt">
+        <h3><a href="Qwen-VLA-论文解读.html#concept-embodiment-prompt">构型感知提示<span aria-hidden="true"> ↗</span></a></h3>
+        <p>用文字描述机器人平台、臂型、控制频率与预测视野，向策略传递动作控制语义。</p>
+        <div class="term-source">讲解位置：Qwen-VLA-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#cross-embodiment">Cross-embodiment · 跨本体</a> <a href="#prompt-conditioning">Prompt conditioning · 提示条件</a> <a href="#action-expert">Action expert · 动作专家</a></div>
+      </article>
+      <article class="term-card" id="domain-randomization">
+        <h3><a href="InternData-A1-论文解读.html#concept-domain-randomization">Domain randomization · 域随机化<span aria-hidden="true"> ↗</span></a></h3>
+        <p>随机改变相机、光照、物体与接触区域等条件，增加合成训练数据覆盖的变化。</p>
+        <div class="term-source">讲解位置：InternData-A1-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#synthetic-data">合成数据</a> <a href="#sim-to-real">Sim-to-Real · 仿真到现实</a> <a href="#cross-embodiment">Cross-embodiment · 跨本体</a></div>
+      </article>
+      <article class="term-card" id="query-decoding">
+        <h3><a href="D4RT_study_cards.html#concept-query-decoding">可查询的时空解码<span aria-hidden="true"> ↗</span></a></h3>
+        <p>查询某个像素对应的点，在目标时刻与指定参考相机坐标系中的三维位置。</p>
+        <div class="term-source">讲解位置：D4RT_study_cards</div>
+        <div class="term-related"><span>接着理解</span> <a href="#4d-reconstruction">4D 重建 · 时空几何</a> <a href="#motion-perception">运动感知与未来预测</a> <a href="#optical-flow">Optical flow · 光流</a></div>
+      </article>
+      <article class="term-card" id="object-centric-observation">
+        <h3><a href="ObjectCentric-RL-论文解读.html#concept-object-centric-observation">Object-centric · 物体中心观测<span aria-hidden="true"> ↗</span></a></h3>
+        <p>以物体位姿等任务相关状态组织残差策略的输入，减少对原始视觉外观的依赖。</p>
+        <div class="term-source">讲解位置：ObjectCentric-RL-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#residual-rl">Residual RL · 残差强化学习</a> <a href="#sim-to-real">Sim-to-Real · 仿真到现实</a> <a href="#4d-reconstruction">4D 重建 · 时空几何</a></div>
+      </article>
+    </div>
+  </section>
+  <section class="term-group" aria-labelledby="group-4">
+    <div class="group-heading"><span>05</span><h2 id="group-4">概率分布与噪声采样</h2></div>
+    <div class="term-grid">
+      <article class="term-card" id="probability-density">
+        <h3><a href="Beta分布-球星卡.html#concept-probability-density">概率密度 · 概率是面积<span aria-hidden="true"> ↗</span></a></h3>
+        <p>连续分布的曲线高度是密度，区间下的面积才是概率；密度可以大于 1。</p>
+        <div class="term-source">讲解位置：Beta分布-球星卡</div>
+        <div class="term-related"><span>接着理解</span> <a href="#cdf">CDF · 累积分布函数</a> <a href="#beta-distribution">Beta · 比例与概率的不确定性</a> <a href="#normal-distribution">Normal / Gaussian · 正态分布</a></div>
+      </article>
+      <article class="term-card" id="bayesian-update">
+        <h3><a href="Beta分布-球星卡.html#concept-bayesian-update">先验、后验与贝叶斯更新<span aria-hidden="true"> ↗</span></a></h3>
+        <p>先验表示看到数据前的判断，后验表示用新数据更新后的判断。Beta 与二项观测给出可逐次相加的参数更新。</p>
+        <div class="term-source">讲解位置：Beta分布-球星卡</div>
+        <div class="term-related"><span>接着理解</span> <a href="#beta-distribution">Beta · 比例与概率的不确定性</a> <a href="#binomial-distribution">Binomial · 二项分布</a> <a href="#dirichlet-distribution">Dirichlet · 多个概率的不确定性</a></div>
+      </article>
+      <article class="term-card" id="cdf">
+        <h3><a href="Beta分布-球星卡.html#concept-cdf">CDF · 累积分布函数<span aria-hidden="true"> ↗</span></a></h3>
+        <p>F(x) 表示随机量不大于 x 的概率；对连续分布，它是密度曲线从左侧累积到 x 的面积。</p>
+        <div class="term-source">讲解位置：Beta分布-球星卡</div>
+        <div class="term-related"><span>接着理解</span> <a href="#probability-density">概率密度 · 概率是面积</a> <a href="#inverse-transform">逆变换抽样</a> <a href="#uniform-distribution">Uniform · 均匀分布</a></div>
+      </article>
+      <article class="term-card" id="inverse-transform">
+        <h3><a href="Beta分布-球星卡.html#concept-inverse-transform">逆变换抽样<span aria-hidden="true"> ↗</span></a></h3>
+        <p>先生成均匀随机数，再通过目标 CDF 的反函数变换，得到服从目标分布的样本。</p>
+        <div class="term-source">讲解位置：Beta分布-球星卡</div>
+        <div class="term-related"><span>接着理解</span> <a href="#cdf">CDF · 累积分布函数</a> <a href="#uniform-distribution">Uniform · 均匀分布</a> <a href="#noise-schedule">噪声时间步采样</a></div>
+      </article>
+      <article class="term-card" id="noise-schedule">
+        <h3><a href="Beta分布-球星卡.html#concept-noise-schedule">噪声时间步采样<span aria-hidden="true"> ↗</span></a></h3>
+        <p>用 Beta 分布调整 π0 训练时不同噪声程度的出现频率；训练的抽样与推理时沿去噪路径积分是两个步骤。</p>
+        <div class="term-source">讲解位置：Beta分布-球星卡</div>
+        <div class="term-related"><span>接着理解</span> <a href="#beta-distribution">Beta · 比例与概率的不确定性</a> <a href="#flow-matching">Flow Matching · 流匹配</a> <a href="#euler-integration">Euler · 前向欧拉积分</a> <a href="#diffusion-noise-schedule">扩散噪声日程</a></div>
+      </article>
+      <article class="term-card" id="uniform-distribution">
+        <h3><a href="概率分布博物馆.html#concept-uniform-distribution">Uniform · 均匀分布<span aria-hidden="true"> ↗</span></a></h3>
+        <p>离散情形中各结果等可能；连续情形在指定区间内密度恒定，是逆变换抽样的起点。</p>
+        <div class="term-source">讲解位置：概率分布博物馆</div>
+        <div class="term-related"><span>接着理解</span> <a href="#probability-density">概率密度 · 概率是面积</a> <a href="#inverse-transform">逆变换抽样</a> <a href="#beta-distribution">Beta · 比例与概率的不确定性</a></div>
+      </article>
+      <article class="term-card" id="binomial-distribution">
+        <h3><a href="概率分布博物馆.html#concept-binomial-distribution">Binomial · 二项分布<span aria-hidden="true"> ↗</span></a></h3>
+        <p>统计固定次数的独立重复试验中成功的次数。与描述成功概率不确定性的 Beta 分布配合理解。</p>
+        <div class="term-source">讲解位置：概率分布博物馆</div>
+        <div class="term-related"><span>接着理解</span> <a href="#beta-distribution">Beta · 比例与概率的不确定性</a> <a href="#bayesian-update">先验、后验与贝叶斯更新</a> <a href="#poisson-distribution">Poisson · 泊松分布</a></div>
+      </article>
+      <article class="term-card" id="beta-distribution">
+        <h3><a href="Beta分布-球星卡.html#concept-beta-distribution">Beta · 比例与概率的不确定性<span aria-hidden="true"> ↗</span></a></h3>
+        <p>定义在 0 到 1 的一族分布，两个参数控制形状。可表示未知成功率，也可用于 π0 噪声时间步采样。</p>
+        <div class="term-source">讲解位置：Beta分布-球星卡</div>
+        <div class="term-related"><span>接着理解</span> <a href="#bayesian-update">先验、后验与贝叶斯更新</a> <a href="#noise-schedule">噪声时间步采样</a> <a href="#gamma-distribution">Gamma · 等待时间与形状</a> <a href="#dirichlet-distribution">Dirichlet · 多个概率的不确定性</a></div>
+      </article>
+      <article class="term-card" id="normal-distribution">
+        <h3><a href="概率分布博物馆.html#concept-normal-distribution">Normal / Gaussian · 正态分布<span aria-hidden="true"> ↗</span></a></h3>
+        <p>由均值与标准差控制位置和宽度的钟形分布；理解扩散与流匹配中高斯噪声的基础。</p>
+        <div class="term-source">讲解位置：概率分布博物馆</div>
+        <div class="term-related"><span>接着理解</span> <a href="#multivariate-normal">多元正态 · 协方差与相关性</a> <a href="#diffusion-policy">Diffusion Policy · 扩散动作策略</a> <a href="#flow-matching">Flow Matching · 流匹配</a></div>
+      </article>
+      <article class="term-card" id="poisson-distribution">
+        <h3><a href="概率分布博物馆.html#concept-poisson-distribution">Poisson · 泊松分布<span aria-hidden="true"> ↗</span></a></h3>
+        <p>描述固定时间或空间窗口中的事件次数，参数表示该窗口内的平均发生次数。</p>
+        <div class="term-source">讲解位置：概率分布博物馆</div>
+        <div class="term-related"><span>接着理解</span> <a href="#binomial-distribution">Binomial · 二项分布</a> <a href="#exponential-distribution">Exponential · 指数分布</a> <a href="#gamma-distribution">Gamma · 等待时间与形状</a></div>
+      </article>
+      <article class="term-card" id="exponential-distribution">
+        <h3><a href="概率分布博物馆.html#concept-exponential-distribution">Exponential · 指数分布<span aria-hidden="true"> ↗</span></a></h3>
+        <p>描述泊松事件的等待时间，具有无记忆性；整数形状 Gamma 分布可由多个独立指数等待时间相加得到。</p>
+        <div class="term-source">讲解位置：概率分布博物馆</div>
+        <div class="term-related"><span>接着理解</span> <a href="#poisson-distribution">Poisson · 泊松分布</a> <a href="#gamma-distribution">Gamma · 等待时间与形状</a> <a href="#weibull-distribution">Weibull · 寿命分布</a></div>
+      </article>
+      <article class="term-card" id="gamma-distribution">
+        <h3><a href="概率分布博物馆.html#concept-gamma-distribution">Gamma · 等待时间与形状<span aria-hidden="true"> ↗</span></a></h3>
+        <p>定义在正数上的分布族，推广指数等待时间；两个独立且速率相同的 Gamma 变量的相对占比服从 Beta。</p>
+        <div class="term-source">讲解位置：概率分布博物馆</div>
+        <div class="term-related"><span>接着理解</span> <a href="#exponential-distribution">Exponential · 指数分布</a> <a href="#beta-distribution">Beta · 比例与概率的不确定性</a> <a href="#chi-squared-distribution">Chi-squared · 卡方分布</a></div>
+      </article>
+      <article class="term-card" id="chi-squared-distribution">
+        <h3><a href="概率分布博物馆.html#concept-chi-squared-distribution">Chi-squared · 卡方分布<span aria-hidden="true"> ↗</span></a></h3>
+        <p>独立标准正态变量的平方和，常用于方差估计与拟合检验，也是 Gamma 的特例。</p>
+        <div class="term-source">讲解位置：概率分布博物馆</div>
+        <div class="term-related"><span>接着理解</span> <a href="#normal-distribution">Normal / Gaussian · 正态分布</a> <a href="#gamma-distribution">Gamma · 等待时间与形状</a> <a href="#f-distribution">F · 方差比的分布</a></div>
+      </article>
+      <article class="term-card" id="student-t-distribution">
+        <h3><a href="概率分布博物馆.html#concept-student-t-distribution">Student&#x27;s t · t 分布<span aria-hidden="true"> ↗</span></a></h3>
+        <p>在样本较小、总体方差未知时用于均值推断；自由度小时比正态分布具有更厚的尾部。</p>
+        <div class="term-source">讲解位置：概率分布博物馆</div>
+        <div class="term-related"><span>接着理解</span> <a href="#normal-distribution">Normal / Gaussian · 正态分布</a> <a href="#cauchy-distribution">Cauchy · 没有均值的厚尾分布</a> <a href="#chi-squared-distribution">Chi-squared · 卡方分布</a></div>
+      </article>
+      <article class="term-card" id="f-distribution">
+        <h3><a href="概率分布博物馆.html#concept-f-distribution">F · 方差比的分布<span aria-hidden="true"> ↗</span></a></h3>
+        <p>两个独立卡方变量分别除以自由度后的比值，用于方差比较、方差分析和回归检验。</p>
+        <div class="term-source">讲解位置：概率分布博物馆</div>
+        <div class="term-related"><span>接着理解</span> <a href="#chi-squared-distribution">Chi-squared · 卡方分布</a> <a href="#student-t-distribution">Student&#x27;s t · t 分布</a> <a href="#normal-distribution">Normal / Gaussian · 正态分布</a></div>
+      </article>
+      <article class="term-card" id="log-normal-distribution">
+        <h3><a href="概率分布博物馆.html#concept-log-normal-distribution">Log-Normal · 对数正态分布<span aria-hidden="true"> ↗</span></a></h3>
+        <p>随机量取对数后服从正态分布时，原随机量服从对数正态分布；适合理解正值、右偏的乘性变化。</p>
+        <div class="term-source">讲解位置：概率分布博物馆</div>
+        <div class="term-related"><span>接着理解</span> <a href="#normal-distribution">Normal / Gaussian · 正态分布</a> <a href="#log-trick">Log 技巧 · 对数导数</a> <a href="#gamma-distribution">Gamma · 等待时间与形状</a></div>
+      </article>
+      <article class="term-card" id="weibull-distribution">
+        <h3><a href="概率分布博物馆.html#concept-weibull-distribution">Weibull · 寿命分布<span aria-hidden="true"> ↗</span></a></h3>
+        <p>用形状和尺度参数描述等待与寿命，形状参数可控制失效率随时间的变化。</p>
+        <div class="term-source">讲解位置：概率分布博物馆</div>
+        <div class="term-related"><span>接着理解</span> <a href="#exponential-distribution">Exponential · 指数分布</a> <a href="#gamma-distribution">Gamma · 等待时间与形状</a> <a href="#probability-density">概率密度 · 概率是面积</a></div>
+      </article>
+      <article class="term-card" id="dirichlet-distribution">
+        <h3><a href="概率分布博物馆.html#concept-dirichlet-distribution">Dirichlet · 多个概率的不确定性<span aria-hidden="true"> ↗</span></a></h3>
+        <p>Beta 的多维推广，描述多个非负分量且总和为 1 的概率向量，常用于贝叶斯主题模型。</p>
+        <div class="term-source">讲解位置：概率分布博物馆</div>
+        <div class="term-related"><span>接着理解</span> <a href="#beta-distribution">Beta · 比例与概率的不确定性</a> <a href="#bayesian-update">先验、后验与贝叶斯更新</a> <a href="#multivariate-normal">多元正态 · 协方差与相关性</a></div>
+      </article>
+      <article class="term-card" id="multivariate-normal">
+        <h3><a href="概率分布博物馆.html#concept-multivariate-normal">多元正态 · 协方差与相关性<span aria-hidden="true"> ↗</span></a></h3>
+        <p>用均值向量和协方差矩阵描述多个连续随机变量，协方差决定各方向的宽度与相关性。</p>
+        <div class="term-source">讲解位置：概率分布博物馆</div>
+        <div class="term-related"><span>接着理解</span> <a href="#normal-distribution">Normal / Gaussian · 正态分布</a> <a href="#flow-matching">Flow Matching · 流匹配</a> <a href="#denoising-mdp">去噪链 MDP</a></div>
+      </article>
+      <article class="term-card" id="gumbel-distribution">
+        <h3><a href="概率分布博物馆.html#concept-gumbel-distribution">Gumbel · 极值分布<span aria-hidden="true"> ↗</span></a></h3>
+        <p>用于建模极大值，也与机器学习中离散采样的可微松弛 Gumbel-Softmax 有关。</p>
+        <div class="term-source">讲解位置：概率分布博物馆</div>
+        <div class="term-related"><span>接着理解</span> <a href="#probability-density">概率密度 · 概率是面积</a> <a href="#uniform-distribution">Uniform · 均匀分布</a> <a href="#normal-distribution">Normal / Gaussian · 正态分布</a></div>
+      </article>
+      <article class="term-card" id="cauchy-distribution">
+        <h3><a href="概率分布博物馆.html#concept-cauchy-distribution">Cauchy · 没有均值的厚尾分布<span aria-hidden="true"> ↗</span></a></h3>
+        <p>钟形且尾部很厚，数学期望和方差不存在；它也是自由度为 1 的 t 分布。</p>
+        <div class="term-source">讲解位置：概率分布博物馆</div>
+        <div class="term-related"><span>接着理解</span> <a href="#student-t-distribution">Student&#x27;s t · t 分布</a> <a href="#normal-distribution">Normal / Gaussian · 正态分布</a> <a href="#laplace-distribution">Laplace · 双指数分布</a></div>
+      </article>
+      <article class="term-card" id="laplace-distribution">
+        <h3><a href="概率分布博物馆.html#concept-laplace-distribution">Laplace · 双指数分布<span aria-hidden="true"> ↗</span></a></h3>
+        <p>中心尖、两侧按指数衰减，与绝对值误差和 L1 正则化的概率解释联系起来。</p>
+        <div class="term-source">讲解位置：概率分布博物馆</div>
+        <div class="term-related"><span>接着理解</span> <a href="#exponential-distribution">Exponential · 指数分布</a> <a href="#normal-distribution">Normal / Gaussian · 正态分布</a> <a href="#cauchy-distribution">Cauchy · 没有均值的厚尾分布</a></div>
+      </article>
+      <article class="term-card" id="diffusion-noise-schedule">
+        <h3><a href="DiffusionPolicy-论文解读.html#concept-diffusion-noise-schedule">Noise schedule · 扩散噪声日程<span aria-hidden="true"> ↗</span></a></h3>
+        <p>规定扩散过程中各步的加噪与去噪系数如何变化；与训练时抽取哪些时间步的采样分布分别理解。</p>
+        <div class="term-source">讲解位置：DiffusionPolicy-论文解读</div>
+        <div class="term-related"><span>接着理解</span> <a href="#diffusion-policy">Diffusion Policy</a> <a href="#noise-schedule">噪声时间步采样</a> <a href="#normal-distribution">正态分布</a></div>
       </article>
     </div>
   </section>

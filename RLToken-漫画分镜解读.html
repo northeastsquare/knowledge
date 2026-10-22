@@ -262,8 +262,8 @@ td.num{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
     <p>一个 transformer VLA 每层都有几百个 token、每个 2048 维。你不知道该喂哪些给 RL。全喂进去，小网络会被维度淹死；随便挑几个，又可能丢掉关键信息。</p>
     <h3>解法：加一个"复述考试"</h3>
     <p>在 VLA 最后一层的 token 序列 <kbd>z₁..z_M</kbd> 后面追加一个可学习的特殊 token <kbd>&lt;rl&gt;</kbd>，一起过一个<b class="hot">小的 encoder transformer</b>。取 <kbd>&lt;rl&gt;</kbd> 那个位置的输出，就是 <mark>RL Token（1×2048）</mark>。</p>
-    <p>关键在于怎么训它：再接一个 decoder，<b class="hot">只给它这一颗 RL Token，要求它把原来所有 token 全部重建出来</b>（自回归、L2 损失、对原特征 stop-gradient）。</p>
-    <p>这就是经典的<mark>信息瓶颈</mark>：想通过考试，这颗 token 就必须把任务相关的信息尽量塞进去。训练时 VLA 本体是冻的（可选同时做一点监督微调），训完 VLA 和这个编解码器一起冻住。</p>
+    <p>关键在于怎么训它：再接一个 decoder，<b class="hot">只给它这一颗 RL Token，要求它把原来所有 token 全部重建出来</b>（自回归、L2 损失、对原特征 <a class="concept-link" href="KI-知识隔离-论文解读.html#concept-stop-gradient">stop-gradient</a>）。</p>
+    <p id="concept-information-bottleneck" class="concept-anchor">这就是经典的<mark>信息瓶颈</mark>：想通过考试，这颗 token 就必须把任务相关的信息尽量塞进去。训练时 VLA 本体是冻的（可选同时做一点监督微调），训完 VLA 和这个编解码器一起冻住。</p>
   </div>
 
   <div class="lab">
@@ -285,7 +285,7 @@ td.num{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
 
   <div class="panel tilt-l">
     <h3>50Hz 是 RL 的噩梦</h3>
-    <p>机器人以 50Hz 控制，一段"插网线"的关键阶段有 250~1000 步。奖励只在最后给一个 +1。如果 RL 按<b class="hot">单步</b>决策，价值函数得把这一个<a class="concept-link" href="#concept-sparse-reward">稀疏奖励</a>沿着几百步一路往回传——这就是<mark>信用分配（credit assignment）</mark>难题，实际上传不动。</p>
+    <p id="concept-credit-assignment" class="concept-anchor">机器人以 50Hz 控制，一段"插网线"的关键阶段有 250~1000 步。奖励只在最后给一个 +1。如果 RL 按<b class="hot">单步</b>决策，价值函数得把这一个<a class="concept-link" href="#concept-sparse-reward">稀疏奖励</a>沿着几百步一路往回传——这就是<mark>信用分配（credit assignment）</mark>难题，实际上传不动。</p>
     <p>RLT 的做法：actor 一次输出 <kbd>C=10</kbd> 步的动作块（14 维 × 10 = 140 维动作），critic 也按块估值。有效决策步数一下砍到几十步。</p>
     <p>顺带一个小技巧：虽然按 10 步一块决策，但每 2 步就抽样存一条 transition 进<a class="concept-link" href="#concept-replay-buffer">回放池</a>，<b class="hot">1 秒数据能榨出约 25 个训练样本</b>。</p>
   </div>
@@ -401,20 +401,20 @@ td.num{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
     <h3>为什么意思一不是骗局：锚点 + 压缩映射</h3>
     <p><b class="hot">① 有锚点。</b>终点那格目标是 <kbd>r</kbd>，不含任何猜测。整条链至少有一个点是真的。</p>
     <p><b class="hot">② γ&lt;1 让它成为压缩映射。</b>每 bootstrap 一跳，误差被乘上 <kbd>γ^C</kbd>：γ=0.97 时 C=1 每跳 ×0.97（误差减半要 23 跳），C=10 每跳 ×0.737（减半只要 2.3 跳）。<b>错误不会原样传下去，每跳都衰减</b>，所以迭代有唯一不动点、必然收敛。折扣因子不只是"未来没那么值钱"的哲学，它是<b>保证 bootstrap 收敛的数学前提</b>。</p>
-    <h3>C 其实是 MC 和 TD 之间的旋钮</h3>
+    <h3 id="concept-n-step-return" class="concept-anchor">C 其实是 MC 和 TD 之间的旋钮</h3>
     <p><kbd>C=1 → 1 个真实 r + 1 个猜测（纯 TD，偏差大方差小）</kbd><br>
     <kbd>C=10 → 10 个真实 r + 1 个猜测（RLT 在这）</kbd><br>
     <kbd>C=∞ → 全真实 r，无猜测（纯蒙特卡洛，无偏但方差大）</kbd></p>
     <p>动作块不只是工程上方便，它在理论上就是 <b>n-step return</b>，是在偏差与方差之间挑位置。RLT 敢往大调，是因为奖励是人给的确定标签，方差本来就小。</p>
-    <h3>但它确实危险：死亡三角</h3>
-    <p>有个专名叫 <b class="hot">deadly triad</b>：bootstrap + 函数逼近（神经网络）+ off-policy。三者齐聚，价值函数可能发散。<b>RLT 三样全占。</b>所以论文那堆看着啰嗦的措施全是给死亡三角上的保险：target 网络（靶子别乱动）、双 Q 取最小（压高估）、BC 正则（别乱探索）、动作块（缩短链条）。</p>
+    <h3 id="concept-deadly-triad" class="concept-anchor">但它确实危险：死亡三角</h3>
+    <p>有个专名叫 <b class="hot">deadly triad</b>：bootstrap + 函数逼近（神经网络）+ <a class="concept-link" href="两条主干-拆机手册.html#concept-off-policy">off-policy</a>。三者齐聚，价值函数可能发散。<b>RLT 三样全占。</b>所以论文那堆看着啰嗦的措施全是给死亡三角上的保险：target 网络（靶子别乱动）、双 Q 取最小（压高估）、BC 正则（别乱探索）、动作块（缩短链条）。</p>
   </div>
 
   <div class="panel tilt-r">
     <h3 id="concept-target-network" class="concept-anchor">插播：target 网络是什么，RLT 里到底有几个网络 <a class="code-jump" href="代码索引.html#target-network" style="font:12px ui-monospace,Consolas,monospace;white-space:nowrap;text-decoration:none;border:1px dashed currentColor;border-radius:4px;padding:0 5px;margin-left:4px;opacity:.8">⟨/⟩ 代码</a></h3>
     <p><b class="hot">target 网络就是 critic 的一份副本</b>——同样结构，另一套参数 <kbd>θ'</kbd>，不靠梯度训练，靠"抄"。</p>
     <p>为什么要副本：若用正在训练的 critic 自己算目标，<kbd>目标 = r + γ·Q_θ(x',a')</kbd> 而你同时在改 <kbd>θ</kbd>——<b class="hot">朝靶子射一箭，靶子跟着枪口一起动</b>（moving target，DQN 那篇最早点明）。解法很土但有效：<b>把靶子焊死</b>，算目标只用 <kbd>θ'</kbd>，梯度完全不流过它。</p>
-    <p><kbd>θ'</kbd> 怎么更新——不训练，只复制：<b>硬拷贝</b>（每 N 步 <kbd>θ' ← θ</kbd>）或 <b>Polyak 软更新</b>（每步 <kbd>θ' ← τθ + (1−τ)θ'</kbd>，τ 取 0.005 之类，像影子缓慢跟随）。论文只说"follow TD3，θ' 是 target 网络参数"，没写是哪种。</p>
+    <p id="concept-polyak-update" class="concept-anchor"><kbd>θ'</kbd> 怎么更新——不训练，只复制：<b>硬拷贝</b>（每 N 步 <kbd>θ' ← θ</kbd>）或 <b>Polyak 软更新</b>（每步 <kbd>θ' ← τθ + (1−τ)θ'</kbd>，τ 取 0.005 之类，像影子缓慢跟随）。论文只说"follow TD3，θ' 是 target 网络参数"，没写是哪种。</p>
     <table>
       <thead><tr><th>网络</th><th>数量</th><th>怎么更新</th></tr></thead>
       <tbody>
@@ -432,7 +432,7 @@ td.num{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
       <tbody>
         <tr><td>VLA / encoder 冻结</td><td>永远</td><td>省算力，保住预训练知识</td></tr>
         <tr><td>target 网络</td><td>每次更新内冻，之后缓慢跟随</td><td>靶子别乱动</td></tr>
-        <tr><td>detach / stop-gradient</td><td>一个数学操作</td><td>让目标在反向传播里被当成常数</td></tr>
+        <tr><td>detach / <a class="concept-link" href="KI-知识隔离-论文解读.html#concept-stop-gradient">stop-gradient</a></td><td>一个数学操作</td><td>让目标在反向传播里被当成常数</td></tr>
       </tbody>
     </table>
     <p class="hintline">第三个是实现手段，前两个是设计决策。</p>
@@ -468,7 +468,7 @@ td.num{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
 
   <div class="lab">
     <h4>实验 2：稀疏奖励往回传，块长决定要多久</h4>
-    <p class="hintline"><b>先说清"TD 更新"是什么</b>：TD = 时序差分。critic 要估"从这里开始未来能拿多少奖励"，但奖励只在最后给一个 +1。TD 的办法是<b class="hot">不等结局</b>，而是把 <kbd>Q(现在)</kbd> 往 <kbd>即时奖励 + γ·Q(下一步)</kbd> 拉近——用一个猜测去改进另一个猜测（bootstrap）。论文按块版本：<kbd>Q̂ = Σγ^(t'-1)·r_t' + γ^C·Q_target(x')</kbd>，先把块内 C 步的真实奖励加起来，再从 C 步之后的状态借估计。</p>
+    <p id="concept-td-learning" class="hintline concept-anchor"><b>先说清"TD 更新"是什么</b>：TD = 时序差分。critic 要估"从这里开始未来能拿多少奖励"，但奖励只在最后给一个 +1。TD 的办法是<b class="hot">不等结局</b>，而是把 <kbd>Q(现在)</kbd> 往 <kbd>即时奖励 + γ·Q(下一步)</kbd> 拉近——用一个猜测去改进另一个猜测（bootstrap）。论文按块版本：<kbd>Q̂ = Σγ^(t'-1)·r_t' + γ^C·Q_target(x')</kbd>，先把块内 C 步的真实奖励加起来，再从 C 步之后的状态借估计。</p>
     <p class="hintline"><b>"谁减谁"</b>：<kbd>δ = [r + γ^C·Q_target(x',a')] − Q_online(x, a_{1:C})</kbd>，<b>后一时刻的 Q（加上中间真实拿到的奖励）减去前一时刻的 Q</b>。两处要注意：<b class="hot">①</b> 不是对称减法——目标那侧被 detach（论文按 TD3 用 target 网络算，还取两个 Q 的最小值防高估），梯度只进减数那侧，是<b>单向拉拽</b>；若两侧都给梯度，它们会互相靠拢漂到退化解。<b class="hot">②</b> 这两个 Q 是<b>同一个 critic 在相邻时刻的自我评价</b>，不是两个动作比大小——"时序差分"的名字就来自这里。目标之所以更可信，是因为掺了 <kbd>r</kbd> 这一粒真相；而<b>终点那一格根本没有第二个 Q</b>（回合结束不 bootstrap，目标就是纯 +1），它是整条链的锚点。</p>
     <p class="hintline">代个数（γ=0.97, C=10，当前 <kbd>Q=0.30</kbd>）：块内没成功、落点 target 网络给 0.50 → <kbd>Q̂ = 0.97¹⁰×0.50 = 0.369</kbd>，δ=+0.069，略微上调；块内插进去了 → <kbd>Q̂ = 0.97⁹×1 = 0.760</kbd>，δ=+0.46，大幅上调。δ 为负就是"实际不如预期"，下调。</p>
     <p class="hintline">关键后果就是下面这张图：<b>一次 TD 更新，奖励信息只能往回移动"一跳"，而一跳的长度正好是 C</b>。格子是一段任务的时间轴，最右端成功给 +1。每点一次按钮跑一轮更新，价值就往前渗透一跳。比较 C=1 和 C=10 各需要多少轮才能把信号传到起点——注意最终传到起点的<b>数值是一样的</b>，差的只是更新次数。</p>
@@ -497,11 +497,11 @@ td.num{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
     <p><b>行为克隆（Behavior Cloning，BC）</b>通常把示范中的动作当作监督目标，让策略学会模仿。这里借用相近的动作匹配思想：把 VLA 给出的参考动作作为约束，加进 RL 的目标中，而不是只靠模仿来训练策略。</p>
     <p>目标是 <kbd>L(π) = −Q(x,a) + λ‖a − ã‖²</kbd>：一边要 critic 打高分，一边被拉住不许离 VLA 太远。λ 就是"允许多大胆"的旋钮，精神上等价于 KL 正则的 RL。</p>
     <h3>但也不能让它变成复印机</h3>
-    <p>只要既看着 ã 又被罚着靠近 ã，actor 很容易退化成<b class="hot">直接照抄</b>——尤其是 critic 还没学明白的早期。所以论文加了<mark>参考动作 dropout</mark>：训练时随机把 50% 的 ã 换成全零，逼 actor 保留一条"没有草稿也能作答"的独立通路；推理时 ã 总是给。</p>
+    <p>只要既看着 ã 又被罚着靠近 ã，actor 很容易退化成<b class="hot">直接照抄</b>——尤其是 critic 还没学明白的早期。所以论文加了<mark><a class="concept-link" href="RL-Token-论文解读.html#concept-reference-dropout">参考动作 dropout</a></mark>：训练时随机把 50% 的 ã 换成全零，逼 actor 保留一条"没有草稿也能作答"的独立通路；推理时 ã 总是给。</p>
   </div>
 
   <div class="panel tilt-l">
-    <h3>插播：确定性策略 vs 高斯策略</h3>
+    <h3 id="concept-gaussian-policy" class="concept-anchor">插播：确定性策略 vs 高斯策略</h3>
     <p><b class="hot">确定性策略</b>：<kbd>a = μ(x)</kbd>，就是个普通函数。同一状态输进去，<b>每次输出一模一样的动作</b>，一个 bit 都不差，像查表。</p>
     <p><b class="hot">高斯策略</b>：<kbd>π(a|x) = N(μ(x), σ²I)</kbd>。网络输出的不是动作，而是一个<b>钟形分布的中心</b>；真正执行的动作从这个分布里<b>采样</b>出来。</p>
     <p><kbd>确定性： x → μ(x) → 就是这个动作　　　　　│ 一根竖线</kbd><br>
@@ -726,7 +726,7 @@ td.num{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
       <tbody>
         <tr><td>HIL-SERL、PLD（单步 RL）</td><td>在这个 50Hz、稀疏奖励的设定下基本学不动</td></tr>
         <tr><td>DAgger（微调模仿人类接管）</td><td>成功率能追平，但速度被人类示教锁死</td></tr>
-        <tr><td>DSRL（在扩散噪声空间里"操舵"）</td><td>成功率高、训练稳，但约束太紧，提速远不如 RLT</td></tr>
+        <tr><td><a class="concept-link" href="RLinf-RL原理对比.html#concept-dsrl">DSRL</a>（在扩散噪声空间里"操舵"）</td><td>成功率高、训练稳，但约束太紧，提速远不如 RLT</td></tr>
         <tr><td>去掉 RL Token（换 ResNet-10）</td><td>吞吐掉 <b class="hot">50%</b></td></tr>
         <tr><td>去掉动作块（C=1）</td><td>信用分配距离暴涨，连基线水平都追不上</td></tr>
         <tr><td>去掉 BC 正则（λ=0）</td><td><b class="hot">跌幅最大的一项</b></td></tr>
@@ -791,7 +791,10 @@ td.num{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
   <a href="两条主干-拆机手册.html#concept-bellman">Bellman 方程与价值传播</a>
   <a href="#concept-behavior-cloning">BC 正则如何拉住动作</a>
   <a href="pi0.6-论文解读.html#concept-recap">π0.6 与 RECAP</a>
-  <a href="concepts.html">全部概念</a>
+  <a class="concept-link" href="RL-Token-论文解读.html#s4">RL Token 完整流程与执行问答</a>
+    <a class="concept-link" href="ObjectCentric-RL-论文解读.html#concept-residual-rl">物体中心的残差修正</a>
+    <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-n-step-return">n-step return 与偏差 / 方差</a>
+    <a href="concepts.html">全部概念</a>
 </aside>
 
 <script>

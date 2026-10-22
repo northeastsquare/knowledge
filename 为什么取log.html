@@ -508,7 +508,7 @@
       <span class="lm">①</span> 不取 log，式子里没有能采样的概率分布 → <span class="hot">算不出来</span><br>
       <span class="lm">②</span> ∇P/P 这个必须造出来的形状，<strong>恰好就是</strong> ∇log P<br>
       <span class="lm">③</span> 白送：乘积变求和，环境的物理项梯度为 0 → <span class="cy">model-free</span><br>
-      <span class="lm">④</span> 白送：1/π 抵消采样频率 → 只按 A 的好坏分配推力
+      <span class="lm">④</span> 白送：1/π 抵消采样频率 → 只按 <a class="concept-link" href="两条主干-拆机手册.html#concept-advantage">A</a> 的好坏分配推力
     </div>
   </div>
 </section>
@@ -518,7 +518,9 @@
   <a href="两条主干-拆机手册.html#concept-advantage">优势与 baseline</a>
   <a href="RLinf-RL原理对比.html#concept-ppo">PPO 如何约束更新</a>
   <a href="RLinf-RL原理对比.html#concept-grpo">GRPO 的组内优势</a>
-  <a href="concepts.html">全部概念</a>
+  <a class="concept-link" href="RLinf-RL原理对比.html#concept-gae">GAE 从 TD 误差估计优势</a>
+    <a class="concept-link" href="piRL-论文解读.html#concept-denoising-mdp">流匹配为什么需要改造似然</a>
+    <a href="concepts.html">全部概念</a>
 </aside>
 
 <footer>

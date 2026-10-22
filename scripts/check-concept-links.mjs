@@ -22,7 +22,14 @@ for (const file of files) {
   const markup = html.replace(/<!--[\s\S]*?-->/g, '').replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, match => match.slice(0, match.indexOf('>') + 1));
   const ids = new Set();
   const links = [];
-  for (const tag of markup.matchAll(/<[a-z][^>]*>/gi)) {
+  let insideLink = false;
+  for (const tag of markup.matchAll(/<\/?[a-z][^>]*>/gi)) {
+    if (/^<\/a\s*>$/i.test(tag[0])) { insideLink = false; continue; }
+    if (/^<\//.test(tag[0])) continue;
+    if (/^<a\b/i.test(tag[0])) {
+      if (insideLink) errors.push(`${file}: nested link ${tag[0]}`);
+      insideLink = true;
+    }
     const attrs = attributes(tag[0]);
     if (attrs.id) {
       if (ids.has(attrs.id)) errors.push(`${file}: duplicate id ${attrs.id}`);
@@ -64,6 +71,7 @@ for (const [file, page] of pages) {
     if (isConcept && target !== 'concepts.html' && !url.hash) errors.push(`${file}: concept link needs a section anchor: ${href}`);
   }
   if (!page.html.includes('href="concepts.css"')) errors.push(`${file}: concept stylesheet missing`);
+  if (!page.html.includes('src="nav.js"')) errors.push(`${file}: shared navigation missing`);
   if (!['index.html', 'concepts.html'].includes(file) && !page.links.some(a => (a.class || '').split(/\s+/).includes('concept-link'))) {
     errors.push(`${file}: no inline concept links`);
   }
@@ -71,10 +79,25 @@ for (const [file, page] of pages) {
 
 const nav = fs.readFileSync(path.join(root, 'nav.js'), 'utf8');
 new vm.Script(nav, { filename: 'nav.js' });
+const navPages = new Set();
 for (const match of nav.matchAll(/\bh:\s*'([^']+)'/g)) {
+  navPages.add(match[1]);
   if (!pages.has(match[1])) errors.push(`nav.js: missing article ${match[1]}`);
   if (!pages.get('index.html').links.some(l => l.href === match[1])) errors.push(`index.html: no entry for ${match[1]}`);
 }
+for (const file of files) {
+  if (!['index.html', 'concepts.html'].includes(file) && !navPages.has(file)) errors.push(`nav.js: no entry for ${file}`);
+}
+
+const conceptIndex = pages.get('concepts.html').html;
+const conceptCards = [...conceptIndex.matchAll(/<article class="term-card" id="[^"]+">\s*<h3><a href="([^"#]+)#[^"]+"/g)];
+const sourcePages = new Set(conceptCards.map(match => match[1]));
+const indexSummary = conceptIndex.match(/(\d+) 个关键概念 · (\d+) 篇研读网页/);
+if (!indexSummary || Number(indexSummary[1]) !== conceptCards.length || Number(indexSummary[2]) !== sourcePages.size) {
+  errors.push('concepts.html: concept or source page count is out of date');
+}
+const homeSummary = pages.get('index.html').html.match(/按概念串读 · (\d+) 个关键概念/);
+if (!homeSummary || Number(homeSummary[1]) !== conceptCards.length) errors.push('index.html: concept count is out of date');
 
 if (errors.length) {
   console.error(errors.join('\n'));

@@ -187,8 +187,8 @@ MathJax={tex:{inlineMath:[['$','$']],displayMath:[['$$','$$']]}};
     <p>机器人学习要走向"通用"，横着三道坎：<strong>数据稀缺、泛化差、鲁棒性不足</strong>。想靠每个任务单独采数据、单独训小模型，永远追不上通用智能。π0 的思路是把大模型预训练的逻辑搬进机器人：先在<b>海量、多样的<a class="concept-link" href="Qwen-VLA-论文解读.html#concept-cross-embodiment">跨本体数据</a></b>上预训练一个"机器人基础模型"，再用高质量数据微调出想要的技能。</p>
     <p>但直接照搬这条路会撞上两个技术硬伤：</p>
     <ul>
-      <li><strong>自回归 VLA 的离散化瓶颈</strong>：RT-2 / OpenVLA 这类模型把动作离散成 token 自回归生成，既难以表示高维连续动作，也不支持高频率的<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块（action chunk）</a>，做不了 50Hz 级别的精细灵巧操作——实验里 OpenVLA 在这些任务上明显吃亏。</li>
-      <li><strong>专精小模型丢了先验</strong>：ACT / Diffusion Policy 能处理连续动作和灵巧任务，但没有语言理解，也没有互联网规模先验，换任务基本要从零再来。</li>
+      <li><strong>自回归 VLA 的离散化瓶颈</strong>：RT-2 / <a class="concept-link" href="OpenVLA-vs-pi系列-对比.html#concept-action-binning">OpenVLA</a> 这类模型把动作离散成 token 自回归生成，既难以表示高维连续动作，也不支持高频率的<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块（action chunk）</a>，做不了 50Hz 级别的精细灵巧操作——实验里 OpenVLA 在这些任务上明显吃亏。</li>
+      <li><strong>专精小模型丢了先验</strong>：ACT / <a class="concept-link" href="DiffusionPolicy-论文解读.html#concept-diffusion-policy">Diffusion Policy</a> 能处理连续动作和灵巧任务，但没有语言理解，也没有互联网规模先验，换任务基本要从零再来。</li>
     </ul>
     <p>于是本文的核心命题是：<span class="hl">能不能既继承预训练 VLM 的语义知识，又能输出高频率、高精度的连续动作块？</span>π0 的回答是"能"——用<a class="concept-link" href="#concept-flow-matching">流匹配（flow matching）</a>当动作头，学习把噪声逐步变成动作的连续向量场，用 PaliGemma 当底座。流匹配与扩散模型有关联，但两者不是同一个训练目标。</p>
   </section>
@@ -200,7 +200,7 @@ MathJax={tex:{inlineMath:[['$','$']],displayMath:[['$$','$$']]}};
       <li id="concept-action-expert" class="concept-anchor"><strong>挂一个"动作专家"</strong>：另起一套 <code>300M</code> 参数的独立权重（action expert），用<span class="hl">流匹配</span>把动作建模成连续分布，一次输出 <code>H=50</code> 步的动作块。这个新模块的梯度会不会伤骨干，正是<a class="concept-link" href="KI-知识隔离-论文解读.html#concept-knowledge-insulation">知识隔离</a>要解决的问题。<a class="code-jump" href="代码索引.html#action-expert" style="font:12px ui-monospace,Consolas,monospace;white-space:nowrap;text-decoration:none;border:1px dashed currentColor;border-radius:4px;padding:0 5px;margin-left:4px;opacity:.8">⟨/⟩ 代码</a></li>
       <li><strong>统一 token 流 + 块状因果注意力</strong>：图像、语言、本体状态、动作全部投进同一个 transformer；注意力分成三块 <code>[图像+语言] | [状态] | [动作]</code>，动作块内部双向、只允许向后看。</li>
       <li><strong>预训练 + 后训练两阶段</strong>：先在约 <code>1 万小时</code>跨本体数据上预训练打底，再用高质量任务数据微调出"流畅、高效、会纠错"的行为。</li>
-      <li><strong>（可选）高层 VLM 策略</strong>：复杂长任务交给高层 VLM 拆解成中间语言指令（类似 SayCan），π0 只负责执行每个子指令。</li>
+      <li><strong>（可选）高层 VLM 策略</strong>：复杂长任务交给<a class="concept-link" href="PI-工作全景.html#concept-hi-robot">高层 VLM</a> 拆解成中间语言指令（类似 SayCan），π0 只负责执行每个子指令。</li>
     </ol>
   </section>
 
@@ -212,7 +212,7 @@ MathJax={tex:{inlineMath:[['$','$']],displayMath:[['$$','$$']]}};
         <tr><td><strong>输入</strong></td><td>多视角 RGB 图像 <code>I_t</code>（每台机器人 2~3 个相机）＋ 语言指令 <code>ℓ_t</code> ＋ 本体状态 <code>q_t</code>（关节角向量）</td><td>图像走 ViT 编码、语言走 tokenizer、状态走线性投影，三者投到<b>同一个 embedding 空间</b>，组成观测 <code>o_t</code></td></tr>
         <tr><td><strong>内部处理</strong></td><td>单 transformer + 两套权重（VLM 主干 / 动作专家）</td><td>图像与语言走 3B 的 VLM 主干；<code>q_t</code> 与动作块走 300M 的动作专家，两套权重只在 self-attention 里交互</td></tr>
         <tr><td><strong>注意力掩码</strong></td><td>块状因果，3 块：<code>[图像+语言]</code>｜<code>[q_t]</code>｜<code>[动作块]</code></td><td>动作块内部双向；状态块不随积分步变化，可缓存 KV 加速</td></tr>
-        <tr><td><strong>输出</strong></td><td>动作块 <code>A_t = [a_t, …, a_{t+H-1}]</code>，<code>H=50</code> 步连续动作</td><td>经流匹配 <b>10 步</b>前向欧拉积分去噪；最高 <b>50Hz</b> 控制频率</td></tr>
+        <tr><td><strong>输出</strong></td><td>动作块 <code>A_t = [a_t, …, a_{t+H-1}]</code>，<code>H=50</code> 步连续动作</td><td>经流匹配 <b>10 步</b><a class="concept-link" href="pi0-论文解读.html#concept-euler-integration">前向欧拉积分</a>去噪；最高 <b>50Hz</b> 控制频率</td></tr>
       </table>
     </div>
 
@@ -265,7 +265,7 @@ MathJax={tex:{inlineMath:[['$','$']],displayMath:[['$$','$$']]}};
     <h2>训练或运行方式</h2>
     <p><strong>预训练</strong>：在约 <code>10,000 小时</code>的跨本体数据上训练。自有灵巧操作数据覆盖 <span class="hl">7 种机器人配置、68 个任务</span>，共 <code>903M</code> timesteps（单臂 106M、双臂 797M）；再拼上开源数据（OXE、Bridge v2、DROID，合计占混合的 <code>9.1%</code>）。为了防止过采样任务占大头，每个 task-robot 组合按 <code>n^0.43</code> 降权配平。</p>
     <p id="concept-flow-matching" class="concept-anchor"><strong>流匹配损失</strong>：训练时同时采样两个随机量：<b>①</b> 噪声向量 <code>ε ~ N(0, I)</code>（形状 H×d）；<b>②</b> 时间步 <code>τ</code>（标量，表示去噪进度）。构造混合动作 <code>A^τ = τ·A + (1-τ)ε</code>，让网络回归去噪场 <code>u = A - ε</code>。</p>
-    <p><strong>时间步 τ 的采样策略</strong>：不从均匀分布抽，而是用 <span class="hl">shift-beta 分布</span>刻意<b>偏向高噪声段</b>。<b>注意符号约定</b>：论文里 <code>τ=0</code> 代表纯噪声、<code>τ=1</code> 代表真实数据；openpi 代码用相反约定（<code>t=1</code> 是噪声、<code>t=0</code> 是数据），两者满足 <code>τ = 1 - t</code>。具体做法：</p>
+    <p id="concept-beta-noise-sampling" class="concept-anchor"><strong>时间步 τ 的采样策略</strong>：不从均匀分布抽，而是用 <span class="hl"><a class="concept-link" href="Beta分布-球星卡.html#concept-beta-distribution">shift-beta 分布</a></span>刻意<b>偏向高噪声段</b>。<b>注意符号约定</b>：论文里 <code>τ=0</code> 代表纯噪声、<code>τ=1</code> 代表真实数据；openpi 代码用相反约定（<code>t=1</code> 是噪声、<code>t=0</code> 是数据），两者满足 <code>τ = 1 - t</code>。具体做法：</p>
     <ol style="margin:8px 0 12px 22px;">
       <li>从 Beta(1.5, 1) 采样 <code>x</code>（偏向 1）</li>
       <li>计算"噪声程度" <code>t = 0.999·x + 0.001</code>（<code>t</code> 也偏向 1，即高噪声）</li>
@@ -273,8 +273,83 @@ MathJax={tex:{inlineMath:[['$','$']],displayMath:[['$$','$$']]}};
       <li>代入混合公式：此时 <code>(1-τ)</code> 接近 1，<b>噪声占比高</b></li>
     </ol>
     <p><b>为什么偏向高噪声</b>：作者论证动作预测不同于图像生成——低噪声段（<code>τ</code> 接近 1）时 <code>A^τ ≈ A</code>，网络只需做微小修正，几乎是恒等映射，学不到多少信息；高噪声段（<code>τ</code> 接近 0）时 <code>A^τ</code> 距真实动作很远，网络必须学会从混乱中识别正确方向，<b>真正的去噪能力在这里训练</b>。截断 <code>s=0.999</code> 避开 <code>t=0</code>（即 <code>τ=1</code>）的数值退化。 <a class="code-jump" href="代码索引.html#flow-matching" style="font:12px ui-monospace,Consolas,monospace;white-space:nowrap;text-decoration:none;border:1px dashed currentColor;border-radius:4px;padding:0 5px;margin-left:4px;opacity:.8">⟨/⟩ 代码</a></p>
+    <p><strong>训练时的一次前向过程</strong>：</p>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>步骤</th><th>操作</th><th>说明</th></tr>
+        <tr><td>1</td><td>从数据集采样一条轨迹</td><td>得到真实动作块 <code>A</code>（形状 H×d）和对应的观测（图像、语言、状态 <code>q_t</code>）</td></tr>
+        <tr><td>2</td><td>采样噪声向量</td><td><code>ε ~ N(0, I)</code>，形状与 <code>A</code> 相同（H×d）</td></tr>
+        <tr><td>3</td><td>采样时间步</td><td>① 从 Beta(1.5, 1) 采样 <code>x</code><br>② 计算 <code>t = 0.999·x + 0.001</code><br>③ 转换 <code>τ = 1 - t</code>（偏向 0，即高噪声）</td></tr>
+        <tr><td>4</td><td>构造混合动作</td><td><code>A^τ = τ·A + (1-τ)·ε</code><br>τ 小时噪声占比高，τ 大时接近真实动作</td></tr>
+        <tr><td>5</td><td>网络前向</td><td>输入：观测前缀（图像+语言） + <code>q_t</code> + <code>A^τ</code> + <code>τ</code><br>输出：预测的速度向量 <code>v_θ</code>（形状 H×d）</td></tr>
+        <tr><td>6</td><td>计算损失</td><td>目标是真实的去噪方向 <code>u = A - ε</code><br>损失：<code>L = ||v_θ - u||²</code>（均方误差）</td></tr>
+        <tr><td>7</td><td>反向传播</td><td>更新动作专家（300M）和 VLM 主干（3B）的权重</td></tr>
+      </table>
+    </div>
+    <p><b>关键区别：训练 vs 推理</b>：</p>
+    <ul style="margin:8px 0 12px 22px;">
+      <li><b>训练</b>：已知终点 <code>A</code>，随机采样一个中间点 <code>A^τ</code>，让网络学会预测"从这个点该往哪走"</li>
+      <li><b>推理</b>：只知起点 <code>ε</code>，沿着网络预测的方向走 10 步，逐步接近数据分布</li>
+    </ul>
+    <p><b>为什么训练时 τ 随机采样</b>：让网络见过各种噪声程度（0~1 之间的任意位置），推理时才能从纯噪声（τ=0）一路走到干净数据（τ=1）。偏向高噪声段是因为低噪声时 <code>A^τ ≈ A</code>，网络几乎不需要学习；高噪声时 <code>A^τ</code> 很乱，网络必须真正理解如何去噪。</p>
+
+    <div class="card" style="background:var(--surface-2);border-left:3px solid var(--accent);">
+      <h3 style="margin:0 0 10px;color:var(--accent);">💡 高噪声段学习的两个常见疑问</h3>
+
+      <p style="margin:0 0 12px;"><strong>疑问 1：高噪声段（τ 接近 0）时 A^τ 几乎是纯噪声，会不会远到根本没法学习？</strong></p>
+      <p style="margin:0 0 8px;"><b>不会。关键在于流匹配学的不是"猜动作"，而是"猜方向"。</b></p>
+      <ul style="margin:0 0 12px;font-size:14px;">
+        <li><b>目标是固定的</b>：无论 τ 多小，目标始终是 <code>u = A - ε</code>（从噪声指向真实动作的方向）。这是一条<b>直线</b>，τ=0 时网络看到纯噪声 <code>ε</code>，但目标仍是"朝 A 的方向走"。</li>
+        <li><b>有条件指引</b>：网络输入不只是 <code>A^τ</code>，还有观测（图像、语言、状态 <code>q_t</code>）。即使动作是纯噪声，观测告诉网络"当前任务是什么、物体在哪"，网络可以从条件中判断"大致该往哪个方向调整"。</li>
+        <li><b>不需要一步到位</b>：推理时走 10 步，每步只需预测当前位置的方向，不需要从 τ=0 直接跳到 τ=1。就像爬山：即使在山脚（高噪声），只要知道"上坡方向"就能往上走，不需要看到山顶。</li>
+        <li><b>对比扩散模型</b>：扩散模型的高噪声段确实更难，因为它学的是 <code>ε_θ(A^τ, τ)</code>（预测噪声本身），噪声模式复杂。流匹配学的是 <code>A - ε</code>，是从当前点到目标的<b>直线向量</b>，结构更简单。</li>
+      </ul>
+      <p style="margin:0 0 8px;"><b>类比</b>：在迷雾中（高噪声）用指南针（观测条件）找方向，虽然看不清终点，但指南针告诉你"往北走"，就能一步步接近。低噪声段像在终点附近，已经能看见目标，指南针的价值反而不大。</p>
+
+      <p style="margin:16px 0 12px;"><strong>疑问 2："动作预测不同于图像生成——低噪声段"是什么意思？图像生成都是低噪声段吗？</strong></p>
+      <p style="margin:0 0 8px;"><b>不是。这里的"低噪声段"是指去噪过程中接近干净数据的阶段（τ 接近 1）。</b></p>
+
+      <p style="margin:8px 0 4px;"><b>噪声段的含义</b>：</p>
+      <ul style="margin:0 0 12px;font-size:14px;">
+        <li><b>高噪声段</b>：τ 接近 0，此时 <code>A^τ ≈ ε</code>（几乎是纯随机噪声）</li>
+        <li><b>中等噪声段</b>：τ ≈ 0.5，噪声与真实数据各占一半</li>
+        <li><b>低噪声段</b>：τ 接近 1，此时 <code>A^τ ≈ A</code>（接近真实数据，只有微小噪声）</li>
+      </ul>
+
+      <p style="margin:8px 0 4px;"><b>图像生成 vs 动作预测的差异</b>：</p>
+      <div class="tbl-wrap">
+        <table style="font-size:13.5px;">
+          <tr><th>噪声段</th><th>图像生成（扩散模型）</th><th>动作预测（流匹配）</th></tr>
+          <tr>
+            <td><b>高噪声</b><br>τ ≈ 0</td>
+            <td>确定大致结构、布局、物体位置<br>（"这是一只猫还是一条狗"）</td>
+            <td>确定动作的大方向<br>（"往左抓还是往右抓"）<br><b>✓ 信息量大，重点训练</b></td>
+          </tr>
+          <tr>
+            <td><b>中等噪声</b><br>τ ≈ 0.5</td>
+            <td>细化形状、颜色、纹理</td>
+            <td>修正动作轨迹的偏差</td>
+          </tr>
+          <tr>
+            <td><b>低噪声</b><br>τ ≈ 1</td>
+            <td>恢复细节（毛发、眼睛、边缘锐化）<br><b>✓ 对质量很关键</b></td>
+            <td>微调动作，但 <code>A^τ</code> 已经很接近 <code>A</code><br><b>✗ 几乎是恒等映射，学习价值低</b></td>
+          </tr>
+        </table>
+      </div>
+
+      <p style="margin:12px 0 0;"><b>结论</b>：图像生成需要<b>平衡各噪声段</b>（高噪声定结构、低噪声补细节），所以通常用均匀采样 τ。动作预测偏向高噪声段的原因不是"不需要精度"（高精度装配任务中 1-2mm 误差就会失败），而是<b>训练效率</b>：</p>
+      <ul style="margin:4px 0 0 22px;font-size:14px;">
+        <li><b>低噪声段容易学</b>：当 <code>A^τ ≈ A</code> 时，网络只需学"几乎不动"（接近恒等映射），即使少采样也能学会</li>
+        <li><b>高噪声段难学</b>：当 <code>A^τ</code> 很乱时，网络必须从观测条件中提取"该往哪个大方向调整"，需要更多样本才能学好</li>
+        <li><b>推理时都会经过</b>：训练偏向高噪声，但推理均匀走 10 步（τ = 0, 0.1, …, 0.9），低噪声段仍会被用到，最终精度仍由网络容量、数据质量决定</li>
+        <li><b>对比图像</b>：图像的低噪声段要学复杂纹理细节（每个像素都不同），训练难度不低于高噪声段，所以不能偏采样</li>
+      </ul>
+      <p style="margin:8px 0 0;"><b>高精度任务怎么办</b>：π0 论文的微调任务包括"纸巾筒装配"等需要毫米级精度的操作。策略是<b>高质量演示数据 + 足够的微调</b>（100+ 小时），而不是依赖"控制器补偿"。偏向高噪声采样不妨碍学到精度，只是让训练把更多算力花在"难学的部分"。</p>
+    </div>
+
     <p><strong>后训练微调</strong>：简单任务约 <code>5 小时</code>数据即可，最复杂任务用到 <code>100 小时以上</code>。原则是"低质量多样数据教纠错与恢复，高质量数据教流畅高效"。</p>
-    <p><strong>推理</strong>：从纯噪声出发做 <code>10 步</code>前向欧拉积分（步长 <code>Δτ=0.1</code>），前缀观测的 <a class="concept-link" href="Realtime-VLA-论文解读.html#concept-kv-cache">KV 可缓存</a>。在消费级 RTX 4090 上，单次推理约 <code>73ms</code> 板端延迟（图像编码 14ms + 观测前向 32ms + 10× 动作前向 27ms）。20Hz 的 UR5e/Franka 每 0.8s 推理一次（执行 16 步），50Hz 机器人每 0.5s 一次（执行 25 步），动作块<b>开环执行</b>——作者试过 temporal ensembling，反而更差，于是干脆不做动作聚合。</p>
+    <p><strong>推理</strong>：从纯噪声出发做 <code>10 步</code>前向欧拉积分（步长 <code>Δτ=0.1</code>），前缀观测的 <a class="concept-link" href="Realtime-VLA-论文解读.html#concept-kv-cache">KV 可缓存</a>。在消费级 RTX 4090 上，单次推理约 <code>73ms</code> 板端延迟（图像编码 14ms + 观测前向 32ms + 10× 动作前向 27ms）。20Hz 的 UR5e/Franka 每 0.8s 推理一次（执行 16 步），50Hz 机器人每 0.5s 一次（执行 25 步），动作块<b>开环执行</b>——作者试过 <a class="concept-link" href="RTC-实时动作分块-论文解读.html#concept-temporal-ensembling">temporal ensembling</a>，反而更差，于是干脆不做动作聚合。</p>
   </section>
 
   <section>
@@ -313,13 +388,55 @@ MathJax={tex:{inlineMath:[['$','$']],displayMath:[['$$','$$']]}};
       </table>
     </div>
     <p>走完得到的 <code>A^1.0</code> 即交给机器人执行的动作块。</p>
-    <p><strong>欧拉积分就是微积分里解微分方程的最简数值法</strong>。精确写法是解 ODE：<code>dA^τ/dτ = v_θ(A^τ, τ, 观测)，A^0 = ε</code>，即 <code>A^1 = ε + ∫₀¹ v_θ(A^τ, τ, 观测) dτ</code>。注意被积的 <code>v</code> 不是事先画好的曲线：它取决于当前位置 <code>A^τ</code>，而 <code>A^τ</code> 又是前面各步积出来的，边走边生成，所以没有解析解，只能数值解。欧拉法把时间切成 <code>Δτ=0.1</code> 的小段、每段假设速度不变——几何上就是用 10 个矩形近似面积（对 <code>H×d</code> 个分量各自做）。选它是因为最简单、每步只调一次网络，且路径接近直线，大步走也不易偏。</p>
-    <p><strong>为什么还要 10 步而不是一步 <code>ε + v₀</code></strong>：路径若严格是直线，一步就够。但网络学到的是各位置的"平均方向"，同一观测下有多个合理动作，路径中途会有弯曲，所以要边走边重新看当前位置、修正方向。步数越多越准越慢，10 步是精度与延迟的折中。想彻底去掉积分，要么让路径更直，要么像 consistency 那样让网络直接学终点（代价是训练更难）。</p>
+    <p id="concept-euler-integration" class="concept-anchor"><strong>欧拉积分就是微积分里解微分方程的最简数值法</strong>。精确写法是解 ODE：<code>dA^τ/dτ = v_θ(A^τ, τ, 观测)，A^0 = ε</code>，即 <code>A^1 = ε + ∫₀¹ v_θ(A^τ, τ, 观测) dτ</code>。注意被积的 <code>v</code> 不是事先画好的曲线：它取决于当前位置 <code>A^τ</code>，而 <code>A^τ</code> 又是前面各步积出来的，边走边生成，所以没有解析解，只能数值解。欧拉法把时间切成 <code>Δτ=0.1</code> 的小段、每段假设速度不变——几何上就是用 10 个矩形近似面积（对 <code>H×d</code> 个分量各自做）。选它是因为最简单、每步只调一次网络，且路径接近直线，大步走也不易偏。</p>
+    <p><strong>为什么还要 10 步而不是一步 <code>ε + v₀</code></strong>：路径若严格是直线，一步就够。但网络学到的是各位置的"平均方向"，同一观测下有多个合理动作，路径中途会有弯曲，所以要边走边重新看当前位置、修正方向。步数越多越准越慢，10 步是精度与延迟的折中。想彻底去掉积分，要么让路径更直，要么像 <a class="concept-link" href="DiffusionPolicy-论文解读.html#concept-consistency">consistency</a> 那样让网络直接学终点（代价是训练更难）。</p>
+
+    <div class="card" style="background:var(--surface-2);border-left:3px solid var(--signal);">
+      <h3 style="margin:0 0 10px;color:var(--signal);">🤔 训练时预测方向 u = A - ε，不也相当于预测终点吗？</h3>
+      <p style="margin:0 0 8px;"><b>看起来像，但本质不同。</b>训练目标 <code>u = A - ε</code> 确实包含终点 A 的信息，但网络学到的函数是 <code>v_θ(A^τ, τ, 观测)</code>，输入包含<b>当前位置</b>和<b>时间步</b>。</p>
+
+      <p style="margin:12px 0 6px;"><b>如果路径完美是直线</b>：</p>
+      <ul style="margin:0 0 12px;font-size:14px;">
+        <li>训练时构造 <code>A^τ = τ·A + (1-τ)ε</code>（这是条直线）</li>
+        <li>如果网络完美学到 <code>v_θ = A - ε</code>（与 τ 无关的定值）</li>
+        <li>那么理论上可以一步到位：<code>A = ε + 1.0·(A - ε)</code> ✓</li>
+      </ul>
+
+      <p style="margin:12px 0 6px;"><b>实际为什么需要 10 步</b>：</p>
+      <ol style="margin:0 0 12px 22px;font-size:14px;">
+        <li><b>网络有近似误差</b>：训练时网络没有完美拟合 <code>u = A - ε</code>，会有偏差</li>
+        <li><b>推理路径会偏离训练路径</b>：训练时的 <code>A^τ</code> 是通过线性插值构造的（保证在直线上）；推理时的 <code>A^τ</code> 是通过前几步积分得到的，第一步如果有误差，就偏离了直线。网络虽然学的是"直线上的方向"，但在偏离直线的位置，网络的输出可能不准确。</li>
+        <li><b>多步可以纠偏</b>：每走一步，网络根据"当前实际位置"重新预测方向，可以修正前面步骤的累积误差</li>
+        <li><b>多模态问题</b>：同一观测下有多个合理动作（从左绕 / 从右绕），网络学到的是这些模式的混合场，局部可能不是直线</li>
+      </ol>
+
+      <p style="margin:12px 0 6px;"><b>Flow Matching vs Consistency Model 的区别</b>：</p>
+      <div class="tbl-wrap">
+        <table style="font-size:13.5px;">
+          <tr><th>模型</th><th>训练学什么</th><th>推理怎么做</th><th>核心差异</th></tr>
+          <tr>
+            <td><b>Flow Matching<br>（π0）</b></td>
+            <td>学速度场 <code>v_θ(A^τ, τ, 观测)</code><br>训练目标：匹配 <code>u = A - ε</code></td>
+            <td>从起点积分：<br><code>A^{τ+Δτ} = A^τ + Δτ·v_θ</code><br>需要 10 次网络调用</td>
+            <td>学的是"<b>怎么走</b>"<br>间接到达终点</td>
+          </tr>
+          <tr>
+            <td><b>Consistency Model</b></td>
+            <td>学终点映射 <code>f_θ(A^τ, τ) → A</code><br>训练目标：对任意 τ 都输出同一个终点 A</td>
+            <td>直接映射：<br><code>A = f_θ(ε, 0)</code><br>只需 1 次网络调用</td>
+            <td>学的是"<b>终点在哪</b>"<br>跳过积分过程</td>
+          </tr>
+        </table>
+      </div>
+
+      <p style="margin:12px 0 0;"><b>类比</b>：Flow Matching 像导航软件给你"每个路口该往哪拐"（局部方向），你需要按指示一步步开；Consistency Model 像直升机，直接告诉你"终点的GPS坐标"，吊起来直接放过去。前者训练简单（只需学局部方向），推理慢（要走很多步）；后者推理快（一步到位），但训练难（要保证从任意中间点都能跳到正确终点，约束更强）。</p>
+    </div>
+
     <div class="note"><b>说明</b>：本节是按标准 flow matching 的写法整理的补充，论文原页只写了"10 步前向欧拉积分"；<code>d</code> 的具体数值和积分为什么能把噪声搬运到数据分布的严格推导，仍属下方"补概念"待办。</div>
   </section>
 
   <section>
-    <h2>补充：Beta 分布是什么，为什么能偏向高噪声</h2>
+    <h2 id="concept-beta-origins" class="concept-anchor">补充：Beta 分布是什么，为什么能偏向高噪声</h2>
     <p><strong>一句话</strong>：Beta 分布是"在 0 到 1 之间随机取数"的一族分布，两个参数 $\alpha$、$\beta$ 决定数更容易落在哪一边。均匀分布是它的特例（$\alpha=\beta=1$）。</p>
     <p><strong>类比</strong>：往 0~1 的靶条上扔飞镖。均匀分布是每个位置命中机会一样；Beta 分布是把靶条调成"某一端更容易中"。</p>
     <p><strong>公式</strong>：</p>
@@ -377,7 +494,49 @@ MathJax={tex:{inlineMath:[['$','$']],displayMath:[['$$','$$']]}};
     <p>看公式发慌的话，先去玩 <a href="Beta分布-球星卡.html">Beta 分布：别慌球星卡</a>，里面有 5 个可拖动的小实验。</p>
     <h3 style="font-size:16px;margin:18px 0 8px;">Beta 分布从哪来：生活中的例子</h3>
     <p>Beta 分布取值在 0 到 1 之间，常用来描述"对一个比例或概率有多不确定"。</p>
-    <p><strong>① 只看到一些结果，不知道真实概率（最常见）</strong>：球员罚球 10 次中 7 次，真实命中率不是确定的 0.7，而是一个范围。以均匀分布为先验，成功 $h$ 次、失败 $k$ 次后，命中率服从 $\mathrm{Beta}(h+1,\,k+1)$，这里就是 $\mathrm{Beta}(8,4)$。这个 +1 来自两处：Beta 密度的指数是 $\alpha-1$，且"一无所知"的起点是平线 $\mathrm{Beta}(1,1)$；有先验 $\mathrm{Beta}(a_0,b_0)$ 时结果是 $\mathrm{Beta}(a_0+h,\,b_0+k)$。详见球星卡页第 1 张卡。所以 $\alpha-1$ 可看成"已见成功次数"，$\beta-1$ 是"已见失败次数"，数据越多分布越窄。网页点击率、A/B 测试转化率、次品率都是同类问题；Thompson sampling 就是从各选项的 Beta 里各抽一个数，选最大的。</p>
+    <p><strong>① 只看到一些结果，不知道真实概率（最常见）</strong>：球员罚球 10 次中 7 次，真实命中率不是确定的 0.7，而是一个范围。以均匀分布为先验，成功 $h$ 次、失败 $k$ 次后，命中率服从 $\mathrm{Beta}(h+1,\,k+1)$，这里就是 $\mathrm{Beta}(8,4)$。这个 +1 来自两处：Beta 密度的指数是 $\alpha-1$，且"一无所知"的起点是平线 $\mathrm{Beta}(1,1)$；有先验 $\mathrm{Beta}(a_0,b_0)$ 时结果是 $\mathrm{Beta}(a_0+h,\,b_0+k)$。详见球星卡页第 1 张卡。所以 $\alpha-1$ 可看成"已见成功次数"，$\beta-1$ 是"已见失败次数"，数据越多分布越窄。</p>
+    <div class="card" style="background:var(--surface-2);border-left:3px solid var(--accent);margin:12px 0;">
+      <h3 style="margin:0 0 10px;color:var(--accent);">💡 "同类问题"指什么</h3>
+      <p style="margin:0 0 8px;"><b>网页点击率、A/B 测试转化率、次品率都是同类问题</b>：它们都是在观察到部分结果后，对一个<b>未知的成功率</b>进行贝叶斯推断。</p>
+      <div class="tbl-wrap">
+        <table style="font-size:13.5px;">
+          <tr><th>场景</th><th>观测数据</th><th>推断目标</th><th>后验分布</th></tr>
+          <tr>
+            <td><b>网页点击率</b></td>
+            <td>展示 $n$ 次广告，被点击 $h$ 次</td>
+            <td>真实点击率 $p$</td>
+            <td>$\mathrm{Beta}(h+1,\, n-h+1)$</td>
+          </tr>
+          <tr>
+            <td><b>A/B 测试转化率</b></td>
+            <td>给 $n$ 个用户看新版本，$h$ 个转化了</td>
+            <td>新版本真实转化率</td>
+            <td>$\mathrm{Beta}(h+1,\, n-h+1)$</td>
+          </tr>
+          <tr>
+            <td><b>次品率</b></td>
+            <td>检查 $n$ 件产品，发现 $k$ 件次品</td>
+            <td>生产线真实次品率</td>
+            <td>$\mathrm{Beta}(k+1,\, n-k+1)$</td>
+          </tr>
+          <tr>
+            <td><b>球员罚球命中率</b></td>
+            <td>罚球 $n$ 次，命中 $h$ 次</td>
+            <td>球员真实命中率</td>
+            <td>$\mathrm{Beta}(h+1,\, n-h+1)$</td>
+          </tr>
+        </table>
+      </div>
+      <p style="margin:12px 0 0;"><b>共同点</b>：</p>
+      <ul style="margin:4px 0 0 22px;font-size:14px;">
+        <li><b>伯努利试验</b>：每次只有两种结果（成功/失败、点击/不点击、次品/良品）</li>
+        <li><b>样本有限</b>：用有限的观测推断真实概率参数，存在不确定性</li>
+        <li><b>Beta 后验</b>：以均匀分布 $\mathrm{Beta}(1,1)$ 为先验，观测到成功 $h$ 次、失败 $k$ 次后，后验为 $\mathrm{Beta}(h+1,\, k+1)$</li>
+        <li><b>数据越多越确定</b>：$h+k$ 越大，Beta 分布越窄（方差越小），对真实概率的估计越准</li>
+      </ul>
+      <p style="margin:12px 0 0;"><b>应用</b>：Thompson sampling（多臂老虎机）从各选项的 Beta 后验里各抽一个数，选最大的——既能利用当前最优选项（exploitation），也能探索不确定的选项（exploration）。这正是 Beta 分布天然编码"不确定性"的价值：参数少时分布宽（鼓励探索），参数多时分布窄（确信当前估计）。</p>
+    </div>
+    <p style="margin-top:12px;"><b>为什么 Beta 是标准工具</b>：它是二项分布的<b>共轭先验</b>——先验是 Beta、似然是二项，后验仍是 Beta，形式不变，只需更新参数。这让贝叶斯更新变成简单的加法：$\mathrm{Beta}(a_0,b_0) + \text{观测}(h,k) = \mathrm{Beta}(a_0+h,\, b_0+k)$，不用每次重新积分。</p>
     <p><strong>② 随机点排序后的第 $k$ 个</strong>：在 [0,1] 里随机撒 $n$ 个点并排序，第 $k$ 个点的位置服从 $\mathrm{Beta}(k,\,n-k+1)$。<b>为什么</b>：要让第 $k$ 小的点落在 $[x,\,x+dx]$，需要同时满足三件事：</p>
     <ul>
       <li>选出"是哪个点落在这里"：$n$ 种选法，每种概率 $dx$。</li>
@@ -504,7 +663,10 @@ MathJax={tex:{inlineMath:[['$','$']],displayMath:[['$$','$$']]}};
     <a class="concept-link" href="piRL-论文解读.html#concept-denoising-mdp">去噪 MDP：流模型如何做 RL</a>
     <a class="concept-link" href="pi0.6-论文解读.html#concept-recap">RECAP：优势条件化</a>
     <a class="concept-link" href="concepts.html">全部概念 →</a>
-  </aside>
+      <a class="concept-link" href="DiffusionPolicy-论文解读.html#concept-diffusion-policy">Diffusion Policy：动作扩散的起点</a>
+    <a class="concept-link" href="RTC-实时动作分块-论文解读.html#concept-inpainting">RTC：异步动作块补全</a>
+    <a class="concept-link" href="Beta分布-球星卡.html#concept-beta-distribution">Beta 分布与噪声采样</a>
+</aside>
 
   <footer>
     <span>精读笔记 · π0：通用机器人控制的视觉-语言-动作流模型</span>

@@ -172,7 +172,7 @@
   <section class="hero">
     <div class="eyebrow">专题 · 方法对比</div>
     <h1>OpenVLA vs π 系列（openpi）：动作该怎么生成？</h1>
-    <p class="summary">两者都是"VLM 骨干 + 输出机器人动作"的 VLA，最核心的分歧只有一个：<strong>动作是像文字一样逐个生成离散 token，还是交给一个独立的生成式动作专家，一次输出一段连续动作</strong>。</p>
+    <p class="summary">两者都是"VLM 骨干 + 输出机器人动作"的 <a class="concept-link" href="VLA-发展历程.html#concept-vla">VLA</a>，最核心的分歧只有一个：<strong>动作是像文字一样逐个生成离散 token，还是交给一个独立的生成式动作专家，一次输出一段连续动作</strong>。</p>
     <div class="meta">
       <div class="m"><span class="k">OpenVLA</span><span class="v">斯坦福 / 伯克利 / TRI 等，2024.06</span></div>
       <div class="m"><span class="k">π0</span><span class="v">Physical Intelligence，2024.10</span></div>
@@ -184,8 +184,8 @@
   <section>
     <h2>一句话区别</h2>
     <div class="vs">
-      <div class="card"><h3 class="tag-a">OpenVLA：把动作当文字</h3><p>沿用 RT-2 路线。每个动作维度切成 256 个 bin，借用词表里的 token，由 Llama 2 <strong>自回归</strong>地一个一个输出，一次只输出一步动作。</p></div>
-      <div class="card"><h3 class="tag-b">π0：VLM 负责理解，动作专家负责生成</h3><p>VLM 之外另接一个约 300M 的"动作专家"，用 <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">flow matching</a> 从噪声中生成<strong>连续</strong>动作，一次输出一段 <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">action chunk</a>（50 步）。</p></div>
+      <div class="card"><h3 class="tag-a concept-anchor" id="concept-action-binning">OpenVLA：把动作当文字</h3><p>沿用 RT-2 路线。每个动作维度切成 256 个 bin，借用词表里的 token，由 Llama 2 <strong>自回归</strong>地一个一个输出，一次只输出一步动作。</p></div>
+      <div class="card"><h3 class="tag-b">π0：VLM 负责理解，动作专家负责生成</h3><p>VLM 之外另接一个约 300M 的"<a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a>"，用 <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">flow matching</a> 从噪声中生成<strong>连续</strong>动作，一次输出一段 <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">action chunk</a>（50 步）。</p></div>
     </div>
   </section>
 
@@ -219,8 +219,8 @@
   <section>
     <h2>后来两条路线互相借鉴</h2>
     <div class="vs">
-      <div class="card"><h3 class="tag-a">OpenVLA → OpenVLA-OFT（2025.02）</h3><p>放弃逐 token 解码，改为<strong>并行解码 + 动作块 + 连续动作 L1 回归</strong>，速度和成功率都大幅提升，实际已向 π0 的"一次输出一段连续动作"靠拢。<a href="https://arxiv.org/abs/2502.19645" target="_blank" rel="noreferrer">arXiv 2502.19645</a></p></div>
-      <div class="card"><h3 class="tag-b">π0 → π0-FAST / π0.5 / π*0.6 / π0.7</h3><p>反过来引入离散 token：<a href="FAST-论文解读.html">π0-FAST</a> 用 DCT + BPE 压缩动作 token（<a href="FAST-论文解读.html">精读</a>）；<a href="pi0.5_论文测验_精美版.html">π0.5</a> 训练时用离散 token、推理时用 flow；<a href="pi0.6-论文解读.html">π*0.6</a> 加入 RL（RECAP）；<a href="pi0.7_问答学习卡.html">π0.7</a> 让模型可以通过提示调节行为。</p></div>
+      <div class="card"><h3 class="tag-a concept-anchor" id="concept-openvla-oft">OpenVLA → OpenVLA-OFT（2025.02）</h3><p>放弃逐 token 解码，改为<strong>并行解码 + 动作块 + 连续动作 L1 回归</strong>，速度和成功率都大幅提升，实际已向 π0 的"一次输出一段连续动作"靠拢。<a href="https://arxiv.org/abs/2502.19645" target="_blank" rel="noreferrer">arXiv 2502.19645</a></p></div>
+      <div class="card"><h3 class="tag-b">π0 → π0-FAST / π0.5 / π*0.6 / π0.7</h3><p>反过来引入离散 token：<a class="concept-link" href="FAST-论文解读.html#concept-pi0-fast">π0-FAST</a> 用 <a class="concept-link" href="FAST-论文解读.html#concept-dct">DCT</a> + <a class="concept-link" href="FAST-论文解读.html#concept-bpe">BPE</a> 压缩动作 token（<a href="FAST-论文解读.html">精读</a>）；<a class="concept-link" href="pi0.5_论文测验_精美版.html#concept-fast">π0.5</a> 训练时用离散 token、推理时用 flow；<a class="concept-link" href="pi0.6-论文解读.html#concept-recap">π*0.6</a> 加入 RL（RECAP）；<a class="concept-link" href="pi0.7_问答学习卡.html#concept-prompt-conditioning">π0.7</a> 让模型可以通过提示调节行为。</p></div>
     </div>
     <p>所以今天的分界已经不是"谁离散、谁连续"，而是<strong>训练时用离散 token 保住语义，推理时用连续生成保证精度和速度</strong>的混合方案。</p>
   </section>
@@ -259,7 +259,16 @@
     </ul>
   </section>
 
-  <footer>
+    <aside class="concept-related" aria-label="相关概念">
+    <strong>相关概念</strong>
+    <a class="concept-link" href="FAST-论文解读.html#concept-fast">分箱之后：FAST 动作压缩</a>
+    <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">连续动作：流匹配</a>
+    <a class="concept-link" href="KI-知识隔离-论文解读.html#concept-knowledge-insulation">混合训练：知识隔离</a>
+    <a class="concept-link" href="RTC-实时动作分块-论文解读.html#concept-inpainting">执行动作块：RTC</a>
+    <a class="concept-link" href="concepts.html">全部概念 →</a>
+  </aside>
+
+<footer>
     <span>专题对比 · OpenVLA vs π 系列</span>
     <a href="index.html">返回知识库 →</a>
   </footer>

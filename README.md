@@ -38,7 +38,9 @@ GitHub 默认分支和网页发布分支均为 `master`。发布源选择 `maste
 
 新增概念时，在实际解释它的标题或段落上添加稳定的 `id="concept-name"` 和 `class="concept-anchor"`，再用 `<a class="concept-link" href="文章.html#concept-name">概念</a>` 引用。保留旧锚点，避免已有链接失效；优先链接第一次有意义的出现，不要给每个重复词都加链接。概念索引中的简述与相关概念也应同步维护。
 
-提交前在仓库根目录运行 `node scripts/check-concept-links.mjs`，检查本地文件、段落锚点、概念链接及内联脚本语法。无需安装依赖，站点仍可直接静态发布。
+链接到自测答案或折叠内容中的 `concept-*` 锚点时，`nav.js` 会展开对应答案并滚动定位；普通章节锚点和自测模式继续按原页面操作。每个正式页面都应引入 `concepts.css` 和 `nav.js`。
+
+提交前在仓库根目录运行 `node scripts/check-concept-links.mjs`，检查本地文件、段落锚点、嵌套链接、概念链接及内联脚本语法，同时核对公共导航是否收录所有页面、首页与概念索引的概念数量是否一致。无需安装依赖，站点仍可直接静态发布。
 
 ## 本地预览
 

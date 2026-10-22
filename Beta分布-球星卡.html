@@ -12,6 +12,7 @@ MathJax={tex:{inlineMath:[['$','$']],displayMath:[['$$','$$']]}};
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bangers&family=ZCOOL+KuaiLe&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="concepts.css">
 <style>
   :root{--navy:#14213d;--red:#e63946;--gold:#ffc300;--cream:#fff6dc;--sky:#8ecae6;--grass:#2a9d5c;--ink:#14213d;}
   *{box-sizing:border-box;}
@@ -83,7 +84,7 @@ MathJax={tex:{inlineMath:[['$','$']],displayMath:[['$$','$$']]}};
 </div>
 
 <div class="card">
-  <h2><span class="no">0</span>先搞懂：分布、横轴、纵轴</h2>
+  <h2 id="concept-probability-density" class="concept-anchor"><span class="no">0</span>先搞懂：分布、横轴、纵轴</h2>
   <p class="big">分布回答一个问题：<span class="hl">一个不确定的数，会取哪些值，各自有多容易出现？</span></p>
   <ul>
     <li><b>横轴</b>：这个数可能取的值，记作 $x$。</li>
@@ -92,7 +93,7 @@ MathJax={tex:{inlineMath:[['$','$']],displayMath:[['$$','$$']]}};
     <li><b>单个点的概率是 0</b>（一条线没有面积），所以只能问"落在某一段的概率"。</li>
     <li><b>密度可以大于 1</b>：它不是概率。例如 Beta(1.5, 1) 在 $x=1$ 处高度是 1.5，但总面积仍是 1。</li>
   </ul>
-  <div class="tip">对比骰子：骰子是离散的，柱子高度本身就是概率（每面 1/6）。连续的量没法给每个点一个概率，所以改用"密度 + 面积"。</div>
+  <div class="tip">对比骰子：骰子是<a class="concept-link" href="概率分布博物馆.html#concept-uniform-distribution">离散的</a>，柱子高度本身就是概率（每面 1/6）。连续的量没法给每个点一个概率，所以改用"密度 + 面积"。</div>
   <p><b>具体到 Beta</b>：横轴 $x$ 在 0 到 1 之间，它本身是一个比例或概率；纵轴是"$x$ 取这个值有多可能"。不同场景里横轴含义不同：</p>
   <table class="t">
     <tr><th>场景</th><th>横轴 $x$ 是什么</th><th>曲线高低表示</th></tr>
@@ -118,15 +119,15 @@ MathJax={tex:{inlineMath:[['$','$']],displayMath:[['$$','$$']]}};
 </div>
 
 <div class="card">
-  <h2><span class="no">1</span>一张球员卡搞懂它</h2>
+  <h2 id="concept-beta-distribution" class="concept-anchor"><span class="no">1</span>一张球员卡搞懂它</h2>
   <p class="big">投手投了 <code>h</code> 个好球、<code>k</code> 个坏球，他<span class="hl">真实好球率</span>是多少？不是一个数，而是一条<b>曲线</b>：越靠近峰顶越可能。这条曲线就是 Beta 分布。</p>
   <p><span class="tag">口诀</span>好球 h 个、坏球 k 个 → 曲线是 <code>Beta(h+1, k+1)</code>。</p>
   <div class="tip"><b>先验、后验是什么？</b>就是"看成绩前"和"看成绩后"的两条曲线：
-    <br>• <b>先验</b>（起点）：看成绩<b>之前</b>，你对好球率的判断。一无所知就是平线 $\mathrm{Beta}(1,1)$。
+    <br>• <b id="concept-bayesian-update" class="concept-anchor">先验</b>（起点）：看成绩<b>之前</b>，你对好球率的判断。一无所知就是平线 $\mathrm{Beta}(1,1)$。
     <br>• <b>后验</b>：看了成绩<b>之后</b>，更新出来的新判断。它又是一条 Beta 曲线，所以每来一批成绩，只要把参数加一下就行：
     $$\text{后验}=\mathrm{Beta}(\alpha_{\text{先验}}+h,\ \beta_{\text{先验}}+k)$$
     “后”是指“在看到数据之后”，没有别的含义。</div>
-  <div class="tip"><b>那个 +1 是什么？</b>开赛前你对这个投手<b>一无所知</b>：好球率是 0.1 还是 0.9，你觉得一样可能，所以"起点"是一条<b>平线</b>。这条平线就是 $\mathrm{Beta}(1,1)$（代入公式 $x^0(1-x)^0=1$）。拿到成绩后，把"起点"和"成绩"相乘：
+  <div class="tip"><b>那个 +1 是什么？</b>开赛前你对这个投手<b>一无所知</b>：好球率是 0.1 还是 0.9，你觉得一样可能，所以"起点"是一条<b>平线</b>。这条<a class="concept-link" href="概率分布博物馆.html#concept-uniform-distribution">平线</a>就是 $\mathrm{Beta}(1,1)$（代入公式 $x^0(1-x)^0=1$）。拿到成绩后，把"起点"和"成绩"相乘：
     <br>• 假设真实好球率是 $p$，出现 $h$ 好 $k$ 坏的可能性正比于 $p^{h}(1-p)^{k}$；
     <br>• 起点是平线（乘 1），乘完还是 $p^{h}(1-p)^{k}$；
     <br>• <b>对照 Beta 公式</b>：Beta 密度的形状是 $x^{\alpha-1}(1-x)^{\beta-1}$（忽略归一化常数），把 $p^{h}(1-p)^{k}$ 和它配对，<b>指数要相等</b>：$h=\alpha-1,\ k=\beta-1$；
@@ -199,8 +200,8 @@ MathJax={tex:{inlineMath:[['$','$']],displayMath:[['$$','$$']]}};
   <h2><span class="no">4</span>一个直观例子：n 个数取最大</h2>
   <p class="big"><b>Beta 分布有很多来源，这是最直观的一个</b>。抽 <code>n</code> 个 0~1 的均匀随机数，只留<span class="hl">最大的那个</span>，它服从 <code>Beta(n, 1)</code>。这只是 $\beta=1$ 的特例，但能帮你理解 $\alpha$ 的作用。</p>
   <p>直觉：n 个数全都小于 x 的概率是 $x^n$，所以"最大值 ≤ x"的概率也是 $x^n$。n 越大，最大值越挤向 1。π0 的 $\alpha=1.5$ 就是介于"抽 1 个"和"抽 2 个取大"之间。</p>
-  <div class="tip"><b>这只是 Beta 的一个来源，不是全部</b>。更一般的 Beta(α, β) 来自：球员成绩更新（贝叶斯后验，见第 1 张卡）、n 个数排序后第 k 个（见 π0 精读页）、两个 Gamma 变量的比值。这个例子只覆盖 β=1，但最直观。</div>
-  <div class="warn"><b>Beta 分布的历史来源</b>：1676 年前后，雅各布·伯努利（Jakob Bernoulli）研究"抛硬币 n 次看到 h 个正面，下次抛正的概率是多少"，发现更新前后都是 [0,1] 上的一条曲线，这就是 Beta 作为<b>二项分布共轭先验</b>的起点。后来欧拉（Euler, 1730s）定义了 Beta 函数 $B(\alpha,\beta)=\int_0^1 x^{\alpha-1}(1-x)^{\beta-1}dx$，用来算组合数和阶乘的推广。皮尔逊（Karl Pearson, 1895）把它系统化成"Pearson I 型分布"，也就是今天的 Beta(α, β)。所以 Beta 的数学起源是贝叶斯推断 + 积分变换，后来才发现它和顺序统计量、Gamma 比值等场景联系在一起。</div>
+  <div class="tip"><b>这只是 Beta 的一个来源，不是全部</b>。更一般的 Beta(α, β) 来自：球员成绩更新（贝叶斯后验，见第 1 张卡）、n 个数排序后第 k 个（见 π0 精读页）、两个 <a class="concept-link" href="概率分布博物馆.html#concept-gamma-distribution">Gamma 变量</a>的比值。这个例子只覆盖 β=1，但最直观。</div>
+  <div class="warn"><b>Beta 分布的历史来源</b>：1676 年前后，雅各布·伯努利（Jakob Bernoulli）研究"抛硬币 n 次看到 h 个正面，下次抛正的概率是多少"，发现更新前后都是 [0,1] 上的一条曲线，这就是 Beta 作为<b><a class="concept-link" href="概率分布博物馆.html#concept-binomial-distribution">二项分布</a>共轭先验</b>的起点。后来欧拉（Euler, 1730s）定义了 Beta 函数 $B(\alpha,\beta)=\int_0^1 x^{\alpha-1}(1-x)^{\beta-1}dx$，用来算组合数和阶乘的推广。皮尔逊（Karl Pearson, 1895）把它系统化成"Pearson I 型分布"，也就是今天的 Beta(α, β)。所以 Beta 的数学起源是贝叶斯推断 + 积分变换，后来才发现它和顺序统计量、Gamma 比值等场景联系在一起。</div>
   <div class="lab">
     <h3>实验 3 · 抽数取最大</h3>
     <canvas id="cC" width="800" height="300" role="img" aria-label="n 个均匀数取最大的直方图与 Beta(n,1) 曲线"></canvas>
@@ -215,10 +216,10 @@ MathJax={tex:{inlineMath:[['$','$']],displayMath:[['$$','$$']]}};
 </div>
 
 <div class="card">
-  <h2><span class="no">5</span>回到 π0：它到底在抽什么</h2>
-  <p>训练时，π0 每个样本抽一个"噪声程度"$t$：</p>
+  <h2 id="concept-noise-schedule" class="concept-anchor"><span class="no">5</span>回到 π0：它到底在抽什么</h2>
+  <p>训练时，<a class="concept-link" href="pi0-论文解读.html#concept-beta-noise-sampling">π0</a> 每个样本抽一个"噪声程度"$t$：</p>
   $$t=0.999\,x+0.001,\qquad x\sim\mathrm{Beta}(1.5,\,1)$$
-  <p>openpi 里 $t=1$ 是纯噪声，所以 $t$ 偏大就是偏噪声。累积分布 $F(x)=x^{1.5}$，反过来就能抽样：$x=u^{1/1.5}$（$u$ 是 0~1 均匀数）。</p>
+  <p>openpi 里 $t=1$ 是纯噪声，所以 $t$ 偏大就是偏噪声。<a class="concept-link" href="#concept-cdf">累积分布</a> $F(x)=x^{1.5}$，反过来就能抽样：$x=u^{1/1.5}$（$u$ 是 0~1 均匀数）。</p>
   <div class="lab">
     <h3>实验 4 · π0 的时间步抽样器</h3>
     <canvas id="cD" width="800" height="300" role="img" aria-label="π0 时间步抽样直方图"></canvas>
@@ -232,7 +233,7 @@ MathJax={tex:{inlineMath:[['$','$']],displayMath:[['$$','$$']]}};
   <div class="warn" style="margin-top:12px">只有训练的时间步这样抽。推理仍是均匀的 10 段，步长 0.1。</div>
   <div class="tip">偏置很温和：噪声程度 ≥ 0.5 的概率约 0.65，而均匀是 0.5。把 α 拉到 1 会回到均匀，拉到 3 就能看到强偏置。</div>
   <div class="card" style="background:#fff;border:3px solid var(--navy);border-radius:12px;padding:14px 18px;margin-top:14px;">
-    <h3 style="font:400 20px Bangers,'ZCOOL KuaiLe',cursive;letter-spacing:.06em;color:var(--red);margin:0 0 10px;">累积分布 CDF：从左边累积到这里的概率</h3>
+    <h3 style="font:400 20px Bangers,'ZCOOL KuaiLe',cursive;letter-spacing:.06em;color:var(--red);margin:0 0 10px;" id="concept-cdf" class="concept-anchor">累积分布 CDF：从左边累积到这里的概率</h3>
     <p style="margin:0 0 8px;"><b>定义</b>：累积分布函数 $F(x)=P(X\le x)$，就是"随机量 $X$ 小于等于 $x$ 的概率"。</p>
     <ul style="margin:0 0 10px;padding-left:22px;">
       <li>密度 $f(x)$ 回答：$x$ 这个点有多高（单点概率是 0，但密度有意义）</li>
@@ -242,7 +243,7 @@ MathJax={tex:{inlineMath:[['$','$']],displayMath:[['$$','$$']]}};
     <p style="margin:0 0 8px;"><b>Beta(1.5, 1) 的例子</b>：密度 $f(x)=1.5\,x^{0.5}$，求累积：</p>
     $$F(x)=\int_0^x 1.5\,t^{0.5}\,dt = t^{1.5}\Big|_0^x = x^{1.5}$$
     <p style="margin:0 0 8px;">验证：$F(0)=0$，$F(1)=1$，$F(0.5)=0.5^{1.5}\approx0.354$（从 0 到 0.5 的概率约 35.4%，从 0.5 到 1 约 64.6%）。</p>
-    <p style="margin:0 0 8px;"><b>为什么要 CDF：逆变换抽样</b>。计算机只会生成 0~1 的均匀随机数 $u$。要抽服从 Beta(1.5, 1) 的 $x$：</p>
+    <p style="margin:0 0 8px;"><b id="concept-inverse-transform" class="concept-anchor">为什么要 CDF：逆变换抽样</b>。计算机只会生成 0~1 的均匀随机数 $u$。要抽服从 Beta(1.5, 1) 的 $x$：</p>
     <ol style="margin:0 0 10px;padding-left:22px;">
       <li>抽均匀数 $u\sim U(0,1)$</li>
       <li>令 $F(x)=u$，解出 $x$（CDF 的反函数）</li>
@@ -262,9 +263,9 @@ MathJax={tex:{inlineMath:[['$','$']],displayMath:[['$$','$$']]}};
     </ul>
     <p style="margin:0 0 8px;"><b>推理时均匀走</b>（固定步长 0.1，τ = 0, 0.1, ..., 0.9）：</p>
     <ul style="margin:0 0 10px;padding-left:22px;">
-      <li><b>路径连续</b>：推理要解 ODE $\frac{dA^\tau}{d\tau}=v_\theta(A^\tau,\tau)$，从 $A^0$（噪声）积分到 $A^1$（数据）。欧拉法的公式 $A^{\tau+\Delta\tau}=A^\tau+\Delta\tau\cdot v_\theta(A^\tau,\tau)$ 假设每步的起点 $A^\tau$ 是前一步积出来的，方向才对。随机抽 $\tau$（比如 0.2 → 0.7 → 0.3）会破坏连续性：时间乱序、步长乱跳、每步的起点不是前面积出来的，速度场方向对不上当前状态，累积误差大。类比开车：均匀走是"每 100 米报一次路"，随机跳是"200 米处左转、700 米处右转、300 米处掉头"，起点和方向都不对。</li>
+      <li><b>路径连续</b>：推理要解 ODE $\frac{dA^\tau}{d\tau}=v_\theta(A^\tau,\tau)$，从 $A^0$（噪声）积分到 $A^1$（数据）。<a class="concept-link" href="pi0-论文解读.html#concept-euler-integration">欧拉法</a>的公式 $A^{\tau+\Delta\tau}=A^\tau+\Delta\tau\cdot v_\theta(A^\tau,\tau)$ 假设每步的起点 $A^\tau$ 是前一步积出来的，方向才对。随机抽 $\tau$（比如 0.2 → 0.7 → 0.3）会破坏连续性：时间乱序、步长乱跳、每步的起点不是前面积出来的，速度场方向对不上当前状态，累积误差大。类比开车：均匀走是"每 100 米报一次路"，随机跳是"200 米处左转、700 米处右转、300 米处掉头"，起点和方向都不对。</li>
       <li><b>可复现</b>：同一个起点噪声，每次结果一样，方便调试和对比。</li>
-      <li><b>够准</b>：流匹配路径接近直线，10 段已经足够。扩散模型早期用过随机采样，后来发现 deterministic 更快更稳（DDIM）。</li>
+      <li><b>够准</b>：<a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">流匹配</a>路径接近直线，10 段已经足够。<a class="concept-link" href="DiffusionPolicy-论文解读.html#concept-diffusion-policy">扩散模型</a>早期用过随机采样，后来发现 deterministic 更快更稳（<a class="concept-link" href="DiffusionPolicy-论文解读.html#concept-ddim">DDIM</a>）。</li>
     </ul>
     <p style="margin:0;font-size:16px;"><b>如果训练也用均匀顺序</b>：循环遍历太慢（梯度更新不均衡），每样本走完整路径显存爆炸（要算 10 次前向）。所以标准做法是每样本随机抽一个 τ，只算一次。</p>
   </div>
@@ -280,7 +281,7 @@ MathJax={tex:{inlineMath:[['$','$']],displayMath:[['$$','$$']]}};
     <tr><td>Beta(1.5, 1)</td><td>温和偏向 1，均值 0.6</td></tr>
     <tr><td>$B(\alpha,\beta)$</td><td>让面积为 1 的常数，不用管</td></tr>
   </table>
-  <p style="margin-top:12px">要深入的话，推导（第 k 小的点、Gamma 比值）在 <a href="pi0-论文解读.html">π0 精读页</a> 的 Beta 补充一节里。</p>
+  <p style="margin-top:12px">要深入的话，推导（第 k 小的点、Gamma 比值）在 <a class="concept-link" href="pi0-论文解读.html#concept-beta-origins">π0 精读页</a> 的 Beta 补充一节里。</p>
 </div>
 
 <div class="card">
@@ -325,6 +326,15 @@ MathJax={tex:{inlineMath:[['$','$']],displayMath:[['$$','$$']]}};
       <p>不是。Beta 只用在训练的时间步采样；推理是均匀的 10 步，步长 0.1。</p></div></details></div>
   <div class="tip">自测标准：Q1、Q4、Q5、Q8 都能不看答案答对，就抓住了 Beta 的核心：α、β 当旋钮，α+β 管宽窄，会把 CDF 反过来抽样。</div>
 </div>
+
+<aside class="concept-related" aria-label="相关概念">
+  <strong>接着理解：从概率分布到动作生成</strong>
+  <a class="concept-link" href="概率分布博物馆.html#concept-beta-distribution">Beta 与其他分布的关系</a>
+  <a class="concept-link" href="pi0-论文解读.html#concept-beta-noise-sampling">π0 的噪声时间步采样</a>
+  <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">流匹配：噪声如何变成动作</a>
+  <a class="concept-link" href="DiffusionPolicy-论文解读.html#concept-diffusion-policy">Diffusion Policy：扩散动作策略</a>
+  <a class="concept-link" href="concepts.html#group-4">概率与采样概念索引</a>
+</aside>
 
 <footer>Beta 分布 · 别慌球星卡 · <a href="index.html">返回知识库 →</a></footer>
 </div>
@@ -402,3 +412,7 @@ runE();
 if(window.MathJax&&MathJax.typesetPromise)MathJax.typesetPromise().catch(e=>console.log(e));
 </script>
 
+
+<script src="nav.js"></script>
+</body>
+</html>

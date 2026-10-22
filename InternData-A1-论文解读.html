@@ -168,7 +168,7 @@
   <section class="hero">
     <div class="eyebrow">精读笔记 · 数据</div>
     <h1>InternData-A1：高保真合成数据预训练通用策略</h1>
-    <p class="summary">首个证明「纯合成数据」可以媲美最强真实数据集（π 数据集）的 VLA 预训练：630k 轨迹 / 7,433 小时 / 4 构型 / 18 技能 / 70 任务 / 227 场景，并在多个挑战性任务上实现零样本 <a class="concept-link" href="ObjectCentric-RL-论文解读.html#concept-sim-to-real">sim-to-real</a>。</p>
+    <p class="summary">首个证明「<a class="concept-link" href="#concept-synthetic-data">纯合成数据</a>」可以媲美最强真实数据集（π 数据集）的 VLA 预训练：630k 轨迹 / 7,433 小时 / 4 构型 / 18 技能 / 70 任务 / 227 场景，并在多个挑战性任务上实现零样本 <a class="concept-link" href="ObjectCentric-RL-论文解读.html#concept-sim-to-real">sim-to-real</a>。</p>
     <div class="meta">
       <div class="m"><span class="k">论文</span><span class="v">InternData-A1: Pioneering High-Fidelity Synthetic Data for Pre-training Generalist Policy</span></div>
       <div class="m"><span class="k">机构</span><span class="v">上海人工智能实验室 · 北京大学</span></div>
@@ -194,12 +194,12 @@
 
   <section>
     <h2>方法主线</h2>
-    <p id="concept-synthetic-data" class="concept-anchor">这里的合成数据，是由仿真环境、技能脚本与运动规划生成的机器人观测和动作轨迹。核心是一个「<span class="hl">高度自主、完全解耦、可组合</span>」的仿真数据流水线，再用与 π0 完全相同的架构去验证数据本身的价值。分五步：</p>
+    <p id="concept-synthetic-data" class="concept-anchor">这里的合成数据，是由仿真环境、技能脚本与运动规划生成的机器人观测和动作轨迹。核心是一个「<span class="hl">高度自主、完全解耦、可组合</span>」的仿真数据流水线，再用与 <a class="concept-link" href="pi0-论文解读.html#concept-action-expert">π0</a> 完全相同的架构去验证数据本身的价值。分五步：</p>
     <ol>
-      <li><strong>建资产库与环境</strong>：统一管理 4 种机器人构型、227 个室内场景、3,185 个刚体、321 个关节物体、20 件衣物与流体，全部带功能标注（关节轴、抓取位姿、物理参数）。</li>
-      <li><strong>技能组合成任务</strong>：把折叠、倒液体、旋转、堆叠等 18 个原子技能做成模块化脚本，每个技能是「状态 → waypoint」的自动映射；像搭积木一样串行/并行组合出 70 个任务（含 18 个至少 3 步的长程任务）。</li>
-      <li><strong>域随机化</strong>：扰动相机位姿（±5° 旋转、±5cm 平移）、用 174 张光照环境图、同类物体替换、抓取点与接触区域随机采样。</li>
-      <li><strong>轨迹生成与存储</strong>：CuRobo 运动规划器把 waypoint 插值成稠密关节动作，经物理仿真校验后<strong>只渲染成功轨迹</strong>，统一存成 LeRobot 格式。</li>
+      <li><strong>建资产库与环境</strong>：统一管理 <a class="concept-link" href="Qwen-VLA-论文解读.html#concept-cross-embodiment">4 种机器人构型</a>、227 个室内场景、3,185 个刚体、321 个关节物体、20 件衣物与流体，全部带功能标注（关节轴、抓取位姿、物理参数）。</li>
+      <li id="concept-skill-composition" class="concept-anchor"><strong>技能组合成任务</strong>：把折叠、倒液体、旋转、堆叠等 18 个原子技能做成模块化脚本，每个技能是「状态 → waypoint」的自动映射；像搭积木一样串行/并行组合出 70 个任务（含 18 个至少 3 步的长程任务）。</li>
+      <li id="concept-domain-randomization" class="concept-anchor"><strong>域随机化</strong>：扰动相机位姿（±5° 旋转、±5cm 平移）、用 174 张光照环境图、同类物体替换、抓取点与接触区域随机采样。</li>
+      <li id="concept-trajectory-generation" class="concept-anchor"><strong>轨迹生成与存储</strong>：CuRobo 运动规划器把 waypoint 插值成稠密关节动作，经物理仿真校验后<strong>只渲染成功轨迹</strong>，统一存成 LeRobot 格式。</li>
       <li><strong>预训练验证</strong>：用与 π0 相同的架构（Paligemma + flow-matching 动作专家），仅用合成数据预训练，再与官方 π0、开源数据集逐一对比。</li>
     </ol>
   </section>
@@ -319,7 +319,7 @@ flowchart LR
     <ul>
       <li><strong>合成数据的瓶颈不是「能不能模拟」，而是「轨迹多样性」</strong>：pick-and-place 堆量（30.61%）不如多技能组合（Base 35.95% + Long 21.77%）有价值——纯抓放数据喂不出好 VLA。</li>
       <li><strong>小规模的 articulation 比大规模 PnP 更「值钱」</strong>：关节操作只占 11.67%，但去掉它掉点比去掉 PnP 还多，因为关节几何多样、动作空间更扭曲、更丰富。</li>
-      <li><strong>sim-to-real 的钥匙 = 逼真渲染 + 大量域随机化</strong>：相机视角与关节动作空间对齐，比背景/纹理/桌面布局的对齐更重要；零样本迁移不需要场景完美复刻。</li>
+      <li><strong>sim-to-real 的钥匙 = 逼真渲染 + 大量<a class="concept-link" href="#concept-domain-randomization">域随机化</a></strong>：相机视角与关节动作空间对齐，比背景/纹理/桌面布局的对齐更重要；零样本迁移不需要场景完美复刻。</li>
       <li><strong>工程优化是「规模化」的隐性前提</strong>：planner（CPU 串行）/ renderer（GPU 并行）解耦 + 只渲染成功轨迹，带来 2–3× 吞吐，否则 630k 轨迹根本产不出来。</li>
       <li><strong>「同架构、只换数据」是对照数据价值的干净姿势</strong>：官方 π0 checkpoint 闭源，作者就自己按相同步数重训一个对照模型，把变量压到只剩「数据」。</li>
     </ul>
@@ -352,8 +352,8 @@ flowchart LR
   <section>
     <h2>后续动作</h2>
     <ul>
-      <li>读 π0 / OpenVLA 的 LeRobot 数据加载与预训练代码，摸清 VLA 的标准数据接口，为接数据做准备。</li>
-      <li>了解 flow-matching 动作专家与 CuRobo 运动规划器的原理，理解「waypoint → 稠密关节动作」这一步。</li>
+      <li>读 <a class="concept-link" href="pi0-论文解读.html#concept-action-expert">π0</a> / <a class="concept-link" href="OpenVLA-vs-pi系列-对比.html#concept-action-binning">OpenVLA</a> 的 LeRobot 数据加载与预训练代码，摸清 VLA 的标准数据接口，为接数据做准备。</li>
+      <li>了解 <a class="concept-link" href="pi0-论文解读.html#concept-action-expert">flow-matching 动作专家</a>与 <a class="concept-link" href="#concept-trajectory-generation">CuRobo 运动规划器</a>的原理，理解「waypoint → 稠密关节动作」这一步。</li>
       <li>小型复现：搭一条「环境 → 技能 → 随机化 → 生成 → LeRobot」最小流水线，先做 pick-and-place，再逐步扩技能验证。</li>
       <li>自己验证「轨迹多样性 &gt; 数据量」假说（作者明确留作 future work，且只做了 0.5 epoch 的消融）。</li>
       <li>跟踪 InternData-A1 数据集与生成流水线的开源发布（论文承诺 open-source）。</li>
@@ -364,6 +364,9 @@ flowchart LR
     <strong>相关概念</strong>
     <a href="ObjectCentric-RL-论文解读.html#concept-sim-to-real">Sim-to-Real：从仿真到真机</a>
     <a href="Qwen-VLA-论文解读.html#concept-cross-embodiment">跨本体：适应不同机器人构型</a>
+    <a class="concept-link" href="PUMA-论文解读.html#concept-domino">动态场景的合成示教：DOMINO</a>
+    <a class="concept-link" href="#concept-domain-randomization">随机化哪些因素以促进迁移</a>
+    <a class="concept-link" href="#concept-skill-composition">原子技能怎样组合成长任务</a>
     <a href="concepts.html">全部概念 →</a>
   </aside>
 

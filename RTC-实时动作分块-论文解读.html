@@ -151,7 +151,7 @@
   <h1>实时动作分块（RTC）</h1>
   <p class="q">机器人边动边想，怎么做到不卡？</p>
   <p class="meta">Real-Time Execution of Action Chunking Flow Policies · Kevin Black, Manuel Y. Galliker, Sergey Levine</p>
-  <div class="one"><b>一句话：</b>模型算动作要时间，机器人却不能停。RTC 让下一段动作块在生成时，把“已经注定会发生”的前几步当成已知条件，像补全一张图那样把剩下的部分接上去。它只改推理过程，不用重新训练，任何扩散或 flow 策略都能套。</div>
+  <div class="one"><b>一句话：</b>模型算动作要时间，机器人却不能停。RTC 让下一段动作块在生成时，把“已经注定会发生”的前几步当成已知条件，像补全一张图那样把剩下的部分接上去。它只改推理过程，不用重新训练，任何<a class="concept-link" href="DiffusionPolicy-论文解读.html#concept-diffusion-policy">扩散</a>或 flow 策略都能套。</div>
 </header>
 
 <!-- ============ 0 地图 ============ -->
@@ -193,7 +193,7 @@
 <p class="sub">先把时间画出来。卡顿不是模型不准，而是“想”和“做”没有排好队。</p>
 
 <h3>一个动作块是什么</h3>
-<p>VLA 或 flow 策略一次输出一整段未来动作，叫<a class="concept-link" href="concepts.html#action-chunk">动作块（action chunk）</a>。论文记号里：<b>H</b> 是预测长度（块有多长），<b>s</b> 是执行长度（每次真正执行几步），<b>Δt</b> 是控制周期。H 大于 s 的部分是“多想的”，等下一次推理时再用或丢弃。</p>
+<p><a class="concept-link" href="VLA-发展历程.html#concept-vla">VLA</a> 或 <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">flow</a> 策略一次输出一整段未来动作，叫<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块（action chunk）</a>。论文记号里：<b>H</b> 是预测长度（块有多长），<b>s</b> 是执行长度（每次真正执行几步），<b>Δt</b> 是控制周期。H 大于 s 的部分是“多想的”，等下一次推理时再用或丢弃。</p>
 
 <h3>三种执行方式，画成时间线</h3>
 <div class="diagram">
@@ -255,7 +255,7 @@
 
 <div class="analogy">
   <div class="side">
-    <h4>图像补全（inpainting）</h4>
+    <h4 id="concept-inpainting" class="concept-anchor">图像补全（inpainting）</h4>
     <p>一张照片挖掉一块，周围像素已知。补全模型生成中间那块时，会让它的边缘与周围颜色、纹理接上。已知像素是“硬条件”，中间区域是“自由生成”。</p>
   </div>
   <div class="side">
@@ -357,7 +357,7 @@
   <div class="step"><span class="k">①</span><b>先猜终点</b>用当前速度直接跳到 τ=1，看看如果现在停止去噪，动作会是什么样。</div>
   <div class="step"><span class="k">②</span><b>对比前缀</b>把猜出的终点和“上一块剩下的动作”比一比，差多少、哪些位置要紧。</div>
   <div class="step"><span class="k">③</span><b>倒推修正</b>用反向传播把误差沿网络传回去，算出动作该怎么微调才能减少误差。这一步就是“引导”的成本所在。</div>
-  <div class="step"><span class="k">④</span><b>修正速度</b>把修正量加到速度上，再走一个欧拉步。下一步去噪从这里继续。</div>
+  <div class="step"><span class="k">④</span><b>修正速度</b>把修正量加到速度上，再走一个<a class="concept-link" href="pi0-论文解读.html#concept-euler-integration">欧拉步</a>。下一步去噪从这里继续。</div>
 </div>
 
 <div class="card">
@@ -365,7 +365,7 @@
   <p>如果只在带噪的中间状态上比较，噪声会把误差淹没。先用当前速度估计干净的终点，误差才有意义。这是 ΠGDM（伪逆引导）的思路：把修正量近似为线性投影，不需要额外训练网络。</p>
 </div>
 
-<h3>权重 W：不是硬截断，而是软掩码</h3>
+<h3 id="concept-soft-masking" class="concept-anchor">权重 W：不是硬截断，而是软掩码</h3>
 <p>一个容易忽略的细节。如果只约束前 d 步，引导信号会很弱，后面的块仍可能“换了一个策略”。论文因此让所有与旧块重叠的位置都参与，但权重不同：</p>
 
 <div class="diagram">
@@ -473,7 +473,7 @@
   <tbody>
     <tr><td>同步推理</td><td>想完再执行</td><td>简单、无接缝</td><td>机器人周期性停顿，延迟越大越慢</td></tr>
     <tr><td>朴素异步</td><td>直接接上新块</td><td>不停</td><td>接缝跳变，分布外的抖动</td></tr>
-    <tr><td>Temporal Ensembling（TE）</td><td>对多个重叠块的预测做加权平均</td><td>平滑</td><td>在论文实验中，即使延迟为 0 也表现差；延迟大时振荡，触发安全停机</td></tr>
+    <tr><td id="concept-temporal-ensembling" class="concept-anchor">Temporal Ensembling（TE）</td><td>对多个重叠块的预测做加权平均</td><td>平滑</td><td>在论文实验中，即使延迟为 0 也表现差；延迟大时振荡，触发安全停机</td></tr>
     <tr><td>BID（双向解码）</td><td>用强、弱两个策略采样多个块并选择</td><td>对延迟更稳</td><td>每步要采样大量块，算力开销大，真机上延迟约为 RTC 的 2.3 倍（论文报告）</td></tr>
     <tr><td><b>RTC（本文）</b></td><td>把前缀当作补全条件，推理时引导</td><td>不改模型、无需训练；延迟变大也稳</td><td>每个去噪步要多一次反向传播，有额外算力开销</td></tr>
   </tbody>
@@ -487,7 +487,7 @@
 
 <!-- ============ 6 实验 ============ -->
 <h2><span class="no">6</span>实验：怎么证明它有用</h2>
-<p class="sub">两组实验：仿真里系统地扫延迟；真机上用 π0.5 跑六个任务。</p>
+<p class="sub">两组实验：仿真里系统地扫延迟；真机上用 <a class="concept-link" href="pi0.5_论文测验_精美版.html#concept-fast">π0.5</a> 跑六个任务。</p>
 
 <div class="ledger">
   <div class="stat"><div class="n">12</div><div class="l">仿真任务（Kinetix）：投掷、接住、平衡等动态任务</div></div>
@@ -547,7 +547,7 @@
 <!-- ============ 7 边界 ============ -->
 <h2><span class="no">7</span>代价与边界</h2>
 <div class="steps">
-  <div class="step"><span class="k">算力</span><b>每步多一次反传</b>推理更慢，论文中 π0.5 的模型延迟从 76 ms 升到 97 ms。这正是后来 <a href="RTC-训练时-论文解读.html">训练时 RTC</a> 想要消掉的开销。</div>
+  <div class="step"><span class="k">算力</span><b>每步多一次反传</b>推理更慢，论文中 π0.5 的模型延迟从 76 ms 升到 97 ms。这正是后来 <a class="concept-link" href="RTC-训练时-论文解读.html#concept-trtc">训练时 RTC</a> 想要消掉的开销。</div>
   <div class="step"><span class="k">模型</span><b>只适用于扩散 / flow</b>需要“去噪过程”才能做引导。自回归离散 token 模型不直接适用。</div>
   <div class="step"><span class="k">前缀</span><b>前缀越长越吃力</b>引导依赖局部线性化，前缀越长，近似误差越大。</div>
   <div class="step"><span class="k">场景</span><b>仿真之外的动态任务</b>论文主要验证操作类任务，更剧烈的动态场景尚需验证。</div>
@@ -609,6 +609,15 @@
   <a href="pi0-论文解读.html">π0 精读<small>RTC 最初运行的模型家族</small></a>
 </div>
 
+  <aside class="concept-related" aria-label="相关概念">
+    <strong>相关概念</strong>
+    <a class="concept-link" href="RTC-训练时-论文解读.html#concept-trtc">训练时 RTC：把补全学进模型</a>
+    <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">流匹配：RTC 修改的采样过程</a>
+    <a class="concept-link" href="DynamicVLA-论文解读.html#concept-latency">感知—执行时延</a>
+    <a class="concept-link" href="Realtime-VLA-论文解读.html#concept-speculative-inference">投机推理：另一种降延迟方法</a>
+    <a class="concept-link" href="concepts.html">全部概念 →</a>
+  </aside>
+
 <footer>
   <span>精读 · 实时动作分块（RTC）· arXiv 2506.07339</span>
   <a href="index.html">返回知识库 →</a>
@@ -650,5 +659,6 @@
   update();
 })();
 </script>
+<script src="nav.js"></script>
 </body>
 </html>

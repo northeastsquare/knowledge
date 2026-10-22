@@ -297,7 +297,7 @@
         <div class="st-body">
           <div class="when">2023–2024 · 起点</div>
           <h3>模仿示范：VLA 能做事，但天花板是示范</h3>
-          <div class="row"><b>问题</b>行为克隆只会复刻示范，示范里没有的失败恢复，模型根本学不到。</div>
+          <div class="row"><b>问题</b><a class="concept-link" href="RLToken-漫画分镜解读.html#concept-behavior-cloning">行为克隆</a>只会复刻示范，示范里没有的失败恢复，模型根本学不到。</div>
           <div class="row"><b>办法</b>把大规模示范喂给预训练 VLM（RT-2、OpenVLA 一路下来），靠数据量堆能力。</div>
           <div class="row"><b>代价</b>示范越多越贵；模型一旦偏离训练分布，没有机制让它自己纠正。</div>
           <div class="row"><b>留下</b>“能不能让机器人自己试、自己学”成了下一步的问题。</div>
@@ -311,8 +311,8 @@
           <div class="when">2025 上半年 · 第一次把 RL 搬进 VLA</div>
           <h3>直接在仿真里用 PPO / GRPO 训整个 VLA</h3>
           <div class="row"><b>问题</b>示范有上限，而 VLA 在仿真里能大批量试错。</div>
-          <div class="row"><b>办法</b>把语言模型里成熟的策略梯度（<a class="concept-link" href="concepts.html#ppo">PPO</a>、<a class="concept-link" href="concepts.html#grpo">GRPO</a>）搬到动作序列上，VLA-RL 一类工作先证明了这条路能通。</div>
-          <div class="row"><b>代价</b>要算 log 概率，计算贵；仿真和真机的差距（<a class="concept-link" href="concepts.html#sim-to-real">sim-to-real</a>）还没解决。</div>
+          <div class="row"><b>办法</b>把语言模型里成熟的<a class="concept-link" href="为什么取log.html#concept-policy-gradient">策略梯度</a>（<a class="concept-link" href="RLinf-RL原理对比.html#concept-ppo">PPO</a>、<a class="concept-link" href="RLinf-RL原理对比.html#concept-grpo">GRPO</a>）搬到动作序列上，VLA-RL 一类工作先证明了这条路能通。</div>
+          <div class="row"><b>代价</b>要算 log 概率，计算贵；仿真和真机的差距（<a class="concept-link" href="ObjectCentric-RL-论文解读.html#concept-sim-to-real">sim-to-real</a>）还没解决。</div>
           <div class="row"><b>留下</b>“整模型 RL 真的能上真机吗？”</div>
         </div>
       </div>
@@ -323,10 +323,10 @@
           <div class="when">2025 · 把 flow 的采样过程变成可以算 RL 的东西</div>
           <h3>流匹配不好算 log π：先把去噪链变成 MDP</h3>
           <div class="row"><b>问题</b>flow/扩散的动作是从噪声一步步去噪出来的，没有现成的 log 概率，PPO 的 ratio 没法算。</div>
-          <div class="row"><b>办法</b>把每个去噪步看作一个高斯策略：ReinFlow、<a href="piRL-论文解读.html">πRL</a> 等在去噪步里加可学习或可控的噪声，让 log π 可解。πRL 只训练约 3 亿参数的动作专家，冻结 VLM。</div>
+          <div class="row"><b>办法</b>把每个去噪步看作一个高斯策略：ReinFlow、<a href="piRL-论文解读.html">πRL</a> 等在去噪步里加可学习或可控的噪声，让 log π 可解。πRL 只训练约 3 亿参数的<a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a>，冻结 VLM。</div>
           <div class="row"><b>代价</b>噪声调得不好，探索会乱；去噪链一长，信用分配更难。</div>
           <div class="row"><b>留下</b>“能不能不改模型、只在噪声上做文章？”</div>
-          <div class="more">相关概念：<a class="concept-link" href="concepts.html#denoising-mdp">去噪链 MDP</a>，<a class="concept-link" href="concepts.html#flow-matching">流匹配</a>，<a class="concept-link" href="concepts.html#action-expert">动作专家</a>。</div>
+          <div class="more">相关概念：<a class="concept-link" href="piRL-论文解读.html#concept-denoising-mdp">去噪链 MDP</a>，<a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">流匹配</a>，<a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a>。</div>
         </div>
       </div>
 
@@ -336,7 +336,7 @@
           <div class="when">2025 · 冻结 VLA，只学一个修正量</div>
           <h3>残差策略：VLA 不动，外面套一层修正</h3>
           <div class="row"><b>问题</b>整模型 RL 太贵，也怕把 VLA 原本会的东西忘掉。</div>
-          <div class="row"><b>办法</b>冻结 VLA，学一个小的残差策略去修正它的动作。Policy Decorator、PLD、ConRFT 这类工作多是单步残差。Object-Centric RL 更进一步，用物体位姿作为观测，在纯仿真里训练后零样本上真机（成功率 42%→76%，见<a href="ObjectCentric-RL-论文解读.html">精读页</a>）。</div>
+          <div class="row"><b>办法</b>冻结 VLA，学一个小的<a class="concept-link" href="ObjectCentric-RL-论文解读.html#concept-residual-rl">残差策略</a>去修正它的动作。Policy Decorator、PLD、ConRFT 这类工作多是单步残差。Object-Centric RL 更进一步，用<a class="concept-link" href="ObjectCentric-RL-论文解读.html#concept-object-centric-observation">物体位姿</a>作为观测，在纯仿真里训练后零样本上真机（成功率 42%→76%，见<a href="ObjectCentric-RL-论文解读.html">精读页</a>）。</div>
           <div class="row"><b>代价</b>残差只能修局部；长时程任务里，信用分配仍然难。</div>
           <div class="row"><b>留下</b>“能不能把 VLA 的整体能力压缩成一个小接口，只训练这个接口？”</div>
         </div>
@@ -347,8 +347,8 @@
         <div class="st-body">
           <div class="when">2025–2026 · 两条分支：RL token 与 RL-100</div>
           <h3>把 VLA 压成一个 token；或者先离线 RL 再蒸馏</h3>
-          <div class="row"><b>RL token</b>从冻结 VLA 里抽出一个紧凑的 RL token，在它上面训练轻量 actor-critic，几小时真机数据就能精调毫米级精度的任务。见 <a href="RL-Token-论文解读.html">RL Token 精读</a> 和 <a href="RLToken-漫画分镜解读.html">漫画分镜版</a>。</div>
-          <div class="row"><b>RL-100</b>先用模仿学习打底，再做带 OPE 把关的迭代离线 RL，最后用一致性蒸馏压成单步策略。八项真机任务报告 100%（1000/1000）。见 <a href="RL-100-论文解读.html">精读页</a>。</div>
+          <div class="row"><b>RL token</b>从冻结 VLA 里抽出一个紧凑的 <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-rl-token">RL token</a>，在它上面训练轻量 <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-actor-critic">actor-critic</a>，几小时真机数据就能精调毫米级精度的任务。见 <a href="RL-Token-论文解读.html">RL Token 精读</a> 和 <a href="RLToken-漫画分镜解读.html">漫画分镜版</a>。</div>
+          <div class="row"><b>RL-100</b>先用模仿学习打底，再做带 <a class="concept-link" href="RL-100-论文解读.html#concept-ope">OPE</a> 把关的迭代离线 RL，最后用<a class="concept-link" href="RL-100-论文解读.html#concept-consistency-distillation">一致性蒸馏</a>压成单步策略。八项真机任务报告 100%（1000/1000）。见 <a href="RL-100-论文解读.html">精读页</a>。</div>
           <div class="row"><b>代价</b>RL token 要求 VLA 结构可以“抽出表示”；RL-100 的算力大头在离线迭代。</div>
           <div class="row"><b>留下</b>“真机数据能不能直接当 RL 的主力，而不是仿真？”</div>
         </div>
@@ -360,10 +360,10 @@
           <div class="when">2025.11 · π*0.6 / RECAP</div>
           <h3>离线 RL 也能让大模型学会“从经验里改”</h3>
           <div class="row"><b>问题</b>在线 RL 在真机上探索风险大、样本贵。</div>
-          <div class="row"><b>办法</b>RECAP 用价值函数估计每一步的优势，把示范、模型自己的尝试、人类纠正全部喂进去，用优势条件化策略抽取。论文报告吞吐超过 2 倍，困难任务失败率约减半（公司一方数据）。见 <a href="pi0.6-论文解读.html">π0.6 精读</a>。</div>
+          <div class="row"><b>办法</b>RECAP 用价值函数估计每一步的<a class="concept-link" href="两条主干-拆机手册.html#concept-advantage">优势</a>，把示范、模型自己的尝试、人类纠正全部喂进去，用优势条件化策略抽取。论文报告吞吐超过 2 倍，困难任务失败率约减半（公司一方数据）。见 <a href="pi0.6-论文解读.html">π0.6 精读</a>。</div>
           <div class="row"><b>代价</b>依赖价值函数的质量；人类干预仍是重要信号源。</div>
           <div class="row"><b>留下</b>“部署之后的经验，能不能回流到下一代通用模型？”</div>
-          <div class="more">概念：<a class="concept-link" href="concepts.html#recap">RECAP</a>，<a class="concept-link" href="concepts.html#advantage">优势</a>，<a class="concept-link" href="concepts.html#sparse-reward">稀疏奖励</a>。</div>
+          <div class="more">概念：<a class="concept-link" href="pi0.6-论文解读.html#concept-recap">RECAP</a>，<a class="concept-link" href="两条主干-拆机手册.html#concept-advantage">优势</a>，<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-sparse-reward">稀疏奖励</a>。</div>
         </div>
       </div>
 
@@ -385,7 +385,7 @@
           <div class="when">2026 年 5–9 月 · 今天的前沿（arXiv 预印本）</div>
           <h3>在线、多机、不忘、看失败：四个新问题</h3>
           <div class="row"><b>机队在线学习</b>多台机器人边部署边回传经验，共享一个通用策略（arXiv 2605.00416，Learning While Deploying）。</div>
-          <div class="row"><b>任务坍塌</b>在线 PPO 微调 flow VLA 时，平均成功率看似正常，单个任务却可能被学坏；有工作提出用不确定性门控探索噪声来抑制（arXiv 2609.28838）。</div>
+          <div class="row"><b>任务坍塌</b>在线 <a class="concept-link" href="RLinf-RL原理对比.html#concept-ppo">PPO</a> 微调 flow VLA 时，平均成功率看似正常，单个任务却可能被学坏；有工作提出用不确定性门控探索噪声来抑制（arXiv 2609.28838）。</div>
           <div class="row"><b>稀疏结果</b>只有整回合成败时，用分层优势加权做在线微调（arXiv 2606.17043）。</div>
           <div class="row"><b>无奖励偏好</b>FlowPRO 用偏好优化代替奖励与 critic，直接微调 flow 动作头（arXiv 2606.05468）。</div>
           <div class="row"><b>实时性</b>在线 RL 也要满足推理延迟，有工作专门研究实时 VLA 的 RL 训练（arXiv 2609.18207）。</div>
@@ -452,12 +452,12 @@
         <div class="ico">⚖️</div>
         <h3>探索 ↔ 安全</h3>
         <p class="pull">多试才能学会，但真机上乱试会摔东西、损耗硬件。</p>
-        <p class="ans">对策：把探索限制在 VLA 能生成的动作里（噪声空间），或用人类干预兜底（HIL 系列）。</p>
+        <p class="ans">对策：把探索限制在 VLA 能生成的动作里（<a class="concept-link" href="RLinf-RL原理对比.html#concept-dsrl">噪声空间</a>），或用人类干预兜底（HIL 系列）。</p>
       </div>
       <div class="tension">
         <div class="ico">🧭</div>
         <h3>信用分配 ↔ 动作块长度</h3>
-        <p class="pull">一个动作块 50 步，成败要归到哪一步？</p>
+        <p class="pull">一个<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块</a> 50 步，成败要归到哪一步？</p>
         <p class="ans">对策：块级 RL（动作块当作一个动作）、优势加权、残差只修局部。</p>
       </div>
       <div class="tension">
@@ -489,8 +489,8 @@
       <div class="lbl" style="margin-top:14px">仍然开放的</div>
       <ul>
         <li>多任务同时在线学习时，如何避免某个任务悄悄退化（任务坍塌）。</li>
-        <li>奖励与成败信号只在回合末尾出现时，如何做高效的信用分配。</li>
-        <li>仿真与真机之间的差距，是否可以靠世界模型或合成数据弥合（如 VLA-RFT 一类工作）。</li>
+        <li>奖励与成败信号只在回合末尾出现时，如何做高效的<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-credit-assignment">信用分配</a>。</li>
+        <li>仿真与真机之间的差距，是否可以靠<a class="concept-link" href="pi0.7_问答学习卡.html#concept-world-model">世界模型</a>或<a class="concept-link" href="InternData-A1-论文解读.html#concept-synthetic-data">合成数据</a>弥合（如 VLA-RFT 一类工作）。</li>
         <li>推理延迟、动作块长度与 RL 的更新频率如何协调。</li>
       </ul>
       <p class="note">注：π0.7、RECAP 的性能数字来自公司或报告的一方数据；2026 年的多数论文是 arXiv 预印本，本页只做路线层面的梳理，不替代原文。</p>
@@ -542,6 +542,15 @@
       <a href="代码索引.html">代码索引<small>关键概念的官方实现行号</small></a>
     </div>
   </section>
+
+  <aside class="concept-related" aria-label="相关概念">
+    <strong>相关概念</strong>
+    <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-credit-assignment">动作块与信用分配</a>
+    <a class="concept-link" href="RLinf-RL原理对比.html#concept-dsrl">DSRL 的噪声空间探索</a>
+    <a class="concept-link" href="RL-100-论文解读.html#concept-ope">OPE 与离线迭代</a>
+    <a class="concept-link" href="RL-100-论文解读.html#concept-consistency-distillation">一致性蒸馏与推理速度</a>
+    <a href="concepts.html">全部概念</a>
+  </aside>
 
   <footer>
     <span>专题路线图 · VLA × 强化学习 · 截至 2026-10</span>
@@ -607,5 +616,6 @@
   update();
 })();
 </script>
+<script src="nav.js"></script>
 </body>
 </html>

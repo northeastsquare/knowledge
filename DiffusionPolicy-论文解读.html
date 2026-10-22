@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Diffusion Policy · 热敏小票版解读</title>
+<link rel="stylesheet" href="concepts.css">
 <script>
 MathJax={tex:{inlineMath:[['$','$']],displayMath:[['$$','$$']]}};
 </script>
@@ -57,18 +58,18 @@ table{width:100%;border-collapse:collapse;font-size:13px}td,th{border-bottom:1px
 <hr class="dash">
 
 <h2>#1 要解决什么</h2>
-<p>模仿学习（行为克隆）就是：看观测 <b>O</b>，输出动作 <b>A</b>。听着像回归，但人类示范有三个麻烦：</p>
+<p>模仿学习（<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-behavior-cloning">行为克隆</a>）就是：看观测 <b>O</b>，输出动作 <b>A</b>。听着像回归，但人类示范有三个麻烦：</p>
 <table>
 <tr><th>麻烦</th><th>后果</th></tr>
 <tr><td>① 多模态<br>（绕障碍可左可右）</td><td>MSE 回归会学到<b>平均值</b>——直直撞上去</td></tr>
 <tr><td>② 动作序列高维<br>（一次出 16 步×自由度）</td><td>逐步独立预测，前后不一致、抖动</td></tr>
 <tr><td>③ 训练不稳定</td><td>IBC（能量模型）要估计归一化常数、采负样本，易崩</td></tr>
 </table>
-<div class=”note”>核心想法：不直接输出动作，而是学一个<b>「动作分布的梯度场」</b>，推理时从高斯噪声出发，沿梯度一步步”洗”出一条动作序列 $\mathbf{A}$。</div>
+<div class=”note”>核心想法：不直接输出动作，而是学一个<b>「动作分布的梯度场」</b>，推理时从<a class="concept-link" href="概率分布博物馆.html#concept-multivariate-normal">高斯噪声</a>出发，沿梯度一步步”洗”出一条动作序列 $\mathbf{A}$。</div>
 
-<h2>#2 方法：一句话 + 一个公式</h2>
+<h2 id="concept-diffusion-policy" class="concept-anchor">#2 方法：一句话 + 一个公式</h2>
 <p>把图像生成里的 DDPM 搬过来，唯一改动：<b>以观测 $\mathbf{O}$ 为条件</b>，生成对象从图像换成<b>动作序列</b>。</p>
-<div class="note" style="background:#ffe1de"><b>「扩散学的是梯度场」是什么意思？</b><br>
+<div class="note concept-anchor" id="concept-score" style="background:#ffe1de"><b>「扩散学的是梯度场」是什么意思？</b><br>
 <b>score / 梯度场</b>：$\nabla_{\mathbf{A}} \log p(\mathbf{A})$，即"在 $\mathbf{A}$ 这个点，往哪个方向走，概率密度会增大"。score 是概率论里的术语，梯度场是它的几何理解——每个位置 $\mathbf{A}$ 都有一个向量，合起来是向量场。<br>
 <b>能量视角（更直观）</b>：定义能量函数 $E(\mathbf{A}) = -\log p(\mathbf{A})$，概率高的地方能量低（谷底），概率低的地方能量高（山顶）。示范数据集中的动作在谷底。网络 $\varepsilon_\theta$ 预测的是噪声，它近似 $\nabla E(\mathbf{A}^k)$（能量的梯度）。去噪公式 $\mathbf{A} \gets \mathbf{A} - \gamma \varepsilon_\theta$ 就是<b>梯度下降，从山顶滚到谷底</b>（能量低 = 概率高）。<br>
 <b>概率视角</b>：把 $p(\mathbf{A})$ 想象成山峰（概率高的地方是峰顶）。$\varepsilon_\theta \approx -\nabla \log p$（注意负号），所以 $\mathbf{A} \gets \mathbf{A} - \gamma \varepsilon_\theta = \mathbf{A} + \gamma \nabla \log p$，<b>沿 score 爬山到峰顶</b>。<br>
@@ -123,7 +124,7 @@ $$\mathcal{L} = \text{MSE}\big( \varepsilon^k ,  \varepsilon_\theta(\mathbf{O}, 
 
 <h2>#4 三个让它真能用的工程设计</h2>
 <hr class="dash">
-<p><b>① 滚动时域控制（Receding Horizon）</b><br>
+<p id="concept-receding-horizon" class="concept-anchor"><b>① 滚动时域控制（Receding Horizon）</b><br>
 看过去 $T_o$ 步观测 → 预测未来 $T_p$ 步 → 只执行前 $T_a$ 步 → 重新规划。论文默认 $T_o=2, T_p=16, T_a=8$。<br>
 预测一长段 = 行为连贯、能在某个模式上”坚持”（不会这步向左下步向右）；只执行一半 = 保持对新观测的反应。</p>
 <div class="lab">
@@ -169,9 +170,9 @@ $$\mathcal{L} = \text{MSE}\big( \varepsilon^k ,  \varepsilon_\theta(\mathbf{O}, 
 ② <b>累积误差少</b>：扩散输出未来 16 步完整轨迹，每 8 步重新规划（滚动时域），实际只盲跑 8 步，误差不会开环累积太久。扩散本身对噪声鲁棒（训练见过各种噪声级别）。<br>
 ③ <b>序列一致性</b>（我的理解，论文没明说）：扩散"生成一整段序列"，位置序列的内部一致性（"一直向左"）比速度序列（每步速度正负交替导致抖动）更容易保持。<br>
 <b>对比</b>：论文 Fig 4 显示，BCRNN 和 BET 用位置控制性能<b>下降</b>，Diffusion Policy 用位置控制性能<b>提升</b>。这是扩散独有的优势。</div>
-<p><b>训练细节</b>：仿真基准用 iDDPM，训练和推理都是 100 步；真机为降延迟换成 <b>DDIM</b>，训练仍 100 步，推理减少步数。正文写 10 步、RTX 3080 上约 0.1 s，附录写 16 步，论文前后不一致，以实际配置为准。</p>
+<p><b>训练细节</b>：仿真基准用 iDDPM，训练和推理都是 100 步；真机为降延迟换成 <b><a class="concept-link" href="#concept-ddim">DDIM</a></b>，训练仍 100 步，推理减少步数。正文写 10 步、RTX 3080 上约 0.1 s，附录写 16 步，论文前后不一致，以实际配置为准。</p>
 
-<h2>#4.5 DDPM · iDDPM · DDIM 对比</h2>
+<h2 id="concept-ddim" class="concept-anchor">#4.5 DDPM · iDDPM · DDIM 对比</h2>
 <div class="note" style="background:#e8f4f8"><b>三个缩写的全称与记忆</b><br>
 · <b>DDPM</b> = Denoising Diffusion Probabilistic Models（去噪扩散概率模型）—— 扩散策略的<b>基础框架</b>，Ho 2020<br>
 · <b>iDDPM</b> = improved DDPM（改进版 DDPM）—— 把噪声日程换成<b>平方余弦</b>，Nichol & Dhariwal 2021<br>
@@ -185,7 +186,7 @@ $$\mathcal{L} = \text{MSE}\big( \varepsilon^k ,  \varepsilon_\theta(\mathbf{O}, 
 <tr><td>采样</td><td>随机马尔可夫链，必须逐步走完</td><td>同 DDPM</td><td>可确定性（σ=0），能跳步</td></tr>
 <tr><td>关键点</td><td>线性 β 日程</td><td>平方余弦日程（论文实测最适合控制任务）</td><td>重用同一个网络，无需重训</td></tr>
 </table>
-<div class=”note hot”><b>「日程」是什么</b>：noise schedule 的直译。就是 $\alpha_k, \beta_k, \bar{\alpha}_k, \sigma_k$ 这些系数<b>随步数 $k$ 怎么变化</b>。线性日程是 $\beta_k$ 从 0.0001 线性增到 0.02；平方余弦日程让 $\bar{\alpha}_k = \cos^2(\cdots)$，噪声加得更均匀，高频信号保留得更久。可以类比学习率调度（learning rate schedule）：同样是控制「每一步怎么走」的参数表。</div>
+<div id="concept-diffusion-noise-schedule" class="note hot concept-anchor"><b>「日程」是什么</b>：noise schedule 的直译。就是 $\alpha_k, \beta_k, \bar{\alpha}_k, \sigma_k$ 这些系数<b>随步数 $k$ 怎么变化</b>。线性日程是 $\beta_k$ 从 0.0001 线性增到 0.02；平方余弦日程让 $\bar{\alpha}_k = \cos^2(\cdots)$，噪声加得更均匀，高频信号保留得更久。可以类比学习率调度（learning rate schedule）：同样是控制「每一步怎么走」的参数表。</div>
 <div class=”fm”>【加噪（三者相同）】
 $$\mathbf{A}^k = \sqrt{\bar{\alpha}_k} \cdot \mathbf{A}^0 + \sqrt{1-\bar{\alpha}_k} \cdot \varepsilon$$
 
@@ -243,7 +244,7 @@ $\sigma=0$ 时完全确定</div>
 <tr><td>稳定性</td><td>MSE 训练，不估归一化常数</td></tr>
 <tr><td>速度</td><td>观测编码一次 + 真机用 DDIM 少步去噪（10 或 16 步）+ 只执行 Ta 步</td></tr>
 </table>
-<div class=”note”><b>读后思考：</b>迭代去噪有延迟（后续的 consistency / flow matching / π0 的 action expert 都在压缩这一步）；纯模仿仍受示范质量上限约束（后续才有 RL 微调的工作）。把它看成<b>”现代 VLA 动作头”的原型</b>，就很容易理解 π0 等为什么都用扩散/流匹配出动作块。</div>
+<div class=”note”><b>读后思考：</b>迭代去噪有延迟（后续的 consistency / <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">flow matching</a> / π0 的 action expert 都在压缩这一步）；纯模仿仍受示范质量上限约束（后续才有 <a class="concept-link" href="pi0.6-论文解读.html#concept-recap">RL 微调</a>的工作）。把它看成<b>”现代 VLA 动作头”的原型</b>，就很容易理解 π0 等为什么都用扩散/流匹配出动作块。</div>
 
 <h2>#6.5 从扩散策略到 consistency / flow matching / π0：同一件事的演化</h2>
 <div class="note"><b>一句话</b>：它们都在做同一件事——<b>学一个"从噪声到动作"的搬运规则，推理时从噪声出发、把它搬到示范动作的分布上</b>。变的是"路怎么走、网络预测什么、要走几步"；不变的是"生成 = 从噪声出发 + 以观测为条件 + 一次输出整段动作块"。</div>
@@ -253,12 +254,12 @@ $\sigma=0$ 时完全确定</div>
 <tr><td>目标不变</td><td>学条件分布 $p(\mathbf{A}|\mathbf{O})$，而不是回归一个动作 → 保留多模态</td></tr>
 <tr><td>起点不变</td><td>推理从高斯噪声出发（$\mathbf{A}^K\sim\mathcal{N}(0,I)$）</td></tr>
 <tr><td>训练套路不变</td><td>取干净动作块 → 掺入随机噪声 → 让网络回答"怎么往干净方向走" → MSE 回归。不估归一化常数 $Z$</td></tr>
-<tr><td>输出形式不变</td><td>一次联合生成整段动作块（$T_p$ 步），只执行前一部分（receding horizon）</td></tr>
+<tr><td>输出形式不变</td><td>一次联合生成整段<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块</a>（$T_p$ 步），只执行前一部分（receding horizon）</td></tr>
 <tr><td>条件方式不变</td><td>观测只编码一次，每一步去噪复用（FiLM 或交叉注意力）</td></tr>
 </table>
 
 <h3>② 它们之间的关系（一条演化线）</h3>
-<p><b>Diffusion Policy（DDPM/DDIM）</b> → <b>Flow Matching</b>（换"路"和"目标"）→ <b>π0 的 action expert</b>（把 flow matching 装进 VLM 里当动作头）；另一条支线 <b>Consistency</b>（直接学"一步到位"）。</p>
+<p><b>Diffusion Policy（DDPM/DDIM）</b> → <b><a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">Flow Matching</a></b>（换"路"和"目标"）→ <b><a class="concept-link" href="pi0-论文解读.html#concept-action-expert">π0 的 action expert</a></b>（把 flow matching 装进 VLM 里当动作头）；另一条支线 <b>Consistency</b>（直接学"一步到位"）。</p>
 <table>
 <tr><th></th><th>Diffusion Policy</th><th>Flow Matching</th><th>Consistency</th><th>π0 action expert</th></tr>
 <tr><td>网络预测</td><td>噪声 ε</td><td>速度场 v（往干净数据走的方向）</td><td>直接预测干净动作 $\mathbf{A}^0$</td><td>速度场 v（flow matching）</td></tr>
@@ -272,7 +273,7 @@ $\sigma=0$ 时完全确定</div>
 <p><b>A. Flow Matching：把弯路改成直路。</b>扩散的加噪路径是弯的，从噪声到数据要走很多小步才不偏。flow matching 直接规定路径是<b>直线</b>：</p>
 <p>　Aτ = τ · A⁰ + (1−τ) · ε，　网络目标 v = A⁰ − ε（直线的方向，恒定）</p>
 <p>训练仍是 MSE（猜 v），但路径是直的，所以推理时<b>积分几步欧拉就够</b>。直觉：直线上每一步的方向几乎不变，大步走也不会偏；曲线上必须小步走。DDIM 其实已经是"确定性 ODE"，flow matching 可以看成把这个 ODE 的路径设计得更直、训练目标更简洁。</p>
-<p><b>B. Consistency：干脆不走中间步。</b>训练网络使得<b>同一条轨迹上任何位置的输出都指向同一个干净动作</b>：</p>
+<p id="concept-consistency" class="concept-anchor"><b>B. Consistency：干脆不走中间步。</b>训练网络使得<b>同一条轨迹上任何位置的输出都指向同一个干净动作</b>：</p>
 <p>　f(Aᵏ, k) = A⁰，　且对同一轨迹上的 k、k′ 有 f(Aᵏ, k) = f(Aᵏ′, k′)</p>
 <p>于是推理时从噪声直接一步映射到动作（需要时再多走 1~2 步提质量）。代价是训练更复杂（需要蒸馏或一致性约束），质量与步数之间要权衡。</p>
 <p><b>C. π0 的 action expert：把动作头做成 VLM 的一部分。</b>这一步改进的不是步数，而是<b>条件怎么来、规模怎么放大</b>：</p>
@@ -330,6 +331,15 @@ $\sigma=0$ 时完全确定</div>
 </div>
 
 <hr class=”dash”>
+  <aside class="concept-related" aria-label="相关概念">
+    <strong>相关概念</strong>
+    <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">流匹配：改为预测速度场</a>
+    <a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家：接入 VLM 的动作头</a>
+    <a class="concept-link" href="RTC-实时动作分块-论文解读.html#concept-inpainting">RTC：处理动作块的执行接缝</a>
+    <a class="concept-link" href="pi0.6-论文解读.html#concept-recap">RECAP：从模仿转向经验改进</a>
+    <a class="concept-link" href="concepts.html">全部概念 →</a>
+  </aside>
+
 <div class="c"><span class="stamp">PAID · 已读完</span></div>
 <div class="bar"></div>
 <div class="c sub">THANK YOU · 请保留小票<br>arXiv 2303.04137</div>
@@ -424,5 +434,6 @@ function drawC(){
 drawC();
 if(window.MathJax)MathJax.typesetPromise().catch(e=>console.log(e));
 </script>
+<script src="nav.js"></script>
 </body>
 </html>

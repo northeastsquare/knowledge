@@ -146,9 +146,9 @@
     <h2>方法主线</h2>
     <ol>
       <li id="concept-denoising-mdp" class="concept-anchor"><strong>把去噪过程重写成 MDP</strong>：每步去噪当作一个状态转移，配一个高斯转移分布。给定起始噪声，整条去噪链的条件概率是各步转移概率的乘积，对数似然则是各步对数转移概率的和。这里可计算的是去噪轨迹的概率，不代表最终动作的边际密度直接有了闭式表达。 <a class="code-jump" href="代码索引.html#denoising-mdp" style="font:12px ui-monospace,Consolas,monospace;white-space:nowrap;text-decoration:none;border:1px dashed currentColor;border-radius:4px;padding:0 5px;margin-left:4px;opacity:.8">⟨/⟩ 代码</a></li>
-      <li><strong>Flow-Noise</strong>：注入可学习的噪声网络，去噪每步服从 <code>N(μ_τ, σ_τ²)</code>——均值来自原 ODE 的欧拉步，方差由噪声网络给出；训练后丢弃噪声网络，推理退回确定性。</li>
-      <li><strong>Flow-SDE</strong>：把确定性「概率流 ODE」换成<strong>保边际分布</strong>的等价 SDE，在两层 MDP 里同时建模去噪步骤与环境交互，探索来自 SDE 的随机项。</li>
-      <li><strong>PPO + GAE 优化</strong>：<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块</a>当作一个宏步、块内奖励求和；RL 阶段<strong>冻结 3.3B VLM，只微调 300M <a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a></strong>（省显存）。</li>
+      <li id="concept-flow-noise" class="concept-anchor"><strong>Flow-Noise</strong>：注入可学习的噪声网络，去噪每步服从 <code>N(μ_τ, σ_τ²)</code>——均值来自原 ODE 的欧拉步，方差由噪声网络给出；训练后丢弃噪声网络，推理退回确定性。</li>
+      <li id="concept-flow-sde" class="concept-anchor"><strong>Flow-SDE</strong>：把确定性「概率流 ODE」换成<strong>保边际分布</strong>的等价 SDE，在两层 MDP 里同时建模去噪步骤与环境交互，探索来自 SDE 的随机项。</li>
+      <li><strong>PPO + <a class="concept-link" href="RLinf-RL原理对比.html#concept-gae">GAE</a> 优化</strong>：<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块</a>当作一个宏步、块内奖励求和；RL 阶段<strong>冻结 3.3B VLM，只微调 300M <a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a></strong>（省显存）。</li>
     </ol>
   </section>
 
@@ -171,7 +171,7 @@
     <h2>训练或运行方式</h2>
     <ul>
       <li>先在目标任务上做 <strong>SFT</strong>（少样本，如 ManiSkill 用 16,384 合成 episode）；</li>
-      <li>再用 <strong>PPO + GAE</strong> 在线 RL 微调动作专家，训练于 <strong>8× NVIDIA H100</strong>；</li>
+      <li>再用 <strong><a class="concept-link" href="RLinf-RL原理对比.html#concept-ppo">PPO</a> + GAE</strong> 在线 RL 微调动作专家，训练于 <strong>8× NVIDIA H100</strong>；</li>
       <li><strong><a class="concept-link" href="RLToken-漫画分镜解读.html#concept-actor-critic">critic</a> 位置</strong>：π0.5 的 critic 接 VLM 输出，π0 的 critic 接动作专家（对去噪轨迹上的专家价值取平均近似观测价值）；</li>
       <li>并行仿真环境加速（ManiSkill 320 envs）。</li>
     </ul>
@@ -205,8 +205,8 @@
         <tr><td><strong>动作空间</strong></td><td>流匹配的噪声 / 潜空间</td><td>动作块空间（以参考动作 ã 为条件）</td></tr>
         <tr><td><strong>似然处理</strong></td><td>Flow-Noise / Flow-SDE 让 log π 可解</td><td>高斯 actor，无需原模型似然</td></tr>
         <tr><td><strong>训练环境</strong></td><td>在线 RL，并行仿真（ManiSkill 320 envs）</td><td>真实机器人在线 RL（15min ~ 5h）</td></tr>
-        <tr><td><strong>奖励</strong></td><td>仿真密集 / 任务奖励</td><td>人类稀疏 0/1 标签</td></tr>
-        <tr><td><strong>正则 / 锚定</strong></td><td>从 SFT 初始化继续 RL，无显式 KL</td><td>KL 正则锚定到 VLA 参考动作 + reference dropout</td></tr>
+        <tr><td><strong>奖励</strong></td><td>仿真密集 / 任务奖励</td><td>人类<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-sparse-reward">稀疏</a> 0/1 标签</td></tr>
+        <tr><td><strong>正则 / 锚定</strong></td><td>从 SFT 初始化继续 RL，无显式 KL</td><td>KL 正则锚定到 VLA 参考动作 + <a class="concept-link" href="RL-Token-论文解读.html#concept-reference-dropout">reference dropout</a></td></tr>
         <tr><td><strong>成本</strong></td><td>重算力（8×H100）</td><td>轻量、低数据</td></tr>
         <tr><td><strong>适用</strong></td><td>有仿真器、求大幅提升、可离线批量</td><td>真机、无仿真、需快速、保 VLA 泛化</td></tr>
       </table>
@@ -218,7 +218,7 @@
   <section>
     <h2>我真正学到的内容</h2>
     <ul>
-      <li>流模型也能做 RL：<strong>把去噪 ODE / SDE 写成 MDP、让似然可解</strong>，是打通 PPO 的关键一步，也是和「绕开生成过程」路线（RL Token / DSRL）最本质的分野。</li>
+      <li>流模型也能做 RL：<strong>把去噪 ODE / SDE 写成 MDP、让似然可解</strong>，是打通 PPO 的关键一步，也是和「绕开生成过程」路线（RL Token / <a class="concept-link" href="RLinf-RL原理对比.html#concept-dsrl">DSRL</a>）最本质的分野。</li>
       <li>「冻结主干、只微调动作专家」是 VLA + RL 里性价比很高的折中——既控制显存，又保留 VLM 的视觉语言理解。</li>
     </ul>
   </section>
@@ -254,6 +254,9 @@
     <a class="concept-link" href="为什么取log.html#concept-log-trick">对数概率与策略梯度</a>
     <a class="concept-link" href="两条主干-拆机手册.html#concept-advantage">优势：相对基线的好坏</a>
     <a class="concept-link" href="pi0.6-论文解读.html#concept-recap">RECAP：另一种策略改进方式</a>
+    <a class="concept-link" href="RLinf-RL原理对比.html#concept-gae">GAE 如何估计优势</a>
+    <a class="concept-link" href="RLinf-RL原理对比.html#concept-dsrl">DSRL 在噪声空间选动作</a>
+    <a class="concept-link" href="RL-100-论文解读.html#concept-consistency-distillation">RL-100 的去噪链优化与蒸馏</a>
     <a class="concept-link" href="concepts.html">全部概念 →</a>
   </aside>
 

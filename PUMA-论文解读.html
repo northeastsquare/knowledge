@@ -168,7 +168,7 @@
   <section class="hero">
     <div class="eyebrow">精读笔记 · VLA</div>
     <h1>PUMA：动态环境中的可泛化机器人操作</h1>
-    <p class="summary">面向动态环境（移动/变化目标）的可泛化机械臂操作 VLA —— 作者先造出大规模动态操作基准 DOMINO，再提出耦合「场景级历史光流 + 目标级未来预测」的 PUMA 架构，把成功率相对最强基线提升 6.3 个百分点。</p>
+    <p class="summary">面向动态环境（移动/变化目标）的可泛化机械臂操作 VLA —— 作者先造出大规模动态操作基准 DOMINO，再提出耦合「<a class="concept-link" href="#concept-optical-flow">场景级历史光流</a> + <a class="concept-link" href="#concept-future-feature-prediction">目标级未来预测</a>」的 PUMA 架构，把成功率相对最强基线提升 6.3 个百分点。</p>
     <div class="meta">
       <div class="m"><span class="k">论文</span><span class="v">Towards Generalizable Robotic Manipulation in Dynamic Environments</span></div>
       <div class="m"><span class="k">机构</span><span class="v">华中科技大学 · 华为</span></div>
@@ -186,7 +186,7 @@
       <li><strong>架构缺陷</strong>：主流 VLA 依赖<strong>单帧观测</strong>，本质是「无记忆」的策略，无法感知历史运动、更无法预测目标未来的运动趋势——而这恰恰是动态操作的核心能力。</li>
     </ul>
     <blockquote>
-      <p>论文 Fig. 1 给出最直观的证据：SOTA 模型从静态切到动态环境，成功率大幅退化——例如 π0.5 的平均成功率从静态的 44.8% 掉到动态的 7.5%。作者把这种「只看得见当前一帧、看不见运动」的缺陷称为 <strong>Motion Blindness（运动盲区）</strong>。</p>
+      <p>论文 Fig. 1 给出最直观的证据：SOTA 模型从静态切到动态环境，成功率大幅退化——例如 <a class="concept-link" href="pi0.5_论文测验_精美版.html#concept-hierarchical-policy">π0.5</a> 的平均成功率从静态的 44.8% 掉到动态的 7.5%。作者把这种「只看得见当前一帧、看不见运动」的缺陷称为 <strong>Motion Blindness（运动盲区）</strong>。</p>
     </blockquote>
     <p>动态操作本身的难点还在于：它同时要求<strong>时空精度</strong>（在对的时刻、对的位置截住运动目标），并要求实时感知与运动预测<strong>持续耦合</strong>。作者明确主张：这不能靠「把静态方法放大」解决，而是一个独立的新方向。</p>
   </section>
@@ -196,9 +196,9 @@
     <p>整篇论文是一条「先立基准、再补架构」的路线，可以拆成 5 步：</p>
     <ol>
       <li><strong>定义问题</strong>：把可泛化动态操作形式化为 POMDP——策略只能拿到观测历史 <code>o<sub>t-h:t</sub></code>，却要在转移概率时刻变化的环境中做出精确拦截。</li>
-      <li><strong>建基准 DOMINO</strong>：基于 RoboTwin 2.0 + SAPIEN 物理引擎，用「两阶段时空同步」流水线低成本、大规模地生成专家示教（35 任务 / 5 种机器人本体 / 11.7 万条轨迹），并配套多维评估协议。</li>
+      <li id="concept-domino" class="concept-anchor"><strong>建基准 DOMINO</strong>：基于 RoboTwin 2.0 + SAPIEN 物理引擎，用「两阶段时空同步」流水线低成本、大规模地生成专家示教（35 任务 / <a class="concept-link" href="Qwen-VLA-论文解读.html#concept-cross-embodiment">5 种机器人本体</a> / 11.7 万条轨迹），并配套多维评估协议。</li>
       <li><strong>分级难度</strong>：把目标运动按复杂度分三级（匀速 → 高阶多项式曲线 → 分段随机突变），并用标量「动力学系数 β」控制速度，得到 <code>DOMINO@β</code> 变体，使难度可量化、可调。</li>
-      <li id="concept-motion-perception" class="concept-anchor"><strong>提出 PUMA</strong>：在 Qwen3-VL 基础上，用「场景级历史光流」显式提供运动线索，用「目标级 world queries + 辅助未来特征预测」隐式预测目标未来状态，实现「历史感知 + 短期预测」的耦合。</li>
+      <li id="concept-motion-perception" class="concept-anchor"><strong>提出 PUMA</strong>：在 Qwen3-VL 基础上，用「<a class="concept-link" href="#concept-optical-flow">场景级历史光流</a>」显式提供运动线索，用「目标级 world queries + <a class="concept-link" href="#concept-future-feature-prediction">辅助未来特征预测</a>」隐式预测目标未来状态，实现「历史感知 + 短期预测」的耦合。</li>
       <li><strong>验证两个结论</strong>：① PUMA 在动态任务上 SOTA（+6.3% SR）；② 动态数据学到的时空表征能<strong>零样本迁移回静态任务</strong>，动静混合训练还能进一步提升。</li>
     </ol>
     <p>一句话主线：<span class="hl">别让模型从单帧里「猜」运动，而是把「运动」作为显式输入喂进去，再把「预测未来」作为辅助任务练出来。</span></p>
@@ -206,6 +206,7 @@
 
   <section>
     <h2>输入、输出与数据流</h2>
+    <p id="concept-optical-flow" class="concept-anchor"><strong>光流（optical flow）</strong>描述图像中像素在相邻帧间的二维位移，给出图像平面上的运动方向与幅度。PUMA 用历史帧的 Farneback 光流生成 HSV/RGB 图，再与当前观测一起编码；要恢复随时间变化的三维位置，可对照 <a class="concept-link" href="D4RT_study_cards.html#concept-4d-reconstruction">D4RT 的 4D 重建</a>。</p>
     <p>PUMA 的输入由三部分组成，输出是「<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块</a> + 未来表征」两路，训练时额外用冻结的 Grounding 模块提供目标级监督。</p>
 
     <div class="diagram">
@@ -288,7 +289,7 @@
     <blockquote>
       <p><code>L_total = L_action + λ · L_world</code>，其中 <code>L_action</code> 是对动作块的 L1 回归，<code>L_world</code> 是预测表征 <code>z</code> 与目标未来特征 <code>f</code> 的余弦距离；<code>λ = 0.05</code>，平衡因子。</p>
     </blockquote>
-    <p>关键设计是<strong>辅助预测器只在训练时监督</strong>——它强迫共享表征「学会预判目标运动」，从而正则化动作策略，但在推理时不引入任何额外计算（不需要未来帧）。</p>
+    <p id="concept-future-feature-prediction" class="concept-anchor">关键设计是<strong>辅助预测器只在训练时监督</strong>——它强迫共享表征「学会预判目标运动」，从而正则化动作策略，但在推理时不引入任何额外计算（不需要未来帧）。</p>
     <div class="card">
       <h3>训练配置（附录 A.2）</h3>
       <ul>
@@ -333,7 +334,7 @@
         <tr><th>方法</th><th>SR (%)</th><th>MS</th></tr>
         <tr><td>OpenVLA（Llama-2）</td><td>1.54</td><td>6.10</td></tr>
         <tr><td>RDT-1B</td><td>5.34</td><td>17.71</td></tr>
-        <tr><td>π0</td><td>8.17</td><td>23.96</td></tr>
+        <tr><td><a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">π0</a></td><td>8.17</td><td>23.96</td></tr>
         <tr><td>π0.5</td><td>9.63</td><td>26.17</td></tr>
         <tr><td>OpenVLA-OFT*（Qwen3-VL）</td><td>10.90</td><td>30.49</td></tr>
         <tr><td><strong>PUMA（ours）</strong></td><td><strong>17.20</strong></td><td><strong>34.97</strong></td></tr>
@@ -372,7 +373,7 @@
     <ul>
       <li><strong>两阶段时空同步数据生成</strong>：先在静态环境「dry-run」记录机器人执行耗时，再按耗时反推目标初始位姿，最后以运动学刚体实例化目标——用低成本、确定性的方式保证「移动目标 + 机器人动作」的时空对齐，值得在任何「动态示教采集」里复用。</li>
       <li><strong>光流缓存流水线</strong>：hash 索引 + 磁盘缓存 + 百分位归一化 + 阈值置零，把光流预计算的开销摊销到可忽略，推理时实时算。</li>
-      <li><strong>冻结 GroundingDINO + SAM2 + DINO 做目标级监督</strong>：不新增任何可学习参数，就能从语言指令自动抠出目标 mask 并提取未来特征，充当「世界模型」的监督信号。</li>
+      <li><strong>冻结 GroundingDINO + SAM2 + DINO 做目标级监督</strong>：不新增任何可学习参数，就能从语言指令自动抠出目标 mask 并提取未来特征，充当「<a class="concept-link" href="pi0.7_问答学习卡.html#concept-world-model">世界模型</a>」的监督信号。</li>
       <li><strong>双查询 + 辅助预测正则化</strong>：在共享 VLM 骨干上同时挂「动作解码」和「未来预测」两条 query 路径，推理时丢弃预测分支，白嫖一个正则化。</li>
       <li><strong>难度系数 β 分级</strong>：用标量控制目标最大速度，让同一基准能测「从匀速到随机突变」的连续难度谱。</li>
     </ul>
@@ -403,6 +404,8 @@
     <strong>相关概念</strong>
     <a href="DynamicVLA-论文解读.html#concept-latency">动态操作的另一个瓶颈：时延</a>
     <a href="D4RT_study_cards.html#concept-4d-reconstruction">从视频恢复几何与运动：4D 重建</a>
+    <a class="concept-link" href="InternData-A1-论文解读.html#concept-synthetic-data">生成动态示教的数据来源：合成数据</a>
+    <a class="concept-link" href="DynamicVLA-论文解读.html#concept-continuous-inference">感知完成后怎样及时执行：CI 与 LAAS</a>
     <a href="concepts.html">全部概念 →</a>
   </aside>
 

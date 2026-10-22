@@ -1,0 +1,1862 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>指数分布：等待的数学 ⏰</title>
+<meta name="description" content="为什么随机等车平均等 1 分钟，而不是 0.5 分钟？用动画和实验理解指数分布的无记忆性">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<link rel="stylesheet" href="concepts.css">
+<style>
+:root {
+  --bg: #fef6e4;
+  --surface: #fff;
+  --ink: #2d3748;
+  --ink-light: #4a5568;
+  --ink-dim: #718096;
+  --accent: #f582ae;
+  --accent-dark: #d946a6;
+  --secondary: #8bd3dd;
+  --secondary-dark: #5fb3c1;
+  --warn: #ffa69e;
+  --line: #e2d5c2;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif;
+  line-height: 1.75;
+  position: relative;
+}
+
+/* 可爱的圆点背景 */
+.dots {
+  position: fixed;
+  inset: 0;
+  background-image: radial-gradient(circle, var(--line) 1px, transparent 1px);
+  background-size: 20px 20px;
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: -1;
+}
+
+header {
+  text-align: center;
+  padding: 60px 24px 40px;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--secondary) 100%);
+  position: relative;
+  overflow: hidden;
+}
+
+header::before {
+  content: "⏰";
+  position: absolute;
+  font-size: 200px;
+  opacity: 0.1;
+  top: -40px;
+  right: -20px;
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-20px) rotate(5deg); }
+}
+
+.back-link {
+  display: inline-block;
+  color: rgba(0,0,0,0.6);
+  text-decoration: none;
+  font-size: 14px;
+  margin-bottom: 16px;
+  padding: 6px 12px;
+  background: rgba(255,255,255,0.3);
+  border-radius: 20px;
+  transition: all 0.3s;
+}
+
+.back-link:hover {
+  background: rgba(255,255,255,0.5);
+  transform: translateX(-4px);
+}
+
+h1 {
+  font-size: clamp(32px, 6vw, 52px);
+  font-weight: 800;
+  color: white;
+  margin-bottom: 12px;
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+}
+
+.subtitle {
+  font-size: 18px;
+  color: rgba(255,255,255,0.9);
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.wrap {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 0 24px 100px;
+}
+
+.section {
+  margin: 48px 0;
+}
+
+h2 {
+  font-size: 28px;
+  color: var(--accent-dark);
+  margin-bottom: 20px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+h2::before {
+  content: "●";
+  font-size: 16px;
+  color: var(--secondary-dark);
+}
+
+h3 {
+  font-size: 22px;
+  color: var(--ink);
+  margin: 28px 0 14px;
+  font-weight: 600;
+}
+
+p {
+  margin-bottom: 14px;
+  color: var(--ink-light);
+}
+
+strong {
+  color: var(--accent-dark);
+  font-weight: 700;
+}
+
+.highlight {
+  background: white;
+  border: 3px solid var(--accent);
+  border-radius: 16px;
+  padding: 24px;
+  margin: 24px 0;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.big-question {
+  background: linear-gradient(135deg, var(--warn), var(--accent));
+  color: white;
+  border-radius: 20px;
+  padding: 32px;
+  margin: 32px 0;
+  text-align: center;
+  font-size: 20px;
+  font-weight: 700;
+  box-shadow: 0 8px 24px rgba(245, 130, 174, 0.3);
+}
+
+.demo-box {
+  background: white;
+  border: 3px solid var(--secondary);
+  border-radius: 16px;
+  padding: 28px;
+  margin: 32px 0;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+  position: relative;
+}
+
+.demo-box::before {
+  content: "🎮 " attr(data-label);
+  position: absolute;
+  top: -14px;
+  left: 20px;
+  background: var(--secondary);
+  color: white;
+  padding: 4px 16px;
+  border-radius: 20px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.demo-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--accent-dark);
+  margin-bottom: 16px;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  margin-bottom: 20px;
+  align-items: center;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.control-group label {
+  font-size: 13px;
+  color: var(--ink-dim);
+  font-weight: 600;
+}
+
+input[type="range"] {
+  width: 200px;
+  height: 6px;
+  background: var(--line);
+  border-radius: 3px;
+  outline: none;
+  -webkit-appearance: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 20px;
+  height: 20px;
+  background: var(--accent);
+  cursor: pointer;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(245, 130, 174, 0.4);
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 20px;
+  height: 20px;
+  background: var(--accent);
+  cursor: pointer;
+  border: none;
+  border-radius: 50%;
+  box-shadow: 0 2px 6px rgba(245, 130, 174, 0.4);
+}
+
+.value-display {
+  font-weight: 700;
+  color: var(--accent-dark);
+  font-size: 16px;
+}
+
+button {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  font-weight: 700;
+  cursor: pointer;
+  font-size: 14px;
+  border-radius: 24px;
+  box-shadow: 0 4px 12px rgba(245, 130, 174, 0.3);
+  transition: all 0.3s;
+}
+
+button:hover {
+  background: var(--accent-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(245, 130, 174, 0.4);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  background: #fafafa;
+  border-radius: 12px;
+  border: 2px solid var(--line);
+}
+
+.comparison {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  margin: 28px 0;
+}
+
+.card {
+  background: white;
+  border: 3px solid var(--line);
+  border-radius: 16px;
+  padding: 24px;
+  transition: all 0.3s;
+}
+
+.card:hover {
+  border-color: var(--accent);
+  transform: translateY(-4px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+}
+
+.card h4 {
+  font-size: 20px;
+  color: var(--accent-dark);
+  margin-bottom: 12px;
+  font-weight: 700;
+}
+
+.card ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.card li {
+  margin-bottom: 10px;
+  padding-left: 24px;
+  position: relative;
+  font-size: 15px;
+}
+
+.card li::before {
+  content: "→";
+  position: absolute;
+  left: 0;
+  color: var(--secondary-dark);
+  font-weight: 700;
+}
+
+.note {
+  background: linear-gradient(135deg, #fff5f5, #fffaf0);
+  border-left: 4px solid var(--warn);
+  padding: 20px 24px;
+  margin: 24px 0;
+  border-radius: 0 12px 12px 0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.note strong {
+  color: var(--warn);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 24px 0;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+th {
+  background: var(--accent);
+  color: white;
+  padding: 14px 16px;
+  text-align: left;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--line);
+  color: var(--ink-light);
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+tr:hover {
+  background: var(--bg);
+}
+
+ul, ol {
+  margin: 16px 0 16px 32px;
+}
+
+li {
+  margin-bottom: 10px;
+  color: var(--ink-light);
+}
+
+code {
+  font-family: "Courier New", monospace;
+  background: var(--line);
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 14px;
+  color: var(--accent-dark);
+}
+
+pre {
+  background: white;
+  border: 2px solid var(--line);
+  border-radius: 12px;
+  padding: 20px;
+  overflow-x: auto;
+  margin: 16px 0;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+pre code {
+  background: none;
+  padding: 0;
+  color: var(--ink);
+}
+
+.formula-box {
+  background: white;
+  border: 3px solid var(--secondary);
+  border-radius: 12px;
+  padding: 24px;
+  margin: 20px 0;
+  text-align: center;
+  font-size: 18px;
+  box-shadow: 0 4px 12px rgba(139, 211, 221, 0.2);
+}
+
+.visual-demo {
+  background: white;
+  border-radius: 16px;
+  padding: 32px;
+  margin: 32px 0;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+}
+
+.timeline {
+  position: relative;
+  height: 80px;
+  background: var(--line);
+  border-radius: 8px;
+  margin: 20px 0;
+}
+
+.bus {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  background: var(--accent);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  top: 20px;
+  transition: left 0.5s ease;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+.person {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  background: var(--secondary);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  top: 20px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+
+footer {
+  margin-top: 80px;
+  padding: 32px 24px;
+  text-align: center;
+  background: linear-gradient(135deg, var(--accent), var(--secondary));
+  color: white;
+}
+
+footer a {
+  color: white;
+  text-decoration: none;
+  font-weight: 700;
+}
+
+footer a:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
+  .comparison {
+    grid-template-columns: 1fr;
+  }
+
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  input[type="range"] {
+    width: 100%;
+  }
+}
+  .toc{position:fixed;left:18px;top:88px;width:210px;max-height:calc(100vh - 120px);overflow-y:auto;background:#fff;border:3px solid var(--line);border-radius:14px;padding:14px 12px;box-shadow:0 4px 14px rgba(0,0,0,.08);z-index:60;font-size:13px;}
+  .toc h4{margin:0 0 8px;font-size:13px;color:var(--accent-dark);letter-spacing:.05em;}
+  .toc a{display:block;padding:5px 8px;border-radius:6px;color:var(--ink-light);text-decoration:none;line-height:1.4;}
+  .toc a:hover{background:var(--bg);color:var(--accent-dark);}
+  .toc a.active{background:var(--accent);color:#fff;font-weight:600;}
+  .toc-btn{display:none;}
+  @media(max-width:1240px){
+    .toc{position:static;width:auto;max-height:none;margin:0 0 24px;}
+    .toc a{display:inline-block;margin:2px 4px 2px 0;border:1px solid var(--line);}
+  }
+</style>
+</head>
+<body>
+
+<div class="dots"></div>
+
+<header>
+  <a href="index.html" class="back-link">← 返回知识库</a>
+  <h1>指数分布：等待的数学</h1>
+  <p class="subtitle">为什么随机等车平均等 1 分钟，而不是 0.5 分钟？用动画和实验理解指数分布的无记忆性</p>
+</header>
+
+<div class="wrap">
+
+<nav class="toc" id="toc">
+  <h4>本页目录</h4>
+  <a href="#s1">什么是指数分布</a>
+  <a href="#s2">基本数学形式与公式</a>
+  <a href="#s3">为什么必然是指数分布</a>
+  <a href="#s4">第一格为何次数最多</a>
+  <a href="#s5">为什么不是间隔的一半</a>
+  <a href="#s6">无记忆性</a>
+  <a href="#s7">为什么等待=完整间隔</a>
+  <a href="#s8">现实世界的应用</a>
+  <a href="#s9">常见误区</a>
+  <a href="#s10">与 Gamma 的关系</a>
+  <a href="#s11">总结</a>
+</nav>
+
+<div class="section">
+  <div class="big-question">
+    🤔 如果公交车平均每 2 分钟来一辆，我随机到站，平均要等多久？
+  </div>
+
+  <div class="comparison">
+    <div class="card">
+      <h4>直觉答案</h4>
+      <ul>
+        <li>间隔 2 分钟</li>
+        <li>我随机到站</li>
+        <li>最多等 2 分钟</li>
+        <li>最少等 0 分钟</li>
+        <li><strong>平均等 1 分钟 ✓</strong></li>
+      </ul>
+      <p style="margin-top:16px;font-size:14px;color:var(--ink-dim);">这个直觉适用于<strong>固定间隔</strong>的情况</p>
+    </div>
+
+    <div class="card">
+      <h4>数学答案（泊松过程）</h4>
+      <ul>
+        <li>平均间隔 2 分钟</li>
+        <li>随机到达（不固定）</li>
+        <li>无记忆性</li>
+        <li>期望 = 2 分钟</li>
+        <li><strong>平均等 2 分钟 ？！</strong></li>
+      </ul>
+      <p style="margin-top:16px;font-size:14px;color:var(--ink-dim);">指数分布的反直觉之处</p>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>⚠️ 核心困惑</strong>：为什么不是间隔的一半？答案在于<strong>"固定间隔"和"随机间隔"是两种完全不同的数学模型</strong>。
+  </div>
+</div>
+
+<div class="section">
+  <h2 id="s1">什么是指数分布？</h2>
+
+  <div class="highlight">
+    <p><strong>一句话</strong>：指数分布描述「等第一件随机事件发生需要多长时间」。</p>
+    <p style="margin-top:12px;">如果事件以恒定速率 λ 随机发生（<strong>泊松过程</strong>），那么等待时间 T 服从指数分布 Exp(λ)。</p>
+  </div>
+
+  <div class="card" style="background:var(--surface-2);margin:20px 0;padding:24px;border:3px solid var(--secondary);">
+    <h4 style="color:var(--secondary-dark);margin-top:0;">🎯 什么是泊松过程？</h4>
+    <p><strong>泊松过程（Poisson Process）</strong>是描述"随机事件在时间（或空间）上发生"的数学模型。</p>
+
+    <p style="margin-top:12px;"><strong>三个核心性质</strong>：</p>
+    <ol style="margin:12px 0 0 24px;font-size:15px;">
+      <li><strong>恒定速率</strong>：事件以固定的平均速率 λ 发生（如每分钟 2 次）</li>
+      <li><strong>独立性</strong>：任意两个不重叠时间段内发生的事件数量相互独立</li>
+      <li><strong>单个性</strong>：在极小时间段内，最多发生 1 件事（不会同时来 2 辆车）</li>
+    </ol>
+
+    <p style="margin-top:12px;"><strong>两个角度理解同一件事</strong>：</p>
+    <table style="margin-top:12px;font-size:14px;">
+      <tr>
+        <th>角度</th>
+        <th>问题</th>
+        <th>答案</th>
+      </tr>
+      <tr>
+        <td><strong>计数角度</strong><br>（泊松分布）</td>
+        <td>在固定时间 t 内，<br>发生了<strong>多少件</strong>事？</td>
+        <td>N(t) ~ Poisson(λt)<br>期望 = λt</td>
+      </tr>
+      <tr>
+        <td><strong>等待角度</strong><br>（指数分布）</td>
+        <td>等第一件事发生，<br>需要<strong>多长时间</strong>？</td>
+        <td>T ~ Exp(λ)<br>期望 = 1/λ</td>
+      </tr>
+    </table>
+
+    <p style="margin-top:12px;"><strong>直观例子</strong>：</p>
+    <ul style="margin:8px 0 0 24px;font-size:14px;">
+      <li><strong>公交车</strong>：平均每 10 分钟来 1 辆（λ=0.1 辆/分钟）
+        <ul style="margin:4px 0 0 20px;">
+          <li>泊松：1 小时内来几辆车？期望 6 辆</li>
+          <li>指数：等第 1 辆车要多久？期望 10 分钟</li>
+        </ul>
+      </li>
+      <li><strong>网站访问</strong>：平均每秒 5 次请求（λ=5 次/秒）
+        <ul style="margin:4px 0 0 20px;">
+          <li>泊松：1 分钟内有多少次请求？期望 300 次</li>
+          <li>指数：两次请求的间隔？期望 0.2 秒</li>
+        </ul>
+      </li>
+      <li><strong>电话呼入</strong>：平均每小时 12 个电话（λ=12 次/小时）
+        <ul style="margin:4px 0 0 20px;">
+          <li>泊松：半小时内接几个电话？期望 6 个</li>
+          <li>指数：距离下一个电话多久？期望 5 分钟</li>
+        </ul>
+      </li>
+    </ul>
+
+    <p style="margin-top:12px;"><strong>为什么叫"泊松"？</strong>法国数学家<b>西莫恩·泊松（Siméon Poisson, 1837）</b>在研究"一年内某城市被闪电击中的次数"时发现了这个分布。</p>
+  </div>
+
+  <div class="formula-box">
+    $$f(t) = \lambda e^{-\lambda t}, \quad t \geq 0$$
+    $$\text{期望（平均等待时间）} = \frac{1}{\lambda}$$
+    $$\text{方差} = \frac{1}{\lambda^2}$$
+  </div>
+
+  <h3>参数含义</h3>
+  <ul>
+    <li><strong>λ</strong>（速率参数）：平均每单位时间发生多少次事件</li>
+    <li><strong>1/λ</strong>：平均等待时间（期望）</li>
+  </ul>
+
+  <p><strong>例子</strong>：</p>
+  <ul>
+    <li>公交车平均每小时来 6 辆 → λ=6（次/小时）→ 平均等 1/6 小时 = 10 分钟</li>
+    <li>服务器平均每秒处理 10 个请求 → λ=10（次/秒）→ 平均等 0.1 秒</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h2 id="s2">基本数学形式与常用公式</h2>
+
+  <h3>1. 两种参数化：速率 λ vs 尺度 θ</h3>
+  <p>同一个分布有两种写法，区别只在"用速率还是用平均时间"当参数。<b>先看清是哪一种，再代公式</b>，否则结果会差一个倒数。</p>
+
+  <div class="comparison">
+    <div class="card">
+      <h4>速率参数 $\lambda$</h4>
+      <p style="font-size:14px;">常见于概率论、排队论、机器学习库（NumPy `scale=1/λ`、PyTorch `rate`）</p>
+      <div class="formula-box" style="margin:12px 0;">
+        $$f(t) = \lambda e^{-\lambda t} \\ E[T]=\frac{1}{\lambda}$$
+      </div>
+      <p style="font-size:14px;">λ 的含义：<b>单位时间内平均发生几次</b></p>
+    </div>
+    <div class="card">
+      <h4>尺度参数 $\theta$</h4>
+      <p style="font-size:14px;">常见于 R（`dexp(rate=)` 仍用 rate）、scipy（`scale=θ`）、可靠性工程</p>
+      <div class="formula-box" style="margin:12px 0;">
+        $$f(t) = \frac{1}{\theta} e^{-t/\theta} \\ E[T]=\theta$$
+      </div>
+      <p style="font-size:14px;">θ 的含义：<b>平均要等多久</b>，$\theta = 1/\lambda$</p>
+    </div>
+  </div>
+
+  <div class="note" style="margin-top:16px;">
+    <strong>⚠️ 最容易踩的坑</strong>：scipy 的 <code>stats.expon(scale=...)</code> 里 <code>scale</code> 是 <b>θ = 1/λ</b>，不是 λ 本身。写 <code>stats.expon(scale=2)</code> 得到的是平均 2 的分布（λ=0.5），而不是速率 2。
+  </div>
+
+  <h3>2. 四个核心函数</h3>
+  <table>
+    <tr>
+      <th>名称</th>
+      <th>公式</th>
+      <th>回答什么问题</th>
+    </tr>
+    <tr>
+      <td><strong><a class="concept-link" href="Beta分布-球星卡.html#concept-probability-density">密度函数</a></strong> $f(t)$</td>
+      <td>$\lambda e^{-\lambda t},\ t\ge 0$</td>
+      <td>等待时间落在 $t$ 附近的相对可能性（面积才有意义）</td>
+    </tr>
+    <tr>
+      <td><strong><a class="concept-link" href="Beta分布-球星卡.html#concept-cdf">累积分布</a></strong> $F(t)$</td>
+      <td>$1 - e^{-\lambda t}$</td>
+      <td>在 $t$ 之前等到的概率 $P(T\le t)$</td>
+    </tr>
+    <tr>
+      <td><strong>生存函数</strong> $S(t)$</td>
+      <td>$e^{-\lambda t}$</td>
+      <td>到 $t$ 为止还没等到的概率 $P(T>t)$</td>
+    </tr>
+    <tr>
+      <td><strong>危险率</strong> $h(t)$</td>
+      <td>$\dfrac{f(t)}{S(t)}=\lambda$</td>
+      <td>已知撑到 $t$，下一瞬间出事的瞬时概率——<b>恒等于常数</b></td>
+    </tr>
+  </table>
+
+  <div class="highlight">
+    <p><strong>危险率恒为常数，就是无记忆性的等价说法。</strong></p>
+    <p style="margin-top:10px;">$h(t)=\lambda$ 不依赖 $t$：不管已经等了 1 分钟还是 1 小时，接下来这一刻来车的强度都一样。反之，只要 $h(t)$ 随 $t$ 变化（上升 = 老化，下降 = 磨合），那个分布就<b>不是</b>指数分布。</p>
+    <p style="margin-top:10px;">这也解释了为什么零件寿命通常不服从指数分布——真实零件的 $h(t)$ 是浴盆曲线，只有中间那段平坦区才近似常数。</p>
+  </div>
+
+  <h3>3. 矩与形状</h3>
+  <table>
+    <tr><th>统计量</th><th>公式</th><th>λ=0.1 时</th></tr>
+    <tr><td>期望（均值）</td><td>$\dfrac{1}{\lambda}$</td><td>10</td></tr>
+    <tr><td>方差</td><td>$\dfrac{1}{\lambda^2}$</td><td>100</td></tr>
+    <tr><td>标准差</td><td>$\dfrac{1}{\lambda}$</td><td>10</td></tr>
+    <tr><td>变异系数 $CV=\sigma/\mu$</td><td>$1$（<b>恒为 1</b>）</td><td>1</td></tr>
+    <tr><td>众数</td><td>$0$（密度在 0 处最大）</td><td>0</td></tr>
+    <tr><td>中位数</td><td>$\dfrac{\ln 2}{\lambda}\approx\dfrac{0.693}{\lambda}$</td><td>6.93</td></tr>
+    <tr><td>$n$ 阶原点矩</td><td>$E[T^n]=\dfrac{n!}{\lambda^n}$</td><td>—</td></tr>
+    <tr><td>偏度</td><td>$2$（固定右偏）</td><td>2</td></tr>
+    <tr><td>超额峰度</td><td>$6$</td><td>6</td></tr>
+    <tr><td>熵（nat）</td><td>$1-\ln\lambda$</td><td>3.30</td></tr>
+  </table>
+
+  <p style="margin-top:12px;"><strong>几个值得记住的推论</strong>：</p>
+  <ul style="margin-left:24px;">
+    <li>标准差 = 均值 → 波动和量级一样大，这是指数分布"很不集中"的量化表达。</li>
+    <li>中位数只有均值的 69%，众数在 0 → 典型右偏。</li>
+    <li>偏度 2、峰度 6 都是<b>常数</b>，不随 λ 变——所有指数分布形状相同，只是横向缩放了。</li>
+  </ul>
+
+  <h3>4. 分位数与随机数生成</h3>
+  <p>反解 $F(t)=p$ 得分位数（$0<p<1$）：</p>
+  <div class="formula-box">
+    $$t_p = F^{-1}(p) = -\frac{\ln(1-p)}{\lambda}, \qquad \text{中位数 } t_{0.5}=\frac{\ln 2}{\lambda}$$
+  </div>
+  <p style="margin-top:12px;">把 $U\sim\text{Uniform}(0,1)$ 代进去，就得到<b>逆变换采样</b>——最常用的生成指数随机数的办法：</p>
+  <div class="formula-box">
+    $$T = -\frac{\ln U}{\lambda} = -\theta\ln U$$
+  </div>
+  <p style="margin-top:12px;">这也是页面里模拟实验用的那一行代码的数学依据（用 $1-U$ 或 $U$ 都一样，因为两者同分布）。</p>
+
+  <h3>5. 矩生成函数与特征函数</h3>
+  <div class="formula-box">
+    $$M(s)=E\left[e^{sT}\right]=\frac{\lambda}{\lambda-s},\quad s<\lambda$$
+    $$\varphi(t)=E\left[e^{itT}\right]=\frac{\lambda}{\lambda-it}$$
+  </div>
+  <p style="margin-top:12px;">$M(s)$ 对 $s$ 求导取 $s=0$ 就得到各阶矩；$\lambda\le s$ 时不存在，因为指数分布的尾部虽然衰减，但没有指数阶以上的可控增长——这个"收敛半径"本身也说明它的尾部没有高斯那么薄。</p>
+
+  <h3>6. 三条最常用的运算性质</h3>
+
+  <div class="card">
+    <h4>① 无记忆性</h4>
+    <div class="formula-box" style="margin:10px 0;">
+      $$P(T>s+t \mid T>s) = P(T>t) = e^{-\lambda t}$$
+    </div>
+    <p style="font-size:14px;">已经等了 $s$，剩余等待时间仍是 $\text{Exp}(\lambda)$，与 $s$ 无关。在<b>连续非负</b>分布中，指数分布是唯一具备这条性质的（离散情形唯一对应几何分布）。</p>
+  </div>
+
+  <div class="card">
+    <h4>② 最小值仍是指数分布</h4>
+    <p style="font-size:14px;">若 $T_1,\dots,T_n$ 相互独立，$T_i\sim\text{Exp}(\lambda_i)$，则</p>
+    <div class="formula-box" style="margin:10px 0;">
+      $$\min_i T_i \sim \text{Exp}\left(\sum_i \lambda_i\right)$$
+    </div>
+    <p style="font-size:14px;">速率直接相加。用途：多个独立故障源、多条并行链路、竞速场景"谁先到"。<br>
+    推论：$P(T_i \text{ 是最小值}) = \dfrac{\lambda_i}{\sum_j \lambda_j}$，即各事件"抢先"的概率正比于自身速率。</p>
+  </div>
+
+  <div class="card">
+    <h4>③ 相加得到 Gamma / Erlang</h4>
+    <p style="font-size:14px;">若 $T_1,\dots,T_k$ 独立同分布 $\text{Exp}(\lambda)$，则</p>
+    <div class="formula-box" style="margin:10px 0;">
+      $$\sum_{i=1}^{k} T_i \sim \text{Gamma}(k,\lambda) \quad(\text{整数 } k \text{ 时称 Erlang})$$
+    </div>
+    <p style="font-size:14px;">这是"等第 $k$ 件事"的来源，见 <a href="Gamma分布-等待时钟.html" style="color:var(--accent-dark);font-weight:600;">Gamma 分布：等待时钟</a>。<br>
+    顺带：$2\lambda T \sim \chi^2(2)$（自由度为 2 的卡方），可用于构造置信区间。</p>
+  </div>
+
+  <div class="card">
+    <h4>④ 缩放性质</h4>
+    <div class="formula-box" style="margin:10px 0;">
+      $$c\,T \sim \text{Exp}\left(\frac{\lambda}{c}\right) \quad (c>0)$$
+    </div>
+    <p style="font-size:14px;">换单位只改变速率。<b>但注意：均值不能直接相加</b>——$\text{Exp}(\lambda_1)+\text{Exp}(\lambda_2)$ 当 $\lambda_1\ne\lambda_2$ 时<b>不是</b>指数分布，而是<b>亚指数分布</b>（hypoexponential，密度是两个指数项的差），只有 $\lambda_1=\lambda_2=\lambda$ 时才退化成 $\text{Gamma}(2,\lambda)$。</p>
+  </div>
+
+  <div class="note" style="margin-top:16px;">
+    <strong>🪤 常见错误</strong>：把 $\text{Exp}(\lambda)$ 和 $\text{Exp}(\lambda)$ 相加当成 $\text{Exp}(2\lambda)$。<br>
+    正确关系是：<b>取最小值</b>才会速率相加（$\min\sim\text{Exp}(2\lambda)$），<b>相加</b>得到的是 $\text{Gamma}(2,\lambda)$（均值 $2/\lambda$，不是 $1/(2\lambda)$）。
+  </div>
+
+  <h3>7. 参数估计（最大似然）</h3>
+  <p>给定独立样本 $t_1,\dots,t_n$，对数似然为</p>
+  <div class="formula-box">
+    $$\ell(\lambda)=n\ln\lambda-\lambda\sum_{i=1}^{n}t_i$$
+  </div>
+  <p style="margin-top:12px;">令 $\ell'(\lambda)=\dfrac{n}{\lambda}-\sum t_i=0$，得 MLE：</p>
+  <div class="formula-box">
+    $$\hat{\lambda}=\frac{n}{\sum_{i=1}^{n} t_i}=\frac{1}{\bar{t}}, \qquad \hat{\theta}=\bar{t}$$
+  </div>
+  <p style="margin-top:12px;">即"速率估计 = 样本平均等待时间的倒数"。直观：平均每 10 分钟来一辆，速率就是 0.1 每分钟。</p>
+
+  <h3>8. 速查表</h3>
+  <div class="table-wrap" style="overflow-x:auto;">
+  <table style="font-size:13.5px;">
+    <tr><th>量</th><th>用 $\lambda$ 表示</th><th>用 $\theta=1/\lambda$ 表示</th></tr>
+    <tr><td>密度 $f(t)$</td><td>$\lambda e^{-\lambda t}$</td><td>$\frac{1}{\theta}e^{-t/\theta}$</td></tr>
+    <tr><td>分布 $F(t)$</td><td>$1-e^{-\lambda t}$</td><td>$1-e^{-t/\theta}$</td></tr>
+    <tr><td>生存 $S(t)$</td><td>$e^{-\lambda t}$</td><td>$e^{-t/\theta}$</td></tr>
+    <tr><td>危险率 $h(t)$</td><td>$\lambda$</td><td>$1/\theta$</td></tr>
+    <tr><td>均值</td><td>$1/\lambda$</td><td>$\theta$</td></tr>
+    <tr><td>方差</td><td>$1/\lambda^2$</td><td>$\theta^2$</td></tr>
+    <tr><td>中位数</td><td>$\ln 2/\lambda$</td><td>$\theta\ln 2$</td></tr>
+    <tr><td>分位数 $t_p$</td><td>$-\ln(1-p)/\lambda$</td><td>$-\theta\ln(1-p)$</td></tr>
+    <tr><td>MGF</td><td>$\lambda/(\lambda-s)$</td><td>$1/(1-\theta s)$</td></tr>
+    <tr><td>熵（nat）</td><td>$1-\ln\lambda$</td><td>$1+\ln\theta$</td></tr>
+    <tr><td>MLE</td><td>$n/\sum t_i$</td><td>$\bar{t}$</td></tr>
+  </table>
+  </div>
+
+  <div class="note" style="margin-top:16px;">
+    <strong>记法建议</strong>：论文和代码里两种参数化都会出现。检查顺序：<b>先看参数能否小于 1 之外的条件</b>——若公式里是 $e^{-\lambda t}$ 就是速率；若是 $e^{-t/\theta}$ 或 $e^{-t\cdot\text{rate}}$ 之外的 $e^{-t/\text{scale}}$ 就是尺度。代一个具体数验证均值最稳：算出来等于 $1/\lambda$ 还是 $\theta$。
+  </div>
+</div>
+
+<div class="section">
+  <h2 id="s3">为什么等车时间必然是指数分布？</h2>
+
+  <p>不是"观察发现等车大致像指数分布"，而是<b>只要满足泊松过程的假设，数学上只能得到指数分布</b>。推导只用一个思路：<strong>把时间切成很细的小段，看车一直没来的概率怎么衰减</strong>。</p>
+
+  <h3>推导：从"小段时间"到"连续时间"</h3>
+  <p>设平均速率 λ（每分钟来 λ 辆）。取一个很短的时段 $\Delta t$，短到里面最多来一辆车，于是：</p>
+  <ul style="margin-left:24px;">
+    <li>这 $\Delta t$ 内<strong>来车</strong>的概率 ≈ $\lambda \Delta t$</li>
+    <li>这 $\Delta t$ 内<strong>不来车</strong>的概率 ≈ $1 - \lambda \Delta t$</li>
+    <li>各小段之间<strong>相互独立</strong>（泊松过程的独立性）</li>
+  </ul>
+
+  <p style="margin-top:14px;">于是"从 0 到 $t$ 一直没来车"就是把整段 $t$ 切成 $n$ 小份、每份都不来：</p>
+  <div class="formula-box">
+    $$P(T > t) = \left(1 - \frac{\lambda t}{n}\right)^{n}$$
+  </div>
+
+  <p style="margin-top:12px;">让 $n \to \infty$（切得无限细），用 $e$ 的定义 $\lim_{n\to\infty}\left(1+\frac{x}{n}\right)^n = e^{x}$：</p>
+  <div class="formula-box">
+    $$P(T > t) = e^{-\lambda t}$$
+  </div>
+
+  <p style="margin-top:12px;">这是<strong>生存函数</strong>。对它求导取相反数就是密度（累积到 $t$ 之前的概率为 $1 - e^{-\lambda t}$）：</p>
+  <div class="formula-box">
+    $$F(t) = 1 - e^{-\lambda t}, \qquad f(t) = F'(t) = \lambda e^{-\lambda t}$$
+  </div>
+
+  <div class="note" style="margin-top:16px;">
+    <strong>关键在哪里？</strong> 整个推导只用了三条假设：速率恒定（$\lambda$ 不随时间变）、各段独立、短段内概率正比于长度。<b>指数分布的"指数"就是这三条假设的直接产物</b>——那个 $e^{-\lambda t}$ 来自"每小段都不出事"的连乘，和复利、放射性衰变是同一个数学结构。
+  </div>
+
+  <h3>反过来看：什么情况下不是指数分布？</h3>
+  <p>如果<b>任一假设被破坏</b>，等车时间就不再是指数分布：</p>
+  <table>
+    <tr>
+      <th>破坏哪条假设</th>
+      <th>现实对应</th>
+      <th>得到的分布</th>
+    </tr>
+    <tr>
+      <td>速率不恒定（随等待时间变化）</td>
+      <td>地铁时刻表、车会"越等越可能来"（老化、磨损）</td>
+      <td>Weibull 分布等</td>
+    </tr>
+    <tr>
+      <td>间隔完全固定（方差为 0）</td>
+      <td>准点班车</td>
+      <td>退化分布（常数）</td>
+    </tr>
+    <tr>
+      <td>速率随时间波动（高峰/平峰）</td>
+      <td>早晚高峰的公交</td>
+      <td>非齐次泊松过程</td>
+    </tr>
+  </table>
+  <p style="margin-top:12px;">所以"等车时间是指数分布"成立的前提是：<strong>没有时刻表、没有高峰、车不会因为等你而更想来</strong>。这三条恰恰就是"无记忆性"的物理含义。</p>
+</div>
+
+<div class="section">
+  <h2 id="s4">为什么第一个 1 分钟格子次数最多？</h2>
+
+  <p>先破除一个误解：<b>不是"车偏爱在早期到达"</b>。没有任何机制让车扎堆在前一分钟。真正的原因是两个概率相乘。</p>
+
+  <h3>先澄清：这和上面"一直没来"的推导矛盾吗？</h3>
+  <div class="highlight">
+    <p><strong>不矛盾，是同一个函数的两种看法。</strong></p>
+    <p style="margin-top:12px;">上一节算出的 $P(T>t)=e^{-\lambda t}$ 是<b>生存函数</b>——到时刻 $t$ 为止<b>还没来车</b>的概率。它随 $t$ <b>递减</b>：等得越久，"还没来"的可能性越小。</p>
+    <p style="margin-top:12px;">而"刚好落在第 $k$ 格"是生存函数在这一格上的<b>下降量</b>（这一段里来了车）：</p>
+    <div class="formula-box">
+      $$P(k-1<T\le k)=S(k-1)-S(k)=e^{-\lambda(k-1)}-e^{-\lambda k}=e^{-\lambda(k-1)}\left(1-e^{-\lambda}\right)$$
+    </div>
+    <p style="margin-top:12px;">所以两条事实说的是同一件事的两面：</p>
+    <ul style="margin-left:24px;">
+      <li>$S(t)$ 单调递减 → 每格的下降量也递减（每格按同一比例 $1-e^{-\lambda}$ 缩水）</li>
+      <li>密度 $f(t) = -S'(t) = \lambda e^{-\lambda t}$ 在 $t=0$ 处最大 → 第一格最高</li>
+      <li>直观说：$S(t)$ 在 $t=0$ 附近<b>跌得最快</b>，所以最初那一格"漏"掉的人最多</li>
+    </ul>
+  </div>
+
+  <h3>解释 1：每个格子 = "前面都没来" × "这一分钟来了"</h3>
+  <p>把等待时间切成 1 分钟一格。落在第 $k$ 格（即等了 $k-1$ 到 $k$ 分钟）要同时发生两件事：</p>
+  <ol style="margin-left:24px;">
+    <li>前 $k-1$ 分钟<b>一直没来</b>——概率 $e^{-\lambda(k-1)}$</li>
+    <li>第 $k$ 分钟<b>来了</b>——概率 $1 - e^{-\lambda}$</li>
+  </ol>
+  <div class="formula-box">
+    $$P(\text{落在第 } k \text{ 格}) = e^{-\lambda(k-1)}\left(1-e^{-\lambda}\right)$$
+  </div>
+
+  <p style="margin-top:12px;">第二项对所有格子都是<strong>同一个常数</strong>（无记忆性：不管已经等了多久，下一分钟来车的概率都一样）。所以格子之间的差别<b>完全来自第一项</b>——而 $e^{-\lambda(k-1)}$ 随 $k$ 单调递减。</p>
+
+  <div class="note" style="margin-top:14px;">
+    <strong>💡 最直观的一句话</strong>：第 $k$ 格的概率 = <b>走到这一格时还没来的人</b> × <b>这一分钟来车的固定概率</b>。前者在第 1 格最大（所有人都在等），后者每格相同，所以第 1 格概率最大。
+    <br><br>
+    <b>一个精度提醒</b>：格子概率是「生存概率 <b>×</b> 常数」，不是生存概率本身。生存概率 $P(T>k-1)$ 本身是单调下降的；乘上同一个常数后，大小顺序不变，但数值会被缩小到约为原来的 $1-e^{-\lambda}$ 倍。
+  </div>
+
+  <p style="margin-top:12px;"><strong>结论</strong>：相邻格子高度之比恒为 $e^{-\lambda}$，形成等比衰减。λ=0.1（平均 10 分钟）时比值为 0.905，所以第一格只比第二格高约 10%，看起来"最高但不悬殊"。</p>
+
+  <h3>解释 2：数一数"活下来"多久</h3>
+  <p>想象 1000 个人在同一时刻随机到站（泊松过程的起点可以随便截取。由于无记忆性，什么时候开始看都一样）：</p>
+  <table style="font-size:14px;">
+    <tr>
+      <th>时刻 $t$（分钟）</th>
+      <th>此刻还没等到的人</th>
+      <th>接下来这 1 分钟等到的人</th>
+    </tr>
+    <tr><td>0</td><td>1000 人</td><td><strong>约 95 人</strong></td></tr>
+    <tr><td>1</td><td>约 905 人</td><td>约 86 人</td></tr>
+    <tr><td>2</td><td>约 819 人</td><td>约 78 人</td></tr>
+    <tr><td>3</td><td>约 741 人</td><td>约 70 人</td></tr>
+    <tr><td>10</td><td>约 368 人</td><td>约 35 人</td></tr>
+    <tr><td>30</td><td>约 50 人</td><td>约 5 人</td></tr>
+  </table>
+  <p style="margin-top:12px;">每分钟"等到的人"= 此刻还在等的人数 × 每分钟来车概率。人数随时间是<b>指数式缩水</b>的，所以等到的人也越来越少。第一分钟的人最多，是因为那时<b>1000 个人全都在场</b>。</p>
+  <p style="margin-top:8px;font-size:13px;color:var(--ink-dim);">（"还没等到"列 = $1000\,e^{-\lambda t}$；"接下来 1 分钟等到"列 = 该行与下一行的差，等价于 $1000\,e^{-\lambda t}(1-e^{-\lambda})$。λ=0.1 时每人每分钟等到车的概率是 $1-e^{-0.1}\approx 9.5\%$。）</p>
+
+  <div class="note" style="margin-top:16px;">
+    <strong>💡 一句话</strong>：格子的高度 = <b>还剩多少人在等</b> × <b>每分钟来车的固定概率</b>。后一项恒定（无记忆性），前一项指数衰减，所以第一格必然最高。
+  </div>
+
+  <h3>为什么高峰不在平均值 10 分钟？</h3>
+  <p>因为指数分布<b>严重右偏</b>。绝大多数人几分钟内就走了，少数人等了极久，把均值拉到 10 分钟：</p>
+  <table style="font-size:14px;">
+    <tr><th>统计量</th><th>数值（λ=0.1）</th><th>含义</th></tr>
+    <tr><td>众数（密度最高）</td><td>0 分钟</td><td>最可能的时间点，就是"立刻"</td></tr>
+    <tr><td>中位数</td><td>$\ln 2/\lambda \approx 6.9$ 分钟</td><td>一半人在这之前等到</td></tr>
+    <tr><td>均值</td><td>$1/\lambda = 10$ 分钟</td><td>被长尾拉高</td></tr>
+    <tr><td>直方图最高格</td><td>0–1 分钟</td><td>因为密度在 0 处最大</td></tr>
+  </table>
+  <p style="margin-top:12px;">"平均值 10 分钟"和"最常见的等待是 0-1 分钟"并不矛盾——就像少数人年薪极高也会把平均工资拉得远高于中位数。</p>
+</div>
+
+<div class="demo-box" data-label="实验 1：看见指数分布的形状">
+  <div class="demo-title">调整速率，观察密度曲线</div>
+  <div class="controls">
+    <div class="control-group">
+      <label>速率 λ = <span id="lambda1-val" class="value-display">1.0</span> 次/分钟</label>
+      <input type="range" id="lambda1-slider" min="0.2" max="3" value="1" step="0.1">
+    </div>
+    <div style="font-size:14px;color:var(--ink-dim);max-width:400px;">
+      λ 越大，曲线越陡（事件来得快，等待时间短）
+    </div>
+  </div>
+  <canvas id="exp-shape-canvas" width="800" height="300"></canvas>
+  <p style="margin-top:12px;font-size:14px;color:var(--ink-dim);">
+    <strong>观察</strong>：L 形曲线，大部分概率集中在左边（短等待），但有长尾（偶尔等很久）。均值（虚线）= 1/λ。
+  </p>
+</div>
+
+<div class="section">
+  <h2 id="s5">核心问题：为什么不是间隔的一半？</h2>
+
+  <h3>场景 1：固定间隔（你的直觉）</h3>
+  <div class="highlight">
+    <p><strong>假设</strong>：公交车<strong>每 10 分钟准时</strong>来一辆，像钟表一样精确。</p>
+    <p><strong>你随机到站</strong>：</p>
+    <ul style="margin-left:24px;">
+      <li>可能刚走一辆（等 10 分钟）</li>
+      <li>可能刚好来一辆（等 0 分钟）</li>
+      <li>等任何时间（0到10分钟）的概率<strong>相同</strong>（均匀分布）</li>
+    </ul>
+    <p style="margin-top:12px;"><strong>平均等待</strong> = (0 + 10) / 2 = <strong>5 分钟</strong>（间隔的一半）✓</p>
+  </div>
+
+  <div class="visual-demo">
+    <h4 style="color:var(--accent-dark);margin-bottom:16px;">固定间隔可视化</h4>
+    <div style="margin:20px 0;">
+      <div style="display:flex;align-items:center;gap:20px;margin-bottom:8px;">
+        <span style="font-size:24px;">🚌</span>
+        <div style="flex:1;height:4px;background:var(--line);border-radius:2px;"></div>
+        <span style="font-size:24px;">🚌</span>
+        <div style="flex:1;height:4px;background:var(--line);border-radius:2px;"></div>
+        <span style="font-size:24px;">🚌</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--ink-dim);">
+        <span>10:00</span>
+        <span>10:10</span>
+        <span>10:20</span>
+      </div>
+    </div>
+    <p style="font-size:14px;color:var(--ink-dim);text-align:center;margin-top:16px;">
+      你在 10:00-10:10 之间任意时刻到站，等待时间均匀分布，平均 5 分钟
+    </p>
+  </div>
+
+  <h3>场景 2：随机间隔（指数分布）</h3>
+  <div class="highlight">
+    <p><strong>假设</strong>：公交车<strong>随机到达</strong>，平均间隔 10 分钟，但实际间隔<strong>可长可短</strong>（泊松过程）。</p>
+    <p><strong>关键差异</strong>：</p>
+    <ul style="margin-left:24px;">
+      <li>有时两辆车间隔 2 分钟</li>
+      <li>有时间隔 20 分钟</li>
+      <li>间隔本身是<strong>随机变量</strong>，服从指数分布</li>
+      <li><strong>无记忆性</strong>：已经等了 5 分钟，不意味着"快来了"</li>
+    </ul>
+    <p style="margin-top:12px;"><strong>平均等待</strong> = 平均间隔 = <strong>10 分钟</strong>（不是 5 分钟）</p>
+  </div>
+
+  <div class="visual-demo">
+    <h4 style="color:var(--accent-dark);margin-bottom:16px;">随机间隔可视化</h4>
+    <div style="margin:20px 0;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <span style="font-size:24px;">🚌</span>
+        <div style="flex:0.5;height:4px;background:var(--warn);border-radius:2px;"></div>
+        <span style="font-size:24px;">🚌</span>
+        <div style="flex:2;height:4px;background:var(--warn);border-radius:2px;"></div>
+        <span style="font-size:24px;">🚌</span>
+        <div style="flex:0.8;height:4px;background:var(--warn);border-radius:2px;"></div>
+        <span style="font-size:24px;">🚌</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--ink-dim);">
+        <span>10:00</span>
+        <span>10:03</span>
+        <span>10:18</span>
+        <span>10:26</span>
+      </div>
+    </div>
+    <p style="font-size:14px;color:var(--ink-dim);text-align:center;margin-top:16px;">
+      间隔不固定！短间隔和长间隔都存在，你更可能落在长间隔里，平均等待 = 平均间隔
+    </p>
+  </div>
+</div>
+
+<div class="section">
+  <h2 id="s6">无记忆性：指数分布的灵魂</h2>
+
+  <div class="highlight">
+    <p><strong>定义</strong>：已经等了 s 时间，再等 t 时间的概率，与从头开始等 t 时间的概率<strong>相同</strong>。</p>
+    <div class="formula-box">
+      $$P(T > s + t \mid T > s) = P(T > t)$$
+    </div>
+    <p style="text-align:center;color:var(--ink-dim);font-size:14px;">数学表达式：过去不影响未来</p>
+  </div>
+
+  <h3>白话理解</h3>
+  <p>你在站台等了 10 分钟，车还没来。此时：</p>
+  <ul>
+    <li><strong>你的直觉</strong>："都等了 10 分钟了（已经是平均间隔了），肯定快来了！"</li>
+    <li><strong>指数分布的数学</strong>："等了 10 分钟和刚到站没区别，平均还要再等 10 分钟"</li>
+  </ul>
+
+  <div class="card" style="background:var(--surface-2);margin:16px 0;padding:20px;border:2px solid var(--warn);">
+    <h4 style="color:var(--warn);margin-top:0;">🤔 关键疑问：等了 10 分钟（平均间隔）是不是快来了？</h4>
+    <p><strong>答案：不是。</strong></p>
+    <p style="margin-top:12px;">无论你已经等了多久，期望的剩余等待时间都是<strong>平均间隔</strong>（10 分钟）：</p>
+    <ul style="margin:12px 0 0 24px;font-size:15px;">
+      <li>等了 5 分钟 → 期望还要等 10 分钟</li>
+      <li>等了 10 分钟 → 期望还要等 10 分钟</li>
+      <li>等了 30 分钟 → 期望还要等 10 分钟</li>
+      <li>等了 100 分钟 → 期望还要等 10 分钟</li>
+    </ul>
+    <p style="margin-top:12px;"><strong>为什么？</strong>因为公交车的到达是<b>完全随机</b>的，每一刻车来的概率（速率 λ）都相同，<b>不会因为你等得久而增加</b>。这就是无记忆性的含义。</p>
+  </div>
+
+  <div class="note">
+    <strong>💡 为什么会这样？</strong><br>
+    因为<strong>过去的等待时间不提供任何信息</strong>。公交车的到达是随机的，不受"上一辆车多久前走"的影响。就像掷骰子：前面掷了 100 次没出 6，第 101 次出 6 的概率还是 1/6。
+  </div>
+
+  <h3>类比：金鱼的记忆</h3>
+  <div class="highlight">
+    <p>想象你是一条金鱼（只有 3 秒记忆）：</p>
+    <ul style="margin-left:24px;margin-top:12px;">
+      <li>每 3 秒你忘记之前发生的一切</li>
+      <li>每次醒来都觉得"我刚到站"</li>
+      <li>所以每次的平均等待时间都是<strong>完整的平均间隔</strong></li>
+    </ul>
+    <p style="margin-top:12px;">指数分布就像"永恒的金鱼"——每一刻都是新的开始。</p>
+  </div>
+</div>
+
+<div class="demo-box" data-label="实验 2：模拟固定 vs 随机间隔">
+  <div class="demo-title">对比两种模型的平均等待时间</div>
+  <div class="controls">
+    <div class="control-group">
+      <label>平均间隔 = <span id="interval2-val" class="value-display">10</span> 分钟</label>
+      <input type="range" id="interval2-slider" min="5" max="20" value="10" step="1">
+    </div>
+    <button id="sim2-btn">运行 1000 次模拟</button>
+  </div>
+  <canvas id="sim2-canvas" width="800" height="350"></canvas>
+  <div id="sim2-result" style="margin-top:16px;padding:16px;background:var(--line);border-radius:8px;font-size:14px;"></div>
+  <p style="margin-top:12px;font-size:13px;color:var(--ink-dim);">
+    <strong>对比</strong>：固定间隔的平均等待 ≈ 间隔/2；随机间隔（指数）的平均等待 ≈ 完整间隔。
+  </p>
+  <p style="margin-top:8px;font-size:13px;color:var(--ink-dim);">
+    <strong>直方图说明</strong>：横轴分成 40 个柱子（bins），每个柱子统计落在该时间区间内的模拟次数。例如平均间隔 10 分钟时，横轴 0-40 分钟被分成 40 个柱子，每柱宽 1 分钟，统计"等待 0-1 分钟"、"等待 1-2 分钟"...的次数。柱子越高，说明该等待时间出现越频繁。
+  </p>
+  <p style="margin-top:12px;font-size:13px;color:var(--ink-dim);">
+    <strong>为什么随机间隔的第一个柱子最高（0-1 分钟次数最多）？</strong>
+  </p>
+  <ul style="margin:6px 0 0 24px;font-size:13px;color:var(--ink-dim);">
+    <li><strong>因为指数分布的密度从 0 开始就单调递减</strong>：$f(t)=\lambda e^{-\lambda t}$，$\lambda=1/10$ 时 $f(0)=0.1$，随时间指数衰减。密度在 0 处最大，所以 0-1 分钟的区间概率最大。</li>
+    <li><strong>各柱子的理论概率</strong>（每柱 1 分钟，1000 次模拟的期望次数）：0-1 分钟约 95 次，1-2 分钟约 86 次，2-3 分钟约 78 次，3-4 分钟约 71 次，4-5 分钟约 64 次——递减且差距逐渐缩小。</li>
+    <li><strong>注意"最可能"≠"大多数"</strong>：0-1 分钟只占约 9.5%，十次里不到一次。它最高只是因为没有任何其他单个 1 分钟区间能超过它。</li>
+    <li><strong>为什么高峰不在平均值 10 分钟处？</strong>因为指数分布<b>严重右偏</b>：大量样本集中在 0 附近（短等待），少数极长的等待把平均值拉高到 10 分钟。中位数只有 $\ln 2/\lambda\approx6.9$ 分钟。均值 ≠ 众数，众数在 0。</li>
+    <li><strong>对比固定间隔</strong>：上半部分的均匀分布是平顶的，每个 1 分钟区间概率都相同（约 100 次），因为"最多等 10 分钟、每个时刻等长"。</li>
+  </ul>
+</div>
+
+<div class="section">
+  <h2 id="s7">为什么随机等待 = 完整间隔？</h2>
+
+  <h3>原因 1：长间隔陷阱</h3>
+  <div class="highlight">
+    <p><strong>关键洞察</strong>：在随机到达模型中，你<strong>更可能落在长间隔里</strong>。</p>
+    <p style="margin-top:12px;"><strong>设定</strong>：观察 10 段车间隔，其中</p>
+    <ul style="margin-left:24px;">
+      <li>9 段短间隔，每段 1 分钟 → 合计 9 分钟</li>
+      <li>1 段长间隔，长度 91 分钟 → 合计 91 分钟</li>
+      <li>整条时间轴总长度 = 9 + 91 = <strong>100 分钟</strong></li>
+      <li>平均每段间隔 = 100 / 10 = 10 分钟 ✓</li>
+    </ul>
+
+    <p style="margin-top:16px;"><strong>你随机到站的时刻，在这 100 分钟上均匀分布</strong>。落在某段间隔的概率 = 该段时长 ÷ 100：</p>
+    <ul style="margin-left:24px;">
+      <li>落进那<strong>一段</strong> 91 分钟的长间隔 = 91 ÷ 100 = <strong>91%</strong></li>
+      <li>落进<strong>九段</strong> 1 分钟的短间隔（合起来才 9 分钟）= 9 ÷ 100 = <strong>9%</strong></li>
+      <li>单独看其中任意一段短间隔 = 1 ÷ 100 = <strong>1%</strong></li>
+    </ul>
+
+    <div class="note" style="margin-top:14px;">
+      <strong>读法提醒</strong>：分子分母都是<b>分钟数</b>，不是格子编号，也不是“1~91 累加”。<br>
+      91 是那一段自身的时长；9% 之所以是“九段之和”，是因为把 9 段短间隔当成一组来问。逐段看的话每段只有 1%。
+    </div>
+
+    <p style="margin-top:16px;"><strong>算平均等待</strong>：落在段内哪一点也是均匀的，所以平均还要等该段的一半——</p>
+    <p style="margin-left:24px;margin-top:8px;">
+      $0.09 \times \frac{1}{2} + 0.91 \times \frac{91}{2} = 0.045 + 41.4 \approx 41.4$ 分钟
+    </p>
+    <p style="margin-top:8px;">远大于“平均间隔”10 分钟——因为你的到站时刻被长间隔<b>长度加权</b>采样了。</p>
+  </div>
+
+  <div class="note">
+    <strong>⚠️ 这叫"等待时间悖论"（Waiting Time Paradox）</strong>：观测到的间隔比实际平均间隔更长，因为长间隔被"过度采样"。
+  </div>
+
+  <h3>原因 2：数学推导（剩余时间）</h3>
+  <p>设两辆车之间的间隔为 $X$（随机变量，独立同分布），你随机到站后到下一辆车来的<strong>剩余等待时间</strong>为 $R$。</p>
+
+  <div class="formula-box">
+    $$E[R] = \frac{E[X^2]}{2 \cdot E[X]}$$
+  </div>
+
+  <p style="margin-top:16px;">这个式子不是凭空来的，它由<b>两步</b>组成，中间有一个关键概念：<strong>长度加权采样</strong>。</p>
+
+  <h4 style="color:var(--accent-dark);margin-top:20px;">第 1 步：分子为什么要平方？——你更容易撞进长间隔</h4>
+  <p>记你<strong>实际落进去的那一段间隔</strong>长度为 $L$。它和 $X$ 不是同一个分布：$X$ 是"随便挑一段间隔"的长度，$L$ 是"随机时刻落进去"的那一段长度。</p>
+  <p>一段间隔越长，占的时间越多，你越可能落在里面。所以 $L$ 的密度是 $X$ 的密度乘以自身长度再归一化：</p>
+
+  <div class="formula-box">
+    $$f_L(x) = \frac{x \cdot f_X(x)}{E[X]}$$
+  </div>
+
+  <p style="margin-top:12px;">用这个算 $L$ 的期望（这就是长度加权）：</p>
+  <div class="formula-box">
+    $$E[L] = \int_0^\infty x \cdot \frac{x f_X(x)}{E[X]}\,dx = \frac{\int_0^\infty x^2 f_X(x)\,dx}{E[X]} = \frac{E[X^2]}{E[X]}$$
+  </div>
+
+  <p style="margin-top:12px;"><strong>这就是平方的来源</strong>：一个 $x$ 来自"长度正比于概率"，另一个 $x$ 来自"求期望时要乘长度"。平方项永远 ≥ 均值平方，所以 $E[L] \ge E[X]$——你观测到的间隔平均比真实间隔长。</p>
+
+  <h4 style="color:var(--accent-dark);margin-top:20px;">第 2 步：为什么要除以 2？——在段内你落在哪是均匀的</h4>
+  <p>已经知道你落进了长度为 $L$ 的某一段，但你具体在这一段的哪个位置，是<strong>均匀分布</strong>的（随机时刻不会偏爱某一段的前半或后半）。</p>
+
+  <p style="margin-top:12px;"><strong>(a) 先固定 $L$，算条件期望</strong>。设已经过去的时间为 $u$，剩余时间就是 $L - u$，而 $u$ 在 $[0, L]$ 上均匀：</p>
+
+  <div class="formula-box">
+    $$E[R \mid L] = \frac{1}{L}\int_0^L (L-u)\,du = \frac{1}{L}\left[Lu - \frac{u^2}{2}\right]_{0}^{L} = \frac{1}{L}\cdot\frac{L^2}{2} = \frac{L}{2}$$
+  </div>
+
+  <p style="margin-top:12px;">直观版：$u$ 均匀地取在 $[0,L]$ 上，它的平均是 $L/2$，所以剩余时间 $L-u$ 的平均也是 $L/2$。</p>
+
+  <p style="margin-top:16px;"><strong>(b) 再对 $L$ 的随机性取平均</strong>。这里用的正是<b>全期望公式</b> $E[R] = E\big[E[R\mid L]\big]$：</p>
+
+  <div class="formula-box">
+    $$E[R] = \int_0^\infty E[R \mid L=x]\, f_L(x)\,dx = \int_0^\infty \frac{x}{2}\, f_L(x)\,dx = \frac{1}{2}\underbrace{\int_0^\infty x\, f_L(x)\,dx}_{=\,E[L]} = \frac{E[L]}{2}$$
+  </div>
+
+  <p style="margin-top:12px;"><strong>为什么 $\frac{1}{2}$ 能提到期望外面</strong>：因为它是<strong>常数</strong>，与 $L$ 取什么值无关。不管落进去的是 2 分钟的段还是 91 分钟的段，剩余时间都恰好是该段的一半，所以"取一半"这个操作可以整体搬到最外层，不会和求期望相互影响。</p>
+
+  <p style="margin-top:12px;">代入第 1 步的 $E[L] = \dfrac{E[X^2]}{E[X]}$：</p>
+  <div class="formula-box">
+    $$E[R] = \frac{1}{2}\cdot\frac{E[X^2]}{E[X]} = \frac{E[X^2]}{2\,E[X]}$$
+  </div>
+
+  <div class="note" style="margin-top:16px;">
+    <strong>一句话记住</strong>：<b>先按长度加权挑出你落进的那段（引入 $E[X^2]$），再取这段的一半（除以 2）</b>。两个动作分别对应分子和分母里的两个因子。
+  </div>
+
+  <p style="margin-top:16px;"><strong>离散版对照</strong>（和上一节 10 段间隔的例子一模一样）：若间隔只能取 $x_1,\dots,x_n$，落进第 $i$ 段的概率是 $p_i = \dfrac{x_i}{\sum_j x_j}$，则</p>
+  <div class="formula-box">
+    $$E[R] = \sum_{i=1}^{n} \frac{x_i}{2}\cdot p_i = \frac{1}{2}\sum_i x_i p_i = \frac{E[L]}{2}$$
+  </div>
+  <p style="margin-top:12px;">用 9 段 1 分钟 + 1 段 91 分钟验算：每段 1 分钟的概率是 $1/100$，那段 91 分钟的概率是 $91/100$，于是</p>
+  <div class="formula-box">
+    $$E[R] = \underbrace{9\times\frac{1}{2}\times\frac{1}{100}}_{\text{九段短间隔}} + \underbrace{\frac{91}{2}\times\frac{91}{100}}_{\text{一段长间隔}} = 0.045 + 41.405 \approx 41.45\ \text{分钟}$$
+  </div>
+  <p style="margin-top:12px;">正好等于 $\dfrac{E[L]}{2}$：$E[L] = 9\times1\times\frac{1}{100} + 91\times\frac{91}{100} = 0.09 + 82.81 = 82.9$，一半就是 41.45。注意 $E[L] = 82.9$ 分钟远大于 $E[X] = 10$ 分钟——这就是长度加权采样把观测间隔拉长的量化结果。</p>
+
+  <h4 style="color:var(--accent-dark);margin-top:20px;">等价写法：直接积分</h4>
+  <p>也可以不引入 $L$，直接对"间隔长度 $x$ + 段内位置 $u$"二重积分。你落在区间 $[u, u+du]$ 的概率正比于 $du$，而落在长度为 $x$ 的段里、位置在 $u$ 的联合密度是 $f_X(x)\,du\,/\,E[X]$：</p>
+  <div class="formula-box">
+    $$E[R] = \frac{1}{E[X]}\int_0^\infty \left(\int_0^x (x-u)\,du\right) f_X(x)\,dx = \frac{1}{E[X]}\int_0^\infty \frac{x^2}{2} f_X(x)\,dx = \frac{E[X^2]}{2\,E[X]}$$
+  </div>
+  <p style="margin-top:12px;">内层 $\int_0^x (x-u)du = \frac{x^2}{2}$ 就是"段内平均等一半"，外层加权就是长度加权。<strong>两步法和二重积分是同一件事</strong>。</p>
+
+  <h4 style="color:var(--accent-dark);margin-top:20px;">代入两种情况检验</h4>
+
+  <p><strong>① 指数分布</strong>：$X \sim \text{Exp}(\lambda)$</p>
+  <ul style="margin-left:24px;">
+    <li>$E[X] = \frac{1}{\lambda}$（平均间隔）</li>
+    <li>$E[X^2] = \frac{2}{\lambda^2}$（指数分布的二阶矩）</li>
+    <li>$E[R] = \dfrac{2/\lambda^2}{2 \cdot (1/\lambda)} = \dfrac{1}{\lambda} = E[X]$</li>
+  </ul>
+  <p style="margin-top:12px;"><strong>结论</strong>：指数分布的平均剩余时间 = 平均间隔。这是无记忆性的直接结果——也可以直接由 $R \sim \text{Exp}(\lambda)$ 得到，两者一致。</p>
+
+  <p style="margin-top:20px;"><strong>② 固定间隔</strong>：$X = c$（退化分布，方差为 0）</p>
+  <ul style="margin-left:24px;">
+    <li>$E[X] = c$</li>
+    <li>$E[X^2] = c^2$（没有随机性，平方就是平方）</li>
+    <li>$E[R] = \dfrac{c^2}{2c} = \dfrac{c}{2}$</li>
+  </ul>
+  <p style="margin-top:12px;"><strong>结论</strong>：固定间隔的平均剩余时间 = 间隔的一半 ✓（和你的直觉一致）</p>
+
+  <div class="note" style="margin-top:20px;">
+    <strong>💡 公式的统一含义</strong>：$E[R] = \frac{1}{2}\cdot\frac{E[X^2]}{E[X]}$ 可以看成
+    <br>「<b>段内平均等一半</b>」×「<b>长度加权后的平均段长</b>」。
+    <br>因为 $\frac{E[X^2]}{E[X]} \ge E[X]$（等号仅在 $X$ 为常数时成立），所以 <b>只要间隔有随机性，平均等待就严格大于 $c/2$</b>；随机性越大（方差越大），超出得越多。固定间隔是"最幸运"的情形，指数分布则是"无记忆"的极端——等待时间被拉到和平均间隔一样长。
+  </div>
+</div>
+
+<div class="demo-box" data-label="实验 3：可视化无记忆性">
+  <div class="demo-title">已经等了一段时间，期望再等多久？</div>
+  <div class="controls">
+    <div class="control-group">
+      <label>已经等了 <span id="waited-val" class="value-display">0</span> 分钟</label>
+      <input type="range" id="waited-slider" min="0" max="10" value="0" step="0.5">
+    </div>
+    <div style="font-size:14px;color:var(--ink-dim);max-width:400px;">
+      速率 λ=1（平均间隔 1 分钟）
+    </div>
+  </div>
+  <canvas id="memoryless-canvas" width="800" height="300"></canvas>
+  <p id="memoryless-result" style="margin-top:12px;font-size:15px;font-weight:700;color:var(--accent-dark);"></p>
+  <p style="margin-top:8px;font-size:13px;color:var(--ink-dim);">
+    <strong>观察</strong>：无论已经等了多久，剩余等待时间的分布<strong>形状不变</strong>（只是起点后移），期望始终是 1 分钟。
+  </p>
+</div>
+
+<div class="section">
+  <h2 id="s8">现实世界的应用</h2>
+
+  <div class="comparison">
+    <div class="card">
+      <h4>适用指数分布</h4>
+      <ul>
+        <li>网站访问间隔</li>
+        <li>放射性粒子衰变</li>
+        <li>电话呼入</li>
+        <li>服务器请求到达</li>
+        <li>设备故障（无老化）</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h4>不适用指数分布</h4>
+      <ul>
+        <li>地铁（固定时刻表）</li>
+        <li>人的寿命（有老化）</li>
+        <li>定时器触发</li>
+        <li>电池寿命（逐渐衰减）</li>
+        <li>季节性事件</li>
+      </ul>
+    </div>
+  </div>
+
+  <h3>例子：客服系统</h3>
+  <div class="highlight">
+    <p><strong>场景</strong>：客服平均每小时接到 12 个咨询电话（λ=12/小时）。</p>
+    <ul style="margin-left:24px;margin-top:12px;">
+      <li>平均间隔 = 1/12 小时 = 5 分钟</li>
+      <li>刚接完一个电话，预期多久会来下一个？<strong>5 分钟</strong>（不是 2.5 分钟）</li>
+      <li>如果 10 分钟没来电话，是不是快来了？<strong>不是</strong>，还是预期 5 分钟</li>
+    </ul>
+  </div>
+</div>
+
+<div class="section">
+  <h2 id="s9">常见误区</h2>
+
+  <h3>误区 1："等久了就快来了"</h3>
+  <div class="note">
+    <strong>❌ 错误想法</strong>：都等 20 分钟了，按平均 10 分钟来一辆，肯定马上就来！<br>
+    <strong>✅ 正确理解</strong>：如果是随机到达，过去的 20 分钟不提供任何信息，期望还是再等 10 分钟。<br>
+    <strong>💡 例外</strong>：如果是固定时刻表（地铁），这个直觉才对。
+  </div>
+
+  <h3>误区 2："平均间隔 = 平均等待的 2 倍"</h3>
+  <div class="note">
+    <strong>❌ 错误想法</strong>：这个公式对所有情况都成立。<br>
+    <strong>✅ 正确理解</strong>：这只对<strong>固定间隔</strong>成立。随机间隔（指数分布）时，平均等待 = 平均间隔。<br>
+    <strong>💡 判断</strong>：有时刻表吗？有，用间隔/2；没有（随机），用完整间隔。
+  </div>
+
+  <h3>误区 3："指数分布是唯一的无记忆分布"</h3>
+  <div class="note">
+    <strong>✅ 这个是对的</strong>：在连续分布中，指数分布是<strong>唯一</strong>具有无记忆性的分布。<br>
+    <strong>离散版本</strong>：几何分布（等第一次成功的试验次数）也是无记忆的。<br>
+    <strong>意义</strong>：如果现实中某个等待时间具有无记忆性，那它<strong>必然</strong>是指数分布。
+  </div>
+</div>
+
+<div class="section">
+  <h2 id="s10">与 Gamma 分布的关系</h2>
+
+  <div class="highlight">
+    <p><strong>指数分布</strong> = Gamma(1, λ) = 等<strong>第 1 件</strong>事</p>
+    <p style="margin-top:8px;"><strong><a class="concept-link" href="概率分布博物馆.html#concept-gamma-distribution">Gamma 分布</a></strong> = 等<strong>第 k 件</strong>事 = k 个独立指数分布之和</p>
+  </div>
+
+  <table>
+    <tr>
+      <th>分布</th>
+      <th>描述</th>
+      <th>期望</th>
+    </tr>
+    <tr>
+      <td>Exp(λ)</td>
+      <td>等第 1 辆车</td>
+      <td>1/λ</td>
+    </tr>
+    <tr>
+      <td>Gamma(2, λ)</td>
+      <td>等第 2 辆车经过</td>
+      <td>2/λ</td>
+    </tr>
+    <tr>
+      <td>Gamma(k, λ)</td>
+      <td>等第 k 辆车经过</td>
+      <td>k/λ</td>
+    </tr>
+  </table>
+
+  <p style="margin-top:16px;">详见 <a href="Gamma分布-等待时钟.html" style="color:var(--accent-dark);font-weight:700;">Gamma 分布：等待时钟</a></p>
+</div>
+
+<div class="section">
+  <h2 id="s11">总结</h2>
+
+  <div class="highlight">
+    <h3 style="color:var(--accent-dark);margin-top:0;">记住三个关键点</h3>
+    <ol style="margin-left:24px;margin-top:12px;">
+      <li><strong>固定间隔</strong>：平均等待 = 间隔 / 2（你的直觉）</li>
+      <li><strong>随机间隔（指数）</strong>：平均等待 = 完整间隔（数学答案）</li>
+      <li><strong>无记忆性</strong>：过去的等待不影响未来，每一刻都是新的开始</li>
+    </ol>
+  </div>
+
+  <div class="big-question" style="background:linear-gradient(135deg, var(--secondary), var(--accent));">
+    下次等车时，想想：这是固定时刻表，还是随机到达？<br>
+    你的等待时间，背后是哪种数学？
+  </div>
+</div>
+
+<div class="concept-related">
+  <strong>相关概念</strong>
+  <a class="concept-link" href="概率分布博物馆.html#concept-poisson-distribution">泊松分布</a>
+  <a class="concept-link" href="概率分布博物馆.html#concept-gamma-distribution">Gamma 分布</a>
+  <a class="concept-link" href="Beta分布-球星卡.html#concept-probability-density">概率密度</a>
+</div>
+
+<footer>
+  <p style="font-size:20px;margin-bottom:12px;">⏰ 指数分布：等待的数学</p>
+  <p><a href="index.html">返回知识库</a> · <a href="Gamma分布-等待时钟.html">Gamma 分布</a> · <a href="Beta分布-球星卡.html">Beta 分布</a></p>
+  <p style="margin-top:16px;font-size:14px;opacity:0.9;">理解无记忆性，就理解了指数分布的灵魂</p>
+</footer>
+
+</div>
+
+<script>
+// ===== 实验 1: 指数分布形状 =====
+const lambda1Slider = document.getElementById('lambda1-slider');
+const lambda1Val = document.getElementById('lambda1-val');
+const expShapeCanvas = document.getElementById('exp-shape-canvas');
+const expShapeCtx = expShapeCanvas.getContext('2d');
+
+function expPDF(t, lambda) {
+  return lambda * Math.exp(-lambda * t);
+}
+
+function drawExpShape() {
+  const lambda = parseFloat(lambda1Slider.value);
+  lambda1Val.textContent = lambda.toFixed(1);
+
+  const w = expShapeCanvas.width;
+  const h = expShapeCanvas.height;
+  const padding = 50;
+  const plotW = w - 2 * padding;
+  const plotH = h - 2 * padding;
+
+  expShapeCtx.fillStyle = '#fafafa';
+  expShapeCtx.fillRect(0, 0, w, h);
+
+  const maxT = Math.max(6, 4 / lambda);
+  const steps = 500;
+  let maxPDF = lambda;
+
+  // 绘制坐标轴
+  expShapeCtx.strokeStyle = '#e2d5c2';
+  expShapeCtx.lineWidth = 2;
+  expShapeCtx.beginPath();
+  expShapeCtx.moveTo(padding, padding);
+  expShapeCtx.lineTo(padding, h - padding);
+  expShapeCtx.lineTo(w - padding, h - padding);
+  expShapeCtx.stroke();
+
+  // 绘制曲线
+  expShapeCtx.strokeStyle = '#f582ae';
+  expShapeCtx.lineWidth = 3;
+  expShapeCtx.beginPath();
+  for (let i = 0; i <= steps; i++) {
+    const t = (i / steps) * maxT;
+    const pdf = expPDF(t, lambda);
+    const x = padding + (t / maxT) * plotW;
+    const y = h - padding - (pdf / maxPDF) * plotH;
+    if (i === 0) expShapeCtx.moveTo(x, y);
+    else expShapeCtx.lineTo(x, y);
+  }
+  expShapeCtx.stroke();
+
+  // 均值线
+  const mean = 1 / lambda;
+  const meanX = padding + (mean / maxT) * plotW;
+  expShapeCtx.strokeStyle = '#ffa69e';
+  expShapeCtx.setLineDash([5, 5]);
+  expShapeCtx.beginPath();
+  expShapeCtx.moveTo(meanX, padding);
+  expShapeCtx.lineTo(meanX, h - padding);
+  expShapeCtx.stroke();
+  expShapeCtx.setLineDash([]);
+
+  expShapeCtx.fillStyle = '#ffa69e';
+  expShapeCtx.font = '14px Arial';
+  expShapeCtx.fillText(`均值=${mean.toFixed(2)}`, meanX + 5, padding + 20);
+
+  // 标注
+  expShapeCtx.fillStyle = '#718096';
+  expShapeCtx.font = '12px Arial';
+  expShapeCtx.fillText('0', padding - 5, h - padding + 20);
+  expShapeCtx.fillText(maxT.toFixed(1), w - padding, h - padding + 20);
+  expShapeCtx.fillText('时间', w / 2, h - 15);
+}
+
+lambda1Slider.addEventListener('input', drawExpShape);
+drawExpShape();
+
+// ===== 实验 2: 固定 vs 随机间隔 =====
+const interval2Slider = document.getElementById('interval2-slider');
+const interval2Val = document.getElementById('interval2-val');
+const sim2Btn = document.getElementById('sim2-btn');
+const sim2Canvas = document.getElementById('sim2-canvas');
+const sim2Ctx = sim2Canvas.getContext('2d');
+const sim2Result = document.getElementById('sim2-result');
+
+interval2Slider.addEventListener('input', () => {
+  interval2Val.textContent = interval2Slider.value;
+});
+
+function exponentialSample(lambda) {
+  return -Math.log(1 - Math.random()) / lambda;
+}
+
+sim2Btn.addEventListener('click', () => {
+  const interval = parseInt(interval2Slider.value);
+  const lambda = 1 / interval;
+  const nSims = 1000;
+
+  // 固定间隔模拟
+  const fixedWaits = [];
+  for (let i = 0; i < nSims; i++) {
+    fixedWaits.push(Math.random() * interval);
+  }
+
+  // 随机间隔模拟
+  const randomWaits = [];
+  for (let i = 0; i < nSims; i++) {
+    randomWaits.push(exponentialSample(lambda));
+  }
+
+  const fixedMean = fixedWaits.reduce((a, b) => a + b, 0) / nSims;
+  const randomMean = randomWaits.reduce((a, b) => a + b, 0) / nSims;
+
+  // 固定横轴最大值为平均间隔的 4 倍（更稳定的对比）
+  const maxVal = interval * 4;
+  const nBins = 40;
+  const binWidth = maxVal / nBins;
+
+  const fixedBins = new Array(nBins).fill(0);
+  const randomBins = new Array(nBins).fill(0);
+
+  // 只统计在横轴范围内的数据，超出范围的不计入
+  let fixedOutOfRange = 0;
+  let randomOutOfRange = 0;
+
+  fixedWaits.forEach(v => {
+    if (v <= maxVal) {
+      const bin = Math.min(Math.floor(v / binWidth), nBins - 1);
+      fixedBins[bin]++;
+    } else {
+      fixedOutOfRange++;
+    }
+  });
+
+  randomWaits.forEach(v => {
+    if (v <= maxVal) {
+      const bin = Math.min(Math.floor(v / binWidth), nBins - 1);
+      randomBins[bin]++;
+    } else {
+      randomOutOfRange++;
+    }
+  });
+
+  sim2Result.innerHTML = `
+    <strong>固定间隔</strong>：平均等待 ${fixedMean.toFixed(2)} 分钟（理论 ${(interval/2).toFixed(2)} 分钟）
+    ${fixedOutOfRange > 0 ? `<span style="color:#718096;font-size:12px;"> · ${fixedOutOfRange} 次超出横轴范围</span>` : ''}<br>
+    <strong>随机间隔（指数）</strong>：平均等待 ${randomMean.toFixed(2)} 分钟（理论 ${interval.toFixed(2)} 分钟）
+    ${randomOutOfRange > 0 ? `<span style="color:#718096;font-size:12px;"> · ${randomOutOfRange} 次超出横轴范围（指数分布的长尾）</span>` : ''}<br>
+    <span style="color:var(--accent-dark);font-weight:700;">→ 随机间隔的等待时间约是固定间隔的 ${(randomMean/fixedMean).toFixed(1)} 倍！</span>
+  `;
+
+  // 绘制双直方图
+  const w = sim2Canvas.width;
+  const h = sim2Canvas.height;
+  const padding = 60;
+
+  sim2Ctx.fillStyle = '#fafafa';
+  sim2Ctx.fillRect(0, 0, w, h);
+
+  const maxCount = Math.max(...fixedBins, ...randomBins);
+
+  if (maxCount === 0) {
+    sim2Ctx.fillStyle = '#718096';
+    sim2Ctx.font = '16px Arial';
+    sim2Ctx.textAlign = 'center';
+    sim2Ctx.fillText('没有数据显示，请检查参数设置', w / 2, h / 2);
+    return;
+  }
+
+  const barWidth = (w - 2 * padding) / nBins;
+  const plotH = h - 2 * padding;
+
+  // 固定间隔（上半部分）
+  sim2Ctx.fillStyle = '#8bd3dd';
+  fixedBins.forEach((count, i) => {
+    const x = padding + i * barWidth;
+    const barH = (count / maxCount) * (plotH / 2 - 15);
+    const y = h / 2 - 15 - barH;
+    sim2Ctx.fillRect(x, y, barWidth - 1, barH);
+  });
+
+  // 随机间隔（下半部分）
+  sim2Ctx.fillStyle = '#f582ae';
+  randomBins.forEach((count, i) => {
+    const x = padding + i * barWidth;
+    const barH = (count / maxCount) * (plotH / 2 - 15);
+    const y = h / 2 + 15;
+    sim2Ctx.fillRect(x, y, barWidth - 1, barH);
+  });
+
+  // 中线
+  sim2Ctx.strokeStyle = '#e2d5c2';
+  sim2Ctx.lineWidth = 2;
+  sim2Ctx.beginPath();
+  sim2Ctx.moveTo(padding, h / 2);
+  sim2Ctx.lineTo(w - padding, h / 2);
+  sim2Ctx.stroke();
+
+  // X 轴标注（等待时间）
+  sim2Ctx.fillStyle = '#718096';
+  sim2Ctx.font = '12px Arial';
+  sim2Ctx.textAlign = 'center';
+
+  // 绘制多个刻度（改为更清晰的整数刻度）
+  const tickInterval = interval; // 每个刻度间隔 = 平均间隔
+  const numTicks = 4; // 0, 1×interval, 2×interval, 3×interval, 4×interval
+  for (let i = 0; i <= numTicks; i++) {
+    const tickVal = tickInterval * i;
+    const tickX = padding + ((w - 2 * padding) / numTicks) * i;
+
+    // 刻度线
+    sim2Ctx.strokeStyle = '#e2d5c2';
+    sim2Ctx.lineWidth = 1;
+    sim2Ctx.beginPath();
+    sim2Ctx.moveTo(tickX, h / 2 - 5);
+    sim2Ctx.lineTo(tickX, h / 2 + 5);
+    sim2Ctx.stroke();
+
+    // 刻度值
+    sim2Ctx.fillStyle = '#718096';
+    sim2Ctx.fillText(tickVal.toFixed(0), tickX, h / 2 + 20);
+  }
+
+  // X 轴标签
+  sim2Ctx.fillStyle = '#4a5568';
+  sim2Ctx.font = 'bold 14px Arial';
+  sim2Ctx.fillText('等待时间（分钟）', w / 2, h / 2 + 40);
+
+  // 显示横轴范围和刻度说明
+  sim2Ctx.font = '11px Arial';
+  sim2Ctx.fillStyle = '#718096';
+  sim2Ctx.fillText(`横轴: 0 - ${maxVal} 分钟 (每格 ${interval} 分钟) · 直方图: 40 个柱子，每柱宽 ${binWidth.toFixed(2)} 分钟`, w / 2, h / 2 + 55);
+
+  // Y 轴标注（频数）
+  sim2Ctx.textAlign = 'right';
+  sim2Ctx.font = '12px Arial';
+  sim2Ctx.fillStyle = '#718096';
+  sim2Ctx.fillText('0', padding - 8, h / 2 - 5);
+  sim2Ctx.fillText(Math.round(maxCount / 2).toString(), padding - 8, h / 2 - (plotH / 4) + 5);
+  sim2Ctx.fillText(maxCount.toString(), padding - 8, h / 2 - (plotH / 2 - 10) + 5);
+
+  // Y 轴标签（上半部分）
+  sim2Ctx.save();
+  sim2Ctx.translate(20, h / 4);
+  sim2Ctx.rotate(-Math.PI / 2);
+  sim2Ctx.font = 'bold 13px Arial';
+  sim2Ctx.fillStyle = '#4a5568';
+  sim2Ctx.textAlign = 'center';
+  sim2Ctx.fillText('频数', 0, 0);
+  sim2Ctx.restore();
+
+  // Y 轴标注（下半部分）
+  sim2Ctx.textAlign = 'right';
+  sim2Ctx.font = '12px Arial';
+  sim2Ctx.fillStyle = '#718096';
+  sim2Ctx.fillText('0', padding - 8, h / 2 + 20);
+  sim2Ctx.fillText(Math.round(maxCount / 2).toString(), padding - 8, h / 2 + (plotH / 4) + 5);
+  sim2Ctx.fillText(maxCount.toString(), padding - 8, h / 2 + (plotH / 2 - 10) + 5);
+
+  // Y 轴标签（下半部分）
+  sim2Ctx.save();
+  sim2Ctx.translate(20, 3 * h / 4);
+  sim2Ctx.rotate(-Math.PI / 2);
+  sim2Ctx.font = 'bold 13px Arial';
+  sim2Ctx.fillStyle = '#4a5568';
+  sim2Ctx.textAlign = 'center';
+  sim2Ctx.fillText('频数', 0, 0);
+  sim2Ctx.restore();
+
+  // 图例
+  sim2Ctx.fillStyle = '#8bd3dd';
+  sim2Ctx.fillRect(padding, 20, 20, 20);
+  sim2Ctx.fillStyle = '#4a5568';
+  sim2Ctx.font = 'bold 14px Arial';
+  sim2Ctx.textAlign = 'left';
+  sim2Ctx.fillText('固定间隔（均匀分布）', padding + 28, 35);
+
+  sim2Ctx.fillStyle = '#f582ae';
+  sim2Ctx.fillRect(padding, h - 40, 20, 20);
+  sim2Ctx.fillStyle = '#4a5568';
+  sim2Ctx.fillText('随机间隔（指数分布）', padding + 28, h - 25);
+
+  // 均值线
+  const fixedMeanX = padding + (fixedMean / maxVal) * (w - 2 * padding);
+  const randomMeanX = padding + (randomMean / maxVal) * (w - 2 * padding);
+
+  // 固定间隔均值线
+  sim2Ctx.strokeStyle = '#5fb3c1';
+  sim2Ctx.setLineDash([5, 5]);
+  sim2Ctx.lineWidth = 2;
+  sim2Ctx.beginPath();
+  sim2Ctx.moveTo(fixedMeanX, 50);
+  sim2Ctx.lineTo(fixedMeanX, h / 2 - 15);
+  sim2Ctx.stroke();
+
+  sim2Ctx.fillStyle = '#5fb3c1';
+  sim2Ctx.font = '12px Arial';
+  sim2Ctx.textAlign = 'center';
+  sim2Ctx.fillText(`均值=${fixedMean.toFixed(1)}`, fixedMeanX, 65);
+
+  // 随机间隔均值线
+  sim2Ctx.strokeStyle = '#d946a6';
+  sim2Ctx.beginPath();
+  sim2Ctx.moveTo(randomMeanX, h / 2 + 15);
+  sim2Ctx.lineTo(randomMeanX, h - 60);
+  sim2Ctx.stroke();
+  sim2Ctx.setLineDash([]);
+
+  sim2Ctx.fillStyle = '#d946a6';
+  sim2Ctx.fillText(`均值=${randomMean.toFixed(1)}`, randomMeanX, h - 45);
+});
+
+// ===== 实验 3: 无记忆性可视化 =====
+const waitedSlider = document.getElementById('waited-slider');
+const waitedVal = document.getElementById('waited-val');
+const memorylessCanvas = document.getElementById('memoryless-canvas');
+const memorylessCtx = memorylessCanvas.getContext('2d');
+const memorylessResult = document.getElementById('memoryless-result');
+
+function drawMemoryless() {
+  const s = parseFloat(waitedSlider.value);
+  waitedVal.textContent = s.toFixed(1);
+
+  const lambda = 1;
+  const w = memorylessCanvas.width;
+  const h = memorylessCanvas.height;
+  const padding = 50;
+  const plotW = w - 2 * padding;
+  const plotH = h - 2 * padding;
+
+  memorylessCtx.fillStyle = '#fafafa';
+  memorylessCtx.fillRect(0, 0, w, h);
+
+  const maxT = 5;
+  const steps = 500;
+
+  // 原始分布
+  memorylessCtx.strokeStyle = '#8bd3dd';
+  memorylessCtx.lineWidth = 3;
+  memorylessCtx.globalAlpha = 0.4;
+  memorylessCtx.beginPath();
+  for (let i = 0; i <= steps; i++) {
+    const t = (i / steps) * maxT;
+    const pdf = expPDF(t, lambda);
+    const x = padding + (t / maxT) * plotW;
+    const y = h - padding - (pdf / lambda) * plotH;
+    if (i === 0) memorylessCtx.moveTo(x, y);
+    else memorylessCtx.lineTo(x, y);
+  }
+  memorylessCtx.stroke();
+  memorylessCtx.globalAlpha = 1;
+
+  // 条件分布（已等 s 时间）
+  memorylessCtx.strokeStyle = '#f582ae';
+  memorylessCtx.lineWidth = 3;
+  memorylessCtx.beginPath();
+  for (let i = 0; i <= steps; i++) {
+    const t = (i / steps) * maxT;
+    if (t >= s) {
+      const pdf = expPDF(t - s, lambda);
+      const x = padding + (t / maxT) * plotW;
+      const y = h - padding - (pdf / lambda) * plotH;
+      if (t === s) memorylessCtx.moveTo(x, y);
+      else memorylessCtx.lineTo(x, y);
+    }
+  }
+  memorylessCtx.stroke();
+
+  // 标记已等时间
+  if (s > 0) {
+    const sX = padding + (s / maxT) * plotW;
+    memorylessCtx.strokeStyle = '#ffa69e';
+    memorylessCtx.setLineDash([5, 5]);
+    memorylessCtx.beginPath();
+    memorylessCtx.moveTo(sX, padding);
+    memorylessCtx.lineTo(sX, h - padding);
+    memorylessCtx.stroke();
+    memorylessCtx.setLineDash([]);
+
+    memorylessCtx.fillStyle = '#ffa69e';
+    memorylessCtx.font = '12px Arial';
+    memorylessCtx.fillText(`已等 ${s.toFixed(1)} 分钟`, sX + 5, padding + 20);
+  }
+
+  // 坐标轴
+  memorylessCtx.strokeStyle = '#e2d5c2';
+  memorylessCtx.lineWidth = 2;
+  memorylessCtx.beginPath();
+  memorylessCtx.moveTo(padding, padding);
+  memorylessCtx.lineTo(padding, h - padding);
+  memorylessCtx.lineTo(w - padding, h - padding);
+  memorylessCtx.stroke();
+
+  memorylessCtx.fillStyle = '#718096';
+  memorylessCtx.font = '12px Arial';
+  memorylessCtx.fillText('0', padding - 5, h - padding + 20);
+  memorylessCtx.fillText(maxT.toFixed(0), w - padding, h - padding + 20);
+
+  // 结果
+  memorylessResult.textContent = s === 0
+    ? '从头开始等，期望等待时间 = 1 分钟'
+    : `已经等了 ${s.toFixed(1)} 分钟，期望还要等 1 分钟（总共 ${(s + 1).toFixed(1)} 分钟）`;
+}
+
+waitedSlider.addEventListener('input', drawMemoryless);
+drawMemoryless();
+</script>
+
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {
+  delimiters: [
+    {left: '$$', right: '$$', display: true},
+    {left: '$', right: '$', display: false}
+  ],
+  throwOnError: false
+});"></script>
+
+
+<script>
+(function(){
+  var links=[].slice.call(document.querySelectorAll('.toc a'));
+  var secs=links.map(function(a){return document.getElementById(a.getAttribute('href').slice(1));});
+  function upd(){
+    var y=window.scrollY+140,idx=0;
+    for(var i=0;i<secs.length;i++){if(secs[i]&&y>=secs[i].offsetTop)idx=i;}
+    links.forEach(function(a,i){a.classList.toggle('active',i===idx);});
+  }
+  window.addEventListener('scroll',upd,{passive:true});
+  window.addEventListener('load',upd);
+  links.forEach(function(a){a.addEventListener('click',function(e){
+    e.preventDefault();
+    var t=document.getElementById(a.getAttribute('href').slice(1));
+    if(t){t.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(upd,400);}
+  });});
+  upd();
+})();
+</script>
+
+<script src="nav.js"></script>
+</body>
+</html>

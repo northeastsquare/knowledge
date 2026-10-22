@@ -176,7 +176,7 @@
       <span class="badge">Best Paper</span>
     </div>
     <h1>D4RT</h1>
-    <p id="concept-4d-reconstruction" class="subtitle concept-anchor"><b>Efficiently Reconstructing Dynamic Scenes One D4RT at a Time</b> — 用统一的可查询解码接口，从单段视频里联合恢复深度、时空对应与相机参数的前馈式 4D 重建模型。“4D”指三维空间随时间的变化：不仅恢复场景几何，还追踪点在不同时间的位置。</p>
+    <p id="concept-4d-reconstruction" class="subtitle concept-anchor"><b>Efficiently Reconstructing Dynamic Scenes One D4RT at a Time</b> — 用统一的<a class="concept-link" href="#concept-query-decoding">可查询解码接口</a>，从单段视频里联合恢复深度、时空对应与相机参数的前馈式 4D 重建模型。“4D”指三维空间随时间的变化：不仅恢复场景几何，还追踪点在不同时间的位置。</p>
     <p class="subtitle">把动态场景理解延伸到机器人操作，可对照 PUMA 的<a class="concept-link" href="PUMA-论文解读.html#concept-motion-perception">运动感知</a>与 DynamicVLA 的<a class="concept-link" href="DynamicVLA-论文解读.html#concept-latency">感知—执行时延</a>。这些方法分别研究重建、策略输入和实时控制，目标并不相同。</p>
     <div class="meta-row">
       <span>Google DeepMind · UCL · Oxford</span>
@@ -185,6 +185,8 @@
       <span>位姿 <b>200+ FPS</b></span>
     </div>
   </header>
+
+  <p id="concept-query-decoding" class="subtitle concept-anchor"><b>可查询解码：</b>把源帧上的二维点与源时刻、目标时刻、参考相机时刻组成查询，解码器返回该点在目标时刻、指定相机坐标系中的三维位置。整段视频先编码成固定场景表征，各查询独立解码，因此同一接口可回答深度、三维轨迹与相机参数问题。这里查询的是几何与运动；策略中的<a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a>则生成要执行的控制序列。</p>
 
   <div class="toolbar">
     <div class="tb-top">
@@ -235,6 +237,8 @@
     <strong>相关概念</strong>
     <a href="PUMA-论文解读.html#concept-motion-perception">历史光流与目标未来预测</a>
     <a href="VLA-发展历程.html#concept-vla">VLA：从视觉和语言到动作</a>
+    <a class="concept-link" href="PUMA-论文解读.html#concept-optical-flow">二维像素运动：光流</a>
+    <a class="concept-link" href="#concept-query-decoding">按需恢复三维位置：可查询解码</a>
     <a href="concepts.html">全部概念 →</a>
   </aside>
 

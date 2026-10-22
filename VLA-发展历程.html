@@ -262,7 +262,7 @@
           <div class="cell"><b>符号与模块化机器人</b><span>Shakey、经典 TAMP。感知、规划、控制逐个手工搭建。</span></div>
           <div class="cell"><b>视觉运动策略</b><span>端到端 visuomotor、Diffusion Policy、ACT。动作能力很强，但没有互联网语义先验。</span></div>
         </div>
-        <p class="def-note">世界模型（视频预测、V-JEPA 2 等）不属于这四格中的任何一格，它回答的是“动作会带来什么后果”，可以给 VLA 提供想象、规划或奖励。RT-1 落在右下格向右上格过渡的位置：端到端输出动作，但语言只是一个编码向量，没有 VLM 骨干。</p>
+        <p class="def-note"><a class="concept-link" href="pi0.7_问答学习卡.html#concept-world-model">世界模型</a>（视频预测、V-JEPA 2 等）不属于这四格中的任何一格，它回答的是“动作会带来什么后果”，可以给 VLA 提供想象、规划或奖励。RT-1 落在右下格向右上格过渡的位置：端到端输出动作，但语言只是一个编码向量，没有 VLM 骨干。</p>
       </div>
     </div>
   </section>
@@ -355,7 +355,7 @@
           <div class="stage-body">
             <div class="grid4">
               <div class="blk"><div class="label">问题</div>机器人策略高度专用；语言模型懂很多，却不会在真实的时间尺度上控制手臂。</div>
-              <div class="blk"><div class="label">突破</div>SayCan 用技能的可行性（affordance）给 LLM 的计划打分；Inner Monologue 把环境反馈写回提示；Code as Policies 让 LLM 写控制代码。RT-1 用 13 万条真机示范训练 Transformer，输出离散动作 token。</div>
+              <div class="blk"><div class="label">突破</div><a class="concept-link" href="Google-VLA-发展历程.html#concept-saycan">SayCan</a> 用技能的可行性（affordance）给 LLM 的计划打分；Inner Monologue 把环境反馈写回提示；Code as Policies 让 LLM 写控制代码。<a class="concept-link" href="Google-VLA-发展历程.html#concept-rt-1">RT-1</a> 用 13 万条真机示范训练 Transformer，输出离散动作 token。</div>
               <div class="blk"><div class="label">代价</div>分层接口靠手工定义，LLM 的常识进不到低层动作里；RT-1 的语言只经过句子编码器，还没有 VLM 骨干。</div>
               <div class="blk next"><div class="label">被谁接手 →</div>P4 的 RT-2 去掉了中间接口：直接让 VLM 输出动作。</div>
             </div>
@@ -372,7 +372,7 @@
           <div class="stage-body">
             <div class="grid4">
               <div class="blk"><div class="label">问题</div>单个平台的机器人数据太少，无法支撑开放世界泛化；逐步回归式的模仿学习无法表达多峰、精细的动作。</div>
-              <div class="blk"><div class="label">突破</div>RT-2 把动作写成文本 token，与网页数据共同微调，正式提出“VLA”；Open X-Embodiment 汇集了 22 种机器人、527 项技能、100 万+ 条轨迹。Diffusion Policy 用去噪生成动作；ACT/ALOHA 提出了<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作分块</a>，并配套了低成本双臂硬件。</div>
+              <div class="blk"><div class="label">突破</div><a class="concept-link" href="Google-VLA-发展历程.html#concept-rt-2">RT-2</a> 把动作写成文本 token，与<a class="concept-link" href="KI-知识隔离-论文解读.html#concept-co-training">网页数据共同微调</a>，正式提出“VLA”；<a class="concept-link" href="Google-VLA-发展历程.html#concept-open-x-embodiment">Open X-Embodiment</a> 汇集了 22 种机器人、527 项技能、100 万+ 条轨迹。Diffusion Policy 用去噪生成动作；ACT/ALOHA 提出了<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作分块</a>，并配套了低成本双臂硬件。</div>
               <div class="blk"><div class="label">代价</div>离散动作 token 精度低、控制频率低，几十亿参数的模型只能跑到几 Hz；RT-2 闭源，社区无法复现；生成式动作头还没有接上 VLM。</div>
               <div class="blk next"><div class="label">被谁接手 →</div>P5 把这两条线合在一起：开源的 VLM 骨干配上扩散或 flow 动作头。</div>
             </div>
@@ -389,7 +389,7 @@
           <div class="stage-body">
             <div class="grid4">
               <div class="blk"><div class="label">问题</div>离散动作难以表达灵巧、连续、长时程的操作；不同的机器人又有不同的“身体语言”。</div>
-              <div class="blk"><div class="label">突破</div>Octo（扩散头，从头训练）和 OpenVLA（7B，离散 token）提供了开源基线；RDT-1B 把扩散策略扩大到 1.2B 参数；HPT 用“异构茎干 + 共享主干”的结构处理跨本体问题。π0 在 PaliGemma 上接了一个 flow matching 动作专家，以 50Hz 输出动作块。数据方面有 DROID、UMI、Mobile ALOHA。</div>
+              <div class="blk"><div class="label">突破</div>Octo（扩散头，从头训练）和 OpenVLA（7B，离散 token）提供了开源基线；RDT-1B 把扩散策略扩大到 1.2B 参数；HPT 用“异构茎干 + 共享主干”的结构处理<a class="concept-link" href="Qwen-VLA-论文解读.html#concept-cross-embodiment">跨本体</a>问题。<a class="concept-link" href="PI-工作全景.html#concept-pi0-overview">π0</a> 在 PaliGemma 上接了一个 <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">flow matching</a> <a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a>，以 50Hz 输出动作块。数据方面有 DROID、UMI、Mobile ALOHA。</div>
               <div class="blk"><div class="label">代价</div>生成式动作头很难给出策略概率，给后来的 RL 埋下了难点；推理延迟高；在机器人数据上微调后，VLM 原有的知识会被侵蚀。</div>
               <div class="blk next"><div class="label">被谁接手 →</div>P6 处理“泛化与推理”，P7 处理“如何从经验中继续变好”。</div>
             </div>
@@ -406,7 +406,7 @@
           <div class="stage-body">
             <div class="grid4">
               <div class="blk"><div class="label">问题</div>VLM 推理慢，控制却要求高频；在陌生的家里执行长时程任务，需要拆解子任务和推理。</div>
-              <div class="blk"><div class="label">突破</div>Helix（S2 7–9Hz / S1 200Hz）、GR00T N1、Gemini Robotics、Hi Robot 都是分层或双系统结构；FAST 用频域压缩让动作 token 化重新变得可用；<a class="concept-link" href="KI-知识隔离-论文解读.html#concept-knowledge-insulation">知识隔离（Knowledge Insulation）</a>用离散 token 训练骨干、用 flow 推理，同时防止梯度破坏 VLM；π0.5 结合多源数据联合训练，在没见过的家庭环境里完成长时程任务。</div>
+              <div class="blk"><div class="label">突破</div>Helix（S2 7–9Hz / S1 200Hz）、GR00T N1、Gemini Robotics、Hi Robot 都是分层或双系统结构；<a class="concept-link" href="FAST-论文解读.html#concept-fast">FAST</a> 用频域压缩让动作 token 化重新变得可用；<a class="concept-link" href="KI-知识隔离-论文解读.html#concept-knowledge-insulation">知识隔离（Knowledge Insulation）</a>用离散 token 训练骨干、用 flow 推理，同时防止梯度破坏 VLM；π0.5 结合多源数据联合训练，在没见过的家庭环境里完成长时程任务。</div>
               <div class="blk"><div class="label">代价</div>“会做一次”离“稳定地做很久”还很远；模型的表现仍受限于示范数据的质量，缺少自我改进的机制。</div>
               <div class="blk next"><div class="label">被谁接手 →</div>P7 把真实执行中的经验、奖励和人类纠正接回模型。</div>
             </div>
@@ -423,7 +423,7 @@
           <div class="stage-body">
             <div class="grid4">
               <div class="blk"><div class="label">问题</div>模仿学习的天花板就是示范者的水平；精细接触、动态目标、长时程任务的成功率难以继续提高。</div>
-              <div class="blk"><div class="label">突破</div>RECAP（π*0.6）用价值函数给优势打分，再以优势作为条件做策略提取；πRL 用 PPO 微调 flow VLA；RL Token 和残差 RL 只更新轻量的部件；FLASH、DynamicVLA、PUMA 处理时延和动态目标；世界模型和具身推理（V-JEPA 2、Gemini Robotics 1.5）提供想象与规划能力；π0.7 让模型可以按提示调整行为。</div>
+              <div class="blk"><div class="label">突破</div><a class="concept-link" href="pi0.6-论文解读.html#concept-recap">RECAP（π*0.6）</a>用价值函数给<a class="concept-link" href="两条主干-拆机手册.html#concept-advantage">优势</a>打分，再以优势作为条件做策略提取；<a class="concept-link" href="piRL-论文解读.html#concept-denoising-mdp">πRL</a> 用 <a class="concept-link" href="RLinf-RL原理对比.html#concept-ppo">PPO</a> 微调 flow VLA；<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-rl-token">RL Token</a> 和<a class="concept-link" href="ObjectCentric-RL-论文解读.html#concept-residual-rl">残差 RL</a>只更新轻量的部件；<a class="concept-link" href="Realtime-VLA-论文解读.html#concept-speculative-inference">FLASH</a>、<a class="concept-link" href="DynamicVLA-论文解读.html#concept-latency">DynamicVLA</a>、<a class="concept-link" href="PUMA-论文解读.html#concept-motion-perception">PUMA</a> 处理时延和动态目标；世界模型和具身推理（V-JEPA 2、Gemini Robotics 1.5）提供想象与规划能力；<a class="concept-link" href="pi0.7_问答学习卡.html#concept-prompt-conditioning">π0.7</a> 让模型可以按提示调整行为。</div>
               <div class="blk"><div class="label">代价</div>奖励稀疏，真机探索既昂贵又难保证安全；评测缺乏统一、可复现的标准；“做一小时不出错”仍然是开放问题。</div>
               <div class="blk next"><div class="label">下一站 ？</div>可能的方向：用世界模型做规划和评测；持续学习；用人类视频做规模化预训练。见 05 争论。</div>
             </div>
@@ -446,8 +446,8 @@
           <div class="step"><b>离散分箱</b><span>RT-1 / RT-2 / OpenVLA，每个维度 256 个 bin</span></div>
           <div class="step"><b>动作分块</b><span>ACT：一次预测 H 步，减少复合误差</span></div>
           <div class="step"><b>扩散</b><span>Diffusion Policy、Octo、RDT-1B</span></div>
-          <div class="step"><b>流匹配</b><span>π0：更少的积分步数，更适合高频控制</span></div>
-          <div class="step"><b>压缩 token</b><span>FAST：DCT + BPE，让自回归也能处理高频动作</span></div>
+          <div class="step"><b><a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">流匹配</a></b><span>π0：更少的积分步数，更适合高频控制</span></div>
+          <div class="step"><b><a class="concept-link" href="FAST-论文解读.html#concept-fast">压缩 token</a></b><span>FAST：DCT + BPE，让自回归也能处理高频动作</span></div>
           <div class="step now"><b>混合</b><span>知识隔离：用离散 token 训练骨干，用 flow 推理</span></div>
         </div>
         <p class="front"><b>前沿与本库：</b>生成式动作头怎样做 RL（<a href="piRL-论文解读.html">πRL</a>、<a href="为什么取log.html">为什么取 log</a>），怎样加速推理（<a href="Realtime-VLA-论文解读.html">FLASH</a>）。</p>
@@ -460,9 +460,9 @@
           <div class="step"><b>机器人 Transformer</b><span>RT-1、Gato、Octo，从头训练</span></div>
           <div class="step"><b>VLM 骨干</b><span>RT-2（PaLI-X）、OpenVLA（Llama 2）</span></div>
           <div class="step"><b>VLM + 动作专家</b><span>π0：共享注意力，独立权重</span></div>
-          <div class="step now"><b>双系统</b><span>Helix、GR00T N1、Gemini Robotics、Hi Robot</span></div>
+          <div class="step now"><b>双系统</b><span>Helix、GR00T N1、<a class="concept-link" href="Google-VLA-发展历程.html#concept-gemini-robotics">Gemini Robotics</a>、<a class="concept-link" href="PI-工作全景.html#concept-hi-robot">Hi Robot</a></span></div>
         </div>
-        <p class="front"><b>前沿与本库：</b>统一多种任务、环境和构型（<a href="Qwen-VLA-论文解读.html">Qwen-VLA</a>）；可按提示调节的通才模型（<a href="pi0.7_问答学习卡.html">π0.7</a>）；把两条主干拆开来看（<a href="两条主干-拆机手册.html">拆机手册</a>）。</p>
+        <p class="front"><b>前沿与本库：</b>统一多种任务、环境和构型（<a class="concept-link" href="Qwen-VLA-论文解读.html#concept-cross-embodiment">Qwen-VLA</a>）；可按提示调节的通才模型（<a href="pi0.7_问答学习卡.html">π0.7</a>）；把两条主干拆开来看（<a href="两条主干-拆机手册.html">拆机手册</a>）。</p>
       </div>
       <div class="thread" style="--lc:var(--l-data)">
         <h3>③ 数据：从哪里来、有多少、多杂？</h3><p class="q">泛化的边界往往由数据决定，而不是由模型决定。</p>
@@ -473,18 +473,18 @@
           <div class="step"><b>跨本体汇总</b><span>RoboNet → Open X-Embodiment</span></div>
           <div class="step"><b>野外采集</b><span>DROID、UMI 手持夹爪</span></div>
           <div class="step"><b>人类视频</b><span>GR-1、LAPA 潜在动作</span></div>
-          <div class="step now"><b>合成数据</b><span>InternData-A1、仿真中的残差 RL</span></div>
+          <div class="step now"><b><a class="concept-link" href="InternData-A1-论文解读.html#concept-synthetic-data">合成数据</a></b><span>InternData-A1、仿真中的<a class="concept-link" href="ObjectCentric-RL-论文解读.html#concept-residual-rl">残差 RL</a></span></div>
         </div>
-        <p class="front"><b>前沿与本库：</b>合成数据能否替代真机数据（<a href="InternData-A1-论文解读.html">InternData-A1</a>）；用 3D/4D 感知增强输入（<a href="D4RT_study_cards.html">D4RT</a>）；用 <a class="concept-link" href="Qwen-VLA-论文解读.html#concept-cross-embodiment">跨本体</a> 数据统一动作空间。</p>
+        <p class="front"><b>前沿与本库：</b>合成数据能否替代真机数据（<a class="concept-link" href="InternData-A1-论文解读.html#concept-synthetic-data">InternData-A1</a>）；用 3D/4D 感知增强输入（<a class="concept-link" href="D4RT_study_cards.html#concept-4d-reconstruction">D4RT</a>）；用 <a class="concept-link" href="Qwen-VLA-论文解读.html#concept-cross-embodiment">跨本体</a> 数据统一动作空间。</p>
       </div>
       <div class="thread" style="--lc:var(--l-train)">
         <h3>④ 训练范式：模型从什么信号里学？</h3><p class="q">只靠模仿，还是还要靠奖励和纠正？</p>
         <div class="steps">
           <div class="step"><b>行为克隆</b><span><a class="concept-link" href="RLToken-漫画分镜解读.html#concept-behavior-cloning">BC</a>，外加 DAgger 式的纠正</span></div>
           <div class="step"><b>真机 RL / 离线 RL</b><span>QT-Opt、CQL</span></div>
-          <div class="step"><b>与网页数据共训</b><span>RT-2：保住 VLM 的知识</span></div>
+          <div class="step"><b><a class="concept-link" href="KI-知识隔离-论文解读.html#concept-co-training">与网页数据共训</a></b><span>RT-2：保住 VLM 的知识</span></div>
           <div class="step"><b>预训练 + 后训练</b><span>π0：先学广，再学精</span></div>
-          <div class="step"><b>知识隔离</b><span>阻断动作头梯度回传到骨干</span></div>
+          <div class="step"><b><a class="concept-link" href="KI-知识隔离-论文解读.html#concept-knowledge-insulation">知识隔离</a></b><span><a class="concept-link" href="KI-知识隔离-论文解读.html#concept-stop-gradient">阻断动作头梯度</a>回传到骨干</span></div>
           <div class="step now"><b>RL 微调</b><span>RECAP、πRL、RL Token、残差 RL</span></div>
         </div>
         <p class="front"><b>前沿与本库：</b>该更新整个模型、噪声空间、残差头还是 RL token？（<a href="VLA-RL-方法全景对比.html">VLA-RL 全景</a>、<a href="RLinf-RL原理对比.html">RLinf 原理对比</a>、<a href="pi0.6-论文解读.html">π0.6 RECAP</a>）</p>
@@ -496,7 +496,7 @@
           <div class="step"><b>闭环重规划</b><span>Inner Monologue：把反馈写回提示</span></div>
           <div class="step"><b>动作块 + 时间集成</b><span>ACT：平滑地衔接相邻动作块</span></div>
           <div class="step"><b>快慢双频</b><span>Helix：S1 以 200Hz 执行</span></div>
-          <div class="step now"><b>投机推理 / 动态目标</b><span>FLASH、DynamicVLA、PUMA</span></div>
+          <div class="step now"><b><a class="concept-link" href="Realtime-VLA-论文解读.html#concept-speculative-inference">投机推理</a> / <a class="concept-link" href="PUMA-论文解读.html#concept-motion-perception">动态目标</a></b><span>FLASH、DynamicVLA、PUMA</span></div>
         </div>
         <p class="front"><b>前沿与本库：</b><a class="concept-link" href="DynamicVLA-论文解读.html#concept-latency">感知—执行时延</a>导致的观测与动作错位（<a href="DynamicVLA-论文解读.html">DynamicVLA</a>、<a href="PUMA-论文解读.html">PUMA</a>）。</p>
       </div>
@@ -556,7 +556,7 @@
           <li><a href="Realtime-VLA-论文解读.html">Realtime-VLA FLASH</a></li>
         </ol>
         <details class="qz"><summary>为什么 MSE 回归在示范数据有多种做法时会失败？</summary><p>当示范存在多峰（比如从左边绕或从右边绕）时，MSE 的最优解是各个峰的平均，得到的动作可能哪一种都不是，甚至直接撞上障碍物。扩散和 flow 学的是整个分布，可以采样到其中一个峰。</p></details>
-        <details class="qz"><summary>动作分块为什么能减少复合误差？</summary><p>一次预测 H 步，相当于把需要做决策的次数减少到原来的 1/H，误差累积的机会随之减少；动作在块内也更连贯。代价是对突发变化的响应变慢，所以需要时间集成或<a href="RTC-训练时-论文解读.html">实时分块（RTC）</a>来弥补。</p></details>
+        <details class="qz"><summary>动作分块为什么能减少复合误差？</summary><p>一次预测 H 步，相当于把需要做决策的次数减少到原来的 1/H，误差累积的机会随之减少；动作在块内也更连贯。代价是对突发变化的响应变慢，所以需要时间集成或<a class="concept-link" href="RTC-训练时-论文解读.html#concept-rtc">实时分块（RTC）</a>来弥补。</p></details>
         <details class="qz"><summary>FAST 解决了离散 token 的什么问题？</summary><p>按时间步逐维分箱，在高频控制下会产生大量高度相关的 token，自回归模型很难学好。FAST 先用 DCT 把动作块变换到频域，再用 BPE 压缩，token 更少、信息更集中。</p></details>
       </div>
       <div class="path" style="--lc:var(--l-backbone)">
@@ -569,7 +569,7 @@
           <li><a href="Qwen-VLA-论文解读.html">Qwen-VLA</a> → <a href="pi0.7_问答学习卡.html">π0.7</a></li>
         </ol>
         <details class="qz"><summary>SayCan 和 RT-2 的根本区别是什么？</summary><p>SayCan 中的 LLM 只在预先定义好的技能里做选择，并用可行性函数给每个技能打分，动作由技能策略执行；RT-2 让 VLM 直接输出动作 token，没有中间的技能接口。前者属于 00 节中的“LLM 规划器”，后者属于 VLA。</p></details>
-        <details class="qz"><summary>RT-2 为什么要和网页数据一起共训？</summary><p>如果只用机器人数据微调，VLM 会逐渐遗忘视觉语言知识，泛化能力随之下降。把网页 VQA 数据混进训练集，可以保住语义能力，让模型能理解训练中没出现过的物体和指令。</p></details>
+        <details class="qz"><summary>RT-2 为什么要和网页数据一起共训？</summary><p>如果只用机器人数据微调，VLM 会逐渐遗忘<a class="concept-link" href="KI-知识隔离-论文解读.html#concept-co-training">视觉语言知识</a>，泛化能力随之下降。把网页 VQA 数据混进训练集，可以保住语义能力，让模型能理解训练中没出现过的物体和指令。</p></details>
         <details class="qz"><summary>OpenVLA 用的是哪种动作头？</summary><p>离散 token：每个动作维度分成 256 个 bin，由 Llama 2 骨干自回归地输出，与 RT-2 的思路相同。它不是扩散头，也不是 flow 头。</p></details>
       </div>
       <div class="path" style="--lc:var(--l-train)">
@@ -581,8 +581,8 @@
           <li><a href="RL-Token-论文解读.html">RL Token</a> → <a href="ObjectCentric-RL-论文解读.html">残差 RL</a></li>
           <li><a href="VLA-RL-方法全景对比.html">VLA-RL 方法全景</a></li>
         </ol>
-        <details class="qz"><summary>为什么 flow VLA 做策略梯度比离散 token 难？</summary><p><a class="concept-link" href="为什么取log.html#concept-policy-gradient">策略梯度</a> 需要计算 log π(a|s)。离散 token 可以直接从 softmax 读出这个值；flow 和扩散通过多步去噪生成动作，边缘似然无法直接计算，必须把去噪过程建模成 MDP（πRL），或者绕开似然（RECAP、残差 RL）。</p></details>
-        <details class="qz"><summary>RECAP 为什么不直接做 PPO？</summary><p>RECAP 先训练价值函数来估计优势，再把“优势是否为正”作为条件输入去训练策略，属于离线、监督式的策略提取。这样可以复用示范数据、自主执行数据和人类纠正数据，避免在真机上做高方差的在线策略梯度。</p></details>
+        <details class="qz"><summary>为什么 flow VLA 做策略梯度比离散 token 难？</summary><p><a class="concept-link" href="为什么取log.html#concept-policy-gradient">策略梯度</a> 需要计算 log π(a|s)。离散 token 可以直接从 softmax 读出这个值；flow 和扩散通过多步去噪生成动作，边缘似然无法直接计算，必须把<a class="concept-link" href="piRL-论文解读.html#concept-denoising-mdp">去噪过程建模成 MDP</a>（πRL），或者绕开似然（RECAP、残差 RL）。</p></details>
+        <details class="qz"><summary>RECAP 为什么不直接做 PPO？</summary><p><a class="concept-link" href="pi0.6-论文解读.html#concept-recap">RECAP</a> 先训练价值函数来估计<a class="concept-link" href="两条主干-拆机手册.html#concept-advantage">优势</a>，再把“优势是否为正”作为条件输入去训练策略，属于离线、监督式的策略提取。这样可以复用示范数据、自主执行数据和人类纠正数据，避免在真机上做高方差的在线策略梯度。</p></details>
         <details class="qz"><summary>只更新 RL token 或残差头有什么好处和代价？</summary><p>好处：参数少、样本效率高，冻结的骨干保留了预训练能力，探索也更安全。代价：改进的上限受冻结骨干的表征限制，很难学到骨干从未见过的新技能。</p></details>
       </div>
     </div>

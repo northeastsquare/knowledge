@@ -230,7 +230,7 @@
 
     <div class="summary anim">
       <div class="lab">一句话总结</div>
-      <p>π0.7 是一个 <strong>5B 参数的可操控(steerable)通用机器人基础模型</strong>,核心创新是在训练时使用<strong><a class="concept-link" href="#concept-prompt-conditioning">多样化的 context conditioning</a></strong>——不只告诉模型"做什么(语言指令)",还通过 <strong>episode metadata(质量/速度/是否出错)</strong> 和 <strong>subgoal images</strong> 告诉它"怎么做、做得好不好"。这让模型能从大规模、混合质量、甚至失败的次优数据中学习而不被"平均化",从而涌现出组合泛化、跨本体迁移、复杂语言跟随等能力。</p>
+      <p>π0.7 是一个 <strong>5B 参数的可操控(steerable)通用机器人基础模型</strong>,核心创新是在训练时使用<strong><a class="concept-link" href="#concept-prompt-conditioning">多样化的 context conditioning</a></strong>——不只告诉模型"做什么(语言指令)",还通过 <strong><a class="concept-link" href="#concept-episode-metadata">episode metadata(质量/速度/是否出错)</a></strong> 和 <strong><a class="concept-link" href="#concept-subgoal-images">subgoal images</a></strong> 告诉它"怎么做、做得好不好"。这让模型能从大规模、混合质量、甚至失败的次优数据中学习而不被"平均化",从而涌现出组合泛化、跨本体迁移、复杂语言跟随等能力。</p>
     </div>
 
     <div class="keys">
@@ -341,13 +341,13 @@
         <div class="qa">
           <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q7</span>什么是 action chunk?为什么用 action expert?</div></div>
           <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
-          <div class="qa-answer"><div class="badge a">A</div><div class="atext">VLA 通常预测 <mark><a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">action chunk</a></mark>,即未来一小段动作 <code>a_{t:t+H}</code>(执行时常用更短 horizon Ĥ &lt; H)。action chunk 由 <mark><a class="concept-link" href="pi0-论文解读.html#concept-action-expert">action expert</a></mark> 生成——一个更小的 transformer,attend 到 VLM backbone,实现快速推理。它通常用 <mark><a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">flow matching</a>(或 diffusion)</mark> 目标以捕捉动作的多模态性。</div></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">VLA 通常预测 <mark><a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">action chunk</a></mark>,即未来一小段动作 <code>a_{t:t+H}</code>(执行时常用更短 horizon Ĥ &lt; H)。action chunk 由 <mark><a class="concept-link" href="pi0-论文解读.html#concept-action-expert">action expert</a></mark> 生成——一个更小的 transformer,attend 到 VLM backbone,实现快速推理。它通常用 <mark><a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">flow matching</a>(或 <a class="concept-link" href="DiffusionPolicy-论文解读.html#concept-diffusion-policy">diffusion</a>)</mark> 目标以捕捉动作的多模态性。</div></div>
         </div>
 
         <div class="qa">
           <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q8</span>什么是 Knowledge Insulation (KI) 训练配方?</div></div>
           <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
-          <div class="qa-answer"><div class="badge a">A</div><div class="atext">VLM backbone 用 <mark><a class="concept-link" href="FAST-论文解读.html#concept-fast">FAST tokens</a></mark> 监督;action expert 虽然 attend 到 VLM backbone 的所有 activations,但 <mark>action expert 的梯度不回流到 VLM backbone</mark>。这样 VLM 通过相对稳定的离散 cross-entropy loss 训练,而不被 flow matching 的 noisy 梯度干扰。</div></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">VLM backbone 用 <mark><a class="concept-link" href="FAST-论文解读.html#concept-fast">FAST tokens</a></mark> 监督;action expert 虽然 attend 到 VLM backbone 的所有 activations,但 <mark><a class="concept-link" href="KI-知识隔离-论文解读.html#concept-stop-gradient">action expert 的梯度不回流到 VLM backbone</a></mark>。这样 VLM 通过相对稳定的离散 cross-entropy loss 训练,而不被 flow matching 的 noisy 梯度干扰。</div></div>
         </div>
 
         <div class="qa">
@@ -380,7 +380,7 @@
         <div class="qa">
           <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q12</span>Subtask instruction 是什么?跟整体任务描述什么关系?</div></div>
           <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
-          <div class="qa-answer"><div class="badge a">A</div><div class="atext">沿用 π0.5,在整体任务描述 <code>ℓ_t</code>(如 "clean the kitchen")之外,加入捕捉<mark>下一个语义子任务</mark>的中间层文字 <code>ℓ̂_t</code>(如 "open the fridge door")。推理时 ℓ̂_t 可由学到的 high-level policy 或人类提供(也可省略),且会随时间变化。</div></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext">沿用 <a class="concept-link" href="pi0.5_论文测验_精美版.html#concept-hierarchical-policy">π0.5</a>,在整体任务描述 <code>ℓ_t</code>(如 "clean the kitchen")之外,加入捕捉<mark>下一个语义子任务</mark>的中间层文字 <code>ℓ̂_t</code>(如 "open the fridge door")。推理时 ℓ̂_t 可由学到的 high-level policy 或人类提供(也可省略),且会随时间变化。</div></div>
         </div>
 
         <div class="qa">
@@ -389,7 +389,7 @@
           <div class="qa-answer"><div class="badge a">A</div><div class="atext">让模型可被<mark>逐步口头指导(verbal coaching)</mark>。因为模型训练成能跟随多样语言指令,它能在新任务中跟随人类的 live 指令(如把红薯放入空气炸锅)。之后可用这些 coaching 数据微调出一个 high-level policy,让机器人全自主执行。</div></div>
         </div>
 
-        <div class="qa">
+        <div class="concept-anchor qa" id="concept-subgoal-images">
           <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q14</span>Subgoal images 补足了 subtask instruction 的什么不足?</div></div>
           <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
           <div class="qa-answer"><div class="badge a">A</div><div class="atext">subtask instruction 传达高层意图,但缺执行细节——如 "open the fridge door" 没说手臂该怎么抓把手。Subgoal images 通过描绘场景的<mark>期望近未来状态</mark>,更丰富地指定"任务成功推进后世界该是什么样"。</div></div>
@@ -401,7 +401,7 @@
           <div class="qa-answer"><div class="badge a">A</div><div class="atext"><code>g_t = [G¹_t,…,Gⁿ_t]</code>,G^i_t 是相机 i 的期望近未来图像。多视角同时指定<mark>环境/物体中心</mark>的结果(base view 最易)和<mark>手臂/夹爪</mark>的结果(wrist view 最易),改善控制的空间 grounding。</div></div>
         </div>
 
-        <div class="qa">
+        <div class="concept-anchor qa" id="concept-episode-metadata">
           <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q16</span>Episode metadata 包含哪些字段?怎么定义?</div></div>
           <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
           <div class="qa-answer"><div class="badge a">A</div><div class="atext"><ul>
@@ -494,10 +494,10 @@ Speed: 8000. Quality: 5. Mistake: false. Control Mode: joint.
           <div class="qa-answer"><div class="badge a">A</div><div class="atext"><mark>860M</mark> 参数 transformer,用 flow matching 预测连续动作。用 <mark>adaptive RMSNorm</mark> 注入 flow matching 的 timestep 信息。固定 <mark>50 个 action token = 50 步 action chunk</mark>。这 50 个 token 之间双向 attend,并可 attend VLM backbone 的 activations。</div></div>
         </div>
 
-        <div class="qa">
+        <div class="qa concept-anchor" id="concept-rtc-deployment">
           <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q28</span>什么是 RTC?π0.7 怎么用?</div></div>
           <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
-          <div class="qa-answer"><div class="badge a">A</div><div class="atext"><mark>Real-Time action Chunking</mark>,用于在有<a class="concept-link" href="DynamicVLA-论文解读.html#concept-latency">推理延迟</a>时生成平滑动作轨迹。π0.7 用 <a href="RTC-训练时-论文解读.html"><mark>training-time 版本</mark></a>:训练时模拟 <mark>0–12 时间步</mark>的延迟,对应 50Hz 机器人最大 <mark>240ms</mark> 推理延迟。training-time RTC <mark>不增加推理时开销</mark>。</div></div>
+          <div class="qa-answer"><div class="badge a">A</div><div class="atext"><mark>Real-Time action Chunking</mark>,用于在有<a class="concept-link" href="DynamicVLA-论文解读.html#concept-latency">推理延迟</a>时生成平滑动作轨迹。π0.7 用 <a class="concept-link" href="RTC-训练时-论文解读.html#concept-trtc"><mark>training-time 版本</mark></a>:训练时模拟 <mark>0–12 时间步</mark>的延迟,对应 50Hz 机器人最大 <mark>240ms</mark> 推理延迟。training-time RTC <mark>不增加推理时开销</mark>。</div></div>
         </div>
       </section>
 
@@ -572,7 +572,7 @@ Speed: 8000. Quality: 5. Mistake: false. Control Mode: joint.
           <div class="qa-answer"><div class="badge a">A</div><div class="atext"><mark>大量使用 suboptimal robot data</mark>,包括低质量演示(失败 episode 或含大量错误的成功 episode)和旧模型在评估实验中收集的数据。例如用 <mark><a class="concept-link" href="pi0.6-论文解读.html#concept-recap">π*₀.₆ 在 RL 训练中收集的数据</a></mark>作为额外样本,相当于把它们的行为 distill 进 π0.7。</div></div>
         </div>
 
-        <div class="qa">
+        <div class="concept-anchor qa" id="concept-policy-distillation">
           <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q38</span>这种"distillation"带来什么效果?</div></div>
           <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
           <div class="qa-answer"><div class="badge a">A</div><div class="atext">把 metadata 加入 context 让模型能有效利用所有评估数据,<mark>达到与针对单任务做 RL 的专家模型相似的性能</mark>——即 generalist π0.7 继承 RL 专家的能力。suboptimal 数据还增加状态/场景多样性,带来更强 robustness,使 π0.7 在高难度灵巧任务上<mark>有时甚至超过</mark> RL 训练或单任务后训练的策略。</div></div>
@@ -627,7 +627,7 @@ Speed: 8000. Quality: 5. Mistake: false. Control Mode: joint.
           <div class="qa-answer"><div class="badge a">A</div><div class="atext">所有实验用 <mark>5 个 denoising 步</mark>生成 50 步 action chunk,执行其中 <mark>Ĥ ∈ {15, 25}</mark> 步。</div></div>
         </div>
 
-        <div class="qa">
+        <div class="concept-anchor qa" id="concept-classifier-free-guidance">
           <div class="qa-q"><div class="badge q">Q</div><div class="qtext"><span class="qnum">Q45</span>π0.7 怎么用 CFG?为什么能用?</div></div>
           <div class="reveal-hint">点击查看答案 <span class="arr">▸</span></div>
           <div class="qa-answer"><div class="badge a">A</div><div class="atext">因为每个 prompt 组件都用 dropout 训练,π0.7 可对任意 prompt 部分做 <mark>classifier-free guidance</mark>。每步 denoising 遵循:<code class="formula">∇_a log π_θ(a|o,C)
@@ -889,7 +889,10 @@ Speed: 8000. Quality: 5. Mistake: false. Control Mode: joint.
         <a class="concept-link" href="pi0.6-论文解读.html#concept-recap">RECAP：优势条件化策略</a>
         <a class="concept-link" href="Realtime-VLA-论文解读.html#concept-speculative-inference">实时推理的另一种方法：投机推理</a>
         <a class="concept-link" href="concepts.html">全部概念 →</a>
-      </aside>
+          <a class="concept-link" href="KI-知识隔离-论文解读.html#concept-knowledge-insulation">知识隔离：动作专家只读骨干</a>
+    <a class="concept-link" href="RTC-训练时-论文解读.html#concept-trtc">训练时 RTC：零额外推理开销</a>
+    <a class="concept-link" href="pi0.7_问答学习卡.html#concept-classifier-free-guidance">CFG：用条件差异引导采样</a>
+</aside>
 
     </main>
   </div>

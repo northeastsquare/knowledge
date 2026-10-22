@@ -167,18 +167,18 @@
           <tr><th>方法</th><th>更新什么</th><th>RL 方式</th><th>动作表示</th><th>训练环境</th><th>核心机制 / 锚定</th></tr>
         </thead>
         <tbody>
-          <tr><td class="mname">RECAP（π0.6）<span class="tag" style="background:var(--c-full)">整模型</span></td><td>整个 π0.6 端到端</td><td>offline RL（<a class="concept-link" href="两条主干-拆机手册.html#concept-advantage">优势</a>条件）</td><td>VLA 原生动作块</td><td>真机收集 → 离线更新</td><td>分布价值函数估每步优势，optimality 指示器加权高优势动作</td></tr>
+          <tr><td class="mname"><a class="concept-link" href="pi0.6-论文解读.html#concept-recap">RECAP（π0.6）</a><span class="tag" style="background:var(--c-full)">整模型</span></td><td>整个 π0.6 端到端</td><td>offline RL（<a class="concept-link" href="两条主干-拆机手册.html#concept-advantage">优势</a>条件）</td><td>VLA 原生动作块</td><td>真机收集 → 离线更新</td><td>分布价值函数估每步优势，optimality 指示器加权高优势动作</td></tr>
           <tr><td class="mname">SimpleVLA-RL<span class="tag" style="background:var(--c-full)">整模型</span></td><td>整个 VLA</td><td>online（<a class="concept-link" href="RLinf-RL原理对比.html#concept-ppo">PPO</a> 类）</td><td>VLA 原生</td><td>仿真（大规模）</td><td>规模化 VLA RL 训练</td></tr>
           <tr><td class="mname">DPPO<span class="tag" style="background:var(--c-full)">整模型</span></td><td>扩散策略</td><td>online（PPO）</td><td>扩散去噪</td><td>仿真</td><td>对扩散策略做 PPO 优化</td></tr>
-          <tr><td class="mname">πRL<span class="tag" style="background:var(--c-noise)">噪声空间</span></td><td>动作专家（冻结 VLM）</td><td>online（PPO + GAE）</td><td>flow 去噪 / 噪声</td><td>仿真（320 envs）</td><td>Flow-Noise / Flow-SDE 让 log π 可解</td></tr>
-          <tr><td class="mname">DSRL<span class="tag" style="background:var(--c-noise)">噪声空间</span></td><td>潜噪声策略（冻结 VLA）</td><td>online（<a class="concept-link" href="两条主干-拆机手册.html#concept-off-policy">off-policy</a>）</td><td>扩散噪声空间</td><td>真机</td><td>选噪声 steer 冻结生成器，隐式约束探索</td></tr>
-          <tr><td class="mname">GR-RL<span class="tag" style="background:var(--c-noise)">噪声空间</span></td><td>噪声预测器（冻结 VLA）</td><td>offline BC → online RL</td><td>扩散潜空间</td><td>真机</td><td>多阶段：过滤 BC 后，噪声预测器 steer 潜空间</td></tr>
+          <tr><td class="mname"><a class="concept-link" href="piRL-论文解读.html#concept-denoising-mdp">πRL</a><span class="tag" style="background:var(--c-noise)">噪声空间</span></td><td>动作专家（冻结 VLM）</td><td>online（PPO + <a class="concept-link" href="RLinf-RL原理对比.html#concept-gae">GAE</a>）</td><td>flow 去噪 / 噪声</td><td>仿真（320 envs）</td><td>Flow-Noise / Flow-SDE 让 log π 可解</td></tr>
+          <tr><td class="mname"><a class="concept-link" href="RLinf-RL原理对比.html#concept-dsrl">DSRL</a><span class="tag" style="background:var(--c-noise)">噪声空间</span></td><td>潜噪声策略（冻结 VLA）</td><td>online（<a class="concept-link" href="两条主干-拆机手册.html#concept-off-policy">off-policy</a>）</td><td>扩散噪声空间</td><td>真机</td><td>选噪声 steer 冻结生成器，隐式约束探索</td></tr>
+          <tr><td class="mname">GR-RL<span class="tag" style="background:var(--c-noise)">噪声空间</span></td><td>噪声预测器（冻结 VLA）</td><td>offline <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-behavior-cloning">BC</a> → online RL</td><td>扩散潜空间</td><td>真机</td><td>多阶段：过滤 BC 后，噪声预测器 steer 潜空间</td></tr>
           <tr><td class="mname">Policy Decorator<span class="tag" style="background:var(--c-resid)">残差</span></td><td>残差策略（冻结 VLA）</td><td>online</td><td>单步残差</td><td>仿真（百万级步）</td><td>残差 × 手工超参 加到 VLA 预测</td></tr>
           <tr><td class="mname">PLD<span class="tag" style="background:var(--c-resid)">残差</span></td><td>残差策略（冻结 VLA）</td><td>Cal-QL 预训 critic → 残差</td><td>单步残差</td><td>真机</td><td>Cal-QL 预训 critic，可选蒸馏回 VLA</td></tr>
           <tr><td class="mname">ConRFT<span class="tag" style="background:var(--c-resid)">残差</span></td><td>action head（冻结 encoder）</td><td>一致性 + 奖励分类器</td><td>单步</td><td>短程任务</td><td>一致性目标 + 学习二值奖励分类器</td></tr>
-          <tr><td class="mname">Object-Centric RL<span class="tag" style="background:var(--c-resid)">残差</span></td><td>残差策略（冻结 VLA）</td><td>online（仿真）</td><td>残差（修正 VLA 动作）</td><td>纯仿真 → 真机零样本</td><td>物体位姿观测 + 噪声注入/dropout，42%→76%</td></tr>
-          <tr><td class="mname">RL-100<span class="tag" style="background:var(--c-full)">整模型</span></td><td>扩散策略（IL 初始化）</td><td>迭代离线 RL + 小预算在线 RL</td><td>动作块（单步/分块皆可）</td><td>真机</td><td>PPO 代理目标套在去噪链上 + OPE 接受门 + 一致性蒸馏成单步</td></tr>
-          <tr><td class="mname">RLT（RL Token）<span class="tag" style="background:var(--c-rlt)">RL token</span></td><td>轻量 actor-critic（冻结 VLA）</td><td>online（off-policy，TD3）</td><td>动作块（以 ã 为条件）</td><td>真机在线</td><td>RL token 表示 + KL 正则锚定 + reference dropout</td></tr>
+          <tr><td class="mname"><a class="concept-link" href="ObjectCentric-RL-论文解读.html#concept-residual-rl">Object-Centric RL</a><span class="tag" style="background:var(--c-resid)">残差</span></td><td>残差策略（冻结 VLA）</td><td>online（仿真）</td><td>残差（修正 VLA 动作）</td><td>纯仿真 → 真机零样本</td><td>物体位姿观测 + 噪声注入/dropout，42%→76%</td></tr>
+          <tr><td class="mname"><a class="concept-link" href="RL-100-论文解读.html#concept-ope">RL-100</a><span class="tag" style="background:var(--c-full)">整模型</span></td><td>扩散策略（IL 初始化）</td><td>迭代离线 RL + 小预算在线 RL</td><td>动作块（单步/分块皆可）</td><td>真机</td><td>PPO 代理目标套在去噪链上 + <a class="concept-link" href="RL-100-论文解读.html#concept-ope">OPE</a> 接受门 + <a class="concept-link" href="RL-100-论文解读.html#concept-consistency-distillation">一致性蒸馏</a>成单步</td></tr>
+          <tr><td class="mname"><a class="concept-link" href="RLToken-漫画分镜解读.html#concept-rl-token">RLT（RL Token）</a><span class="tag" style="background:var(--c-rlt)">RL token</span></td><td>轻量 actor-critic（冻结 VLA）</td><td>online（off-policy，<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-td3">TD3</a>）</td><td>动作块（以 ã 为条件）</td><td>真机在线</td><td>RL token 表示 + KL 正则锚定 + <a class="concept-link" href="RL-Token-论文解读.html#concept-reference-dropout">reference dropout</a></td></tr>
           <tr><td class="mname">SERL / HIL-SERL<span class="tag" style="background:var(--c-zero)">从零</span></td><td>从零小模型</td><td>online（off-policy）</td><td>小块动作</td><td>真机</td><td>无 VLA 先验，ResNet 编码器（对照基线）</td></tr>
         </tbody>
       </table>
@@ -188,7 +188,7 @@
   <div class="camp">
     <div class="camp-head"><span class="bar" style="background:var(--c-full)"></span><h2>① 整模型 RL</h2><span class="cnt">4 个</span></div>
     <div class="camp-body">
-      <p class="desc">直接更新整个 VLA。上限最高、能真正改变行为模式，但计算和样本成本最贵，on-policy 方法尤其难上真机。RECAP 用<strong>离线 RL</strong>绕开在线探索，是这一类的实用代表。</p>
+      <p class="desc">直接更新整个 VLA。上限最高、能真正改变行为模式，但计算和样本成本最贵，<a class="concept-link" href="RLinf-RL原理对比.html#concept-on-policy">on-policy</a> 方法尤其难上真机。RECAP 用<strong>离线 RL</strong>绕开在线探索，是这一类的实用代表。</p>
       <div class="mcard"><div class="mt"><a class="concept-link" href="pi0.6-论文解读.html#concept-recap">RECAP（π0.6）</a></div><div class="md">优势条件策略抽取：价值函数估每步优势，把「演示 + 自主 rollout + 人类干预」全喂给模型，吞吐 >2×。</div></div>
       <div class="mcard"><div class="mt">SimpleVLA-RL</div><div class="md">PPO 类整模型 RL，面向规模化 VLA 训练。</div></div>
       <div class="mcard"><div class="mt">DPPO</div><div class="md">Diffusion Policy 上的 PPO，把策略梯度用到扩散策略。</div></div>
@@ -207,9 +207,9 @@
   </div>
 
   <div class="camp">
-    <div class="camp-head"><span class="bar" style="background:var(--c-resid)"></span><h2>③ 残差策略（冻结 VLA）</h2><span class="cnt">4 个</span></div>
+    <div class="camp-head"><span class="bar" style="background:var(--c-resid)"></span><h2 id="concept-residual-methods" class="concept-anchor">③ 残差策略（冻结 VLA）</h2><span class="cnt">4 个</span></div>
     <div class="camp-body">
-      <p class="desc">冻结 VLA，学一个<strong>对 VLA 动作做修正的残差</strong>。最简单、最省算力，但大多局限在<strong>单步动作</strong>（PLD、ConRFT、Policy Decorator），信用分配链更长；Object-Centric 用物体位姿缩小观测空间做到零样本 sim-to-real。</p>
+      <p class="desc">冻结 VLA，学一个<strong>对 VLA 动作做修正的<a class="concept-link" href="ObjectCentric-RL-论文解读.html#concept-residual-rl">残差</a></strong>。最简单、最省算力，但大多局限在<strong>单步动作</strong>（PLD、ConRFT、Policy Decorator），信用分配链更长；Object-Centric 用<a class="concept-link" href="ObjectCentric-RL-论文解读.html#concept-object-centric-observation">物体位姿</a>缩小观测空间做到零样本 sim-to-real。</p>
       <div class="mcard"><div class="mt"><a class="concept-link" href="ObjectCentric-RL-论文解读.html#concept-residual-rl">Object-Centric Residual RL</a></div><div class="md">物体位姿观测 + 仿真噪声注入，纯仿真训练零样本上真机，42%→76%。</div></div>
       <div class="mcard"><div class="mt">PLD（Probe-Learn-Distill）</div><div class="md">Cal-QL 预训 critic，再学单步残差，可选蒸馏回 VLA。</div></div>
       <div class="mcard"><div class="mt">ConRFT</div><div class="md">冻结 encoder 微调 action head，一致性目标 + 二值奖励分类器。</div></div>
@@ -220,7 +220,7 @@
   <div class="camp">
     <div class="camp-head"><span class="bar" style="background:var(--c-rlt)"></span><h2>④ RL token（本文路线）</h2><span class="cnt">1 个</span></div>
     <div class="camp-body">
-      <p class="desc">在「残差 / 轻量头」之上更进一步：不直接拿 VLA 高维特征，而是<strong>先抽一个紧凑表示（RL token）</strong>，再训轻量 <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-actor-critic">actor-critic</a>，并且用<strong>参考动作 + KL 正则</strong>锚定、用<strong><a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块</a></strong>缩短信用分配。是「冻结 VLA + 轻量 RL」里数据效率最极致的做法。</p>
+      <p class="desc">在「残差 / 轻量头」之上更进一步：不直接拿 VLA 高维特征，而是<strong>先抽一个紧凑表示（<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-rl-token">RL token</a>）</strong>，再训轻量 <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-actor-critic">actor-critic</a>，并且用<strong>参考动作 + KL 正则</strong>锚定、用<strong><a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块</a></strong>缩短信用分配。是「冻结 VLA + 轻量 RL」里数据效率最极致的做法。</p>
       <div class="mcard"><div class="mt"><a href="RL-Token-论文解读.html">RLT（RL Token）</a></div><div class="md">RL token（信息瓶颈表示）+ actor 以参考动作 ã 为条件 + KL 正则 + reference dropout；真机几分钟~几小时，关键阶段提速最高 3×。</div></div>
     </div>
   </div>
@@ -248,6 +248,9 @@
     <strong>相关概念</strong>
     <a href="RLinf-RL原理对比.html#concept-ppo">PPO：更新完整策略的一条路线</a>
     <a href="RLToken-漫画分镜解读.html#concept-td3">TD3：轻量 actor-critic 的训练方法</a>
+    <a class="concept-link" href="RLinf-RL原理对比.html#concept-dsrl">DSRL 的潜噪声动作空间</a>
+    <a class="concept-link" href="RL-100-论文解读.html#concept-ope">RL-100 的 OPE 与保守迭代</a>
+    <a class="concept-link" href="RL-Token-论文解读.html#concept-reference-dropout">参考动作 dropout</a>
     <a href="concepts.html">全部概念 →</a>
   </aside>
 

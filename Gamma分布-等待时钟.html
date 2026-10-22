@@ -1,0 +1,1082 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gamma 分布：等待时钟 ⏱</title>
+<meta name="description" content="用等车、排队、服务器请求理解 Gamma 分布——不是抽象的 α 和 β，而是「等第 k 件事发生要多久」">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<link rel="stylesheet" href="concepts.css">
+<style>
+:root {
+  --paper: #1a1a1a;
+  --ink: #e8e8e8;
+  --ink-dim: #a0a0a0;
+  --accent: #00ff88;
+  --accent-dim: #00cc6a;
+  --glow: rgba(0, 255, 136, 0.3);
+  --surface: #2a2a2a;
+  --surface-lift: #353535;
+  --grid: #333;
+  --warn: #ff6b35;
+  --info: #4ecdc4;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: -apple-system, "Microsoft YaHei", "PingFang SC", sans-serif;
+  line-height: 1.7;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+.scanline {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0, 255, 136, 0.03) 2px,
+    rgba(0, 255, 136, 0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+
+.glow-bar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg,
+    transparent,
+    var(--accent) 30%,
+    var(--accent) 70%,
+    transparent
+  );
+  box-shadow: 0 0 20px var(--glow);
+  z-index: 100;
+}
+
+header {
+  padding: 60px 24px 40px;
+  border-bottom: 2px solid var(--accent);
+  box-shadow: 0 0 30px var(--glow);
+  margin-bottom: 48px;
+  position: relative;
+}
+
+header::before {
+  content: "⏱";
+  position: absolute;
+  top: 20px;
+  right: 24px;
+  font-size: 48px;
+  opacity: 0.3;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.3; transform: scale(1); }
+  50% { opacity: 0.6; transform: scale(1.1); }
+}
+
+.back-link {
+  display: inline-block;
+  color: var(--accent);
+  text-decoration: none;
+  font-size: 13px;
+  letter-spacing: 0.05em;
+  margin-bottom: 16px;
+  font-family: "Courier New", monospace;
+  text-transform: uppercase;
+}
+
+.back-link:hover {
+  text-shadow: 0 0 8px var(--glow);
+}
+
+h1 {
+  font-size: clamp(32px, 5vw, 48px);
+  font-weight: 800;
+  color: var(--accent);
+  text-shadow: 0 0 20px var(--glow);
+  margin-bottom: 12px;
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  font-size: 16px;
+  color: var(--ink-dim);
+  max-width: 600px;
+}
+
+.wrap {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 24px 80px;
+}
+
+.section {
+  margin-bottom: 48px;
+}
+
+h2 {
+  font-size: 24px;
+  color: var(--accent);
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-weight: 700;
+}
+
+h2::before {
+  content: "▸";
+  font-size: 20px;
+}
+
+h3 {
+  font-size: 18px;
+  color: var(--info);
+  margin: 24px 0 12px;
+  font-weight: 600;
+}
+
+p {
+  margin-bottom: 12px;
+  color: var(--ink);
+}
+
+strong {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.highlight {
+  background: linear-gradient(90deg, transparent, var(--surface) 10%, var(--surface) 90%, transparent);
+  padding: 16px 20px;
+  border-left: 3px solid var(--accent);
+  margin: 16px 0;
+  box-shadow: 0 0 20px rgba(0, 255, 136, 0.1);
+}
+
+.demo-box {
+  background: var(--surface);
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  padding: 24px;
+  margin: 24px 0;
+  box-shadow: 0 0 30px rgba(0, 255, 136, 0.15);
+  position: relative;
+}
+
+.demo-box::before {
+  content: "[ INTERACTIVE ]";
+  position: absolute;
+  top: -10px;
+  left: 20px;
+  background: var(--paper);
+  padding: 0 8px;
+  font-size: 11px;
+  color: var(--accent);
+  font-family: "Courier New", monospace;
+  letter-spacing: 0.1em;
+}
+
+.demo-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 16px;
+}
+
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 20px;
+  align-items: center;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.control-group label {
+  font-size: 12px;
+  color: var(--ink-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-family: "Courier New", monospace;
+}
+
+input[type="range"] {
+  width: 180px;
+  height: 4px;
+  background: var(--surface-lift);
+  border: 1px solid var(--accent-dim);
+  outline: none;
+  -webkit-appearance: none;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  background: var(--accent);
+  cursor: pointer;
+  box-shadow: 0 0 10px var(--glow);
+  border-radius: 50%;
+}
+
+input[type="range"]::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  background: var(--accent);
+  cursor: pointer;
+  box-shadow: 0 0 10px var(--glow);
+  border: none;
+  border-radius: 50%;
+}
+
+.value-display {
+  font-family: "Courier New", monospace;
+  color: var(--accent);
+  font-weight: 700;
+  font-size: 14px;
+}
+
+button {
+  background: var(--accent);
+  color: var(--paper);
+  border: none;
+  padding: 10px 20px;
+  font-weight: 700;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 13px;
+  box-shadow: 0 0 15px var(--glow);
+  transition: all 0.2s;
+}
+
+button:hover {
+  box-shadow: 0 0 25px var(--glow);
+  transform: translateY(-2px);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  background: var(--paper);
+  border: 1px solid var(--grid);
+}
+
+.formula-box {
+  background: var(--surface-lift);
+  border: 1px solid var(--accent-dim);
+  padding: 20px;
+  margin: 16px 0;
+  font-family: "Courier New", monospace;
+  font-size: 14px;
+  overflow-x: auto;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.3);
+}
+
+.code {
+  font-family: "Courier New", monospace;
+  background: var(--surface-lift);
+  padding: 2px 6px;
+  border-radius: 3px;
+  color: var(--info);
+  font-size: 13px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 14px;
+}
+
+th {
+  background: var(--surface);
+  color: var(--accent);
+  padding: 10px;
+  text-align: left;
+  border: 1px solid var(--accent-dim);
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+}
+
+td {
+  padding: 10px;
+  border: 1px solid var(--grid);
+  color: var(--ink);
+}
+
+tr:hover {
+  background: var(--surface);
+}
+
+ul, ol {
+  margin: 12px 0 12px 24px;
+}
+
+li {
+  margin-bottom: 8px;
+}
+
+.note {
+  background: linear-gradient(135deg, var(--surface), var(--surface-lift));
+  border-left: 3px solid var(--warn);
+  padding: 16px;
+  margin: 16px 0;
+  font-size: 14px;
+  color: var(--ink-dim);
+}
+
+.note strong {
+  color: var(--warn);
+}
+
+footer {
+  margin-top: 60px;
+  padding-top: 20px;
+  border-top: 1px solid var(--grid);
+  text-align: center;
+  color: var(--ink-dim);
+  font-size: 13px;
+}
+
+@media (max-width: 640px) {
+  .controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  input[type="range"] {
+    width: 100%;
+  }
+}
+
+  .toc{position:fixed;left:16px;top:84px;width:200px;max-height:calc(100vh - 116px);overflow-y:auto;
+       background:var(--surface);border:2px solid var(--accent);border-radius:10px;padding:12px 10px;
+       z-index:60;font-size:12.5px;line-height:1.35;box-shadow:0 0 18px rgba(0,0,0,.35);}
+  .toc h4{margin:0 0 8px;font-size:12px;letter-spacing:.08em;color:var(--accent);text-transform:uppercase;}
+  .toc a{display:block;padding:5px 7px;border-radius:5px;color:var(--text-dim,var(--ink-dim,#9aa));
+        text-decoration:none;border-left:2px solid transparent;}
+  .toc a:hover{background:var(--surface-lift);color:var(--accent);}
+  .toc a.active{background:var(--accent);color:var(--bg,var(--paper,#111));font-weight:700;}
+  @media(max-width:1180px){
+    .toc{position:static;width:auto;max-height:none;margin:0 0 22px;display:flex;flex-wrap:wrap;gap:4px;}
+    .toc h4{width:100%;margin-bottom:4px;}
+    .toc a{border:1px solid var(--line,var(--grid,var(--border,#444)));border-left-width:1px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="glow-bar"></div>
+<div class="scanline"></div>
+
+<header>
+  <a href="index.html" class="back-link">← 返回知识库</a>
+  <h1>Gamma 分布：等待时钟</h1>
+  <p class="subtitle">不是抽象的 α 和 β，而是「等第 k 件事发生要多久」——用等车、排队、服务器请求理解 Gamma 分布</p>
+</header>
+
+<div class="wrap">
+
+<nav class="toc">
+  <h4>本页目录</h4>
+  <a href="#s1">一句话</a>
+  <a href="#s2">从指数分布说起</a>
+  <a href="#s3">Gamma = 等第 k 件事</a>
+  <a href="#s4">生活中的例子</a>
+  <a href="#s5">Gamma 与 Beta 的关系</a>
+  <a href="#s6">常见疑问</a>
+  <a href="#s7">与其他分布的关系</a>
+  <a href="#s8">回到 π0：为什么要懂 Gamma</a>
+</nav>
+
+
+<div class="section">
+  <h2 id="s1">一句话</h2>
+  <div class="highlight">
+    <p><strong>Gamma 分布描述「等第 k 件随机事件发生需要多长时间」。</strong></p>
+    <p>如果平均每分钟发生 λ 次事件（泊松过程），那么等第 k 件事发生的时间服从 <span class="code">Gamma(k, λ)</span>。</p>
+  </div>
+</div>
+
+<div class="section">
+  <h2 id="s2">从指数分布说起</h2>
+  <p>先从最简单的情况开始：<strong>等第 1 件事发生要多久？</strong></p>
+
+  <p>假设事件随机发生，平均每分钟 λ 次。那么「等第 1 件事」的时间服从<strong><a class="concept-link" href="概率分布博物馆.html#concept-exponential-distribution">指数分布</a></strong> Exp(λ)：</p>
+
+  <div class="formula-box">
+$$f(t) = \lambda e^{-\lambda t}$$
+$$\text{均值} = \frac{1}{\lambda}$$
+  </div>
+
+  <p><strong>例子</strong>：如果平均每分钟来 2 辆公交车（λ=2）：</p>
+  <ul style="margin-left:24px;margin-bottom:12px;">
+    <li>两辆车之间的<strong>平均间隔</strong> = 1/λ = 0.5 分钟</li>
+    <li>你随机到站后，<strong>等第一辆车的平均时间</strong> = 1/λ = 0.5 分钟</li>
+  </ul>
+
+  <div class="note">
+    <strong>⚠️ 直觉陷阱</strong>：你可能觉得"间隔 0.5 分钟，我随机到站，应该平均等 0.25 分钟才对"——这个直觉适用于<strong>固定间隔</strong>的情况。但公交车是<strong>随机到达</strong>（泊松过程），由于"无记忆性"，平均等待时间就是平均间隔 1/λ。详见 <a href="指数分布-等待的数学.html" style="color:var(--info)">指数分布讲解</a>。
+  </div>
+
+  <h3>关键性质：无记忆性</h3>
+  <p>已经等了 5 分钟，不影响"再等多久"的分布——概率不会因为你等得久而变大。就像掷骰子，前面掷了多少次都不影响下一次。这个反直觉的性质导致：随机到达时，平均等待时间 = 平均间隔（而不是间隔的一半）。</p>
+</div>
+
+<div class="section">
+  <h2 id="s3">Gamma = 等第 k 件事</h2>
+  <p>现在升级：<strong>等第 k 件事发生要多久？</strong></p>
+
+  <p>如果每件事的到达间隔都是独立的指数分布 Exp(λ)，那么：</p>
+
+  <div class="highlight">
+    <p><strong>T = (第1件事的时间) + (第2件事的时间) + ... + (第k件事的时间)</strong></p>
+    <p>这个总时间 T 服从 <span class="code">Gamma(k, λ)</span></p>
+  </div>
+
+  <div class="formula-box">
+Gamma(k, λ):
+
+密度函数：
+$$f(t) = \frac{\lambda^k \cdot t^{k-1} \cdot e^{-\lambda t}}{(k-1)!} \quad (k \text{ 为正整数时})$$
+
+$$\text{均值} = \frac{k}{\lambda}$$
+$$\text{方差} = \frac{k}{\lambda^2}$$
+  </div>
+
+  <p><strong>参数含义</strong>：</p>
+  <ul>
+    <li><strong>k</strong>（形状参数 / shape）：等第几件事，也叫 α</li>
+    <li><strong>λ</strong>（速率参数 / rate）：平均每单位时间发生几次，也叫 β（注意：有些书用 θ=1/λ 作为尺度参数）</li>
+  </ul>
+
+  <div class="note">
+    <strong>⚠️ 参数命名混乱</strong>：不同领域、不同软件对 Gamma 参数的命名不统一。常见有：
+    <ul>
+      <li>Gamma(k, λ)：k=形状，λ=速率（本页用这个）</li>
+      <li>Gamma(α, β)：α=形状，β=速率</li>
+      <li>Gamma(α, θ)：α=形状，θ=尺度=1/λ</li>
+    </ul>
+    <strong>核心不变</strong>：第一个参数是"等第几件"，第二个参数（或其倒数）是"多快发生"。
+  </div>
+</div>
+
+<div class="demo-box">
+  <div class="demo-title">实验 1：看见 Gamma 的形状</div>
+  <div class="controls">
+    <div class="control-group">
+      <label>等第 <span id="k-val" class="value-display">3</span> 件事 (k)</label>
+      <input type="range" id="k-slider" min="1" max="10" value="3" step="1">
+    </div>
+    <div class="control-group">
+      <label>速率 λ = <span id="lambda-val" class="value-display">1.0</span> 次/分钟</label>
+      <input type="range" id="lambda-slider" min="0.2" max="3" value="1" step="0.1">
+    </div>
+  </div>
+  <canvas id="shape-canvas" width="800" height="300"></canvas>
+  <p style="margin-top:12px; font-size:13px; color:var(--ink-dim);">
+    <strong>观察</strong>：k=1 时是指数分布（L 形）；k 越大，峰越靠右、越对称；λ 越大，曲线整体左移（事件来得快，等待时间短）。
+  </p>
+</div>
+
+<div class="section">
+  <h2 id="s4">生活中的例子</h2>
+
+  <h3>① 等公交车</h3>
+  <p>公交车平均每 10 分钟来一辆（λ = 0.1 次/分钟）。</p>
+  <ul>
+    <li><strong>等第 1 辆车</strong>：Exp(0.1)，平均等 1/0.1 = 10 分钟</li>
+    <li><strong>等第 3 辆车经过</strong>：Gamma(3, 0.1)，平均等 3/0.1 = 30 分钟</li>
+  </ul>
+
+  <h3>② 服务器请求</h3>
+  <p>网站平均每秒处理 5 个请求（λ = 5 次/秒）。</p>
+  <ul>
+    <li><strong>处理完第 10 个请求</strong>：需要 Gamma(10, 5) 的时间，平均 10/5 = 2 秒</li>
+    <li><strong>达到 100 个请求</strong>：Gamma(100, 5)，平均 20 秒</li>
+  </ul>
+
+  <h3>③ 排队系统</h3>
+  <p>超市收银台平均每分钟服务 2 个顾客（λ = 2 次/分钟）。</p>
+  <ul>
+    <li><strong>前面有 5 个人</strong>：你要等 Gamma(5, 2) 的时间，平均 5/2 = 2.5 分钟</li>
+  </ul>
+
+  <h3>④ 放射性衰变</h3>
+  <p>一块放射性物质平均每秒衰变 λ 个原子。等第 k 个原子衰变的时间是 Gamma(k, λ)。</p>
+</div>
+
+<div class="demo-box">
+  <div class="demo-title">实验 2：模拟等公交</div>
+  <div class="controls">
+    <div class="control-group">
+      <label>平均每 <span id="interval-val" class="value-display">10</span> 分钟来一辆</label>
+      <input type="range" id="interval-slider" min="2" max="20" value="10" step="1">
+    </div>
+    <div class="control-group">
+      <label>等第 <span id="wait-k-val" class="value-display">3</span> 辆</label>
+      <input type="range" id="wait-k-slider" min="1" max="5" value="3" step="1">
+    </div>
+    <button id="simulate-btn">运行 1000 次模拟</button>
+  </div>
+  <canvas id="sim-canvas" width="800" height="300"></canvas>
+  <p id="sim-result" style="margin-top:12px; font-size:14px; color:var(--accent);"></p>
+  <p style="margin-top:8px; font-size:13px; color:var(--ink-dim);">
+    <strong>验证</strong>：理论均值 = k × 平均间隔。模拟结果应该接近这个值（运行多次会看到波动）。
+  </p>
+</div>
+
+<div class="section">
+  <h2 id="s5">Gamma 与 Beta 的关系</h2>
+  <p>在 <a href="pi0-论文解读.html" style="color:var(--info)">π0 论文解读</a>里看到：两段时间 X ~ Gamma(α)、Y ~ Gamma(β)，它们的占比 R = X/(X+Y) 服从 Beta(α, β)。</p>
+
+  <div class="highlight">
+    <p><strong>直觉</strong>：两个任务分别要等 α 件事和 β 件事才能完成（事件速率相同）。已知总共花了 T 时间完成两个任务，第一个任务占用的时间比例是多少？</p>
+    <p>答案：R ~ Beta(α, β)</p>
+  </div>
+
+  <h3>为什么？</h3>
+  <p>核心在于<strong>顺序统计量</strong>的性质：</p>
+  <ol>
+    <li>X ~ Gamma(α) 意味着"等第 α 件事发生"</li>
+    <li>Y ~ Gamma(β) 意味着"等第 β 件事发生"</li>
+    <li>已知总共 α+β 件事发生在时间 T 内，这些事件在 [0, T] 里是<strong>均匀散布</strong>的</li>
+    <li>第 α 件事的时刻占比 = α+β-1 个均匀随机点里第 α 小的位置</li>
+    <li>这正是 Beta(α, β) 的定义（见 <a class="concept-link" href="Beta分布-球星卡.html#concept-beta-distribution" style="color:var(--info)">Beta 分布球星卡</a>）</li>
+  </ol>
+</div>
+
+<div class="demo-box">
+  <div class="demo-title">实验 3：Gamma → Beta 的转换</div>
+  <div class="controls">
+    <div class="control-group">
+      <label>任务 A：等 <span id="alpha-val" class="value-display">3</span> 件事 (α)</label>
+      <input type="range" id="alpha-slider" min="1" max="8" value="3" step="1">
+    </div>
+    <div class="control-group">
+      <label>任务 B：等 <span id="beta-val" class="value-display">5</span> 件事 (β)</label>
+      <input type="range" id="beta-slider" min="1" max="8" value="5" step="1">
+    </div>
+    <button id="transform-btn">运行 1000 次实验</button>
+  </div>
+  <canvas id="transform-canvas" width="800" height="300"></canvas>
+  <p id="transform-result" style="margin-top:12px; font-size:14px; color:var(--accent);"></p>
+  <p style="margin-top:8px; font-size:13px; color:var(--ink-dim);">
+    <strong>实验</strong>：每次采样 X ~ Gamma(α, 1) 和 Y ~ Gamma(β, 1)，计算 R = X/(X+Y)，看 R 的分布是否是 Beta(α, β)。绿色虚线是理论 Beta 密度。
+  </p>
+</div>
+
+<div class="section">
+  <h2 id="s6">常见疑问</h2>
+
+  <h3>Q1: 为什么不直接用"k 个指数分布的和"？</h3>
+  <p><strong>A:</strong> 概念上确实是这样，但 Gamma 提供了封闭形式的密度函数和性质，方便分析。而且 Gamma 可以推广到非整数 α（通过 Gamma 函数 Γ(α) 替代阶乘）。</p>
+
+  <h3>Q2: Gamma(k, λ) 的期望为什么是 k/λ？</h3>
+  <p><strong>A:</strong> 每件事平均等 1/λ 时间，等 k 件事就是 k × (1/λ) = k/λ。</p>
+
+  <h3>Q3: 什么时候用 Gamma，什么时候用指数？</h3>
+  <p><strong>A:</strong></p>
+  <ul>
+    <li><strong>指数分布</strong>（Gamma(1, λ)）：等<strong>第 1 件</strong>事，或者两件事之间的<strong>间隔</strong></li>
+    <li><strong>Gamma分布</strong>：等<strong>第 k 件</strong>事（k ≥ 2），或者<strong>累积时间</strong></li>
+  </ul>
+
+  <h3>Q4: 为什么参数有时是 (α, β)，有时是 (α, θ)？</h3>
+  <p><strong>A:</strong> 历史遗留问题。统计学常用速率 λ 或 β；工程常用尺度 θ = 1/λ（因为"平均值 = α·θ"更直观）。<strong>两种写法描述同一个分布</strong>，只是参数化不同：</p>
+
+  <table>
+    <tr>
+      <th>参数化</th>
+      <th>密度函数</th>
+      <th>均值</th>
+      <th>方差</th>
+    </tr>
+    <tr>
+      <td>Gamma(α, β)<br><small>β 是速率</small></td>
+      <td>$$\frac{\beta^\alpha \cdot t^{\alpha-1} \cdot e^{-\beta t}}{\Gamma(\alpha)}$$</td>
+      <td>$$\frac{\alpha}{\beta}$$</td>
+      <td>$$\frac{\alpha}{\beta^2}$$</td>
+    </tr>
+    <tr>
+      <td>Gamma(α, θ)<br><small>θ 是尺度</small></td>
+      <td>$$\frac{t^{\alpha-1} \cdot e^{-t/\theta}}{\theta^\alpha \cdot \Gamma(\alpha)}$$</td>
+      <td>$$\alpha\theta$$</td>
+      <td>$$\alpha\theta^2$$</td>
+    </tr>
+  </table>
+
+  <p><strong>转换</strong>：θ = 1/β，两种写法是同一个分布。本页统一用速率参数 λ（对应 β）。</p>
+</div>
+
+<div class="section">
+  <h2 id="s7">与其他分布的关系</h2>
+
+  <table>
+    <tr>
+      <th>分布</th>
+      <th>关系</th>
+      <th>说明</th>
+    </tr>
+    <tr>
+      <td><strong>指数分布</strong></td>
+      <td>Exp(λ) = Gamma(1, λ)</td>
+      <td>Gamma 的特例，k=1 时</td>
+    </tr>
+    <tr>
+      <td><strong>卡方分布</strong></td>
+      <td>χ²(n) = Gamma(n/2, 1/2)</td>
+      <td>n 个标准正态变量平方和</td>
+    </tr>
+    <tr>
+      <td><strong>Beta 分布</strong></td>
+      <td>X~Gamma(α), Y~Gamma(β)<br>→ X/(X+Y) ~ Beta(α, β)</td>
+      <td>两段时间的占比</td>
+    </tr>
+    <tr>
+      <td><strong>泊松过程</strong></td>
+      <td>第 k 件事的时间 ~ Gamma(k, λ)</td>
+      <td>Gamma 是泊松的对偶</td>
+    </tr>
+    <tr>
+      <td><strong>Erlang 分布</strong></td>
+      <td>Erlang(k, λ) = Gamma(k, λ)</td>
+      <td>k 为正整数的 Gamma</td>
+    </tr>
+  </table>
+</div>
+
+<div class="section">
+  <h2 id="s8">回到 π0：为什么要懂 Gamma</h2>
+  <p>在 π0 论文里，Beta(1.5, 1) 用来偏向高噪声段采样。理解 Beta 和 Gamma 的关系后，你就知道：</p>
+
+  <ul>
+    <li><strong>Beta 描述比例</strong>：两段时间的占比、成功率的不确定性</li>
+    <li><strong>Gamma 描述时长</strong>：等第 k 件事的时间、累积耗时</li>
+    <li><strong>两者通过"占比"连接</strong>：X ~ Gamma(α), Y ~ Gamma(β) → X/(X+Y) ~ Beta(α, β)</li>
+  </ul>
+
+  <p>当 β=1 时，Beta(α, 1) 就是"α 个均匀随机数的最大值"——这解释了为什么 Beta(1.5, 1) 偏向 1（见 <a href="Beta分布-球星卡.html" style="color:var(--info)">Beta 分布球星卡</a>）。</p>
+</div>
+
+<div class="note">
+  <strong>总结</strong>：Gamma 不是抽象的数学符号，而是「等待」的数学模型。下次看到 Gamma(k, λ)，想象你在等第 k 辆公交车、或者等服务器处理完第 k 个请求——参数立刻就有了具体含义。
+</div>
+
+<div class="concept-related">
+  <strong>相关概念</strong>
+  <a class="concept-link" href="概率分布博物馆.html#concept-exponential-distribution">指数分布</a>
+  <a class="concept-link" href="概率分布博物馆.html#concept-poisson-distribution">泊松分布</a>
+  <a class="concept-link" href="Beta分布-球星卡.html#concept-beta-distribution">Beta 分布</a>
+</div>
+
+<footer>
+  <p>Gamma 分布：等待时钟 ⏱ · <a href="index.html" style="color:var(--accent);">返回知识库</a></p>
+  <p style="margin-top:8px; font-size:12px;">三个可交互实验 · 别慌，拖动看看曲线怎么变</p>
+</footer>
+
+</div>
+
+<script>
+// ===== 实验 1: Gamma 形状 =====
+const kSlider = document.getElementById('k-slider');
+const lambdaSlider = document.getElementById('lambda-slider');
+const kVal = document.getElementById('k-val');
+const lambdaVal = document.getElementById('lambda-val');
+const shapeCanvas = document.getElementById('shape-canvas');
+const shapeCtx = shapeCanvas.getContext('2d');
+
+function gammaFunc(n) {
+  // 简化：只处理整数 n，返回 (n-1)!
+  if (n <= 1) return 1;
+  let result = 1;
+  for (let i = 2; i < n; i++) result *= i;
+  return result;
+}
+
+function gammaPDF(t, k, lambda) {
+  if (t <= 0) return 0;
+  const numerator = Math.pow(lambda, k) * Math.pow(t, k - 1) * Math.exp(-lambda * t);
+  const denominator = gammaFunc(k);
+  return numerator / denominator;
+}
+
+function drawGamma() {
+  const k = parseInt(kSlider.value);
+  const lambda = parseFloat(lambdaSlider.value);
+  kVal.textContent = k;
+  lambdaVal.textContent = lambda.toFixed(1);
+
+  const w = shapeCanvas.width;
+  const h = shapeCanvas.height;
+  const padding = 50;
+  const plotW = w - 2 * padding;
+  const plotH = h - 2 * padding;
+
+  shapeCtx.fillStyle = '#1a1a1a';
+  shapeCtx.fillRect(0, 0, w, h);
+
+  // 找最大值用于缩放
+  const maxT = Math.max(15, k / lambda * 3);
+  const steps = 500;
+  let maxPDF = 0;
+  const points = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = (i / steps) * maxT;
+    const pdf = gammaPDF(t, k, lambda);
+    points.push({t, pdf});
+    maxPDF = Math.max(maxPDF, pdf);
+  }
+
+  // 绘制坐标轴
+  shapeCtx.strokeStyle = '#333';
+  shapeCtx.lineWidth = 2;
+  shapeCtx.beginPath();
+  shapeCtx.moveTo(padding, padding);
+  shapeCtx.lineTo(padding, h - padding);
+  shapeCtx.lineTo(w - padding, h - padding);
+  shapeCtx.stroke();
+
+  // 绘制曲线
+  shapeCtx.strokeStyle = '#00ff88';
+  shapeCtx.lineWidth = 3;
+  shapeCtx.shadowColor = 'rgba(0, 255, 136, 0.5)';
+  shapeCtx.shadowBlur = 10;
+  shapeCtx.beginPath();
+  points.forEach((p, i) => {
+    const x = padding + (p.t / maxT) * plotW;
+    const y = h - padding - (p.pdf / maxPDF) * plotH;
+    if (i === 0) shapeCtx.moveTo(x, y);
+    else shapeCtx.lineTo(x, y);
+  });
+  shapeCtx.stroke();
+  shapeCtx.shadowBlur = 0;
+
+  // 标注
+  shapeCtx.fillStyle = '#a0a0a0';
+  shapeCtx.font = '12px Courier New';
+  shapeCtx.fillText('0', padding - 5, h - padding + 20);
+  shapeCtx.fillText(maxT.toFixed(1), w - padding, h - padding + 20);
+  shapeCtx.fillText('时间', w / 2, h - 15);
+
+  // 均值线
+  const mean = k / lambda;
+  const meanX = padding + (mean / maxT) * plotW;
+  shapeCtx.strokeStyle = '#ff6b35';
+  shapeCtx.setLineDash([5, 5]);
+  shapeCtx.beginPath();
+  shapeCtx.moveTo(meanX, padding);
+  shapeCtx.lineTo(meanX, h - padding);
+  shapeCtx.stroke();
+  shapeCtx.setLineDash([]);
+
+  shapeCtx.fillStyle = '#ff6b35';
+  shapeCtx.fillText(`均值=${mean.toFixed(2)}`, meanX + 5, padding + 15);
+}
+
+kSlider.addEventListener('input', drawGamma);
+lambdaSlider.addEventListener('input', drawGamma);
+drawGamma();
+
+// ===== 实验 2: 模拟等公交 =====
+const intervalSlider = document.getElementById('interval-slider');
+const waitKSlider = document.getElementById('wait-k-slider');
+const intervalVal = document.getElementById('interval-val');
+const waitKVal = document.getElementById('wait-k-val');
+const simulateBtn = document.getElementById('simulate-btn');
+const simCanvas = document.getElementById('sim-canvas');
+const simCtx = simCanvas.getContext('2d');
+const simResult = document.getElementById('sim-result');
+
+intervalSlider.addEventListener('input', () => {
+  intervalVal.textContent = intervalSlider.value;
+});
+
+waitKSlider.addEventListener('input', () => {
+  waitKVal.textContent = waitKSlider.value;
+});
+
+function exponentialSample(lambda) {
+  return -Math.log(1 - Math.random()) / lambda;
+}
+
+simulateBtn.addEventListener('click', () => {
+  const interval = parseInt(intervalSlider.value);
+  const k = parseInt(waitKSlider.value);
+  const lambda = 1 / interval;
+  const nSims = 1000;
+
+  const samples = [];
+  for (let i = 0; i < nSims; i++) {
+    let total = 0;
+    for (let j = 0; j < k; j++) {
+      total += exponentialSample(lambda);
+    }
+    samples.push(total);
+  }
+
+  const mean = samples.reduce((a, b) => a + b, 0) / nSims;
+  const theoreticalMean = k * interval;
+
+  simResult.textContent = `模拟均值: ${mean.toFixed(2)} 分钟 | 理论均值: ${theoreticalMean.toFixed(2)} 分钟`;
+
+  // 绘制直方图
+  const w = simCanvas.width;
+  const h = simCanvas.height;
+  const padding = 50;
+
+  simCtx.fillStyle = '#1a1a1a';
+  simCtx.fillRect(0, 0, w, h);
+
+  const maxVal = Math.max(...samples);
+  const nBins = 30;
+  const binWidth = maxVal / nBins;
+  const bins = new Array(nBins).fill(0);
+
+  samples.forEach(s => {
+    const bin = Math.min(Math.floor(s / binWidth), nBins - 1);
+    bins[bin]++;
+  });
+
+  const maxCount = Math.max(...bins);
+  const barWidth = (w - 2 * padding) / nBins;
+  const plotH = h - 2 * padding;
+
+  simCtx.fillStyle = '#00ff88';
+  bins.forEach((count, i) => {
+    const x = padding + i * barWidth;
+    const barH = (count / maxCount) * plotH;
+    const y = h - padding - barH;
+    simCtx.fillRect(x, y, barWidth - 2, barH);
+  });
+
+  // 坐标轴
+  simCtx.strokeStyle = '#333';
+  simCtx.lineWidth = 2;
+  simCtx.beginPath();
+  simCtx.moveTo(padding, padding);
+  simCtx.lineTo(padding, h - padding);
+  simCtx.lineTo(w - padding, h - padding);
+  simCtx.stroke();
+
+  // 均值线
+  const meanX = padding + (mean / maxVal) * (w - 2 * padding);
+  simCtx.strokeStyle = '#ff6b35';
+  simCtx.setLineDash([5, 5]);
+  simCtx.beginPath();
+  simCtx.moveTo(meanX, padding);
+  simCtx.lineTo(meanX, h - padding);
+  simCtx.stroke();
+  simCtx.setLineDash([]);
+
+  simCtx.fillStyle = '#a0a0a0';
+  simCtx.font = '12px Courier New';
+  simCtx.fillText('0', padding - 5, h - padding + 20);
+  simCtx.fillText(maxVal.toFixed(1), w - padding - 20, h - padding + 20);
+  simCtx.fillText('等待时间 (分钟)', w / 2 - 40, h - 15);
+});
+
+// ===== 实验 3: Gamma → Beta =====
+const alphaSlider = document.getElementById('alpha-slider');
+const betaSlider = document.getElementById('beta-slider');
+const alphaVal = document.getElementById('alpha-val');
+const betaVal = document.getElementById('beta-val');
+const transformBtn = document.getElementById('transform-btn');
+const transformCanvas = document.getElementById('transform-canvas');
+const transformCtx = transformCanvas.getContext('2d');
+const transformResult = document.getElementById('transform-result');
+
+alphaSlider.addEventListener('input', () => {
+  alphaVal.textContent = alphaSlider.value;
+});
+
+betaSlider.addEventListener('input', () => {
+  betaVal.textContent = betaSlider.value;
+});
+
+function gammaSample(k, lambda) {
+  // 使用 k 个指数分布之和
+  let sum = 0;
+  for (let i = 0; i < k; i++) {
+    sum += exponentialSample(lambda);
+  }
+  return sum;
+}
+
+function betaPDF(x, alpha, beta) {
+  if (x <= 0 || x >= 1) return 0;
+  // 简化：只处理整数 alpha, beta
+  const B = gammaFunc(alpha) * gammaFunc(beta) / gammaFunc(alpha + beta);
+  return Math.pow(x, alpha - 1) * Math.pow(1 - x, beta - 1) / B;
+}
+
+transformBtn.addEventListener('click', () => {
+  const alpha = parseInt(alphaSlider.value);
+  const beta = parseInt(betaSlider.value);
+  const nSims = 1000;
+  const lambda = 1; // 固定速率
+
+  const ratios = [];
+  for (let i = 0; i < nSims; i++) {
+    const X = gammaSample(alpha, lambda);
+    const Y = gammaSample(beta, lambda);
+    const R = X / (X + Y);
+    ratios.push(R);
+  }
+
+  const mean = ratios.reduce((a, b) => a + b, 0) / nSims;
+  const theoreticalMean = alpha / (alpha + beta);
+
+  transformResult.textContent = `模拟均值: ${mean.toFixed(3)} | 理论均值: ${theoreticalMean.toFixed(3)}`;
+
+  // 绘制直方图 + 理论曲线
+  const w = transformCanvas.width;
+  const h = transformCanvas.height;
+  const padding = 50;
+
+  transformCtx.fillStyle = '#1a1a1a';
+  transformCtx.fillRect(0, 0, w, h);
+
+  const nBins = 40;
+  const bins = new Array(nBins).fill(0);
+
+  ratios.forEach(r => {
+    const bin = Math.min(Math.floor(r * nBins), nBins - 1);
+    bins[bin]++;
+  });
+
+  const maxCount = Math.max(...bins);
+  const barWidth = (w - 2 * padding) / nBins;
+  const plotH = h - 2 * padding;
+
+  // 归一化到密度
+  const binDensity = bins.map(c => c / nSims / (1 / nBins));
+  const maxDensity = Math.max(...binDensity);
+
+  transformCtx.fillStyle = 'rgba(0, 255, 136, 0.6)';
+  binDensity.forEach((density, i) => {
+    const x = padding + i * barWidth;
+    const barH = (density / maxDensity) * plotH;
+    const y = h - padding - barH;
+    transformCtx.fillRect(x, y, barWidth - 1, barH);
+  });
+
+  // 理论 Beta 曲线
+  transformCtx.strokeStyle = '#4ecdc4';
+  transformCtx.lineWidth = 3;
+  transformCtx.setLineDash([8, 4]);
+  transformCtx.beginPath();
+  const steps = 200;
+  let maxTheoretical = 0;
+  const theoreticalPoints = [];
+  for (let i = 0; i <= steps; i++) {
+    const x = i / steps;
+    const pdf = betaPDF(x, alpha, beta);
+    theoreticalPoints.push({x, pdf});
+    maxTheoretical = Math.max(maxTheoretical, pdf);
+  }
+
+  theoreticalPoints.forEach((p, i) => {
+    const x = padding + p.x * (w - 2 * padding);
+    const y = h - padding - (p.pdf / maxTheoretical) * plotH;
+    if (i === 0) transformCtx.moveTo(x, y);
+    else transformCtx.lineTo(x, y);
+  });
+  transformCtx.stroke();
+  transformCtx.setLineDash([]);
+
+  // 坐标轴
+  transformCtx.strokeStyle = '#333';
+  transformCtx.lineWidth = 2;
+  transformCtx.beginPath();
+  transformCtx.moveTo(padding, padding);
+  transformCtx.lineTo(padding, h - padding);
+  transformCtx.lineTo(w - padding, h - padding);
+  transformCtx.stroke();
+
+  transformCtx.fillStyle = '#a0a0a0';
+  transformCtx.font = '12px Courier New';
+  transformCtx.fillText('0', padding - 5, h - padding + 20);
+  transformCtx.fillText('1', w - padding, h - padding + 20);
+  transformCtx.fillText('比例 R = X/(X+Y)', w / 2 - 40, h - 15);
+
+  // 图例
+  transformCtx.fillStyle = '#00ff88';
+  transformCtx.fillRect(padding, padding + 10, 15, 15);
+  transformCtx.fillStyle = '#e8e8e8';
+  transformCtx.font = '13px sans-serif';
+  transformCtx.fillText('模拟数据', padding + 20, padding + 22);
+
+  transformCtx.strokeStyle = '#4ecdc4';
+  transformCtx.lineWidth = 3;
+  transformCtx.setLineDash([8, 4]);
+  transformCtx.beginPath();
+  transformCtx.moveTo(padding, padding + 40);
+  transformCtx.lineTo(padding + 15, padding + 40);
+  transformCtx.stroke();
+  transformCtx.setLineDash([]);
+  transformCtx.fillText('理论 Beta', padding + 20, padding + 44);
+});
+</script>
+
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {
+  delimiters: [
+    {left: '$$', right: '$$', display: true},
+    {left: '$', right: '$', display: false}
+  ],
+  throwOnError: false
+});"></script>
+
+
+<script>
+(function(){
+  var links=[].slice.call(document.querySelectorAll('.toc a'));
+  var secs=links.map(function(a){return document.getElementById(a.getAttribute('href').slice(1));});
+  function upd(){
+    var y=window.scrollY+140,idx=0;
+    for(var i=0;i<secs.length;i++){if(secs[i]&&y>=secs[i].offsetTop)idx=i;}
+    links.forEach(function(a,i){a.classList.toggle('active',i===idx);});
+  }
+  window.addEventListener('scroll',upd,{passive:true});
+  window.addEventListener('load',upd);
+  links.forEach(function(a){a.addEventListener('click',function(e){
+    e.preventDefault();
+    var t=document.getElementById(a.getAttribute('href').slice(1));
+    if(t){t.scrollIntoView({behavior:'smooth',block:'start'});setTimeout(upd,400);}
+  });});
+  upd();
+})();
+</script>
+
+<script src="nav.js"></script>
+</body>
+</html>

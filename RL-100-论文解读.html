@@ -198,7 +198,7 @@
   <section class="hero">
     <div class="eyebrow">精读笔记 · VLA 与强化学习</div>
     <h1>RL-100：真机强化学习，把成功率压到 100%</h1>
-    <p class="summary">在模仿学习训出的扩散策略之上做三段式 RL 后训练。核心不是新算法，而是一套<strong>可复用、能保证"每步都在变好"的工程流水线</strong>：用 OPE 当闸门把关迭代离线 RL，再拿小预算在线 RL 清长尾。</p>
+    <p class="summary">在模仿学习训出的扩散策略之上做三段式 RL 后训练。核心不是新算法，而是一套<strong>可复用、能保证"每步都在变好"的工程流水线</strong>：用 <a class="concept-link" href="RL-100-论文解读.html#concept-ope">OPE</a> 当闸门把关迭代离线 RL，再拿小预算在线 RL 清长尾。</p>
     <div class="meta">
       <div class="m"><span class="k">论文</span><span class="v">RL-100: Performant Robotic Manipulation with Real-World Reinforcement Learning</span></div>
       <div class="m"><span class="k">机构</span><span class="v">上海期智研究院 / 上海交大 / 清华 IIIS</span></div>
@@ -220,7 +220,7 @@
     <h2><span class="no">1</span>要解决什么问题</h2>
     <p class="lead">模仿学习有个天花板：它只能学到演示里已有的东西。</p>
     <div class="card">
-      <p>纯行为克隆（BC）的性能上限<strong>受限于演示数据的质量与覆盖度</strong>。演示本身有噪声、不一致，长程任务里小误差会累积成失败；而且 BC 无法优化"完成得多快"——演示里的人怎么做，模型就怎么学。</p>
+      <p>纯<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-behavior-cloning">行为克隆（BC）</a>的性能上限<strong>受限于演示数据的质量与覆盖度</strong>。演示本身有噪声、不一致，长程任务里小误差会累积成失败；而且 BC 无法优化"完成得多快"——演示里的人怎么做，模型就怎么学。</p>
       <p>但直接在真机上跑朴素 RL 又是另一组麻烦：样本低效、训练不稳定、探索不安全。真机的每一次失败都要花时间、磨损硬件。</p>
       <p>RL-100 的定位很明确：<strong>不是提出新的 RL 算法</strong>，而是把 IL 先验、离线 RL 的稳定性、在线 RL 的收尾能力拼成一条<strong>工程上可复用、改进单调</strong>的流水线。</p>
     </div>
@@ -233,7 +233,7 @@
     <div class="flow">
       <div class="st"><b>① 模仿学习（IL）</b>在遥操作演示上训扩散视觉运动策略。建立低方差底盘，论文称其 "a competent, low-variance base"。每任务约百来条演示，小时级。</div>
       <div class="st"><b>② 迭代离线 RL（主算力）</b>用策略自己跑出的 rollout 不断扩充数据，<strong>用 OPE 闸门决定是否接受更新</strong>。论文明确说这一阶段 "delivers the bulk of the improvement"，性能提升的大头在这里。</div>
-      <div class="st"><b>③ 在线 RL（小预算）</b>on-policy 微调，专门清掉残余的长尾失败模式，把 ~95% 推到 99%+，即 "the last-mile reliability"。</div>
+      <div class="st"><b>③ 在线 RL（小预算）</b><a class="concept-link" href="RLinf-RL原理对比.html#concept-on-policy">on-policy</a> 微调，专门清掉残余的长尾失败模式，把 ~95% 推到 99%+，即 "the last-mile reliability"。</div>
     </div>
 
     <div class="diagram">
@@ -275,7 +275,7 @@
     </div>
 
     <div class="card">
-      <h3>OPE 闸门具体怎么把关</h3>
+      <h3 id="concept-ope" class="concept-anchor">OPE 闸门具体怎么把关</h3>
       <p>论文用 <strong>AM-Q</strong>——一个带<strong>学习到的转移模型</strong>的估计器——来比较"候选策略"和"当前行为策略"，<strong>不需要额外与真机交互</strong>。规则是：</p>
       <blockquote>候选策略的 AM-Q 估计比当前策略高出至少 δ 时，才接受这次更新、把行为策略推进为 π<sub>i+1</sub> ≔ π；否则行为策略保持不变。</blockquote>
       <p>δ 是自适应的：<code>δ = 0.05·|Ĵ_AM-Q(π_i)|</code>。论文把这条规则称为 "OPE-gated"，效果是<strong>保守且单调的行为策略改进</strong>——这正是它敢在真机上反复迭代而不崩的原因。</p>
@@ -288,12 +288,12 @@
 
     <div class="card">
       <h3><span class="tag">设计一</span>把 PPO 套在去噪链上：一个目标打通离线与在线</h3>
-      <p>扩散/流策略一次要跑 K 步去噪。RL-100 把<strong>整个去噪过程当成一个 K 步的子 MDP</strong>，嵌在每个环境时间步内部，然后在每一步去噪上都套 clipped PPO 代理目标：</p>
+      <p>扩散/流策略一次要跑 K 步去噪。RL-100 把<strong><a class="concept-link" href="piRL-论文解读.html#concept-denoising-mdp">整个去噪过程当成一个 K 步的子 MDP</a></strong>，嵌在每个环境时间步内部，然后在每一步去噪上都套 clipped <a class="concept-link" href="RLinf-RL原理对比.html#concept-ppo">PPO</a> 代理目标：</p>
       <p style="text-align:center"><code>J<sub>i</sub>(π) = Σ<sub>k=1..K</sub> min( r<sub>k</sub>(π)·A<sub>t</sub>, clip(r<sub>k</sub>, 1−ε, 1+ε)·A<sub>t</sub> )</code></p>
       <ul>
         <li><strong>关键设计</strong>：<code>A<sub>t</sub></code> 是<strong>环境层面</strong>的优势，在 K 个去噪步之间<strong>共享</strong>。这样既给去噪过程提供了密集信号，又与环境的奖励结构保持一致。</li>
         <li><strong>每步去噪的重要性比值</strong> <code>r<sub>k</sub></code> 用高斯子策略似然算（Eq. 7），仅在方差严格为正处有效。</li>
-        <li><strong>离线与在线共用一个代理目标</strong>，只有优势估计方式不同：离线用 IQL 式的 <code>A = Q(s,a) − V(s)</code>，在线用 GAE。这是"离线→在线切换不崩"的机制保证。</li>
+        <li><strong>离线与在线共用一个代理目标</strong>，只有优势估计方式不同：离线用 <a class="concept-link" href="RLinf-RL原理对比.html#concept-iql">IQL</a> 式的 <code>A = Q(s,a) − V(s)</code>，在线用 <a class="concept-link" href="RLinf-RL原理对比.html#concept-gae">GAE</a>。这是"离线→在线切换不崩"的机制保证。</li>
         <li><strong>只更新任务头</strong>：离线 RL 阶段视觉编码器 φ 是冻结的，防止表示漂移。</li>
         <li><strong>方差裁剪</strong>（Eq. 23）：把标准差裁到 <code>[0.01, 0.8]</code>，限制行为策略的随机性、让 PPO 的重要性比值保持良性。论文说会"经验性地证明这个简单修改至关重要"。</li>
       </ul>
@@ -301,7 +301,7 @@
     </div>
 
     <div class="card">
-      <h3><span class="tag">设计二</span>一致性蒸馏：把多步去噪压成单步</h3>
+      <h3 id="concept-consistency-distillation" class="concept-anchor"><span class="tag">设计二</span>一致性蒸馏：把多步去噪压成单步</h3>
       <p>训练时用多步采样（K 步），部署时蒸馏成一个<strong>一致性模型</strong>，一步出结果：<code>x⁰ ≈ C<sub>θ</sub>(x<sup>τ_K</sup>, τ_K)</code>，<code>x<sup>τ_K</sup> ~ N(0,I)</code>。</p>
       <ul>
         <li><strong>和 RL 联合训练</strong>：<code>L_total = L_RL + λ_CD·L_CD</code>，用带 <a class="concept-link" href="KI-知识隔离-论文解读.html#concept-stop-gradient">stop-gradient</a> 的一致性蒸馏目标（Eq. 9），把扩散策略当 teacher。stop-gradient 的作用是<strong>让 teacher 在被 RL 持续改进的同时，仍能充当蒸馏目标</strong>。</li>
@@ -313,7 +313,7 @@
 
     <div class="card">
       <h3><span class="tag">设计三</span>奖励设计</h3>
-      <p>除 Dynamic Push-T 外，<strong>全部是稀疏奖励</strong>：任务成功时 +1，其余为 0，由人工监控者<strong>敲键盘</strong>给出。</p>
+      <p>除 Dynamic Push-T 外，<strong>全部是<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-sparse-reward">稀疏奖励</a></strong>：任务成功时 +1，其余为 0，由人工监控者<strong>敲键盘</strong>给出。</p>
       <p>Dynamic Push-T 用稠密整形奖励，三项之和：</p>
       <ul>
         <li><code>r_pose = exp(−3e) − 1</code>，e 是 T 型块与目标位姿之间的 SE(3) 偏差；</li>
@@ -325,7 +325,7 @@
 
   <section id="s4">
     <h2><span class="no">4</span>数据流与运行方式</h2>
-    <p class="lead">观测以 3D 点云为主，控制模式单步与动作块都支持。</p>
+    <p class="lead">观测以 3D 点云为主，控制模式单步与<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块</a>都支持。</p>
 
     <div class="card">
       <h3>输入输出</h3>
@@ -408,7 +408,7 @@
         <li><strong>真机 RL 的瓶颈常常不是算法，而是"敢不敢迭代"。</strong>RL-100 最大的工程贡献是把"每次更新都要保证不变差"做成了一条可执行的闸门规则（OPE-gated、δ 自适应）。有了它，离线迭代才能反复跑而不崩。</li>
         <li><strong>离线挑大梁、在线收尾，是样本预算受限时的正确分工。</strong>训练时在真机上自由探索的代价太高；把绝大部分改进放在"不采新数据的离线迭代"里，只在最后用少量在线交互啃长尾。</li>
         <li><strong>越难的任务收益越大，正是"先验 + 细化"的价值所在。</strong>IL 已经能做好的任务（拧螺母 82%、倒液 78%）提升有限；IL 做不好的（保龄球 14%、Push-T 40%）提升幅度最大。</li>
-        <li><strong>把去噪链当子 MDP、共享同一个环境级优势</strong>，是一个通用的"让扩散/流策略能被 PPO 训练"的技巧。和把优势条件化（RECAP）或只训噪声策略（DSRL）是同一问题的不同解法。</li>
+        <li><strong>把去噪链当子 MDP、共享同一个环境级优势</strong>，是一个通用的"让扩散/流策略能被 PPO 训练"的技巧。和把优势条件化（<a class="concept-link" href="pi0.6-论文解读.html#concept-recap">RECAP</a>）或只训噪声策略（<a class="concept-link" href="RLinf-RL原理对比.html#concept-dsrl">DSRL</a>）是同一问题的不同解法。</li>
         <li><strong>部署延迟要靠蒸馏解决，而不是靠减少去噪步数。</strong>训练时保持多步采样质量，部署时蒸馏成单步（100ms → 10ms），trade-off 被挪到了训练端。</li>
       </ul>
     </div>
@@ -439,6 +439,10 @@
     <a href="piRL-论文解读.html">πRL：去噪链 MDP</a>
     <a href="VLA-RL-方法全景对比.html">VLA-RL 方法全景对比</a>
     <a href="RTC-训练时-论文解读.html">训练时 RTC</a>
+    <a class="concept-link" href="RL-100-论文解读.html#concept-ope">OPE 如何筛选候选策略</a>
+    <a class="concept-link" href="RL-100-论文解读.html#concept-consistency-distillation">一致性蒸馏如何减少延迟</a>
+    <a class="concept-link" href="piRL-论文解读.html#concept-denoising-mdp">πRL 的去噪链 MDP</a>
+    <a class="concept-link" href="RTC-训练时-论文解读.html#concept-rtc">实时动作块如何衔接</a>
     <a href="concepts.html">全部概念</a>
   </aside>
 

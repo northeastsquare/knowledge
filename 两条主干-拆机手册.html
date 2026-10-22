@@ -340,7 +340,7 @@
 减掉平均 11:   a₁ ← <span class="r">−1 刹车</span>       a₂ ←  0 不动       a₃ ← <span class="g">+1 油门</span>
               <span class="c">「比平均好多少」才是有效信号。这就是<span class="b">优势 A</span>，减掉的那个数叫 baseline。</span></div>
     <p>关键性质：<strong>减 baseline 不改变<a class="concept-link" href="为什么取log.html#concept-policy-gradient">梯度的期望</a>（无偏），只减小方差</strong>。所以它是纯白赚的。整条主干 A 的全部工程量，就是「baseline / 优势用什么算」：</p>
-    <div class="fml"><a class="concept-link" href="RLinf-RL原理对比.html#concept-ppo">PPO</a>        → 养一个 critic 学 V(s)，用 GAE 算 A        <span class="c">准，但要多一个几十亿参数的网络</span>
+    <div class="fml"><a class="concept-link" href="RLinf-RL原理对比.html#concept-ppo">PPO</a>        → 养一个 critic 学 V(s)，用 <a class="concept-link" href="RLinf-RL原理对比.html#concept-gae">GAE</a> 算 A        <span class="c">准，但要多一个几十亿参数的网络</span>
 <a class="concept-link" href="RLinf-RL原理对比.html#concept-grpo">GRPO</a>       → 同一状态采一组，用<span class="b">组内均值</span>当 baseline    <span class="c">省掉 critic，但要求能重复采样</span>
 Reinforce++→ 回报里再减掉 KL 累积，然后全局归一化      <span class="c">不裁剪，方差更大</span>
 OPD        → 直接用 <span class="b">teacher 的 logprob 之差</span>当 A         <span class="c">连奖励都不要了</span>
@@ -363,7 +363,7 @@ STEAM      → 从演示的<span class="b">时间顺序</span>自监督出 A    
     <h3>这台机器有两个死穴</h3>
     <div class="aside">
       <p style="margin:0 0 8px"><b>死穴 1 · 数据用一次就废（on-policy）。</b>那个期望 E[·] 是<strong>在当前策略 π_θ 下</strong>取的。策略一更新，旧数据就来自「另一个策略」，统计上不再算数。所以每批 rollout 只能训一两步就得扔——样本效率的天花板就在这里。裁剪（PPO）、KL 惩罚都是在回答同一个问题：<em>在数据还没完全作废之前，最多能走多远</em>。</p>
-      <p style="margin:0"><b>死穴 2 · 必须能算出 <a class="concept-link" href="为什么取log.html#concept-log-trick">log π</a>。</b>高斯策略白给。但<a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">流匹配</a> / 扩散策略是「噪声→动作」的确定性 ODE，<strong>log π 根本写不出来</strong>。主干 A 直接卡死——这就是原理页里家族 ③（SAC-Flow / DSRL / πRL）存在的全部理由。</p>
+      <p style="margin:0"><b>死穴 2 · 必须能算出 <a class="concept-link" href="为什么取log.html#concept-log-trick">log π</a>。</b><a class="concept-link" href="RLToken-漫画分镜解读.html#concept-gaussian-policy">高斯策略</a>白给。但<a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">流匹配</a> / 扩散策略是「噪声→动作」的确定性 ODE，<strong>log π 根本写不出来</strong>。主干 A 直接卡死——这就是原理页里家族 ③（SAC-Flow / <a class="concept-link" href="RLinf-RL原理对比.html#concept-dsrl">DSRL</a> / πRL）存在的全部理由。</p>
     </div>
   </section>
   <section class="explore" aria-label="探索卡 · 主干 B">
@@ -486,7 +486,7 @@ STEAM  → 集成取 <span class="r">worst-of-N</span>        <span class="c">�
           <tr><td>要自己设计的</td><td><strong>优势 A 怎么估</strong></td><td><strong>怎么防 max 虚高</strong></td></tr>
           <tr><td>数据能否复用</td><td>不能。策略一变旧数据作废</td><td><strong>能，永久复用</strong>（replay buffer）</td></tr>
           <tr><td>样本效率</td><td>低（靠仿真器堆数量）</td><td>高一个量级（真机可行）</td></tr>
-          <tr><td>要不要 critic</td><td>PPO 要；GRPO 用组内均值省掉</td><td>必须要，critic 就是主体</td></tr>
+          <tr><td>要不要 critic</td><td><a class="concept-link" href="RLinf-RL原理对比.html#concept-ppo">PPO</a> 要；<a class="concept-link" href="RLinf-RL原理对比.html#concept-grpo">GRPO</a> 用组内均值省掉</td><td>必须要，critic 就是主体</td></tr>
           <tr><td>要不要 log π</td><td><strong>必须</strong>（扩散策略直接卡死）</td><td>需要（最大熵版本里的 −α log π）</td></tr>
           <tr><td>探索从哪来</td><td>策略自身的随机性</td><td>熵项显式奖励探索</td></tr>
           <tr><td>典型坏法</td><td>方差大、熵坍缩、步子迈太大崩掉</td><td>价值高估 → 价值爆炸</td></tr>
@@ -516,7 +516,7 @@ STEAM  → 集成取 <span class="r">worst-of-N</span>        <span class="c">�
       <li>出现 <code>α log π</code>（熵项）→ <span class="cB">主干 B</span> 的最大熵分支，顺带把探索内建进目标。</li>
       <li>号称「不需要 critic」→ 几乎一定是 <span class="cA">主干 A</span>，并且用了某种便宜 baseline 顶替 V(s)。</li>
       <li>号称「能用离线数据 / 真机样本效率高」→ <span class="cB">主干 B</span>，接着去找它防高估的那一招。</li>
-      <li>主角是扩散 / 流匹配策略 → 先去看它<strong>怎么处理 log π</strong>（构造出来？还是换空间绕开？），再判断它挂在哪条主干上。</li>
+      <li>主角是扩散 / <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">流匹配</a>策略 → 先去看它<strong>怎么处理 log π</strong>（构造出来？还是换空间绕开？），再判断它挂在哪条主干上。</li>
     </ul>
 
     <div class="note" style="margin-top:22px">
@@ -532,6 +532,9 @@ STEAM  → 集成取 <span class="r">worst-of-N</span>        <span class="c">�
     <a href="为什么取log.html#concept-log-trick">策略梯度为什么取 log</a>
     <a href="RLToken-漫画分镜解读.html#concept-actor-critic">Actor 与 Critic 如何配合</a>
     <a href="RLinf-RL原理对比.html#concept-sac">SAC 的最大熵目标</a>
+    <a class="concept-link" href="RLinf-RL原理对比.html#concept-gae">GAE 如何计算优势</a>
+    <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-n-step-return">n-step return 与 TD 传播</a>
+    <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-deadly-triad">死亡三角与价值发散</a>
     <a href="concepts.html">全部概念</a>
   </aside>
 

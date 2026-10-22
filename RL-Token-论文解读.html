@@ -221,9 +221,9 @@
       <ul>
         <li>在冻结 VLA 后面<strong>加一个小 encoder-decoder transformer</strong>；</li>
         <li>encoder 末尾塞一个特殊 <code>[RL]</code> token，让它"读"VLA 最后一层所有 token 嵌入，输出一个<strong>紧凑向量 <code>z_rl</code></strong>（RL token）；</li>
-        <li>再让一个 decoder <strong>自回归重建</strong>原始嵌入（对 VLA 嵌入做 stop-gradient）。</li>
+        <li>再让一个 decoder <strong>自回归重建</strong>原始嵌入（对 VLA 嵌入做 <a class="concept-link" href="KI-知识隔离-论文解读.html#concept-stop-gradient">stop-gradient</a>）。</li>
       </ul>
-      <p>为什么要重建？——这就像<strong>"信息瓶颈"</strong>：为了让 decoder 能还原原始信息，<code>z_rl</code> 这个小向量必须把任务关键信息都浓缩进去。</p>
+      <p>为什么要重建？——这就像<strong>"<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-information-bottleneck">信息瓶颈</a>"</strong>：为了让 decoder 能还原原始信息，<code>z_rl</code> 这个小向量必须把任务关键信息都浓缩进去。</p>
       <div class="callout navy">
         <div class="ttl">直觉类比</div>
         <p>把 VLA 想成一位老专家，RL token 是他给你写的一张"小抄/摘要"——你（小 RL 网络）拿着摘要就能干活，不用把整本大脑搬走。</p>
@@ -233,7 +233,7 @@
     <div class="card">
       <h3><span class="tag">设计二</span><a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块（Action Chunk）</a>，而非单步</h3>
       <p>VLA 原生一次预测 <strong>H=50 步</strong>（1 秒）动作；RL 用它一个子块 <strong>C=10 步</strong>。</p>
-      <p>好处：<strong>缩短"信用分配"的时间跨度</strong>。在<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-sparse-reward">稀疏奖励</a>（只有成功/失败一个 0/1 信号）下，单步决策会让价值函数跨超长 horizon 才能搞清楚哪步做对了；用动作块后有效决策周期变短，学习容易得多。</p>
+      <p>好处：<strong>缩短"<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-credit-assignment">信用分配</a>"的时间跨度</strong>。在<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-sparse-reward">稀疏奖励</a>（只有成功/失败一个 0/1 信号）下，单步决策会让价值函数跨超长 horizon 才能搞清楚哪步做对了；用动作块后有效决策周期变短，学习容易得多。</p>
     </div>
 
     <div class="card">
@@ -242,9 +242,9 @@
         <li>actor 输入除了 RL token，还包含 VLA 采样的<strong>参考动作块 <code>ã</code></strong>，输出对它的修正；</li>
         <li>训练目标里除了最大化 <a class="concept-link" href="两条主干-拆机手册.html#concept-q-value">Q 值</a>，还加一项 <code>λ‖a − ã‖²</code>（把动作拉近参考动作，类似 KL 正则）。</li>
       </ul>
-      <p>两个好处：① RL 在"好初始动作"上精修，而非高维空间乱搜；② 保留了 VLA 多峰动作分布中的"模式信息"（单峰高斯 actor 自己很难恢复多峰分布）。</p>
+      <p>两个好处：① RL 在"好初始动作"上精修，而非高维空间乱搜；② 保留了 VLA 多峰动作分布中的"模式信息"（单峰<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-gaussian-policy">高斯</a> actor 自己很难恢复多峰分布）。</p>
       <div class="callout">
-        <div class="ttl">关键小技巧：Reference Action Dropout</div>
+        <div id="concept-reference-dropout" class="ttl concept-anchor">关键小技巧：Reference Action Dropout</div>
         <p>如果一直给参考动作，actor 会偷懒直接"复制" <code>ã</code> 而不改进。所以训练时<strong>随机 50% 样本把参考动作置零</strong>，逼 actor 维护一条独立生成通路；等 critic 有信号后，actor 自然学会"该偏离时就偏离"。</p>
       </div>
     </div>
@@ -385,7 +385,7 @@
       <p>一个<strong>"经验仓库"</strong>：机器人每做一个动作块，就把这次经历存进去；训练时随机抽一批出来学，旧经验可以反复使用。每条记录是（Algorithm 1 第 12 行）：</p>
       <p style="text-align:center"><code>⟨ x<sub>t</sub>, a<sub>t:t+C−1</sub>, ã, r<sub>t</sub>, x<sub>t+1</sub> ⟩</code><br><span style="color:var(--muted);font-size:13.5px">状态（RL token + 关节/末端位姿）· 实际执行的 10 步动作 · VLA 参考动作 · 奖励 · 执行后的状态</span></p>
       <ul>
-        <li><strong>怎么用</strong>（第 13–17 行）：每和环境交互一次，就随机抽若干批数据。critic 用 TD 目标学习"这个动作块值多少"，actor 最大化 Q 值，同时用 <code>β‖a−ã‖²</code> 拉住自己，不离参考动作太远。</li>
+        <li><strong>怎么用</strong>（第 13–17 行）：每和环境交互一次，就随机抽若干批数据。critic 用 <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-td-learning">TD</a> 目标学习"这个动作块值多少"，actor 最大化 Q 值，同时用 <code>β‖a−ã‖²</code> 拉住自己，不离参考动作太远。</li>
         <li><strong>为什么要它</strong>：每个任务只有约 15 分钟到 5 小时的实际机器人数据（p7），用一次就扔太浪费。能用旧经验训练的方法叫 <a class="concept-link" href="两条主干-拆机手册.html#concept-off-policy">off-policy</a> RL。</li>
         <li><strong>预热</strong>（p5）：正式 RL 前，先让 VLA 跑 N<sub>warm</sub> 个环境步把仓库填上，让 critic 一开始就有可学的数据。</li>
         <li><strong>人工纠正</strong>（p5）：人接管时，存进去的参考动作 ã 换成人的动作，actor 也能从纠正里学。</li>
@@ -429,7 +429,7 @@
       <p>同一页还有一句 "We choose C &lt; H to <strong>give the policy the ability to be more reactive</strong>"——这个 "more reactive" 的对照物是 <strong>H=50</strong>（VLA 原生块），不是同步执行。</p>
       <p><strong>为什么 RLT 敢不异步：</strong></p>
       <ul>
-        <li><strong>任务是准静态接触操作</strong>。拧螺丝、扎带、插网线/充电器——一旦接触上，标称轨迹就在毫米级有效，没有"必须 50ms 内反应"的东西。感知-执行错位是 <a href="DynamicVLA-论文解读.html">DynamicVLA</a> / <a href="PUMA-论文解读.html">PUMA</a> 抓运动物体时的致命问题，在 RLT 的任务里不是。</li>
+        <li><strong>任务是准静态接触操作</strong>。拧螺丝、扎带、插网线/充电器——一旦接触上，标称轨迹就在毫米级有效，没有"必须 50ms 内反应"的东西。<a class="concept-link" href="DynamicVLA-论文解读.html#concept-latency">感知-执行错位</a>是 <a href="DynamicVLA-论文解读.html">DynamicVLA</a> / <a href="PUMA-论文解读.html">PUMA</a> 抓运动物体时的致命问题，在 RLT 的任务里不是。</li>
         <li><strong>时延预算的大头被小模型消化了</strong>。RLT 只在块边界多跑一次 VLA 前向 + 一个两层 MLP（隐层 256）的前向（p12 附录 B）。MLP 微秒级，VLA 几十毫秒，而一块有 200ms。</li>
         <li><strong>actor 的输入全部来自同一次 VLA 前向</strong>（z<sub>rl</sub> 和 ã 都是），天然是"VLA 前向 → actor → 执行"的耦合链条，异步化要把两者一起挪到后台，并不省事。</li>
       </ul>
@@ -508,7 +508,7 @@
         <tr><td><strong>DAgger</strong></td><td>用干预数据继续微调 VLA</td></tr>
         <tr><td><strong>HIL-SERL</strong></td><td>小模型 + 人类干预 RL（但没用 VLA 表示）</td></tr>
         <tr><td><strong>PLD</strong></td><td>冻结 VLA + 单步残差策略</td></tr>
-        <tr><td><strong>DSRL</strong></td><td>在 flow VLA 的潜噪声空间做 RL</td></tr>
+        <tr><td><strong><a class="concept-link" href="RLinf-RL原理对比.html#concept-dsrl">DSRL</a></strong></td><td>在 flow VLA 的潜噪声空间做 RL</td></tr>
       </table>
       <p style="margin-top:10px;">在插网线等任务上，RLT 的吞吐和成功率均高于这些基线。</p>
     </div>
@@ -522,7 +522,7 @@
         <tr><th>流派</th><th>代表</th><th>RLT 的差异</th></tr>
         <tr><td>小模型真机 RL</td><td>SERL / HIL-SERL</td><td>把视觉编码器换成 VLA 的 RL token，保留行为先验</td></tr>
         <tr><td>整模型 / 全策略 RL</td><td><a href="RL-100-论文解读.html">RL-100</a> / RECAP / SimpleVLA-RL</td><td>只训小头，计算与样本开销小得多；RL-100 是改整条去噪链，RLT 只训轻量 actor-critic</td></tr>
-        <tr><td>冻结 VLA + 残差/噪声</td><td>PLD / Policy Decorator / DSRL</td><td>不是输出残差或操纵扩散噪声，而是以参考动作为条件做局部精修，且用动作块而非单步</td></tr>
+        <tr><td>冻结 VLA + 残差/噪声</td><td>PLD / <a class="concept-link" href="VLA-RL-方法全景对比.html#concept-residual-methods">Policy Decorator</a> / DSRL</td><td>不是输出残差或操纵扩散噪声，而是以参考动作为条件做局部精修，且用动作块而非单步</td></tr>
       </table>
     </div>
   </section>
@@ -548,6 +548,9 @@
     <a href="RLToken-漫画分镜解读.html#concept-target-network">Target 网络与训练目标</a>
     <a href="RLToken-漫画分镜解读.html#concept-twin-q">双 Q 如何减轻高估</a>
     <a href="piRL-论文解读.html#concept-denoising-mdp">πRL 的去噪 MDP</a>
+    <a class="concept-link" href="RL-Token-论文解读.html#concept-reference-dropout">Reference dropout 如何防止照抄</a>
+    <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-n-step-return">块级 TD 与 n-step return</a>
+    <a class="concept-link" href="RL-100-论文解读.html#concept-ope">RL-100 的离线评估闸门</a>
     <a href="concepts.html">全部概念</a>
   </aside>
 
