@@ -264,13 +264,30 @@ MathJax={tex:{inlineMath:[['$','$']],displayMath:[['$$','$$']]}};
   <section>
     <h2>训练或运行方式</h2>
     <p><strong>预训练</strong>：在约 <code>10,000 小时</code>的跨本体数据上训练。自有灵巧操作数据覆盖 <span class="hl">7 种机器人配置、68 个任务</span>，共 <code>903M</code> timesteps（单臂 106M、双臂 797M）；再拼上开源数据（OXE、Bridge v2、DROID，合计占混合的 <code>9.1%</code>）。为了防止过采样任务占大头，每个 task-robot 组合按 <code>n^0.43</code> 降权配平。</p>
-    <p id="concept-flow-matching" class="concept-anchor"><strong>流匹配损失</strong>：训练时抽噪声 <code>ε ~ N(0, I)</code>，构造"噪声动作" <code>A^τ = τ·A + (1-τ)ε</code>，让网络回归去噪场 <code>u = A - ε</code>。关键细节是时间步 <code>τ</code> 不从均匀分布抽，而是抽自一个 <span class="hl">shift-beta 分布</span>（截断 <code>s=0.999</code>），刻意<b>偏向高噪声段</b>——作者论证动作预测不同于图像生成：低噪声段几乎只是恒等映射，信息都在高噪声段。 <a class="code-jump" href="代码索引.html#flow-matching" style="font:12px ui-monospace,Consolas,monospace;white-space:nowrap;text-decoration:none;border:1px dashed currentColor;border-radius:4px;padding:0 5px;margin-left:4px;opacity:.8">⟨/⟩ 代码</a></p>
+    <p id="concept-flow-matching" class="concept-anchor"><strong>流匹配损失</strong>：训练时同时采样两个随机量：<b>①</b> 噪声向量 <code>ε ~ N(0, I)</code>（形状 H×d）；<b>②</b> 时间步 <code>τ</code>（标量，表示去噪进度）。构造混合动作 <code>A^τ = τ·A + (1-τ)ε</code>，让网络回归去噪场 <code>u = A - ε</code>。</p>
+    <p><strong>时间步 τ 的采样策略</strong>：不从均匀分布抽，而是用 <span class="hl">shift-beta 分布</span>刻意<b>偏向高噪声段</b>。<b>注意符号约定</b>：论文里 <code>τ=0</code> 代表纯噪声、<code>τ=1</code> 代表真实数据；openpi 代码用相反约定（<code>t=1</code> 是噪声、<code>t=0</code> 是数据），两者满足 <code>τ = 1 - t</code>。具体做法：</p>
+    <ol style="margin:8px 0 12px 22px;">
+      <li>从 Beta(1.5, 1) 采样 <code>x</code>（偏向 1）</li>
+      <li>计算"噪声程度" <code>t = 0.999·x + 0.001</code>（<code>t</code> 也偏向 1，即高噪声）</li>
+      <li>转换到论文符号：<code>τ = 1 - t</code>（<code>τ</code> 偏向 0，即高噪声）</li>
+      <li>代入混合公式：此时 <code>(1-τ)</code> 接近 1，<b>噪声占比高</b></li>
+    </ol>
+    <p><b>为什么偏向高噪声</b>：作者论证动作预测不同于图像生成——低噪声段（<code>τ</code> 接近 1）时 <code>A^τ ≈ A</code>，网络只需做微小修正，几乎是恒等映射，学不到多少信息；高噪声段（<code>τ</code> 接近 0）时 <code>A^τ</code> 距真实动作很远，网络必须学会从混乱中识别正确方向，<b>真正的去噪能力在这里训练</b>。截断 <code>s=0.999</code> 避开 <code>t=0</code>（即 <code>τ=1</code>）的数值退化。 <a class="code-jump" href="代码索引.html#flow-matching" style="font:12px ui-monospace,Consolas,monospace;white-space:nowrap;text-decoration:none;border:1px dashed currentColor;border-radius:4px;padding:0 5px;margin-left:4px;opacity:.8">⟨/⟩ 代码</a></p>
     <p><strong>后训练微调</strong>：简单任务约 <code>5 小时</code>数据即可，最复杂任务用到 <code>100 小时以上</code>。原则是"低质量多样数据教纠错与恢复，高质量数据教流畅高效"。</p>
     <p><strong>推理</strong>：从纯噪声出发做 <code>10 步</code>前向欧拉积分（步长 <code>Δτ=0.1</code>），前缀观测的 <a class="concept-link" href="Realtime-VLA-论文解读.html#concept-kv-cache">KV 可缓存</a>。在消费级 RTX 4090 上，单次推理约 <code>73ms</code> 板端延迟（图像编码 14ms + 观测前向 32ms + 10× 动作前向 27ms）。20Hz 的 UR5e/Franka 每 0.8s 推理一次（执行 16 步），50Hz 机器人每 0.5s 一次（执行 25 步），动作块<b>开环执行</b>——作者试过 temporal ensembling，反而更差，于是干脆不做动作聚合。</p>
   </section>
 
   <section>
     <h2>流匹配推理细节：从纯噪声到干净动作</h2>
+    <p><strong>训练与推理的采样差异（重要）</strong>：</p>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>阶段</th><th>采样什么</th><th>如何采样</th></tr>
+        <tr><td><b>训练</b></td><td>① 噪声向量 <code>ε</code><br>② 时间步 <code>τ</code></td><td>① <code>ε ~ N(0, I)</code>，形状 H×d<br>② 从 Beta(1.5, 1) 采样，<b>偏向高噪声段</b></td></tr>
+        <tr><td><b>推理</b></td><td>① 噪声向量 <code>ε</code>（仅作起点）<br>② 时间步 <code>τ</code></td><td>① <code>ε ~ N(0, I)</code>，一次推理只采一次<br>② <b>不采样</b>，固定均匀分布：0, 0.1, 0.2, …, 0.9</td></tr>
+      </table>
+    </div>
+    <p><b>关键区别</b>：训练时 τ 从 Beta 采样是为了让模型多见高噪声样本、学好去噪方向；推理时不需要偏置，均匀走 10 步即可保证精度。</p>
     <p><strong>两个"时间"别混</strong>：下标 <code>t</code>（如 <code>A_t</code>、<code>q_t</code>）是机器人真实时间；<code>τ</code>（如 <code>A^τ</code>）是<b>一次推理内部的去噪进度</b>，每次推理都从 0 走到 1，不是跨推理累加。</p>
     <p><strong>训练里两个式子是同一条直线</strong>：混合公式 <code>A^τ = τ·A + (1-τ)ε</code> 回答"点在哪"；对 τ 求导得 <code>dA^τ/dτ = A - ε = u</code>，回答"朝哪走、多快"。直线速度处处相同，所以目标 <code>u</code> 里不含 τ，但 τ 要作为<b>网络输入</b>，让网络知道当前处于哪一段噪声程度。方向 <code>A - ε</code>（噪声→数据）是 π0 的约定（τ=0 为噪声、τ=1 为数据）；扩散模型常用相反约定，只要训练与推理一致即可。</p>
     <p><strong>动作专家每一步的输入与输出</strong>：</p>
@@ -327,10 +344,24 @@ MathJax={tex:{inlineMath:[['$','$']],displayMath:[['$$','$$']]}};
       </svg>
       <div class="caption">虚线是均匀分布，橙线是 π0 用的 Beta(1.5, 1)：x 小的一端被压低，x 大的一端被抬高。</div>
     </div>
-    <p><strong>怎么变成"偏向高噪声"</strong>：两步。</p>
+    <p><strong>怎么变成"偏向高噪声"</strong>：关键在于<b>符号约定的陷阱</b>。</p>
+    <div class="card" style="background:var(--surface-2);border-left:3px solid var(--signal);">
+      <h3 style="margin:0 0 10px;color:var(--signal);">⚠️ 易混淆点：不是直接让 τ ~ Beta(1.5, 1)</h3>
+      <p style="margin:0 0 8px;">如果直接用 <code>τ ~ Beta(1.5, 1)</code> 代入 <code>A^τ = τ·A + (1-τ)·ε</code>：</p>
+      <ul style="margin:0 0 8px;font-size:14px;">
+        <li>τ 偏向 1 → <code>(1-τ)</code> 偏向 0</li>
+        <li>真实动作 A 系数大、噪声 ε 系数小</li>
+        <li>❌ <b>这是低噪声，与目标相反！</b></li>
+      </ul>
+      <p style="margin:0;"><b>正确做法</b>：Beta(1.5, 1) 采样的是"<b>噪声程度</b>"这个概念，然后根据公式约定转换。openpi 代码用 <code>t</code>（t=1 是噪声），论文用 <code>τ</code>（τ=0 是噪声），两者方向相反。</p>
+    </div>
+    <p>具体步骤：</p>
     <ol>
-      <li>Beta(1.5, 1) 的累积分布是 $F(x)=x^{1.5}$，均值 $\mathbb{E}[x]=\frac{\alpha}{\alpha+\beta}=0.6$，$x$ 大的一侧更容易被抽到。</li>
-      <li>把 $x$ 当成"噪声程度"。openpi 代码里 $t=1$ 是纯噪声、$t=0$ 是数据：$t=0.999\,x+0.001,\ x\sim\mathrm{Beta}(1.5,1)$，所以 $t$ 偏大就是偏噪声。论文里 $\tau=0$ 是噪声，两者是 $\tau=1-t$，换个方向，结论相同。</li>
+      <li>从 Beta(1.5, 1) 采样 <code>x</code>（偏向 1），累积分布 $F(x)=x^{1.5}$，均值 $\mathbb{E}[x]=0.6$。</li>
+      <li><b>openpi 代码约定</b>：$t=0.999\,x+0.001$，其中 $t=1$ 是纯噪声、$t=0$ 是数据。因为 $x$ 偏大，所以 $t$ 偏大 = <b>偏向高噪声</b>。</li>
+      <li><b>论文符号</b>：$\tau=1-t$，其中 $\tau=0$ 是噪声、$\tau=1$ 是数据。$t$ 偏大意味着 $\tau$ 偏小 = <b>同样是偏向高噪声</b>。</li>
+      <li>代入混合公式 <code>A^τ = τ·A + (1-τ)·ε</code>：τ 小 → <code>(1-τ)</code> 大 → <b>噪声占比高 ✓</b></li>
+    </ol>
     </ol>
     <div class="tbl-wrap">
       <table>
@@ -431,7 +462,7 @@ MathJax={tex:{inlineMath:[['$','$']],displayMath:[['$$','$$']]}};
       <li><strong>"底座 + 动作头"是 VLA 的正解</strong>：VLM 负责理解与语义，动作专家负责高精度连续输出，两者靠 self-attention 交互；动作头可以独立瘦身（宽度 / MLP 减半），兼顾表达与实时性。</li>
       <li><strong>离散化动作 token 是自回归 VLA 的硬伤</strong>：对连续、高频、灵巧动作，扩散 / 流匹配 + 动作块是更对口的表示；这也解释了 OpenVLA 为什么在这些任务上打不过 π0。</li>
       <li><strong>预训练 / 后训练分工值得照搬</strong>：低质量多样数据教"怎么从错误里恢复"，高质量数据教"怎么做得流畅高效"；只喂高质量数据会学出一个"碰不得错"的脆策略。</li>
-      <li><strong>流匹配时间步采样不是随便 uniform</strong>：动作预测里低噪声段近乎恒等、高噪声段才承载信息，所以刻意偏向高噪声段并设截断 s=0.999。</li>
+      <li><strong>流匹配时间步采样不是随便 uniform</strong>：动作预测里低噪声段近乎恒等、高噪声段才承载信息，所以训练时用 Beta(1.5, 1) 刻意偏向高噪声段（截断 s=0.999）。<b>易错</b>：不是直接让 τ ~ Beta，而是让"噪声程度"从 Beta 采样，再根据符号约定（τ=0 是噪声 or τ=1 是噪声）转换；推理时 τ 固定均匀分布，不采样。</li>
       <li><strong>量级与多样性比精巧的任务标签更重要</strong>：作者把"任务"定义得很宽（比如"收桌"包含五花八门的餐具与垃圾），并用 n^0.43 配平，说明大而杂的数据 + 简单配平就能撑起泛化。</li>
     </ul>
   </section>
