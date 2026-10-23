@@ -390,6 +390,28 @@ footer {
     .toc h4{width:100%;margin-bottom:4px;}
     .toc a{border:1px solid var(--line,var(--grid,var(--border,#444)));border-left-width:1px;}
   }
+.intuit {
+  background: var(--surface);
+  border-left: 3px solid var(--info);
+  padding: 14px 18px;
+  margin: 14px 0;
+  font-size: 14.5px;
+}
+.intuit > strong:first-child { color: var(--info); }
+.step-label {
+  display: inline-block;
+  font-family: "Courier New", monospace;
+  font-size: 12px;
+  color: var(--paper);
+  background: var(--info);
+  padding: 1px 8px;
+  border-radius: 3px;
+  margin-right: 6px;
+}
+.cheat td:first-child { white-space: nowrap; color: var(--accent); }
+.katex-display { overflow-x: auto; overflow-y: hidden; padding: 4px 0; }
+.control-group label { text-transform: none; }
+#shape-stats { margin-top: 10px; font-family: "Courier New", monospace; font-size: 13px; color: var(--accent); }
 </style>
 </head>
 <body>
@@ -410,10 +432,16 @@ footer {
   <a href="#s1">一句话</a>
   <a href="#s2">从指数分布说起</a>
   <a href="#s3">Gamma = 等第 k 件事</a>
+  <a href="#s-cheat">公式速查</a>
+  <a href="#s-derive">密度公式怎么来的</a>
+  <a href="#s-gammafn">Γ 函数与非整数 α</a>
+  <a href="#s-moments">均值、方差、众数</a>
+  <a href="#s-mgf">可加性与缩放</a>
   <a href="#s4">生活中的例子</a>
   <a href="#s5">Gamma 与 Beta 的关系</a>
   <a href="#s6">常见疑问</a>
   <a href="#s7">与其他分布的关系</a>
+  <a href="#s-bayes">贝叶斯：速率 λ 的先验</a>
   <a href="#s8">回到 π0：为什么要懂 Gamma</a>
 </nav>
 
@@ -467,6 +495,7 @@ Gamma(k, λ):
 
 密度函数：
 $$f(t) = \frac{\lambda^k \cdot t^{k-1} \cdot e^{-\lambda t}}{(k-1)!} \quad (k \text{ 为正整数时})$$
+$$f(t) = \frac{\lambda^\alpha \, t^{\alpha-1} \, e^{-\lambda t}}{\Gamma(\alpha)} \quad (\text{一般形状 } \alpha>0,\ t>0)$$
 
 $$\text{均值} = \frac{k}{\lambda}$$
 $$\text{方差} = \frac{k}{\lambda^2}$$
@@ -493,8 +522,8 @@ $$\text{方差} = \frac{k}{\lambda^2}$$
   <div class="demo-title">实验 1：看见 Gamma 的形状</div>
   <div class="controls">
     <div class="control-group">
-      <label>等第 <span id="k-val" class="value-display">3</span> 件事 (k)</label>
-      <input type="range" id="k-slider" min="1" max="10" value="3" step="1">
+      <label>形状 α = <span id="k-val" class="value-display">3</span>（整数时 = 等第 k 件事）</label>
+      <input type="range" id="k-slider" min="0.5" max="10" value="3" step="0.5">
     </div>
     <div class="control-group">
       <label>速率 λ = <span id="lambda-val" class="value-display">1.0</span> 次/分钟</label>
@@ -502,9 +531,141 @@ $$\text{方差} = \frac{k}{\lambda^2}$$
     </div>
   </div>
   <canvas id="shape-canvas" width="800" height="300"></canvas>
+  <p id="shape-stats"></p>
   <p style="margin-top:12px; font-size:13px; color:var(--ink-dim);">
-    <strong>观察</strong>：k=1 时是指数分布（L 形）；k 越大，峰越靠右、越对称；λ 越大，曲线整体左移（事件来得快，等待时间短）。
+    <strong>观察</strong>：α=1 时是指数分布（L 形）；α&lt;1 时 t→0 处冲向无穷；α 越大，峰越靠右、越对称；λ 越大，曲线整体左移（事件来得快，等待时间短）。橙线是均值 α/λ，蓝线是众数 (α−1)/λ，两者永远相差一个平均间隔 1/λ。
   </p>
+</div>
+
+
+<div class="section">
+  <h2 id="s-cheat">公式速查（先看结论，下面逐条推导）</h2>
+  <table class="cheat">
+    <tr><th>量</th><th>公式</th><th>一句话直觉</th></tr>
+    <tr><td>密度</td><td>$f(t)=\dfrac{\lambda^\alpha t^{\alpha-1}e^{-\lambda t}}{\Gamma(\alpha)}$</td><td>多项式上升 × 指数衰减</td></tr>
+    <tr><td>CDF（整数 k）</td><td>$P(T_k\le t)=1-\sum_{n=0}^{k-1}\dfrac{(\lambda t)^n}{n!}e^{-\lambda t}$</td><td>到 t 时至少来了 k 件</td></tr>
+    <tr><td>均值</td><td>$\alpha/\lambda$</td><td>k 段平均间隔相加</td></tr>
+    <tr><td>方差</td><td>$\alpha/\lambda^2$</td><td>k 段独立波动相加</td></tr>
+    <tr><td>变异系数</td><td>$1/\sqrt{\alpha}$</td><td>等得越多，相对越准</td></tr>
+    <tr><td>众数</td><td>$(\alpha-1)/\lambda\ \ (\alpha\ge1)$</td><td>峰在均值左边一个间隔处</td></tr>
+    <tr><td>偏度</td><td>$2/\sqrt{\alpha}$</td><td>右偏，α 大时趋近正态</td></tr>
+    <tr><td>m 阶矩</td><td>$E[T^m]=\dfrac{\Gamma(\alpha+m)}{\Gamma(\alpha)\lambda^m}$</td><td>一个 Γ 积分搞定所有矩</td></tr>
+    <tr><td>MGF</td><td>$E[e^{sT}]=(1-s/\lambda)^{-\alpha},\ s&lt;\lambda$</td><td>α 出现在指数上 → 可加</td></tr>
+    <tr><td>可加性</td><td>$\text{Gamma}(\alpha_1,\lambda)+\text{Gamma}(\alpha_2,\lambda)=\text{Gamma}(\alpha_1+\alpha_2,\lambda)$</td><td>先等 α₁ 件再等 α₂ 件</td></tr>
+    <tr><td>缩放</td><td>$cT\sim\text{Gamma}(\alpha,\lambda/c)$</td><td>λ 只是时间单位</td></tr>
+  </table>
+</div>
+
+<div class="section">
+  <h2 id="s-derive">密度公式怎么来的：三条推导路线</h2>
+
+  <h3>起点：泊松过程的三条假设</h3>
+  <p>所有公式都只从下面三条"微观规则"出发（λ 为速率）：</p>
+  <ol>
+    <li>任意极短时间 $dt$ 内发生 1 件事的概率 $\approx \lambda\,dt$；</li>
+    <li>同一个 $dt$ 内发生 2 件及以上的概率可以忽略（比 $dt$ 高阶小）；</li>
+    <li>不重叠的时间段互不影响（独立）。</li>
+  </ol>
+  <p>把 $[0,t]$ 切成 $m$ 小段，每段"来一件"的概率 $\lambda t/m$，段与段独立，于是件数 $N(t)\sim \text{Binomial}(m,\lambda t/m)$。令 $m\to\infty$：</p>
+  <div class="formula-box">
+$$\binom{m}{n}\Big(\frac{\lambda t}{m}\Big)^n\Big(1-\frac{\lambda t}{m}\Big)^{m-n}\ \longrightarrow\ \frac{(\lambda t)^n}{n!}\,e^{-\lambda t}$$
+  </div>
+  <p>这就是 $N(t)\sim$ <a class="concept-link" href="概率分布博物馆.html#concept-poisson-distribution">泊松分布</a> $\text{Poisson}(\lambda t)$。（$\binom{m}{n}/m^n\to 1/n!$，$(1-\lambda t/m)^m\to e^{-\lambda t}$。）n=0 时得到 $P(T_1&gt;t)=e^{-\lambda t}$，即指数分布，细节见 <a href="指数分布-等待的数学.html#s3" style="color:var(--info)">指数分布讲解</a>。</p>
+
+  <h3 id="concept-gamma-pdf-derivation" class="concept-anchor"><span class="step-label">路线 A</span>泊松对偶：数件数 ⇔ 量时间</h3>
+  <p>关键等价：<strong>"到时刻 t，第 k 件事还没发生" ⇔ "[0, t] 里发生的件数 ≤ k−1"</strong>。所以</p>
+  <div class="formula-box">
+$$P(T_k&gt;t)=P\big(N(t)\le k-1\big)=\sum_{n=0}^{k-1}\frac{(\lambda t)^n}{n!}e^{-\lambda t}$$
+  </div>
+  <p>密度 = 生存函数求导取负。记 $a_n(t)=\lambda\dfrac{(\lambda t)^n}{n!}e^{-\lambda t}$（$a_{-1}=0$），每一项的导数是</p>
+  <div class="formula-box">
+$$\frac{d}{dt}\Big[\frac{(\lambda t)^n}{n!}e^{-\lambda t}\Big]=\underbrace{\lambda\frac{(\lambda t)^{n-1}}{(n-1)!}e^{-\lambda t}}_{a_{n-1}}-\underbrace{\lambda\frac{(\lambda t)^{n}}{n!}e^{-\lambda t}}_{a_n}$$
+$$\Rightarrow\ \frac{d}{dt}P(T_k&gt;t)=\sum_{n=0}^{k-1}(a_{n-1}-a_n)=-a_{k-1}\quad(\text{逐项相消})$$
+$$f(t)=a_{k-1}(t)=\frac{\lambda^k\,t^{k-1}\,e^{-\lambda t}}{(k-1)!}$$
+  </div>
+  <div class="intuit"><strong>直觉</strong>：同一个随机过程，两种问法。<b>固定时间、数件数</b> → 泊松；<b>固定件数、量时间</b> → Gamma。所以 "Gamma 的 CDF = 1 − 泊松 CDF"，查表时可以互换。</div>
+
+  <h3><span class="step-label">路线 B</span>微元法：一眼读出每个因子（最值得记住）</h3>
+  <p>"第 k 件事恰好落在 $[t, t+dt)$" 拆成两个独立事件：<strong>$[0,t)$ 里恰好来了 k−1 件</strong>，并且<strong>$[t,t+dt)$ 里来了 1 件</strong>：</p>
+  <div class="formula-box">
+$$f(t)\,dt=\underbrace{\frac{(\lambda t)^{k-1}}{(k-1)!}e^{-\lambda t}}_{\text{前 }k-1\text{ 件已到}}\times\underbrace{\lambda\,dt}_{\text{第 }k\text{ 件此刻到}}$$
+  </div>
+  <table>
+    <tr><th>因子</th><th>直觉含义</th></tr>
+    <tr><td>$t^{k-1}$</td><td>前 k−1 件事要散落在 $[0,t]$ 里，每件都有长度为 t 的"落脚空间"，总空间 ∝ $t^{k-1}$。t 越大安放方式越多 → <b>曲线先上升</b>。</td></tr>
+    <tr><td>$1/(k-1)!$</td><td>k−1 件事不分先后：$t^{k-1}$ 把每种到达顺序都算了一遍，除以 $(k-1)!$ 只留"按时间排好"的那一种（有序单纯形体积 $t^{k-1}/(k-1)!$）。</td></tr>
+    <tr><td>$e^{-\lambda t}$</td><td>整段 $[0,t]$ 里<b>没有多来</b>任何一件的代价。t 越大越难 → <b>曲线最终衰减</b>。</td></tr>
+    <tr><td>$\lambda^k$</td><td>k 件事每件贡献一个"速率"λ；同时保证量纲：密度的单位是 1/时间。</td></tr>
+  </table>
+  <div class="intuit"><strong>直觉</strong>：多项式上升（"有足够时间凑齐 k−1 件"）× 指数衰减（"别来太多"）= 一个先升后降的单峰。k=1 时没有上升因子，只剩 $\lambda e^{-\lambda t}$ 的 L 形。</div>
+
+  <h3><span class="step-label">路线 C</span>卷积：把 k 段指数等待相加</h3>
+  <p>$T_k=E_1+\dots+E_k$，$E_i\sim\text{Exp}(\lambda)$ 独立。归纳：假设 $f_k(s)=\dfrac{\lambda^k s^{k-1}e^{-\lambda s}}{(k-1)!}$，第 k 件在 s 时到、再等 $t-s$ 来第 k+1 件：</p>
+  <div class="formula-box">
+$$f_{k+1}(t)=\int_0^t f_k(s)\,\lambda e^{-\lambda(t-s)}\,ds=\frac{\lambda^{k+1}e^{-\lambda t}}{(k-1)!}\int_0^t s^{k-1}\,ds=\frac{\lambda^{k+1}t^{k}e^{-\lambda t}}{k!}$$
+  </div>
+  <div class="intuit"><strong>直觉</strong>：$e^{-\lambda s}\cdot e^{-\lambda(t-s)}=e^{-\lambda t}$ 与切分点 s 无关——"一直没多来"的代价只看总时长。积分只是在数"前 k 段可以怎么切分 [0,t]"，于是得到 $t^k/k!$。这也是指数分布<b>无记忆性</b>的另一面。</div>
+</div>
+
+<div class="section">
+  <h2 id="s-gammafn">Γ 函数：把 (k−1)! 推广到任意 α &gt; 0</h2>
+  <p>密度必须积分为 1。对一般 α，令 $x=\lambda t$：</p>
+  <div class="formula-box">
+$$\int_0^\infty \lambda^\alpha t^{\alpha-1}e^{-\lambda t}\,dt=\int_0^\infty x^{\alpha-1}e^{-x}\,dx\ \stackrel{\text{def}}{=}\ \Gamma(\alpha)$$
+  </div>
+  <p>所以 $\Gamma(\alpha)$ 就是"让面积等于 1 的那个常数"。它的三条性质都能直接推出来：</p>
+  <ul>
+    <li><b>$\Gamma(1)=\int_0^\infty e^{-x}dx=1$</b>。</li>
+    <li><b>递推 $\Gamma(\alpha+1)=\alpha\,\Gamma(\alpha)$</b>：分部积分 $\int_0^\infty x^{\alpha}e^{-x}dx=\big[-x^\alpha e^{-x}\big]_0^\infty+\alpha\int_0^\infty x^{\alpha-1}e^{-x}dx$，边界项为 0。于是 $\Gamma(n)=(n-1)!$，与整数情形完全一致。</li>
+    <li><b>$\Gamma(\tfrac12)=\sqrt\pi$</b>：令 $x=u^2$，$\Gamma(\tfrac12)=\int_0^\infty x^{-1/2}e^{-x}dx=2\int_0^\infty e^{-u^2}du=\sqrt\pi$（高斯积分）。</li>
+  </ul>
+
+  <h3>非整数 α 是什么意思？</h3>
+  <p>"等第 2.5 件事"没有字面意思，但 α 仍是<strong>形状旋钮</strong>：它连续地控制 $t^{\alpha-1}$ 这个上升因子有多陡。</p>
+  <table>
+    <tr><th>α 范围</th><th>t→0 时</th><th>形状</th></tr>
+    <tr><td>α &lt; 1</td><td>$t^{\alpha-1}\to\infty$</td><td>单调递减，比指数更"急"：大量极短值 + 长尾</td></tr>
+    <tr><td>α = 1</td><td>$f(0)=\lambda$</td><td>指数分布</td></tr>
+    <tr><td>α &gt; 1</td><td>$f(0)=0$</td><td>单峰，α 越大越对称</td></tr>
+  </table>
+  <p>非整数 α 的实际来源：卡方分布 χ²(n) 的 α=n/2（n 为奇数时就是半整数，见下文）、贝叶斯先验、拟合降雨量/保险理赔这类"正值、右偏"的数据。</p>
+</div>
+
+<div class="section">
+  <h2 id="s-moments">均值、方差、众数：怎么算出来的</h2>
+
+  <h3>一个积分算出所有矩</h3>
+  <p>把 $t^m$ 乘进被积函数，指数从 $\alpha-1$ 变成 $\alpha+m-1$，又是一个 Γ 积分：</p>
+  <div class="formula-box">
+$$E[T^m]=\int_0^\infty t^m\frac{\lambda^\alpha t^{\alpha-1}e^{-\lambda t}}{\Gamma(\alpha)}dt=\frac{\Gamma(\alpha+m)}{\Gamma(\alpha)\,\lambda^m}$$
+$$E[T]=\frac{\Gamma(\alpha+1)}{\Gamma(\alpha)\lambda}=\frac{\alpha}{\lambda},\qquad E[T^2]=\frac{\alpha(\alpha+1)}{\lambda^2}$$
+$$\text{Var}(T)=E[T^2]-E[T]^2=\frac{\alpha(\alpha+1)-\alpha^2}{\lambda^2}=\frac{\alpha}{\lambda^2}$$
+  </div>
+  <p><b>整数 k 的捷径</b>：$T_k$ 是 k 个独立 Exp(λ) 之和，每个均值 $1/\lambda$、方差 $1/\lambda^2$；均值相加、独立变量的方差也相加，立刻得到 $k/\lambda$ 与 $k/\lambda^2$。</p>
+
+  <h3>相对波动：变异系数 1/√α</h3>
+  <div class="formula-box">
+$$\text{CV}=\frac{\sqrt{\text{Var}}}{E[T]}=\frac{\sqrt\alpha/\lambda}{\alpha/\lambda}=\frac{1}{\sqrt\alpha}$$
+  </div>
+  <div class="intuit"><strong>直觉</strong>：标准差按 $\sqrt k$ 涨，均值按 $k$ 涨。等 1 辆车，波动和均值一样大（CV=100%）；等 100 辆车，只有 10%——某一段等得久，常被另一段等得短抵消（大数定律）。α 很大时，由中心极限定理 $\text{Gamma}(\alpha,\lambda)\approx \mathcal N(\alpha/\lambda,\ \alpha/\lambda^2)$，偏度 $2/\sqrt\alpha\to0$。</div>
+
+  <h3>众数：对数密度求导</h3>
+  <div class="formula-box">
+$$\frac{d}{dt}\log f(t)=\frac{\alpha-1}{t}-\lambda=0\ \Rightarrow\ t^*=\frac{\alpha-1}{\lambda}\quad(\alpha\ge1)$$
+  </div>
+  <div class="intuit"><strong>直觉</strong>：$\frac{\alpha-1}{t}$ 是"多项式上升"的拉力（t 小时强），$\lambda$ 是"指数衰减"的恒定阻力，两者相等处就是峰。众数 = 均值 − $1/\lambda$：<b>峰永远在均值左边一个平均间隔</b>——右边的长尾把均值往右拉。α=1 时众数在 0，正是指数分布的 L 形。</div>
+</div>
+
+<div class="section">
+  <h2 id="s-mgf">可加性与缩放：MGF 一行证明</h2>
+  <div class="formula-box">
+$$M(s)=E[e^{sT}]=\int_0^\infty\frac{\lambda^\alpha t^{\alpha-1}e^{-(\lambda-s)t}}{\Gamma(\alpha)}dt=\Big(\frac{\lambda}{\lambda-s}\Big)^\alpha=\Big(1-\frac{s}{\lambda}\Big)^{-\alpha},\quad s&lt;\lambda$$
+  </div>
+  <p>（积分里把 λ 换成 λ−s，再用 Γ 积分公式。）</p>
+  <ul>
+    <li><b>可加性</b>：X~Gamma(α₁, λ)、Y~Gamma(α₂, λ) 独立，$M_{X+Y}=M_XM_Y=(1-s/\lambda)^{-(\alpha_1+\alpha_2)}$，所以 $X+Y\sim\text{Gamma}(\alpha_1+\alpha_2,\lambda)$。<b>直觉</b>：先等 α₁ 件、再等 α₂ 件 = 一共等 α₁+α₂ 件。前提是<b>同一速率 λ</b>，速率不同就不再是 Gamma。</li>
+    <li><b>缩放</b>：$cT$ 的 MGF 是 $M(cs)=(1-s/(\lambda/c))^{-\alpha}$，所以 $cT\sim\text{Gamma}(\alpha,\lambda/c)$。<b>直觉</b>：分钟换成秒（c=60），速率除以 60，形状不变。λ 只决定"时间单位"，形状全由 α 决定——这就是 <i>shape</i> / <i>rate</i>（或 <i>scale</i> θ=1/λ）名字的来历。</li>
+  </ul>
 </div>
 
 <div class="section">
@@ -572,6 +733,21 @@ $$\text{方差} = \frac{k}{\lambda^2}$$
     <li>第 α 件事的时刻占比 = α+β-1 个均匀随机点里第 α 小的位置</li>
     <li>这正是 Beta(α, β) 的定义（见 <a class="concept-link" href="Beta分布-球星卡.html#concept-beta-distribution" style="color:var(--info)">Beta 分布球星卡</a>）</li>
   </ol>
+  <p style="font-size:14px;color:var(--ink-dim);">上面的顺序统计量论证只适用于整数 α、β。下面的换元推导对任意 α、β &gt; 0 都成立。</p>
+
+  <h3 id="concept-gamma-beta-jacobian" class="concept-anchor">严格推导：换元 + 雅可比</h3>
+  <p>X~Gamma(α, λ)、Y~Gamma(β, λ) 独立，联合密度</p>
+  <div class="formula-box">
+$$f(x,y)=\frac{\lambda^{\alpha+\beta}}{\Gamma(\alpha)\Gamma(\beta)}\,x^{\alpha-1}y^{\beta-1}e^{-\lambda(x+y)}$$
+  </div>
+  <p>换成"总时长 + 占比"：$s=x+y,\ r=x/(x+y)$，反解 $x=rs,\ y=(1-r)s$，雅可比</p>
+  <div class="formula-box">
+$$\left|\frac{\partial(x,y)}{\partial(r,s)}\right|=\left|\det\begin{pmatrix}s&amp;r\\-s&amp;1-r\end{pmatrix}\right|=s(1-r)+rs=s$$
+$$g(r,s)=\frac{\lambda^{\alpha+\beta}}{\Gamma(\alpha)\Gamma(\beta)}(rs)^{\alpha-1}\big((1-r)s\big)^{\beta-1}e^{-\lambda s}\cdot s$$
+$$=\underbrace{\frac{\lambda^{\alpha+\beta}s^{\alpha+\beta-1}e^{-\lambda s}}{\Gamma(\alpha+\beta)}}_{S\sim\text{Gamma}(\alpha+\beta,\lambda)}\times\underbrace{\frac{\Gamma(\alpha+\beta)}{\Gamma(\alpha)\Gamma(\beta)}r^{\alpha-1}(1-r)^{\beta-1}}_{R\sim\text{Beta}(\alpha,\beta)}$$
+  </div>
+  <p>联合密度拆成"只含 s"×"只含 r"两块，于是 R ~ Beta(α, β)、S ~ Gamma(α+β, λ)，<b>并且 R 与 S 独立</b>。顺带得到 Beta 函数恒等式 $B(\alpha,\beta)=\dfrac{\Gamma(\alpha)\Gamma(\beta)}{\Gamma(\alpha+\beta)}$。</p>
+  <div class="intuit"><strong>直觉</strong>：① λ 消失了——占比与时间单位无关；② 知道"总共花了多久"不会改变"前一段占多少"：总时长只管尺度，占比只管形状。这也是实际采样 <a class="concept-link" href="概率分布博物馆.html#concept-dirichlet-distribution">Dirichlet</a> 的标准做法：采 K 个独立 Gamma(αᵢ, 1)，再除以总和。</div>
 </div>
 
 <div class="demo-box">
@@ -601,7 +777,7 @@ $$\text{方差} = \frac{k}{\lambda^2}$$
   <p><strong>A:</strong> 概念上确实是这样，但 Gamma 提供了封闭形式的密度函数和性质，方便分析。而且 Gamma 可以推广到非整数 α（通过 Gamma 函数 Γ(α) 替代阶乘）。</p>
 
   <h3>Q2: Gamma(k, λ) 的期望为什么是 k/λ？</h3>
-  <p><strong>A:</strong> 每件事平均等 1/λ 时间，等 k 件事就是 k × (1/λ) = k/λ。</p>
+  <p><strong>A:</strong> 每件事平均等 1/λ 时间，等 k 件事就是 k × (1/λ) = k/λ。非整数 α 的严格证明见 <a href="#s-moments" style="color:var(--info)">均值、方差、众数</a>。</p>
 
   <h3>Q3: 什么时候用 Gamma，什么时候用指数？</h3>
   <p><strong>A:</strong></p>
@@ -672,6 +848,25 @@ $$\text{方差} = \frac{k}{\lambda^2}$$
       <td>k 为正整数的 Gamma</td>
     </tr>
   </table>
+
+  <h3>推导：为什么 χ²(n) = Gamma(n/2, 1/2)</h3>
+  <p>Z~N(0,1)，W=Z²。先求 CDF 再求导：</p>
+  <div class="formula-box">
+$$P(W\le w)=P(-\sqrt w\le Z\le\sqrt w)=2\Phi(\sqrt w)-1$$
+$$f_W(w)=2\varphi(\sqrt w)\cdot\frac{1}{2\sqrt w}=\frac{w^{-1/2}e^{-w/2}}{\sqrt{2\pi}}$$
+  </div>
+  <p>对照 Gamma(1/2, 1/2) 的密度 $\dfrac{(1/2)^{1/2}w^{-1/2}e^{-w/2}}{\Gamma(1/2)}=\dfrac{w^{-1/2}e^{-w/2}}{\sqrt2\,\sqrt\pi}$，完全一致（这里也再次看到 $\Gamma(\tfrac12)=\sqrt\pi$）。再由可加性，n 个独立 Z² 之和 ~ Gamma(n/2, 1/2) = <a class="concept-link" href="概率分布博物馆.html#concept-chi-squared-distribution">χ²(n)</a>。</p>
+  <div class="intuit"><strong>直觉</strong>：一个标准正态的平方 ≈ "半件事"的等待时间。χ²(2) = Gamma(1, 1/2) 正好是均值为 2 的指数分布。</div>
+</div>
+
+<div class="section">
+  <h2 id="s-bayes">换个角度：Gamma 作为速率 λ 的先验</h2>
+  <p>前面 λ 是已知常数、t 是随机变量。反过来：<b>λ 未知</b>（这条线路到底多久来一班？），观察 t 时长内来了 n 辆车，泊松似然 $\propto\lambda^n e^{-\lambda t}$。给 λ 一个 Gamma(a, b) 先验：</p>
+  <div class="formula-box">
+$$p(\lambda\mid n,t)\ \propto\ \underbrace{\lambda^{a-1}e^{-b\lambda}}_{\text{先验}}\cdot\underbrace{\lambda^{n}e^{-\lambda t}}_{\text{似然}}=\lambda^{(a+n)-1}e^{-(b+t)\lambda}\ \Rightarrow\ \lambda\mid\text{数据}\sim\text{Gamma}(a+n,\ b+t)$$
+$$E[\lambda\mid\text{数据}]=\frac{a+n}{b+t}\ \xrightarrow{\ n,t\to\infty\ }\ \frac{n}{t}$$
+  </div>
+  <div class="intuit"><strong>直觉</strong>：a = "假装已经看到的事件数"，b = "假装已经观察的时长"；新数据只是把件数加到 a、把时长加到 b 上。这和 <a class="concept-link" href="Beta分布-球星卡.html#concept-bayesian-update">Beta 的贝叶斯更新</a>（成功数加到 α、失败数加到 β）是同一个套路。之所以共轭，是因为 Gamma 密度和泊松似然都长成 $\lambda^{(\cdot)}e^{-\lambda(\cdot)}$：同一个式子 $\lambda^k t^{k-1}e^{-\lambda t}$，固定 λ 看 t 是等待时间分布，固定 t 看 λ 就是似然的形状。</div>
 </div>
 
 <div class="section">
@@ -684,7 +879,7 @@ $$\text{方差} = \frac{k}{\lambda^2}$$
     <li><strong>两者通过"占比"连接</strong>：X ~ Gamma(α), Y ~ Gamma(β) → X/(X+Y) ~ Beta(α, β)</li>
   </ul>
 
-  <p>当 β=1 时，Beta(α, 1) 就是"α 个均匀随机数的最大值"——这解释了为什么 Beta(1.5, 1) 偏向 1（见 <a href="Beta分布-球星卡.html" style="color:var(--info)">Beta 分布球星卡</a>）。</p>
+  <p>当 β=1 时，Beta(α, 1) 的密度是 $\alpha x^{\alpha-1}$；α 为整数时它就是"α 个均匀随机数的最大值"——这解释了为什么 Beta(1.5, 1) 偏向 1（见 <a href="Beta分布-球星卡.html" style="color:var(--info)">Beta 分布球星卡</a>）。</p>
 </div>
 
 <div class="note">
@@ -700,7 +895,7 @@ $$\text{方差} = \frac{k}{\lambda^2}$$
 
 <footer>
   <p>Gamma 分布：等待时钟 ⏱ · <a href="index.html" style="color:var(--accent);">返回知识库</a></p>
-  <p style="margin-top:8px; font-size:12px;">三个可交互实验 · 别慌，拖动看看曲线怎么变</p>
+  <p style="margin-top:8px; font-size:12px;">三个可交互实验 + 完整推导 · 别慌，拖动看看曲线怎么变</p>
 </footer>
 
 </div>
@@ -722,17 +917,28 @@ function gammaFunc(n) {
   return result;
 }
 
+function logGamma(x) {
+  // Lanczos 近似，x > 0
+  if (x < 0.5) return Math.log(Math.PI / Math.sin(Math.PI * x)) - logGamma(1 - x);
+  const g = 7;
+  const c = [0.99999999999980993, 676.5203681218851, -1259.1392167224028, 771.32342877765313,
+    -176.61502916214059, 12.507343278686905, -0.13857109526572012, 9.9843695780195716e-6, 1.5056327351493116e-7];
+  x -= 1;
+  let a = c[0];
+  const t = x + g + 0.5;
+  for (let i = 1; i < g + 2; i++) a += c[i] / (x + i);
+  return 0.5 * Math.log(2 * Math.PI) + (x + 0.5) * Math.log(t) - t + Math.log(a);
+}
+
 function gammaPDF(t, k, lambda) {
   if (t <= 0) return 0;
-  const numerator = Math.pow(lambda, k) * Math.pow(t, k - 1) * Math.exp(-lambda * t);
-  const denominator = gammaFunc(k);
-  return numerator / denominator;
+  return Math.exp(k * Math.log(lambda) + (k - 1) * Math.log(t) - lambda * t - logGamma(k));
 }
 
 function drawGamma() {
-  const k = parseInt(kSlider.value);
+  const k = parseFloat(kSlider.value);
   const lambda = parseFloat(lambdaSlider.value);
-  kVal.textContent = k;
+  kVal.textContent = k % 1 === 0 ? k.toFixed(0) : k.toFixed(1);
   lambdaVal.textContent = lambda.toFixed(1);
 
   const w = shapeCanvas.width;
@@ -753,7 +959,7 @@ function drawGamma() {
     const t = (i / steps) * maxT;
     const pdf = gammaPDF(t, k, lambda);
     points.push({t, pdf});
-    maxPDF = Math.max(maxPDF, pdf);
+    if (i >= 5) maxPDF = Math.max(maxPDF, pdf);
   }
 
   // 绘制坐标轴
@@ -773,7 +979,7 @@ function drawGamma() {
   shapeCtx.beginPath();
   points.forEach((p, i) => {
     const x = padding + (p.t / maxT) * plotW;
-    const y = h - padding - (p.pdf / maxPDF) * plotH;
+    const y = h - padding - Math.min(p.pdf / maxPDF, 1.05) * plotH;
     if (i === 0) shapeCtx.moveTo(x, y);
     else shapeCtx.lineTo(x, y);
   });
@@ -800,6 +1006,24 @@ function drawGamma() {
 
   shapeCtx.fillStyle = '#ff6b35';
   shapeCtx.fillText(`均值=${mean.toFixed(2)}`, meanX + 5, padding + 15);
+
+  const mode = k >= 1 ? (k - 1) / lambda : null;
+  if (mode !== null) {
+    const modeX = padding + (mode / maxT) * plotW;
+    shapeCtx.strokeStyle = '#4ecdc4';
+    shapeCtx.setLineDash([2, 4]);
+    shapeCtx.beginPath();
+    shapeCtx.moveTo(modeX, padding);
+    shapeCtx.lineTo(modeX, h - padding);
+    shapeCtx.stroke();
+    shapeCtx.setLineDash([]);
+    shapeCtx.fillStyle = '#4ecdc4';
+    shapeCtx.fillText(`众数=${mode.toFixed(2)}`, modeX + 5, padding + 32);
+  }
+
+  const sd = Math.sqrt(k) / lambda;
+  document.getElementById('shape-stats').textContent =
+    `均值 α/λ=${mean.toFixed(2)} · 众数 (α−1)/λ=${mode === null ? '0（α<1，峰在 t→0）' : mode.toFixed(2)} · 标准差 √α/λ=${sd.toFixed(2)} · 变异系数 1/√α=${(1 / Math.sqrt(k)).toFixed(2)}`;
 }
 
 kSlider.addEventListener('input', drawGamma);
