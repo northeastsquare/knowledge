@@ -198,7 +198,7 @@
   .arch text.rowlab{text-anchor:start;}
   .arch .t1{font-size:13px;font-weight:700;}
   .arch .t2{font-size:11px;fill:#3A3D55;}
-  .arch .t2.b{font-weight:700;fill:#3730A3;}
+  .arch .t2.b,.arch tspan.b{font-weight:700;fill:#3730A3;}
   .arch .t2.em{fill:#9A3412;font-weight:600;}
   .arch .t3{font-size:10px;fill:#71748C;font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;}
   .arch .mono{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;}
@@ -308,7 +308,7 @@
     <article class="card wide" id="concept-pi05-architecture">
       <p class="arch-lead">下图按 openpi 里 π0.5 的实现（<code>Pi0</code> 类加 <code>pi05=True</code>）画出一次推理的完整数据流。<b>点任意模块</b>可打开官方仓库对应的源码行（固定在 commit <code>215abfb</code>）。颜色：<span class="sw" style="background:#0E9488"></span>视觉 <span class="sw" style="background:#4F46E5"></span>语言 / 骨干 <span class="sw" style="background:#EA580C"></span>动作专家 <span class="sw" style="background:#7C3AED"></span>流匹配时间步。</p>
       <div class="arch-scroll">
-      <svg class="arch" viewBox="0 0 1000 640" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Microsoft YaHei, sans-serif" role="img" aria-label="π0.5 模型架构图">
+      <svg class="arch" viewBox="0 0 1000 750" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Microsoft YaHei, sans-serif" role="img" aria-label="π0.5 模型架构图">
         <defs>
           <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#71748C"/></marker>
         </defs>
@@ -316,7 +316,7 @@
         <text x="12" y="22" class="rowlab">① 输入</text>
         <text x="12" y="132" class="rowlab">② 编码成 token</text>
         <text x="12" y="252" class="rowlab">③ 一个 Transformer，两套权重</text>
-        <text x="12" y="492" class="rowlab">④ 输出与采样</text>
+        <text x="12" y="602" class="rowlab">④ 输出与采样</text>
 
         <!-- ① 输入 -->
         <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/model.py#L144-L210" target="_blank" rel="noreferrer">
@@ -379,58 +379,70 @@
         </a>
 
         <!-- ③ Transformer -->
-        <rect x="20" y="262" width="960" height="208" rx="14" class="bx big"/>
+        <rect x="20" y="262" width="960" height="318" rx="14" class="bx big"/>
         <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/gemma.py#L284-L336" target="_blank" rel="noreferrer">
           <text x="500" y="284" class="t1">18 层 · 每层：RMSNorm → 共享自注意力 → 残差 → RMSNorm → FFN → 残差（gemma.py Block）</text>
         </a>
         <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/gemma.py#L58-L109" target="_blank" rel="noreferrer">
-          <rect x="40" y="300" width="400" height="150" rx="10" class="bx l"/>
+          <rect x="40" y="300" width="400" height="140" rx="10" class="bx l"/>
           <text x="240" y="324" class="t1">前缀专家：Gemma 2B（width 2048，MLP 16384）</text>
           <text x="240" y="344" class="t2">处理 768 图像 token + ≤200 文本 token</text>
           <text x="240" y="362" class="t2">权重直接来自 PaliGemma 预训练；层名无后缀（attn / mlp）</text>
           <text x="240" y="380" class="t2">用普通 RMSNorm，不接收 τ</text>
           <text x="240" y="404" class="t2">采样时只前向 1 次，K/V 存进 cache</text>
-          <text x="240" y="438" class="t3">gemma.py get_config · _name</text>
+          <text x="240" y="430" class="t3">gemma.py get_config · _name</text>
         </a>
         <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/gemma.py#L113-L133" target="_blank" rel="noreferrer">
-          <rect x="600" y="300" width="360" height="150" rx="10" class="bx a"/>
+          <rect x="600" y="300" width="360" height="140" rx="10" class="bx a"/>
           <text x="780" y="324" class="t1">动作专家：gemma_300m（width 1024，MLP 4096）</text>
           <text x="780" y="344" class="t2">处理 50 个动作 token；从零初始化，层名带 _1 后缀</text>
           <text x="780" y="362" class="t2 em">adaRMSNorm（π0.5 新）：τ 条件向量经零初始化的线性层</text>
           <text x="780" y="380" class="t2 em">生成 scale / shift / gate，x·(1+scale)+shift，</text>
           <text x="780" y="398" class="t2 em">残差写回时再乘 gate（_gated_residual）</text>
-          <text x="780" y="420" class="t2">采样时每步去噪都重新前向</text>
-          <text x="780" y="438" class="t3">gemma.py RMSNorm · _gated_residual</text>
+          <text x="780" y="416" class="t2">采样时每步去噪都重新前向</text>
+          <text x="780" y="432" class="t3">gemma.py RMSNorm · _gated_residual</text>
         </a>
         <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/gemma.py#L158-L250" target="_blank" rel="noreferrer">
-          <rect x="450" y="318" width="140" height="114" rx="8" class="bx sh"/>
-          <text x="520" y="340" class="t2 b">共享自注意力</text>
-          <text x="520" y="358" class="t2">各专家自算 Q/K/V</text>
-          <text x="520" y="374" class="t2">拼成一条序列</text>
-          <text x="520" y="390" class="t2">算一次 softmax</text>
-          <text x="520" y="406" class="t2">↔ 两套权重唯一的交汇处</text>
-          <text x="520" y="424" class="t3">gemma.py Attention</text>
+          <rect x="40" y="466" width="920" height="104" rx="10" class="bx sh"/>
+          <text x="500" y="484" class="t2 b">共享自注意力（gemma.py Attention）· 每层一次 · 两套权重唯一的交汇处</text>
+          <text x="250" y="504" class="t2"><tspan class="b">输入 ←</tspan> 前缀 hidden（2048 维）→ q_einsum / kv_einsum → Q、K、V</text>
+          <text x="250" y="520" class="t2">采样时前缀不重算，这里的 K/V 直接取自 cache</text>
+          <text x="780" y="504" class="t2"><tspan class="b">输入 ←</tspan> 动作 hidden（1024 维）→ q/kv_einsum_1 → Q、K、V</text>
+          <text x="780" y="520" class="t2">两套投影都是 8 个头 × 256 维，所以能拼在一起</text>
+          <text x="500" y="540" class="t2 em">K = [K前缀 ; K动作]，V 同；加 RoPE（按全局位置）；每个 Q 按掩码对整条序列做一次 softmax，加权求和 V</text>
+          <text x="250" y="560" class="t2"><tspan class="b">输出 →</tspan> 前缀那段 → attn_vec_einsum（→2048）→ 残差回前缀专家</text>
+          <text x="780" y="560" class="t2"><tspan class="b">输出 →</tspan> 动作那段 → attn_vec_einsum_1 → ×gate 残差回动作专家</text>
         </a>
+        <g class="arrows">
+          <line x1="200" y1="440" x2="200" y2="464"/>
+          <line x1="280" y1="464" x2="280" y2="442"/>
+          <line x1="740" y1="440" x2="740" y2="464"/>
+          <line x1="820" y1="464" x2="820" y2="442"/>
+        </g>
+        <text x="170" y="456" class="t3" style="text-anchor:end">Q K V ↓</text>
+        <text x="310" y="456" class="t3" style="text-anchor:start">↑ 注意力输出</text>
+        <text x="710" y="456" class="t3" style="text-anchor:end">Q K V ↓</text>
+        <text x="850" y="456" class="t3" style="text-anchor:start">↑ 注意力输出</text>
 
         <!-- ④ 输出 -->
         <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L233-L237" target="_blank" rel="noreferrer">
-          <rect x="20" y="500" width="530" height="56" rx="10" class="bx l"/>
-          <text x="285" y="522" class="t1">前缀 KV cache：图像 + 文本只算一次</text>
-          <text x="285" y="540" class="t2">18 层的 K/V 各存一份；10 步去噪里动作 token 的 Q 去查它（pi0.py sample_actions）</text>
+          <rect x="20" y="610" width="530" height="56" rx="10" class="bx l"/>
+          <text x="285" y="632" class="t1">前缀 KV cache：图像 + 文本只算一次</text>
+          <text x="285" y="650" class="t2">18 层的 K/V 各存一份；10 步去噪里动作 token 的 Q 去查它（pi0.py sample_actions）</text>
         </a>
         <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L261-L271" target="_blank" rel="noreferrer">
-          <rect x="590" y="500" width="160" height="56" rx="10" class="bx a"/>
-          <text x="670" y="522" class="t1">action_out_proj</text>
-          <text x="670" y="540" class="t2">线性层 1024 → 32，得到速度场 v_t</text>
+          <rect x="590" y="610" width="160" height="56" rx="10" class="bx a"/>
+          <text x="670" y="632" class="t1">action_out_proj</text>
+          <text x="670" y="650" class="t2">线性层 1024 → 32，得到速度场 v_t</text>
         </a>
         <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L271-L279" target="_blank" rel="noreferrer">
-          <rect x="770" y="500" width="210" height="56" rx="10" class="bx tm"/>
-          <text x="875" y="522" class="t1">欧拉积分 10 步</text>
-          <text x="875" y="540" class="t2">x ← x + dt·v_t，dt = −1/10</text>
+          <rect x="770" y="610" width="210" height="56" rx="10" class="bx tm"/>
+          <text x="875" y="632" class="t1">欧拉积分 10 步</text>
+          <text x="875" y="650" class="t2">x ← x + dt·v_t，dt = −1/10</text>
         </a>
-        <rect x="590" y="580" width="390" height="44" rx="10" class="bx out"/>
-        <text x="785" y="599" class="t1">50 × 32 的动作块 → 反归一化 → 机器人（50Hz）</text>
-        <text x="785" y="616" class="t2">各机器人只用前几维（DROID 用 8 维，取前 15 步执行）</text>
+        <rect x="590" y="690" width="390" height="44" rx="10" class="bx out"/>
+        <text x="785" y="709" class="t1">50 × 32 的动作块 → 反归一化 → 机器人（50Hz）</text>
+        <text x="785" y="726" class="t2">各机器人只用前几维（DROID 用 8 维，取前 15 步执行）</text>
 
         <!-- 箭头 -->
         <g class="arrows">
@@ -442,16 +454,16 @@
           <line x1="400" y1="224" x2="400" y2="298"/>
           <line x1="670" y1="224" x2="670" y2="298"/>
           <path d="M875 224 L875 262 L875 298" class="dash"/>
-          <line x1="240" y1="450" x2="240" y2="498"/>
-          <line x1="670" y1="450" x2="670" y2="498"/>
-          <line x1="750" y1="528" x2="768" y2="528"/>
-          <path d="M875 556 L875 578" />
-          <path d="M770 545 C 758 545, 758 80, 752 68" class="dash loop"/>
-          <path d="M500 500 L500 434" class="dash kv"/>
+          <line x1="240" y1="580" x2="240" y2="608"/>
+          <line x1="670" y1="580" x2="670" y2="608"/>
+          <line x1="750" y1="638" x2="768" y2="638"/>
+          <path d="M875 666 L875 688" />
+          <path d="M770 655 C 758 655, 758 80, 752 68" class="dash loop"/>
+          <path d="M500 610 L500 570" class="dash kv"/>
         </g>
         <text x="760" y="245" class="t3" style="text-anchor:end">τ 不是 token，而是条件 →</text>
-        <text x="508" y="488" class="t3 kv" style="text-anchor:start">cache 的 K/V 拼到动作 token 的 K/V 前面，每步去噪都查</text>
-        <text x="975" y="470" class="t3 loop" style="text-anchor:end">↑ 每步去噪把 x_t、τ 送回 ②</text>
+        <text x="508" y="598" class="t3 kv" style="text-anchor:start">cache 的 K/V 拼在动作 K/V 前，每步去噪都查</text>
+        <text x="975" y="598" class="t3 loop" style="text-anchor:end">↑ 每步去噪把 x_t、τ 送回 ②</text>
       </svg>
       </div>
       <div class="arch-note">本图画的是 <b>openpi 的实现</b>：只有流匹配动作头，没有论文里预训练阶段的 FAST 离散动作 token、子任务文字输出和 VQA 输出（openpi README 明确写了"目前只支持 flow matching head"）。论文 Fig.3 / Fig.18 的完整结构见下面第 3 张卡。</div>
