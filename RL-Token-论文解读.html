@@ -190,7 +190,7 @@
     <a href="#s2">2 · 核心思想</a>
     <a href="#s3">3 · 三个关键设计</a>
     <a href="#s4">4 · 完整系统流程</a>
-    <a href="#s-faq">4½ · 运行时八问</a>
+    <a href="#s-faq">4½ · 运行时十问</a>
     <a href="#s-rlinf">4¾ · RLinf 里怎么跑</a>
     <a href="#s5">5 · 实验结果</a>
     <a href="#s6">6 · 与已有方法的关系</a>
@@ -370,8 +370,8 @@
 
   <!-- 4.5 -->
   <section id="s-faq">
-    <h2><span class="no">4½</span>运行时到底怎么跑：八个常见疑问</h2>
-    <p class="lead">先说结论：VLA 每 10 步才推理一次；RL 只负责最难的那一段；"强化学习"指的是在线训练小网络，执行时 actor 只做一次前向。下面每条都标了论文出处页码（arXiv v2 PDF）。Q6–Q8 这三条超出论文范围，回答的是"论文没写的执行时序"，来源是 PI 未开源的实现与 RLinf 的复现代码。</p>
+    <h2><span class="no">4½</span>运行时到底怎么跑：十个常见疑问</h2>
+    <p class="lead">先说结论：VLA 每 10 步才推理一次；RL 只负责最难的那一段；"强化学习"指的是在线训练小网络，执行时 actor 只做一次前向。下面每条都标了论文出处页码（arXiv v2 PDF）。Q6–Q8 这三条超出论文范围，回答的是"论文没写的执行时序"，来源是 PI 未开源的实现与 RLinf 的复现代码。Q9–Q10 是落地时的实践问题：离线数据能不能用、单台真机够不够。</p>
 
     <div class="card" id="faq-when">
       <h3><span class="tag">Q1</span>这项工作是什么时候做的？</h3>
@@ -500,6 +500,43 @@
       </ul>
       <p><strong>为什么这样取舍合理</strong>：RLinf 的 rollout 首要目的是<strong>采数据训 actor-critic</strong>，不是做实时部署控制器。训练时停几十毫秒不损失什么；而异步化会引入"执行动作 ≠ 当次策略输出"的 off-policy 偏移，给稀疏奖励下的信用分配再添一层麻烦——RLT 的核心机制（reference dropout、β 锚定）都假设 ref chunk 和执行的 chunk 是同一时刻同一观测下的产物。</p>
       <p class="note"><strong>要在 RLinf 里补上衔接，改动不大</strong>：<code>_get_ref_chunk</code> 已经是"20 步取前 10 步"的形状，只要在 <code>extract_rlt_obs</code> 时把上一块剩下的 d 步覆写进 <code>ref_chunk</code> 前 d 位（<code>apply_rlt_interventions</code> 里已有同样的覆写模式可照抄），再打开 <code>rtc_enabled</code>。但<strong>这会改变 <code>next_obs</code> 语义</strong>——replay 里存的 <code>next_ref_chunk</code> 也得跟着变成"以旧前缀为条件的参考块"，否则 critic 的 TD 目标和推理时看到的东西对不上。</p>
+    </div>
+
+    <div class="card" id="faq-offline">
+      <h3><span class="tag">Q9</span>必须在线学习吗？能不能用录好的推理数据来做强化学习？</h3>
+      <p><strong>能用，但只靠录制数据，提升会很有限。</strong>RLT 第二阶段是从<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-replay-buffer">经验池</a>里反复抽样训练（off-policy），并不要求数据是刚采到的。</p>
+      <ul>
+        <li><strong>放得进经验池的条件</strong>：每块动作都有奖励（至少标出成功或失败），有下一时刻的观测，并且用<strong>同一个冻结的第一阶段模型</strong>从录制图像重新算出 z<sub>rl</sub> 和参考动作。</li>
+        <li><strong>问题一：critic 没见过 actor 的改动</strong>。录下来的多是 VLA 自己的动作或人接管的动作。actor 想在参考动作上做的修正，数据里从来没出现过，critic 对这些动作打分没有依据，容易打得过高。actor 就会往这些虚高的方向改，上机后反而变差。这就是离线强化学习的分布偏移问题。</li>
+        <li><strong>问题二：没有反馈回路</strong>。在线训练时，actor 改了以后会采到新数据，新数据会纠正 critic 之前的错误打分；离线训练没有这一步。</li>
+        <li><strong>兜底的是那根“绳子”</strong>：RLT 要求 actor 不能离参考动作太远，所以离线训练不至于学崩，效果类似 TD3+BC 这类保守的离线方法。但通常只能做到比 VLA 稍好、更稳，很难达到论文里在线训练带来的提速和成功率提升。</li>
+      </ul>
+      <p><strong>推荐做法：先离线、再在线。</strong>先用录制数据预填经验池，把 critic 预热好，actor 先离线练一轮，再上机在线训练。这样能减少在线所需的时间和人工干预。论文的预热阶段，本质上也是先用 VLA 采的数据填经验池。</p>
+      <p class="note">RLinf 现状：RLT 第二阶段的经验池配置里没有“从文件预加载”的开关，需要自己把录制数据转换成 {z<sub>rl</sub>, 本体状态, 参考动作} 的格式再灌进经验池。RLinf 的 <code>examples/offline_rl</code> 是 RECAP / STEAM 这类先给数据算优势、再按优势条件训练 VLA 的方法，和 RLT 不是同一条路线。</p>
+    </div>
+
+    <div class="card" id="faq-onerobot">
+      <h3><span class="tag">Q10</span>只有一台真机、一个场景，实时推理加在线学习会不会太慢？</h3>
+      <p><strong>一台真机够用，RLT 就是按这个前提设计的。时间主要花在机器人身上，算力不是瓶颈。</strong></p>
+      <ul>
+        <li><strong>不慢的部分</strong>：每个动作块（约 1 秒）只跑一次冻结 VLA 加一个小 MLP，而且只有前向计算，一张像样的 GPU 就能跟上 10 Hz。训练只更新几层 MLP，一次更新是毫秒级。</li>
+        <li><strong>真正慢的部分</strong>：采数据只能按真实时间走，一小时最多约 3600 块；每回合还要复位场景，往往比执行本身更费时间。奖励稀疏，前期失败多，有效信号少。RLinf 是同步模式，采完一轮再训练，所以每轮之间机器人会短暂停一下。</li>
+      </ul>
+      <p><strong>RLT 是怎么把真实时间压下来的</strong>（这正是它和传统真机 RL 的区别）：</p>
+      <ul>
+        <li><strong>只在关键阶段用 RL</strong>：平常的移动交给 VLA，只练那几秒的精细操作。经验池里存的也全是有价值的片段。</li>
+        <li><strong>在 VLA 的建议上小幅修正</strong>：起点本来就接近能完成任务，不用从零探索，需要的样本少得多。</li>
+        <li><strong>人可以随时接管</strong>：快失败时由人接手，避免浪费一整回合，接管的片段还能当示范用。</li>
+        <li><strong>每条经验反复用</strong>：同一批数据会被抽样训练很多次，弥补真机数据少的问题。</li>
+      </ul>
+      <p><strong>实践建议</strong>：</p>
+      <ul>
+        <li>把关键阶段划窄，例如只练插入或对准那一步。</li>
+        <li>复位尽量自动化，或者把场景设计得容易复原。</li>
+        <li>先用录制数据预热（见 Q9）。</li>
+        <li>适当调高每轮的更新次数，但太高 critic 会过拟合，要盯着曲线。</li>
+      </ul>
+      <p class="note">单任务按“几小时真机时间”来规划比较现实。如果几小时还看不到成功率上升，通常是关键阶段划得太宽，或者奖励定义有问题，而不是算力不够。</p>
     </div>
   </section>
 
