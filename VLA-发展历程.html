@@ -552,7 +552,7 @@
           <li><a href="https://arxiv.org/abs/2303.04137" target="_blank" rel="noreferrer">Diffusion Policy</a></li>
           <li><a href="https://arxiv.org/abs/2304.13705" target="_blank" rel="noreferrer">ACT / ALOHA</a></li>
           <li><a href="pi0-论文解读.html">π0 精读</a></li>
-          <li><a href="FAST-论文解读.html">FAST 精读</a> → <a href="pi0.5_论文测验_精美版.html">π0.5 测验</a></li>
+          <li><a href="FAST-论文解读.html">FAST 精读</a> → <a href="pi0.5-论文解读.html">π0.5 精读</a></li>
           <li><a href="Realtime-VLA-论文解读.html">Realtime-VLA FLASH</a></li>
         </ol>
         <details class="qz"><summary>为什么 MSE 回归在示范数据有多种做法时会失败？</summary><p>当示范存在多峰（比如从左边绕或从右边绕）时，MSE 的最优解是各个峰的平均，得到的动作可能哪一种都不是，甚至直接撞上障碍物。扩散和 flow 学的是整个分布，可以采样到其中一个峰。</p></details>
@@ -565,7 +565,7 @@
           <li><a href="https://arxiv.org/abs/2204.01691" target="_blank" rel="noreferrer">SayCan</a></li>
           <li><a href="https://arxiv.org/abs/2307.15818" target="_blank" rel="noreferrer">RT-2</a></li>
           <li><a href="https://arxiv.org/abs/2406.09246" target="_blank" rel="noreferrer">OpenVLA</a></li>
-          <li><a href="pi0.5_论文测验_精美版.html">π0.5 测验</a></li>
+          <li><a href="pi0.5-论文解读.html">π0.5 精读</a> → <a href="pi0.5_论文测验_精美版.html">π0.5 测验</a></li>
           <li><a href="Qwen-VLA-论文解读.html">Qwen-VLA</a> → <a href="pi0.7_问答学习卡.html">π0.7</a></li>
         </ol>
         <details class="qz"><summary>SayCan 和 RT-2 的根本区别是什么？</summary><p>SayCan 中的 LLM 只在预先定义好的技能里做选择，并用可行性函数给每个技能打分，动作由技能策略执行；RT-2 让 VLM 直接输出动作 token，没有中间的技能接口。前者属于 00 节中的“LLM 规划器”，后者属于 VLA。</p></details>
@@ -671,7 +671,7 @@
     {id:'oft',date:'2025-02',title:'OpenVLA-OFT',full:'Fine-Tuning Vision-Language-Action Models: Optimizing Speed and Success',org:'Stanford',stage:'p6',lanes:['action','train'],arxiv:'2502.19645',one:'把 OpenVLA 改成并行解码、动作分块和连续 L1 回归，微调后的速度和成功率都大幅提升。'},
     {id:'gr00t',date:'2025-03',title:'GR00T N1',full:'GR00T N1: An Open Foundation Model for Generalist Humanoid Robots',org:'NVIDIA',stage:'p6',lanes:['backbone','data'],arxiv:'2503.14734',one:'开源的人形机器人双系统 VLA，VLM 配合扩散 Transformer 动作模块，训练数据混合了真机、人类视频和合成数据。'},
     {id:'gemini',date:'2025-03',title:'Gemini Robotics',full:'Gemini Robotics: Bringing AI into the Physical World',org:'Google DeepMind',stage:'p6',lanes:['backbone'],arxiv:'2503.20020',one:'在 Gemini 2.0 上构建具身推理模型（ER）和 VLA，强调泛化、交互性和灵巧性。'},
-    {id:'pi05',date:'2025-04',title:'π0.5',full:'π0.5: a Vision-Language-Action Model with Open-World Generalization',org:'Physical Intelligence',stage:'p6',lanes:['train','backbone'],arxiv:'2504.16054',kb:'pi0.5_论文测验_精美版.html',loop:'ground',one:'多源异构数据联合训练，先预测高层子任务再生成低层动作，在训练中没见过的家庭里完成长时程任务。'},
+    {id:'pi05',date:'2025-04',title:'π0.5',full:'π0.5: a Vision-Language-Action Model with Open-World Generalization',org:'Physical Intelligence',stage:'p6',lanes:['train','backbone'],arxiv:'2504.16054',kb:'pi0.5-论文解读.html',loop:'ground',one:'多源异构数据联合训练，先预测高层子任务再生成低层动作，在训练中没见过的家庭里完成长时程任务。'},
     {id:'ki',date:'2025-05',title:'知识隔离',full:'Knowledge Insulating Vision-Language-Action Models: Train Fast, Run Fast, Generalize Better',org:'Physical Intelligence',stage:'p6',lanes:['train','action'],arxiv:'2505.23705',one:'骨干用 FAST 离散 token 训练，flow 动作专家用于推理，同时阻断动作专家的梯度回传到 VLM。'},
     {id:'smolvla',date:'2025-06',title:'SmolVLA',full:'SmolVLA: A Vision-Language-Action Model for Affordable and Efficient Robotics',org:'Hugging Face',stage:'p6',lanes:['backbone','exec'],arxiv:'2506.01844',one:'约 0.45B 参数的小型 VLA，用社区数据训练，支持异步推理，消费级硬件就能运行。'},
     {id:'rtc',date:'2025-06',title:'RTC',full:'Real-Time Execution of Action Chunking Flow Policies',org:'Physical Intelligence',stage:'p6',lanes:['exec','action'],arxiv:'2506.07339',kb:'RTC-训练时-论文解读.html',one:'异步执行：边执行边算下一块，用推理时补全（伪逆引导）让新块和已执行的前缀无缝衔接。'},
@@ -704,7 +704,7 @@
     {date:'2025-02',name:'Helix',org:'Figure',backbone:'S2 VLM + S1 策略',size:'7B + 80M',head:'—',open:'否',ref:'helix'},
     {date:'2025-03',name:'GR00T N1',org:'NVIDIA',backbone:'VLM + 扩散 Transformer（flow matching 训练）',size:'—',head:'flow',open:'是',ref:'gr00t'},
     {date:'2025-03',name:'Gemini Robotics',org:'Google DeepMind',backbone:'Gemini 2.0',size:'—',head:'—',open:'否',ref:'gemini'},
-    {date:'2025-04',name:'π0.5',org:'Physical Intelligence',backbone:'PaliGemma + 动作专家',size:'—',head:'hyb',open:'是',ref:'pi05',kb:'pi0.5_论文测验_精美版.html'},
+    {date:'2025-04',name:'π0.5',org:'Physical Intelligence',backbone:'PaliGemma + 动作专家',size:'—',head:'hyb',open:'是',ref:'pi05',kb:'pi0.5-论文解读.html'},
     {date:'2025-06',name:'SmolVLA',org:'Hugging Face',backbone:'SmolVLM-2 + 动作专家',size:'0.45B',head:'flow',open:'是',ref:'smolvla'},
     {date:'2025-07',name:'GR-3',org:'ByteDance Seed',backbone:'VLM + flow 动作模块',size:'—',head:'flow',open:'否',ref:'gr3'},
     {date:'2025-11',name:'π*0.6',org:'Physical Intelligence',backbone:'VLM + 动作专家',size:'—',head:'—',open:'否',ref:'pi06',kb:'pi0.6-论文解读.html'},
