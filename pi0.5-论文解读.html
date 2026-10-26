@@ -209,6 +209,8 @@
   .arch .arrows .dash{stroke-dasharray:5 4;}
   .arch .arrows .loop,.arch .t3.loop{stroke:#7C3AED;fill:#7C3AED;}
   .arch .arrows .loop{fill:none;}
+  .arch .arrows .kv{stroke:#4F46E5;stroke-width:2;}
+  .arch .t3.kv{fill:#3730A3;}
   .arch-note{margin-top:12px;padding:10px 14px;border-radius:10px;background:#fff7e8;border:1px solid #F2D9A6;font-size:.92rem;color:var(--ink-2);}
   .arch-table{width:100%;border-collapse:collapse;margin:10px 0 6px;font-size:.9rem;}
   .arch-table th,.arch-table td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;}
@@ -414,7 +416,7 @@
         <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L233-L237" target="_blank" rel="noreferrer">
           <rect x="20" y="500" width="530" height="56" rx="10" class="bx l"/>
           <text x="285" y="522" class="t1">前缀 KV cache：图像 + 文本只算一次</text>
-          <text x="285" y="540" class="t2">10 步去噪里，动作 token 的 Q 去查这份 cache 里的 K/V（pi0.py sample_actions）</text>
+          <text x="285" y="540" class="t2">18 层的 K/V 各存一份；10 步去噪里动作 token 的 Q 去查它（pi0.py sample_actions）</text>
         </a>
         <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L261-L271" target="_blank" rel="noreferrer">
           <rect x="590" y="500" width="160" height="56" rx="10" class="bx a"/>
@@ -445,8 +447,10 @@
           <line x1="750" y1="528" x2="768" y2="528"/>
           <path d="M875 556 L875 578" />
           <path d="M770 545 C 758 545, 758 80, 752 68" class="dash loop"/>
+          <path d="M500 500 L500 434" class="dash kv"/>
         </g>
         <text x="760" y="245" class="t3" style="text-anchor:end">τ 不是 token，而是条件 →</text>
+        <text x="508" y="488" class="t3 kv" style="text-anchor:start">cache 的 K/V 拼到动作 token 的 K/V 前面，每步去噪都查</text>
         <text x="975" y="470" class="t3 loop" style="text-anchor:end">↑ 每步去噪把 x_t、τ 送回 ②</text>
       </svg>
       </div>
