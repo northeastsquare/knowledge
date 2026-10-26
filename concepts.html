@@ -16,10 +16,10 @@ a{color:var(--accent)}a:focus-visible,button:focus-visible,input:focus-visible{o
 </head>
 <body>
 <main>
-  <header><div class="eyebrow">ROBOTIC LEARNING / CONCEPT INDEX</div><h1>从一个概念，读懂另一篇。<small>96 个关键概念 · 27 篇研读网页</small></h1><p class="intro">正文里的虚线下划线可以点击，直达相关讲解。这里按问题收录概念：点击标题阅读原文，沿“接着理解”继续串读。</p></header>
+  <header><div class="eyebrow">ROBOTIC LEARNING / CONCEPT INDEX</div><h1>从一个概念，读懂另一篇。<small>97 个关键概念 · 27 篇研读网页</small></h1><p class="intro">正文里的虚线下划线可以点击，直达相关讲解。这里按问题收录概念：点击标题阅读原文，沿“接着理解”继续串读。</p></header>
   <aside class="route" aria-label="概念阅读路线"><strong>从你正在问的问题出发</strong><p>“target 和双 Q 是一回事吗？” <a href="#q-value">Q 值</a> → <a href="#target-network">target 副本</a> → <a href="#twin-q">双 Q</a></p><p>“VLA 怎么用 RL 变好？” <a href="#flow-matching">流匹配</a> → <a href="#denoising-mdp">去噪链 MDP</a> / <a href="#rl-token">RL Token</a> → <a href="#recap">RECAP</a></p><p>“知识隔离是什么？为什么梯度要切一半？” <a href="#knowledge-insulation">知识隔离</a> → <a href="#stop-gradient">Stop-gradient</a> → <a href="#co-training">VLM co-training</a></p><p>“Beta 为什么出现在 π0 训练里？” <a href="#probability-density">密度与面积</a> → <a href="#beta-distribution">Beta 分布</a> → <a href="#noise-schedule">噪声采样</a> → <a href="#flow-matching">流匹配</a></p><p>“生成动作后怎样接上实时控制？” <a href="#diffusion-policy">扩散策略</a> → <a href="#receding-horizon">滚动执行</a> → <a href="#inpainting">动作补全</a> → <a href="#rtc">RTC</a></p></aside>
   <div class="search-area"><div class="search-field"><label for="concept-search">查找概念或相关问题</label><input id="concept-search" type="search" placeholder="例如：target、双 Q、奖励、动作块" autocomplete="off"></div><button id="clear-search" type="button">清空搜索</button></div>
-  <p class="count" id="result-count" role="status" aria-live="polite">共 96 个概念</p>
+  <p class="count" id="result-count" role="status" aria-live="polite">共 97 个概念</p>
   <p class="empty" id="empty-state" hidden>没有找到匹配概念。试试中文名称、英文缩写，或清空搜索查看全部。</p>
   <section class="term-group" aria-labelledby="group-0">
     <div class="group-heading"><span>01</span><h2 id="group-0">价值如何学出来</h2></div>
@@ -368,6 +368,13 @@ a{color:var(--accent)}a:focus-visible,button:focus-visible,input:focus-visible{o
         <p>高层产生语义子任务，低层根据子任务与观测生成动作，把任务分解与动作控制联系起来。</p>
         <div class="term-source">讲解位置：pi0.5_论文测验_精美版</div>
         <div class="term-related"><span>接着理解</span> <a href="#vla">VLA · 视觉—语言—动作</a> <a href="#prompt-conditioning">Prompt conditioning · 提示条件</a> <a href="#action-expert">Action expert · 动作专家</a></div>
+      </article>
+      <article class="term-card" id="adarms">
+        <h3><a href="pi0.5_论文测验_精美版.html#concept-adarms">adaRMSNorm · 用时间步调制归一化<span aria-hidden="true"> ↗</span></a></h3>
+        <p>π0.5 的动作专家不把流匹配时间步 τ 拼进 token，而是把 τ 编码成条件向量，在每一层的 RMSNorm 里生成 scale / shift / gate；与 DiT 的 adaLN 同一思路。</p>
+        <div class="term-source">讲解位置：pi0.5_论文测验_精美版（<a href="pi0.5_论文测验_精美版.html#concept-pi05-architecture">架构图</a>）</div>
+        <div class="term-code"><span>代码在哪 · <a href="代码索引.html#pi05-architecture">索引</a></span> <a class="code-link" href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/gemma.py#L113-L133" target="_blank" rel="noreferrer" title="openpi · gemma.RMSNorm">openpi · gemma.RMSNorm ↗</a> <a class="code-link" href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L160-L169" target="_blank" rel="noreferrer" title="openpi · time_mlp">openpi · time_mlp ↗</a></div>
+        <div class="term-related"><span>接着理解</span> <a href="#action-expert">Action expert · 动作专家</a> <a href="#flow-matching">Flow Matching</a> <a href="#hierarchical-policy">Hierarchical policy · 分层策略</a></div>
       </article>
       <article class="term-card" id="action-binning">
         <h3><a href="OpenVLA-vs-pi系列-对比.html#concept-action-binning">Action binning · 动作离散分箱<span aria-hidden="true"> ↗</span></a></h3>
