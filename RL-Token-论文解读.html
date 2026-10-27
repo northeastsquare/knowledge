@@ -161,6 +161,12 @@
   .rl-legend .sw{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin:0 4px 0 10px;border:1.5px solid;}
   #s-rlinf .refs{font-size:13.5px;}
   #s-rlinf .refs td:first-child{white-space:nowrap;}
+  #s-rlinf .knob{margin:14px 0 4px;padding:12px 16px;background:#fbf8f3;border:1px solid #eadfce;border-left:3px solid var(--accent);border-radius:0 8px 8px 0;font-size:14px;}
+  #s-rlinf .knob .kh{font-weight:700;color:var(--accent);margin-bottom:6px;font-size:13.5px;letter-spacing:.02em;}
+  #s-rlinf .knob ul{margin:0;padding-left:1.2em;}
+  #s-rlinf .knob li{margin:4px 0;line-height:1.7;}
+  #s-rlinf .knob .ksrc{margin-top:8px;font-size:12.5px;color:#8a8078;}
+  #s-rlinf .knob .ksrc a{color:#8a8078;}
   @media (max-width:640px){#s-rlinf table{display:block;overflow-x:auto;}}
 </style>
 <link rel="stylesheet" href="concepts.css">
@@ -563,6 +569,7 @@
       <h3>第一阶段：教 VLA 用一个向量说清“现在是什么情况”</h3>
       <p>拿人类示范数据照常微调 VLA（π0.5）。VLA 看图和指令时，内部会产生上千个 token 的特征，信息全但太大，没法直接喂给小网络。所以额外训练一个小模块，把这一整段特征<strong>压成一个向量 z<sub>rl</sub></strong>，再要求只凭这个向量把整段特征<strong>还原回来</strong>。还原得准，说明压缩时关键信息没丢。</p>
       <p>两件事一起训：总损失 = 还原误差 + 模仿误差。还原误差不会反过来改动 VLA，VLA 只按模仿误差学习，所以它的动作能力不受影响。训完后 VLA 和压缩模块一起<strong>冻结</strong>，第二阶段只拿来“读状态”。</p>
+      <div class="knob"><div class="kh">工程数值 · 真机第一阶段</div><ul><li><b>底座</b>：π0.5，视觉语言部分 2B（PaliGemma / gemma_2b）+ 300M 动作专家；VLA 一次预测 <b>20 步</b>动作，流匹配去噪 <b>4 步</b>。</li><li><b>压缩比例</b>：最多 <b>1024</b> 个前缀 token、每个 2048 维 → <b>1 个 2048 维</b>向量 z<sub>rl</sub>；编码器和解码器各只有 <b>2 层</b> Transformer、8 个头，相对 VLA 很轻。</li><li><b>两项损失 1 : 1</b>：<code>rlt_alpha = 1.0</code>，还原误差和模仿误差同等权重。</li><li><b>训练量</b>：<b>2 万步</b>，每步 64 条样本（单卡 16），学习率 1e-5，前 1000 步预热后余弦降到 2.5e-6。一张卡上大约是“微调一次 VLA”的成本，只做一次。</li></ul><div class="ksrc">出处：<a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/examples/sft/config/realworld_rlt_stage1_sft_openpi_pi05.yaml#L27-L95" target="_blank" rel="noreferrer">第一阶段配置</a> · <a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/models/embodiment/openpi/rlt_config.py#L30-L39" target="_blank" rel="noreferrer">RL token 默认结构</a></div></div>
     </div>
 
     <div class="card">
@@ -575,6 +582,7 @@
         <li><strong>执行</strong>：机器人把这 10 步走完（10 Hz，约 1 秒），拿到奖励：成功为 1，否则为 0。执行时不同时推理下一块，所以不存在“上一块还没走完、下一块已经算出来”的衔接问题（见 <a href="#faq-rlinf">Q8</a>）。</li>
         <li><strong>记下来</strong>：执行完再读一次状态，把“当时状态、执行的动作、奖励、下一状态”存进<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-replay-buffer">经验池</a>。人接管的片段另存一份，当作额外示范。</li>
       </ol>
+      <div class="knob"><div class="kh">工程数值 · 真机第二阶段（Franka 插销任务）</div><ul><li><b>节拍</b>：控制频率 <b>10 Hz</b>，一块 = <b>10 步 = 1 秒</b>。VLA 每次给 20 步参考动作，actor 只看并修正前 10 步。</li><li><b>动作</b>：每步 <b>7 维</b>（机械臂末端运动 + 夹爪），一块共 70 个数。</li><li><b>状态</b>：本体状态 <b>19 维</b>，场景摘要 z<sub>rl</sub> <b>2048 维</b>。actor 输入 = 2048 + 19 + 70 = <b>2137 维</b>，输出 70 维。</li><li><b>几乎不加噪声</b>：actor 动作标准差固定 <b>0.002</b>，基本是确定性输出。</li><li><b>回合长度</b>：训练每回合最多 <b>300 步（30 秒，30 块）</b>，评估回合 100 步；奖励只看成功与否（0 / 1，不用稠密奖励）。</li><li><b>精度</b>：冻结 VLA 用 bf16 推理；小网络用 fp32，Q 学习和目标网络更稳。</li></ul><div class="ksrc">出处：<a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/examples/embodiment/config/realworld_rlt_stage2_ac_mlp.yaml#L114-L130" target="_blank" rel="noreferrer">环境与回合</a> · <a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/examples/embodiment/config/realworld_rlt_stage2_ac_mlp.yaml#L176-L212" target="_blank" rel="noreferrer">冻结 VLA 设置</a> · <a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/examples/embodiment/config/realworld_rlt_stage2_ac_mlp.yaml#L232-L246" target="_blank" rel="noreferrer">小网络形状</a> · <a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/envs/real/franka/base.py#L110" target="_blank" rel="noreferrer">10 Hz</a></div></div>
     </div>
 
     <div class="card">
@@ -585,6 +593,7 @@
         <li><strong>防止照抄</strong>：训练时有一半概率把参考动作遮掉，逼 actor 自己理解状态，而不是简单复制 VLA 的建议。</li>
         <li><strong>节奏</strong>：critic 每更新 4 次，actor 才更新 1 次。仿真里先攒够 1 万条经验、集中训练一轮再正式开始；之后每多一条经验就做约一次更新。每轮结束只把小网络的新权重同步给机器人端，VLA 始终不动。</li>
       </ul>
+      <div class="knob"><div class="kh">工程数值 · 第二阶段学习</div><ul><li><b>网络规模</b>：actor 是 <b>3 层、每层 256</b> 的 MLP；critic 是 <b>2 个</b>同样大小的 Q 头（取较小值）。整个小网络只有百万级参数，一次更新是毫秒级。</li><li><b>折扣</b>：<code>γ = 0.96</code>（按步算），跨一整块 10 步相当于 0.96<sup>10</sup> ≈ <b>0.66</b>，所以 critic 主要看未来几秒。目标网络每次只跟进 <b>0.5%</b>（τ = 0.005）。</li><li><b>“绳子”很紧</b>：actor 损失 = −<b>0.1</b>·Q + <b>5</b>·BC，模仿参考动作的权重是 Q 的 50 倍，保证真机上只做小幅修正。</li><li><b>遮掉参考</b>：概率 <b>0.5</b>。</li><li><b>更新节奏</b>：每轮采样后做 <b>8</b> 次更新，每次 256 条经验，学习率 3e-4；critic 每 <b>4</b> 次、actor <b>1</b> 次。经验池有 <b>2 条</b>就开始训练，真机不等预热。</li><li><b>仿真对照（ManiSkill）</b>：<b>64</b> 个环境并行；先攒 <b>1 万</b>条经验，集中做 <b>3 万</b>次更新，这段时间仍由参考动作执行；之后每来 <b>5</b> 条新经验就更新 5 次，约等于“一条经验一次更新”。BC / Q 权重在前 2 万次更新是 7 / 0.05，之后用 5 万次更新逐渐过渡到 2.5 / 0.45。γ = 0.99，每批 512 条，学习率 1e-4。仿真样本便宜，所以先保守、后放开；真机直接用一组更保守的固定权重。</li></ul><div class="ksrc">出处：<a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/examples/embodiment/config/realworld_rlt_stage2_ac_mlp.yaml#L62-L105" target="_blank" rel="noreferrer">真机学习配置</a> · <a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/models/embodiment/mlp_policy/mlp_policy.py#L60-L100" target="_blank" rel="noreferrer">网络结构</a> · <a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/examples/embodiment/config/maniskill_rlt_stage2_ac_mlp.yaml#L40-L96" target="_blank" rel="noreferrer">仿真学习配置</a></div></div>
     </div>
 
     <div class="card">
