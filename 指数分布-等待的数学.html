@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>指数分布：等待的数学 ⏰</title>
 <meta name="description" content="为什么随机等车平均等 1 分钟，而不是 0.5 分钟？用动画和实验理解指数分布的无记忆性">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<link rel="stylesheet" href="assets/katex/katex.min.css">
+<style>.katex-display{overflow-x:auto;overflow-y:hidden;max-width:100%;}</style>
 <link rel="stylesheet" href="concepts.css">
 <style>
 :root {
@@ -744,7 +745,7 @@ footer a:hover {
   </ul>
 
   <h3>4. 分位数与随机数生成</h3>
-  <p>反解 $F(t)=p$ 得分位数（$0<p<1$）：</p>
+  <p>反解 $F(t)=p$ 得分位数（$0\lt p\lt 1$）：</p>
   <div class="formula-box">
     $$t_p = F^{-1}(p) = -\frac{\ln(1-p)}{\lambda}, \qquad \text{中位数 } t_{0.5}=\frac{\ln 2}{\lambda}$$
   </div>
@@ -908,7 +909,7 @@ footer a:hover {
     <p style="margin-top:12px;">上一节算出的 $P(T>t)=e^{-\lambda t}$ 是<b>生存函数</b>——到时刻 $t$ 为止<b>还没来车</b>的概率。它随 $t$ <b>递减</b>：等得越久，"还没来"的可能性越小。</p>
     <p style="margin-top:12px;">而"刚好落在第 $k$ 格"是生存函数在这一格上的<b>下降量</b>（这一段里来了车）：</p>
     <div class="formula-box">
-      $$P(k-1<T\le k)=S(k-1)-S(k)=e^{-\lambda(k-1)}-e^{-\lambda k}=e^{-\lambda(k-1)}\left(1-e^{-\lambda}\right)$$
+      $$P(k-1\lt T\le k)=S(k-1)-S(k)=e^{-\lambda(k-1)}-e^{-\lambda k}=e^{-\lambda(k-1)}\left(1-e^{-\lambda}\right)$$
     </div>
     <p style="margin-top:12px;">所以两条事实说的是同一件事的两面：</p>
     <ul style="margin-left:24px;">
@@ -1827,14 +1828,13 @@ waitedSlider.addEventListener('input', drawMemoryless);
 drawMemoryless();
 </script>
 
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {
-  delimiters: [
-    {left: '$$', right: '$$', display: true},
-    {left: '$', right: '$', display: false}
-  ],
-  throwOnError: false
-});"></script>
+<script defer src="assets/katex/katex.min.js"></script>
+<script defer src="assets/katex/contrib/auto-render.min.js"></script>
+<script>
+window.KATEX_OPTS={delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false,strict:'ignore'};
+window.renderMath=function(el){if(window.renderMathInElement)renderMathInElement(el||document.body,window.KATEX_OPTS);};
+document.addEventListener('DOMContentLoaded',function(){window.renderMath();});
+</script>
 
 
 <script>

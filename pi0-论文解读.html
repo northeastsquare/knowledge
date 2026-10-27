@@ -5,10 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>π0：通用机器人控制的视觉-语言-动作流模型 · 精读</title>
 <meta name="description" content="基于流匹配的通用 VLA 开山之作，把大规模互联网视觉-语言先验带入机器人控制">
-<script>
-MathJax={tex:{inlineMath:[['$','$']],displayMath:[['$$','$$']]}};
-</script>
-<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+<link rel="stylesheet" href="assets/katex/katex.min.css">
+<style>.katex-display{overflow-x:auto;overflow-y:hidden;max-width:100%;}</style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
@@ -673,6 +671,13 @@ MathJax={tex:{inlineMath:[['$','$']],displayMath:[['$$','$$']]}};
     <a href="index.html">返回知识库 →</a>
   </footer>
 </div>
+<script defer src="assets/katex/katex.min.js"></script>
+<script defer src="assets/katex/contrib/auto-render.min.js"></script>
+<script>
+window.KATEX_OPTS={delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false,strict:'ignore'};
+window.renderMath=function(el){if(window.renderMathInElement)renderMathInElement(el||document.body,window.KATEX_OPTS);};
+document.addEventListener('DOMContentLoaded',function(){window.renderMath();});
+</script>
 <script src="nav.js"></script>
 </body>
 </html>

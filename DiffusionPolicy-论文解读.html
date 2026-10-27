@@ -5,10 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Diffusion Policy · 热敏小票版解读</title>
 <link rel="stylesheet" href="concepts.css">
-<script>
-MathJax={tex:{inlineMath:[['$','$']],displayMath:[['$$','$$']]}};
-</script>
-<script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+<link rel="stylesheet" href="assets/katex/katex.min.css">
+<style>.katex-display{overflow-x:auto;overflow-y:hidden;max-width:100%;}</style>
 <style>
 :root{--ink:#222;--faint:#8a8a8a;--hot:#d9362b;--paper:#fdfcf8}
 *{box-sizing:border-box}
@@ -24,7 +22,7 @@ h2{font-size:15px;margin:26px 0 8px;background:var(--ink);color:var(--paper);pad
 .row{display:flex;gap:6px}.row b{white-space:nowrap}.row i{flex:1;border-bottom:2px dotted #999;transform:translateY(-6px);min-width:12px}
 .note{border:2px solid var(--ink);padding:8px 12px;margin:12px 0;background:#fff}
 .note.hot{border-color:var(--hot);color:var(--hot)}
-.fm{background:#f1efe6;padding:8px 12px;margin:10px 0;overflow-x:auto;font-size:13px;border-left:5px solid var(--ink)}.fm mjx-container{font-size:14px!important}
+.fm{background:#f1efe6;padding:8px 12px;margin:10px 0;overflow-x:auto;font-size:13px;border-left:5px solid var(--ink)}.fm .katex{font-size:1.05em}
 .lab{border:2px dashed var(--hot);padding:12px;margin:16px 0;background:#fff}
 .lab h3{margin:0 0 8px;font-size:14px;color:var(--hot)}
 canvas{width:100%;display:block;background:#faf8f0;border:1px solid #bbb}
@@ -430,9 +428,17 @@ function drawC(){
    g.fillStyle=c<To?'#4a7bd0':c<To+Ta?'#d9362b':'#ccc';g.fillRect(x+.5,y,cw-1,ch);}
   g.fillStyle='#222';g.font='11px monospace';g.fillText('第'+(r+1)+'次推理',4+s*cw,y+ch+9);}
  document.getElementById('oC').innerHTML=`<span style="color:#4a7bd0">■ 观测 $T_o$</span>　<span style="color:#d9362b">■ 实际执行 $T_a$</span>　<span style="color:#999">■ 预测了但丢弃</span><br>每 ${Ta} 步推理一次；开环盲跑 ${Ta} 步；${Tp-Ta} 步预测被浪费（${Math.round((Tp-Ta)/Tp*100)}%）。<br>$T_a$ 太小→推理频繁、易在模式间摇摆；$T_a$ 太大→反应迟钝。论文取 $T_o=2/T_p=16/T_a=8$。`;
+ if(window.renderMath)renderMath(document.getElementById('oC'));
 }
 drawC();
-if(window.MathJax)MathJax.typesetPromise().catch(e=>console.log(e));
+if(window.renderMath)renderMath();
+</script>
+<script defer src="assets/katex/katex.min.js"></script>
+<script defer src="assets/katex/contrib/auto-render.min.js"></script>
+<script>
+window.KATEX_OPTS={delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false,strict:'ignore'};
+window.renderMath=function(el){if(window.renderMathInElement)renderMathInElement(el||document.body,window.KATEX_OPTS);};
+document.addEventListener('DOMContentLoaded',function(){window.renderMath();});
 </script>
 <script src="nav.js"></script>
 </body>

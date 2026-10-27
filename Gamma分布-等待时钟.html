@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Gamma 分布：等待时钟 ⏱</title>
 <meta name="description" content="用等车、排队、服务器请求理解 Gamma 分布——不是抽象的 α 和 β，而是「等第 k 件事发生要多久」">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<link rel="stylesheet" href="assets/katex/katex.min.css">
+<style>.katex-display{overflow-x:auto;overflow-y:hidden;max-width:100%;}</style>
 <link rel="stylesheet" href="concepts.css">
 <style>
 :root {
@@ -1311,14 +1312,13 @@ transformBtn.addEventListener('click', () => {
 });
 </script>
 
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {
-  delimiters: [
-    {left: '$$', right: '$$', display: true},
-    {left: '$', right: '$', display: false}
-  ],
-  throwOnError: false
-});"></script>
+<script defer src="assets/katex/katex.min.js"></script>
+<script defer src="assets/katex/contrib/auto-render.min.js"></script>
+<script>
+window.KATEX_OPTS={delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false,strict:'ignore'};
+window.renderMath=function(el){if(window.renderMathInElement)renderMathInElement(el||document.body,window.KATEX_OPTS);};
+document.addEventListener('DOMContentLoaded',function(){window.renderMath();});
+</script>
 
 
 <script>
