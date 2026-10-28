@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>复现 OpenPI：改进项归因与仿真环境选型</title>
+<link rel="stylesheet" href="concepts.css">
+<style>
+  :root{
+    --bg:#f6f5f2;
+    --surface:#ffffff;
+    --surface-2:#fbfaf7;
+    --ink:#1b1a17;
+    --ink-2:#4a4843;
+    --ink-3:#817d74;
+    --line:#e5e2da;
+    --line-2:#d2cdc1;
+    --accent:#1f5f58;
+    --accent-2:#2c7d74;
+    --accent-soft:#e7f1ef;
+    --warn:#a5501a;
+    --warn-soft:#fbf1e7;
+    --warn-line:#ecd5bd;
+    --radius:14px;
+    --shadow:0 1px 2px rgba(27,26,23,.04), 0 10px 28px -16px rgba(27,26,23,.18);
+    --mono:ui-monospace,"SFMono-Regular","Cascadia Code",Consolas,"Liberation Mono",monospace;
+    --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC",sans-serif;
+  }
+
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--bg);
+    color:var(--ink);
+    font-family:var(--sans);
+    font-size:16px;
+    line-height:1.72;
+    -webkit-font-smoothing:antialiased;
+    text-rendering:optimizeLegibility;
+  }
+
+  .shell{max-width:1280px;margin:0 auto;padding:0 24px;}
+
+  /* ---------- Hero ---------- */
+  .hero{
+    padding:72px 0 40px;
+    border-bottom:1px solid var(--line);
+    background:
+      radial-gradient(900px 380px at 12% -10%, #e9f1ef 0%, rgba(233,241,239,0) 70%),
+      radial-gradient(700px 300px at 92% 0%, #f7efe4 0%, rgba(247,239,228,0) 65%);
+  }
+  .kicker{
+    display:inline-flex;align-items:center;gap:8px;
+    font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--accent);font-weight:650;margin-bottom:20px;
+  }
+  .kicker::before{
+    content:"";width:22px;height:1px;background:var(--accent-2);display:block;
+  }
+  h1{
+    font-size:clamp(30px,4.4vw,48px);
+    line-height:1.16;
+    letter-spacing:-.022em;
+    font-weight:700;
+    margin:0 0 16px;
+    max-width:24ch;
+  }
+  .lede{
+    font-size:clamp(16px,1.6vw,19px);
+    color:var(--ink-2);
+    max-width:62ch;
+    margin:0 0 30px;
+  }
+  .chips{display:flex;flex-wrap:wrap;gap:9px;margin-bottom:38px;}
+  .chip{
+    font-size:12.5px;font-weight:520;color:var(--ink-2);
+    background:rgba(255,255,255,.75);
+    border:1px solid var(--line-2);
+    padding:5px 13px;border-radius:999px;
+    backdrop-filter:blur(4px);
+  }
+  .chip b{color:var(--ink);font-weight:650;}
+
+  .stats{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:1px;background:var(--line);
+    border:1px solid var(--line);border-radius:var(--radius);
+    overflow:hidden;max-width:760px;
+  }
+  .stat{background:var(--surface);padding:18px 20px;}
+  .stat .n{
+    font-size:27px;font-weight:700;letter-spacing:-.02em;line-height:1.1;
+    font-variant-numeric:tabular-nums;color:var(--ink);
+  }
+  .stat .l{font-size:12px;color:var(--ink-3);margin-top:5px;letter-spacing:.03em;}
+
+  /* ---------- Layout ---------- */
+  .layout{
+    display:grid;
+    grid-template-columns:210px minmax(0,1fr);
+    gap:60px;
+    padding:48px 0 96px;
+    align-items:start;
+  }
+  .toc{position:sticky;top:80px;}
+  .toc h2{
+    font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--ink-3);font-weight:650;margin:0 0 14px;padding-left:13px;
+  }
+  .toc a{
+    display:block;font-size:13.5px;color:var(--ink-2);text-decoration:none;
+    padding:6px 0 6px 13px;border-left:2px solid transparent;
+    transition:color .15s,border-color .15s,background .15s;
+    line-height:1.45;
+  }
+  .toc a:hover{color:var(--accent);border-left-color:var(--accent-2);background:linear-gradient(90deg,var(--accent-soft),transparent);}
+
+  /* ---------- Sections ---------- */
+  section{margin-bottom:72px;scroll-margin-top:76px;}
+  section:last-child{margin-bottom:0;}
+
+  .sec-head{display:flex;align-items:baseline;gap:14px;margin-bottom:22px;padding-bottom:14px;border-bottom:1px solid var(--line);}
+  .sec-num{
+    font-family:var(--mono);font-size:12px;font-weight:600;color:var(--accent);
+    background:var(--accent-soft);padding:3px 9px;border-radius:6px;
+    flex-shrink:0;transform:translateY(-2px);
+  }
+  h2.sec-title{
+    font-size:clamp(20px,2.4vw,25px);font-weight:680;letter-spacing:-.014em;
+    margin:0;line-height:1.3;
+  }
+
+  h3{font-size:16.5px;font-weight:650;margin:34px 0 12px;letter-spacing:-.008em;}
+  h3:first-child{margin-top:0;}
+  p{margin:0 0 16px;color:var(--ink-2);}
+  p strong{color:var(--ink);font-weight:640;}
+  ul,ol{margin:0 0 16px;padding-left:22px;color:var(--ink-2);}
+  li{margin-bottom:8px;}
+  li strong{color:var(--ink);font-weight:640;}
+  code{
+    font-family:var(--mono);font-size:.875em;
+    background:var(--surface-2);border:1px solid var(--line);
+    padding:1px 5px;border-radius:5px;color:var(--ink);
+  }
+  a{color:var(--accent);}
+
+  /* ---------- Tables ---------- */
+  .table-wrap{
+    border:1px solid var(--line);border-radius:var(--radius);
+    overflow-x:auto;background:var(--surface);
+    box-shadow:var(--shadow);margin:0 0 22px;
+  }
+  table{width:100%;border-collapse:collapse;font-size:13.6px;min-width:560px;}
+  thead th{
+    text-align:left;font-size:11px;font-weight:650;letter-spacing:.08em;
+    text-transform:uppercase;color:var(--ink-3);
+    padding:12px 15px;background:var(--surface-2);
+    border-bottom:1px solid var(--line-2);
+    white-space:nowrap;position:sticky;top:0;
+  }
+  tbody td{
+    padding:13px 15px;border-bottom:1px solid var(--line);
+    vertical-align:top;color:var(--ink-2);line-height:1.6;
+  }
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr{transition:background .12s;}
+  tbody tr:hover{background:#faf9f5;}
+  tbody td:first-child{color:var(--ink);font-weight:600;white-space:nowrap;}
+  tbody td strong{color:var(--ink);font-weight:640;}
+  .num{font-variant-numeric:tabular-nums;}
+
+  /* ---------- Badges ---------- */
+  .badge{
+    display:inline-block;font-size:11px;font-weight:650;letter-spacing:.03em;
+    padding:1px 8px;border-radius:5px;line-height:1.75;white-space:nowrap;
+    border:1px solid transparent;
+  }
+  .b-a{background:#e7f1ef;color:#1a5a53;border-color:#cbe2de;}
+  .b-b{background:#f7efe2;color:#8a5417;border-color:#ead6b8;}
+  .b-c{background:#f2eeec;color:#8a4a3a;border-color:#e4d3ce;}
+  .b-low{background:#e7f1ef;color:#1a5a53;border-color:#cbe2de;}
+  .b-mid{background:#f7efe2;color:#8a5417;border-color:#ead6b8;}
+  .b-high{background:#f2eeec;color:#8a4a3a;border-color:#e4d3ce;}
+
+  /* ---------- Callouts ---------- */
+  .callout{
+    border-radius:var(--radius);padding:20px 22px;margin:0 0 22px;
+    border:1px solid var(--line);background:var(--surface);
+    box-shadow:var(--shadow);
+  }
+  .callout-accent{
+    border-left:3px solid var(--accent-2);
+    background:linear-gradient(180deg,var(--accent-soft) 0%,#ffffff 65%);
+  }
+  .callout-warn{
+    border-left:3px solid var(--warn);background:var(--warn-soft);
+    border-color:var(--warn-line);box-shadow:none;
+  }
+  .callout h4{
+    margin:0 0 9px;font-size:14px;font-weight:680;letter-spacing:.01em;
+    color:var(--ink);display:flex;align-items:center;gap:8px;
+  }
+  .callout p:last-child,.callout ul:last-child{margin-bottom:0;}
+  .callout p{color:var(--ink-2);}
+  .callout.plain{box-shadow:none;}
+
+  /* ---------- Pitfall grid ---------- */
+  .pitfalls{display:grid;gap:14px;margin-bottom:26px;}
+  .pitfall{
+    display:grid;grid-template-columns:auto 1fr;gap:16px;
+    background:var(--surface);border:1px solid var(--warn-line);
+    border-left:3px solid var(--warn);
+    border-radius:12px;padding:18px 20px;
+  }
+  .pitfall .idx{
+    font-family:var(--mono);font-size:12px;font-weight:700;color:var(--warn);
+    background:#f8e8d9;border-radius:6px;width:26px;height:26px;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;
+  }
+  .pitfall .body p{margin:0;font-size:14.4px;}
+  .pitfall .body p + p{margin-top:8px;}
+
+  /* ---------- Pipeline ---------- */
+  .pipeline{
+    background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--radius);overflow:hidden;
+    box-shadow:var(--shadow);margin:0 0 22px;
+  }
+  .pipe-row{
+    display:grid;grid-template-columns:96px 1fr auto;
+    gap:18px;align-items:center;
+    padding:15px 20px;border-bottom:1px solid var(--line);
+  }
+  .pipe-row:last-child{border-bottom:none;}
+  .pipe-row:hover{background:var(--surface-2);}
+  .pipe-phase{
+    font-family:var(--mono);font-size:11.5px;font-weight:600;
+    color:var(--accent);letter-spacing:.04em;white-space:nowrap;
+  }
+  .pipe-what{font-size:14px;font-weight:600;color:var(--ink);}
+  .pipe-why{font-size:12.5px;color:var(--ink-3);margin-top:2px;}
+  .pipe-env{
+    font-family:var(--mono);font-size:12px;color:var(--ink-2);
+    background:var(--surface-2);border:1px solid var(--line);
+    padding:3px 10px;border-radius:6px;white-space:nowrap;
+  }
+  .pipe-env.hot{background:var(--accent-soft);border-color:#cbe2de;color:var(--accent);font-weight:600;}
+
+  /* ---------- Code block ---------- */
+  pre{
+    font-family:var(--mono);font-size:12.8px;line-height:1.75;
+    background:#1b1a17;color:#d9d5cb;
+    border-radius:var(--radius);padding:22px 24px;
+    overflow-x:auto;margin:0 0 22px;
+    box-shadow:0 14px 34px -22px rgba(27,26,23,.6);
+    -webkit-font-smoothing:auto;
+  }
+  pre .c{color:#7d7768;}
+  pre .k{color:#8fd0c6;}
+  pre .s{color:#d9b483;}
+
+  /* ---------- Flow (priority) ---------- */
+  .flow{
+    display:flex;flex-wrap:wrap;align-items:center;gap:7px;
+    padding:18px 20px;background:var(--surface);
+    border:1px solid var(--line);border-radius:var(--radius);
+    box-shadow:var(--shadow);margin:0 0 22px;
+  }
+  .flow-item{
+    font-family:var(--mono);font-size:12.5px;font-weight:600;
+    background:var(--surface-2);border:1px solid var(--line-2);
+    color:var(--ink);padding:3px 9px;border-radius:6px;
+    font-variant-numeric:tabular-nums;
+  }
+  .flow-item.first{background:var(--accent);border-color:var(--accent);color:#fff;}
+  .flow-arrow{color:var(--line-2);font-size:12px;user-select:none;}
+  .flow-cap{width:100%;font-size:12px;color:var(--ink-3);margin-top:6px;}
+
+  /* ---------- Phase 0 emphasis ---------- */
+  .flag{
+    display:inline-block;font-size:11px;font-weight:700;letter-spacing:.06em;
+    text-transform:uppercase;color:var(--warn);background:#f8e8d9;
+    padding:1px 7px;border-radius:4px;margin-right:7px;
+    transform:translateY(-1px);
+  }
+
+  /* ---------- Ask box ---------- */
+  .ask{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+    gap:18px;margin-bottom:22px;
+  }
+  .ask-card{
+    background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--radius);padding:22px 24px;
+    box-shadow:var(--shadow);position:relative;overflow:hidden;
+  }
+  .ask-card::before{
+    content:"";position:absolute;inset:0 auto 0 0;width:3px;
+    background:linear-gradient(180deg,var(--accent-2),var(--accent));
+  }
+  .ask-card .qn{
+    font-family:var(--mono);font-size:11px;font-weight:600;color:var(--ink-3);
+    letter-spacing:.1em;margin-bottom:9px;
+  }
+  .ask-card h4{margin:0 0 10px;font-size:15.5px;font-weight:660;color:var(--ink);line-height:1.45;}
+  .ask-card p{margin:0;font-size:14px;}
+
+  /* ---------- Footer ---------- */
+  footer{
+    border-top:1px solid var(--line);
+    padding:30px 0 60px;
+    font-size:12.5px;color:var(--ink-3);
+    display:flex;flex-wrap:wrap;gap:10px 24px;justify-content:space-between;
+  }
+  footer span{max-width:70ch;}
+
+  /* ---------- Responsive ---------- */
+  @media (max-width:1000px){
+    .layout{grid-template-columns:1fr;gap:0;padding-top:24px;}
+    .toc{
+      position:static;margin-bottom:32px;
+      padding:16px 18px;background:var(--surface);
+      border:1px solid var(--line);border-radius:var(--radius);
+    }
+    .toc h2{padding-left:0;}
+    .toc a{padding-left:10px;}
+    .pipe-row{grid-template-columns:1fr;gap:6px;}
+    .pipe-env{justify-self:start;}
+  }
+  @media (max-width:600px){
+    .shell{padding:0 16px;}
+    .hero{padding:52px 0 32px;}
+    .stats{grid-template-columns:1fr 1fr;}
+    section{margin-bottom:56px;}
+    .pitfall{grid-template-columns:1fr;gap:10px;}
+  }
+
+  @media print{
+    body{background:#fff;}
+    .toc{display:none;}
+    .layout{grid-template-columns:1fr;}
+    pre{background:#f2f0ea;color:#222;box-shadow:none;}
+    section{page-break-inside:avoid;}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="shell">
+    <div class="kicker">Research Note · OpenPI</div>
+    <h1>复现 OpenPI：每项改进的收益、以及该用什么仿真去测</h1>
+    <p class="lede">
+      把 <a class="concept-link" href="PI-工作全景.html#concept-openpi">openpi</a> 的公开工作拆成「可复现 / 只能评测 / 完全未开放」三层，给出十项改进的隔离实验设计、
+      仿真环境选型与一套不被天花板效应污染的评测协议。
+    </p>
+    <div class="chips">
+      <span class="chip"><b>π0</b> · <b>π0-FAST</b> · <b>π0.5</b></span>
+      <span class="chip"><b>10</b> 项改进</span>
+      <span class="chip"><b>4</b> 套仿真</span>
+      <span class="chip">成对比较 · 3 种子</span>
+      <span class="chip">2026-10-28</span>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="n num">94.2</div><div class="l">π0 · LIBERO 四套均值</div></div>
+      <div class="stat"><div class="n num">85.5</div><div class="l">π0-FAST · LIBERO</div></div>
+      <div class="stat"><div class="n num">96.9</div><div class="l">π0.5 · LIBERO</div></div>
+      <div class="stat"><div class="n num">7.5×</div><div class="l">KI 收敛步数收益（口径）</div></div>
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+<div class="layout">
+
+  <nav class="toc">
+    <h2>目录</h2>
+    <a href="#sec-0">先给结论</a>
+    <a href="#sec-1">一、可复现性分层</a>
+    <a href="#sec-2">二、十项隔离实验</a>
+    <a href="#sec-3">三、仿真环境选型</a>
+    <a href="#sec-4">四、落地路线与算力</a>
+    <a href="#sec-5">五、评测协议</a>
+    <a href="#sec-6">六、待确认事项</a>
+  </nav>
+
+  <main>
+
+    <!-- ============ 0 ============ -->
+    <section id="sec-0">
+      <div class="sec-head">
+        <span class="sec-num">00</span>
+        <h2 class="sec-title">先给结论</h2>
+      </div>
+
+      <ol>
+        <li><strong>「所有工作」并不是同一类东西。</strong> openpi 里能直接拿来跑的是 3 个模型（π0 / π0-FAST / π0.5）；而 KI 训练配方、π0.5 的异构共训、RTC、RECAP 都不在仓库里，需要自己补代码。真正的「改进项」大概 10 个，其中 7 个能在仿真里做干净的单变量消融，3 个基本只能做定性复现。</li>
+        <li><strong>用默认设置跑 LIBERO 做消融是无效的。</strong> π0.5 在 LIBERO 已经 96.9，天花板效应会把所有改进压成 ±1 个百分点、落在噪声里。要做归因，必须<strong>人为制造 headroom</strong>（少 demo、OOD 划分、延迟注入、遮挡探针），这是整个复现工程的成败点，不是细节。</li>
+        <li><strong>仿真选型：</strong> LIBERO 做「对标锚点」，ManiSkill3 做「批量消融主战场」，RoboCasa 做「长时序/泛化验证」，Isaac Sim 只做最后一公里的真机前验证。<strong>不要用 Isaac Sim 跑算法消融。</strong></li>
+      </ol>
+    </section>
+
+    <!-- ============ 1 ============ -->
+    <section id="sec-1">
+      <div class="sec-head">
+        <span class="sec-num">01</span>
+        <h2 class="sec-title">把 openpi 的工作拆成可复现的三类</h2>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>类别</th>
+              <th>内容</th>
+              <th>复现难度</th>
+              <th>说明</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="badge b-a">A · 开箱可复现</span></td>
+              <td>π0、π0-FAST、π0.5 的 base &amp; 微调 ckpt；LIBERO 全流程（docker）；ALOHA sim 配置</td>
+              <td><span class="badge b-low">低</span></td>
+              <td>官方给到 <code>pi05_libero</code> 配置 + <code>serve_policy.py</code> + LIBERO docker，跑通即可对标</td>
+            </tr>
+            <tr>
+              <td><span class="badge b-b">B · 有权重无配方</span></td>
+              <td>π0.5 的 KI 预训练、异构共训（web VQA / caption / detection + 高层子任务）、RTC 的官方集成、MEM</td>
+              <td><span class="badge b-mid">中</span></td>
+              <td>只能<strong>评测</strong>，想<strong>训练</strong>得自己实现。openpi #649 明确说微调不走 KI 配方，动作专家梯度仍会进 VLM</td>
+            </tr>
+            <tr>
+              <td><span class="badge b-c">C · 完全未开放</span></td>
+              <td>π0/π0.5 的 10k 小时预训练数据、真机结果、π*0.6 的 RECAP（价值函数 / 优势条件化）、真机部署</td>
+              <td><span class="badge b-high">高</span></td>
+              <td>RECAP 只有论文 + 社区实现（LeRobot 有 PR、rlinf 有 openpi 分支），真机结果不可复现</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout-accent">
+        <h4>这意味着什么</h4>
+        <p>你能严谨测量的，是「<strong>在同一个 base ckpt 上、用同一份下游数据、微调之后的增量</strong>」。凡是论文里「收益来自 10k 小时预训练」的部分，你测不到——这一点必须在开始前写进实验设计，否则最后结论会误导人。</p>
+      </div>
+    </section>
+
+    <!-- ============ 2 ============ -->
+    <section id="sec-2">
+      <div class="sec-head">
+        <span class="sec-num">02</span>
+        <h2 class="sec-title">10 个改进项的隔离实验设计</h2>
+      </div>
+
+      <p>这张表是整个工作的核心。关键是每个改进对应的<strong>唯一被改动的变量</strong>，和<strong>能看到收益的前提条件</strong>。</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:34px">#</th>
+              <th>改进项</th>
+              <th>对照组</th>
+              <th>必测指标</th>
+              <th>能看到收益的前提</th>
+              <th>推荐环境</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="num">1</td>
+              <td>Flow matching 动作头（π0）</td>
+              <td>自回归离散化（π0-FAST）</td>
+              <td>成功率、达到阈值所需步数、单 chunk 延迟、训练 wall-clock</td>
+              <td>无</td>
+              <td>LIBERO</td>
+            </tr>
+            <tr>
+              <td class="num">2</td>
+              <td>Action chunk 长度 H（50→16/25/100）</td>
+              <td>改 H</td>
+              <td>长时序成功率、chunk 边界 jerk、开环漂移</td>
+              <td>有长时序任务</td>
+              <td>LIBERO-Long / RoboCasa</td>
+            </tr>
+            <tr>
+              <td class="num">3</td>
+              <td><strong>预训练 → 微调 vs 从零训练</strong></td>
+              <td>base ckpt vs random init</td>
+              <td>同数据同步数成功率</td>
+              <td>无</td>
+              <td>LIBERO（少 demo）</td>
+            </tr>
+            <tr>
+              <td class="num">4</td>
+              <td>Knowledge Insulation（stop-grad + FAST token 目标 + web 共训）</td>
+              <td>联合训练 / 冻结骨干 / 仅连续损失</td>
+              <td>收敛步数、语言跟随探针、web VQA 保留分</td>
+              <td><strong>必须自己写训练代码</strong>，且要做语言探针</td>
+              <td>LIBERO + 自建 VLM 探针</td>
+            </tr>
+            <tr>
+              <td class="num">5</td>
+              <td>π0.5 异构共训（web 数据 + 高层子任务）</td>
+              <td>有无 web 数据</td>
+              <td><strong>OOD</strong> 成功率、指令组合泛化</td>
+              <td><strong>必须自建 OOD 划分</strong>，in-distribution 几乎没有差异</td>
+              <td>RoboCasa held-out / 自建</td>
+            </tr>
+            <tr>
+              <td class="num">6</td>
+              <td>层级推理（先子任务再动作）+ test-time ensemble</td>
+              <td>单层 vs 两层</td>
+              <td>长时序成功率、未见指令组合</td>
+              <td>数据要有子任务标注</td>
+              <td>RoboCasa / LIBERO-Long</td>
+            </tr>
+            <tr>
+              <td class="num">7</td>
+              <td>State 离散化 token + adaRMS 时间步</td>
+              <td>连续 state / concat</td>
+              <td>新物体泛化；<strong>shortcut 探针</strong>：遮住图像后是否仍然成功</td>
+              <td>需要反事实 / 遮挡注入</td>
+              <td>自定义探针</td>
+            </tr>
+            <tr>
+              <td class="num">8</td>
+              <td>RTC 异步执行</td>
+              <td>同步 / 朴素异步 / RTC</td>
+              <td><strong>延迟注入下的</strong>成功率、jerk、边界不连续度</td>
+              <td><strong>必须注入 100–300ms 延迟</strong>，否则测不出差异</td>
+              <td>任意（ManiSkill / LIBERO）</td>
+            </tr>
+            <tr>
+              <td class="num">9</td>
+              <td>MEM 多尺度记忆</td>
+              <td>单帧</td>
+              <td>遮挡后状态回忆类任务成功率</td>
+              <td>需要<strong>依赖记忆的任务</strong>，现成 benchmark 没有</td>
+              <td>自建</td>
+            </tr>
+            <tr>
+              <td class="num">10</td>
+              <td>RECAP 优势条件化</td>
+              <td>纯 SFT vs +value / advantage</td>
+              <td>成功率、<strong>失败率</strong>、吞吐（任务 / 小时）</td>
+              <td>需要 sparse reward + 可纠偏（脚本专家即可）</td>
+              <td>ManiSkill（自带 reward）/ RoboCasa</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>三个最容易踩的坑</h3>
+      <p>它们直接决定你会不会得出「改进没用」的错误结论。</p>
+
+      <div class="pitfalls">
+        <div class="pitfall">
+          <div class="idx">1</div>
+          <div class="body">
+            <p><strong>π0-FAST 在成功率上通常打不过 π0。</strong> 公开发表的 LIBERO 锚点：π0 <span class="num">94.2</span> / π0-FAST <span class="num">85.5</span> / π0.5 <span class="num">96.9</span>（Spatial / Object / Goal / Long 四套均值）。</p>
+            <p>FAST 的收益是<strong>训练吞吐和 tokenizer 通用性</strong>，不是最终成功率。你的归因表必须把「训练成本」和「成功率」分开画，否则会误判。</p>
+          </div>
+        </div>
+        <div class="pitfall">
+          <div class="idx">2</div>
+          <div class="body">
+            <p><strong>KI 的收益是收敛速度，不是峰值。</strong> 论文口径是 table bussing 上约 <span class="num">7.5×</span> 更少步数、π0-FAST 完成时间约 <span class="num">2×</span>。</p>
+            <p>所以指标应该是 <strong>steps-to-threshold</strong>（达到 80% 所需步数），而不是 20k 步的终点成功率。</p>
+          </div>
+        </div>
+        <div class="pitfall">
+          <div class="idx">3</div>
+          <div class="body">
+            <p><strong>π0.5 的收益只在 OOD 出现。</strong> 分布内就是 2 个点。不做 OOD 划分，你会得到「和 π0 差不多」的结论——这个结论是错的，但你的实验会这么告诉你。</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 3 ============ -->
+    <section id="sec-3">
+      <div class="sec-head">
+        <span class="sec-num">03</span>
+        <h2 class="sec-title">仿真环境选型</h2>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>仿真</th>
+              <th>后端</th>
+              <th>吞吐</th>
+              <th>具身</th>
+              <th>任务规模</th>
+              <th>长时序</th>
+              <th>域随机</th>
+              <th>openpi 集成</th>
+              <th>角色</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>LIBERO</strong></td>
+              <td>MuJoCo / Robosuite</td>
+              <td>中（CPU 多进程）</td>
+              <td>Franka 单臂</td>
+              <td>4×10 + LIBERO-90</td>
+              <td>有</td>
+              <td>弱</td>
+              <td><strong>官方 docker 闭环</strong></td>
+              <td><strong>对标锚点</strong></td>
+            </tr>
+            <tr>
+              <td><strong>ManiSkill3</strong></td>
+              <td>SAPIEN，GPU 并行</td>
+              <td>极高（数百~数千 env 并行）</td>
+              <td>多臂 / 灵巧手</td>
+              <td>30+ 套件</td>
+              <td>中</td>
+              <td>强</td>
+              <td>用 remote inference 自接</td>
+              <td><strong>批量消融主战场</strong></td>
+            </tr>
+            <tr>
+              <td><strong>RoboCasa</strong></td>
+              <td>Robosuite / MuJoCo</td>
+              <td>低-中</td>
+              <td>Franka + 移动底盘</td>
+              <td>25 厨房任务 + 组合</td>
+              <td><strong>强</strong></td>
+              <td>强</td>
+              <td>有 π0 / π0.5 基线可比</td>
+              <td>长时序 / 泛化</td>
+            </tr>
+            <tr>
+              <td><strong>RoboTwin 2.0</strong></td>
+              <td>SAPIEN</td>
+              <td>高</td>
+              <td>双臂（ALOHA 类）</td>
+              <td>50+</td>
+              <td>中</td>
+              <td>强</td>
+              <td>有 π0 基线</td>
+              <td>双臂场景</td>
+            </tr>
+            <tr>
+              <td><strong>ALOHA sim</strong></td>
+              <td>MuJoCo</td>
+              <td>中</td>
+              <td>双臂</td>
+              <td>少</td>
+              <td>中</td>
+              <td>弱</td>
+              <td><strong>官方 <code>pi0_aloha_sim</code> 配置</strong></td>
+              <td>双臂 chunk / 延迟</td>
+            </tr>
+            <tr>
+              <td><strong>SimplerEnv</strong></td>
+              <td>SAPIEN</td>
+              <td>中</td>
+              <td>WidowX / Google</td>
+              <td>~24</td>
+              <td>弱</td>
+              <td>中</td>
+              <td>曾支持</td>
+              <td>real2sim 相关性</td>
+            </tr>
+            <tr>
+              <td><strong>Isaac Sim / Lab</strong></td>
+              <td>PhysX</td>
+              <td>大场景高，小任务低</td>
+              <td>任意（需导 USD）</td>
+              <td>自建</td>
+              <td>自建</td>
+              <td>强</td>
+              <td>需自写桥</td>
+              <td><strong>最后一公里</strong></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h3>推荐组合（按阶段用，不是二选一）</h3>
+
+      <div class="pipeline">
+        <div class="pipe-row">
+          <div class="pipe-phase">Phase 0-1</div>
+          <div>
+            <div class="pipe-what">主指标 + 对标</div>
+            <div class="pipe-why">先确认能复现 94.2 / 96.9</div>
+          </div>
+          <div class="pipe-env hot">LIBERO · 官方 docker</div>
+        </div>
+        <div class="pipe-row">
+          <div class="pipe-phase">Phase 2</div>
+          <div>
+            <div class="pipe-what">批量消融 + RL</div>
+            <div class="pipe-why">吞吐 + 自带 reward + 可注入延迟</div>
+          </div>
+          <div class="pipe-env">ManiSkill3</div>
+        </div>
+        <div class="pipe-row">
+          <div class="pipe-phase">Phase 3</div>
+          <div>
+            <div class="pipe-what">长时序 + OOD</div>
+            <div class="pipe-why">held-out 场景</div>
+          </div>
+          <div class="pipe-env">RoboCasa</div>
+        </div>
+        <div class="pipe-row">
+          <div class="pipe-phase">Phase 4</div>
+          <div>
+            <div class="pipe-what">真机前验证</div>
+            <div class="pipe-why">只做一次，不做消融</div>
+          </div>
+          <div class="pipe-env">Isaac Sim 里的 CR5 场景</div>
+        </div>
+      </div>
+
+      <h3>为什么不用 Isaac Sim 做消融</h3>
+      <p>哪怕仓库里已经有它：</p>
+      <ul>
+        <li>单任务 rollout 吞吐远低于 ManiSkill3 的 GPU 并行，而你需要的是「10 个消融项 × 3 个种子 × 每项数百 episode」的样本量；</li>
+        <li>USD 资产管线和 PhysX 接触参数调参成本，会全部变成混淆变量；</li>
+        <li>渲染分布和 openpi 预训练数据（ALOHA / DROID / 仿真数据）差异大，需要额外增强，等于给每个消融项都加一个共同噪声源；</li>
+        <li>它的价值在<strong>保真度和 ROS2 / Jazzy 部署链路</strong>——那正是仓库在做的事（CR5、perception heartbeat、DetectionStatus），放在最后一步做一次端到端验证最划算。</li>
+      </ul>
+
+      <div class="callout plain">
+        <h4>如果目标机是 CR5 单臂 + 夹爪</h4>
+        <p><strong>别去追 <code>pi0_aloha_*</code> 那几个双臂 ckpt</strong>，具身不匹配；走 <code>pi05_base</code> / <code>pi05_droid</code> + Franka 类仿真的路线更顺。</p>
+      </div>
+    </section>
+
+    <!-- ============ 4 ============ -->
+    <section id="sec-4">
+      <div class="sec-head">
+        <span class="sec-num">04</span>
+        <h2 class="sec-title">落地路线与算力</h2>
+      </div>
+
+      <h3>Phase 0（约 1 周）</h3>
+      <p><span class="flag">先打通</span>跑通 <code>pi05_libero</code> 官方 docker 闭环，复现出接近 94 / 97 的数字。这一步卡住的人非常多（norm stats、XLA 显存、docker 内 CUDA），先付这个成本。</p>
+
+      <h3>关键工程决策</h3>
+      <p><strong>不要在 openpi 上开 10 个分支，做一个 fork + 特征开关。</strong> 否则每个消融项的差异里都混着数据管线、归一化、评测脚本的漂移，你的「增量」就不可归因了。</p>
+
+<pre><span class="k">vla-ablation/</span>
+  <span class="s">third_party/openpi/</span>          <span class="c"># submodule，只改 config + 模型层</span>
+  <span class="s">configs/ablation/</span>
+    base_pi0.yaml
+    fast.yaml            <span class="c"># action_expert: ar_fast</span>
+    ki.yaml              <span class="c"># stop_grad: true, arch_tokens: fast, web_cotrain: true</span>
+    pis05_cotrain.yaml   <span class="c"># web_data: on, subtask_head: on, state: discrete</span>
+    rtc.yaml             <span class="c"># execution: rtc, latency_ms: 150</span>
+    recap.yaml           <span class="c"># advantage_conditioning: true</span>
+  <span class="s">eval/</span>
+    harness.py           <span class="c"># 统一 rollout：固定种子、逐 episode 记录、成对比较</span>
+    probes/              <span class="c"># language_following / occlusion_shortcut / vlm_retention</span></pre>
+
+      <h3>算力</h3>
+      <p>按官方给的内存档：</p>
+      <ul>
+        <li><strong>推理</strong> &gt; 8 GB</li>
+        <li><strong>LoRA 微调</strong> &gt; 22.5 GB</li>
+        <li><strong>全量微调</strong> &gt; 70 GB</li>
+      </ul>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>档位</th><th>能做什么</th><th>量级</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>单卡 24–40 GB</td>
+              <td>只能走 LoRA + 少量 demo，勉强做 #1 / #2 / #3 / #8</td>
+              <td>—</td>
+            </tr>
+            <tr>
+              <td>8×A100/H100</td>
+              <td>40 GB 起步，才能做全部 10 项的 3 种子矩阵</td>
+              <td>约 30 次训练 × 20k 步 + 评测 ≈ 4–6 天</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="callout callout-accent">
+        <h4>省钱的做法</h4>
+        <p>所有消融都用「<strong>少 demo</strong>」设定（每任务 10 条）+ 短训练（5k 步），让成功率落在 <strong>30–70%</strong> 区间——这个区间里改进的差异才看得见，而且训练成本降一个量级。</p>
+      </div>
+
+      <h3>优先级（按信息量 / 成本比）</h3>
+      <div class="flow">
+        <span class="flow-item first">#3</span><span class="flow-arrow">→</span>
+        <span class="flow-item">#1</span><span class="flow-arrow">→</span>
+        <span class="flow-item">#8</span><span class="flow-arrow">→</span>
+        <span class="flow-item">#4</span><span class="flow-arrow">→</span>
+        <span class="flow-item">#2</span><span class="flow-arrow">→</span>
+        <span class="flow-item">#6</span><span class="flow-arrow">→</span>
+        <span class="flow-item">#5</span><span class="flow-arrow">→</span>
+        <span class="flow-item">#7</span><span class="flow-arrow">→</span>
+        <span class="flow-item">#10</span><span class="flow-arrow">→</span>
+        <span class="flow-item">#9</span>
+        <div class="flow-cap">#3（预训练 vs 从零）几乎一定是差距最大的一项；#9（MEM）需要自己造任务，收益测量成本最高，建议放最后或直接跳过。</div>
+      </div>
+    </section>
+
+    <!-- ============ 5 ============ -->
+    <section id="sec-5">
+      <div class="sec-head">
+        <span class="sec-num">05</span>
+        <h2 class="sec-title">评测协议</h2>
+      </div>
+
+      <p>不做这一步，全部数字都不可信。</p>
+
+      <ol>
+        <li><strong>成对比较：</strong>所有策略在同一批初始状态 / 随机种子上评测（common random numbers），差值取配对样本。LIBERO 官方每任务 50 episode，10 任务 = 500 次，能检测的差异下限大概 3–4 个百分点；想判断 1–2 个点的差异，必须加大 episode 数或做配对。</li>
+        <li><strong>固定执行协议：</strong>执行 chunk 的前 N 步要统一（很多人不统一，直接把 20 点差异归因给算法）。</li>
+        <li><strong>报告三条曲线而不是一个数：</strong>成功率 vs 训练步数、成功率 vs 推理延迟、成功率 vs 注入延迟（RTC 专用）。</li>
+        <li><strong>每个 ckpt 报 3 个种子</strong>，给 mean ± std；只报单次最好的结果，是这个领域通病。</li>
+        <li><strong>把探针当一等公民：</strong>语言跟随、遮挡 shortcut、VLM 保留分——KI / π0.5 这类改进的收益在设计好的探针上才现形，在成功率上常常看不见。</li>
+      </ol>
+    </section>
+
+    <!-- ============ 6 ============ -->
+    <section id="sec-6">
+      <div class="sec-head">
+        <span class="sec-num">06</span>
+        <h2 class="sec-title">需要你拍板的两件事</h2>
+      </div>
+
+      <div class="ask">
+        <div class="ask-card">
+          <div class="qn">QUESTION 01</div>
+          <h4>算力档位？</h4>
+          <p>单卡 24–40 GB（走 LoRA + 少 demo，只做 4–5 项），还是有 8 卡 A100 级（做完整矩阵）？这决定 Phase 2 的清单砍成几条。</p>
+        </div>
+        <div class="ask-card">
+          <div class="qn">QUESTION 02</div>
+          <h4>目标是不是 CR5 真实部署？</h4>
+          <p>如果是，建议把 #5 / #6 / #9 降级为「读论文即可」，把省下的算力投到 #3 / #4 / #8 + RoboCasa → Isaac Sim → 真机这条链上，产出更快落地。如果纯粹是想搞清每项改进的机理，那就按完整矩阵走，ManiSkill3 是省不掉的。</p>
+        </div>
+      </div>
+
+      <div class="callout callout-accent">
+        <h4>下一步</h4>
+        <p>告诉我这两点，就可以把 Phase 1 的 config 清单和 harness 骨架直接写出来。</p>
+      </div>
+    </section>
+
+  </main>
+</div>
+</div>
+
+<footer class="shell">
+  <span>OpenPI 复现笔记 · π0 / π0-FAST / π0.5 · 改进项归因与仿真选型</span>
+  <span>2026-10-28</span>
+</footer>
+
+<script src="nav.js"></script>
+</body>
+</html>
