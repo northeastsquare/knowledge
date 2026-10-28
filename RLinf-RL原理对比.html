@@ -180,6 +180,15 @@
     <p class="lede">所有 on-policy 方法来自策略梯度定理，所有 off-policy / 离线方法来自 Bellman 方程。这是整张图的分水岭。</p>
     <p><strong>主干 A · <a class="concept-link" href="为什么取log.html#concept-policy-gradient">策略梯度定理</a>。</strong>要最大化期望回报 $J(\theta)=\mathbb{E}\big[\sum_t\gamma^t r_t\big]$，梯度形式是：</p>
     <div class="fml tex">$$\nabla_\theta J(\theta)=\mathbb{E}\Big[\nabla_\theta\log\pi_\theta(a\mid s)\cdot \textcolor{#c4572a}{A(s,a)}\Big]$$<div class="fc">唯一需要“猜”的东西，就是这个 $A$</div></div>
+    <p><strong>直观意义：比平均好的动作以后多做，比平均差的动作以后少做。</strong></p>
+    <ul>
+      <li>$\nabla_\theta\log\pi_\theta(a\mid s)$：<strong>方向</strong>。参数往这个方向改，状态 $s$ 下选中动作 $a$ 的概率就会变大。</li>
+      <li>$A(s,a)$：<strong>打分</strong>。这次选 $a$ 比平均水平好多少；好就是正数，差就是负数。</li>
+      <li><strong>两者相乘</strong>：$A&gt;0$ 时沿方向走，提高 $a$ 的概率；$A&lt;0$ 时反着走，压低 $a$ 的概率；$A\approx0$ 时基本不动。分数越大，调得越多。</li>
+      <li>$\mathbb{E}$：对大量实际采到的 $(s,a)$ 取平均，单次运气好坏不会主导更新。</li>
+      <li><strong>为什么取 log</strong>：$\nabla\log\pi=\nabla\pi/\pi$。常被采到的动作出现次数多，每次的贡献就按概率调小一些，所以动作不会只因为“被采得多”就越推越高。</li>
+    </ul>
+    <p>一句话：<strong>先试，再按结果好坏调整每个动作的出现概率。</strong>所以这类方法叫“策略梯度”。</p>
     <p>这个式子里 <a class="concept-link" href="为什么取log.html#concept-log-trick">$\nabla\log\pi$</a> 是自动微分白给的，<strong>全部的算法设计都花在 <a class="concept-link" href="两条主干-拆机手册.html#concept-advantage">A</a> 上</strong>：A 怎么估，方差多大，偏差多大，要不要 <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-actor-critic">critic</a>。顺带一个前提——你得能算出 $\log\pi$，这对高斯策略是白给的，对<a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">流匹配</a> / 扩散策略<strong>不是</strong>，于是有了家族 ③。</p>
     <p><strong>主干 B · <a class="concept-link" href="两条主干-拆机手册.html#concept-bellman">Bellman 方程</a>。</strong>不走梯度，走不动点迭代。学一个 Q 满足自一致性，再让策略去贪 Q：</p>
     <div class="fml tex">$$Q(s,a)=r+\gamma\,\mathbb{E}\Big[\mathop{\textcolor{#c4572a}{\max}}_{a'}\,Q(s',a')\Big],\qquad \pi(s)=\arg\max_a Q(s,a)$$<div class="fc">这个 $\max$ 是万恶之源；最大熵版本再加一项 $-\alpha\log\pi$</div></div>
