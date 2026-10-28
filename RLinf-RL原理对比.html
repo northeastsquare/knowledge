@@ -202,6 +202,31 @@
     <p><strong>主干 B · <a class="concept-link" href="两条主干-拆机手册.html#concept-bellman">Bellman 方程</a>。</strong>不走梯度，走不动点迭代。学一个 Q 满足自一致性，再让策略去贪 Q：</p>
     <div class="fml tex">$$Q(s,a)=r+\gamma\,\mathbb{E}\Big[\mathop{\textcolor{#c4572a}{\max}}_{a'}\,Q(s',a')\Big],\qquad \pi(s)=\arg\max_a Q(s,a)$$<div class="fc">这个 $\max$ 是万恶之源；最大熵版本再加一项 $-\alpha\log\pi$</div></div>
     <p>好处是数据可以反复用（<a class="concept-link" href="两条主干-拆机手册.html#concept-off-policy">off-policy</a>），样本效率高一个量级。坏处全在那个 <code>max</code> 上：它<strong>专挑估计误差最大的动作</strong>，于是误差被系统性放大 —— 这就是<a class="concept-link" href="两条主干-拆机手册.html#concept-overestimation">价值高估</a>。家族 ② 和 ⑤ 的所有花招，本质都是在跟这个 max 搏斗。</p>
+    <p><strong>贝尔曼是广度优先搜索吗？不是。</strong>它只往前看<strong>一步</strong>，再往后的价值直接用估计值 $Q(s',a')$ 顶替，不会一层层展开整棵树。</p>
+    <ul>
+      <li><strong>经典动态规划（值迭代）</strong>：要事先知道环境模型。对每个状态把所有动作、所有下一状态都算一遍，确实是“每个状态遍历所有动作”，但只展开一层，靠反复迭代让价值慢慢传开。</li>
+      <li><strong>强化学习里的 Q 学习 / SAC / RLT 的 critic</strong>：不知道环境模型，也不遍历动作。每次只拿经验池里一条真实走过的 $(s,a,r,s')$ 来调整 Q。</li>
+      <li><strong>$\max_{a'}$ 怎么算</strong>：离散动作时，网络一次前向输出所有动作的 Q，取最大的那个，不用真去执行每个动作。连续动作没法枚举，就让 actor 给出一个“它认为最好”的 $a'$ 来近似这个 max，SAC 和 RLT 都这么做。</li>
+    </ul>
+    <p>和策略梯度放在一起看：<strong>策略梯度（蒙特卡洛）</strong>沿一条路走到底，看实际结果，<strong>窄而深</strong>；<strong>贝尔曼 / TD</strong> 只走一步，剩下的用估计值补上，<strong>窄而浅</strong>；<strong>动态规划</strong>把每个动作都展开但只展开一层，<strong>宽而浅</strong>。</p>
+    <p><strong>“用一条经验更新 Q”到底在改什么？</strong>$s$ 和 $a$ 不是变量，它们是经验池里记下的数据。真正被改的是 <strong>Q 这个打分器</strong>：输入 $(s,a)$，输出“在 $s$ 做 $a$，往后能拿多少回报”的估计。</p>
+    <ul>
+      <li><strong>表格版</strong>：每个 $(s,a)$ 对应表里一格，改的就是这一格里的数。</li>
+      <li><strong>神经网络版</strong>（SAC、RLT 用的）：打分由网络参数 $\phi$ 算出，即 $Q_\phi(s,a)$，改的是 $\phi$。</li>
+    </ul>
+    <p>一次更新分三步：</p>
+    <ol>
+      <li><strong>算目标</strong>：$y=r+\gamma\,Q(s',a')$，也就是“这一步实际拿到的奖励 + 到了 $s'$ 之后的估计值”。</li>
+      <li><strong>看当前打分</strong>：$Q(s,a)$。</li>
+      <li><strong>往目标挪一点</strong>：表格版直接改，$Q(s,a)\leftarrow Q(s,a)+\alpha\,(y-Q(s,a))$；网络版把 $(Q_\phi(s,a)-y)^2$ 当损失，做一步梯度下降改 $\phi$。</li>
+    </ol>
+    <p><strong>算一个例子</strong>：原来 $Q(s,a)=5$，这一步拿到 $r=1$，$Q(s',a')=6$，$\gamma=0.9$，目标 $y=1+0.9\times6=6.4$。学习率 $\alpha=0.1$ 时，表格版改成 $5+0.1\times1.4=5.14$。</p>
+    <p><strong>为什么这样能学对</strong>：</p>
+    <ul>
+      <li><strong>有真实信号</strong>：目标里的 $r$ 是环境真给的奖励，不是猜出来的。</li>
+      <li><strong>奖励会往前传</strong>：离成功最近的那一步先学到“这里值钱”；下次更新它前面一步时，目标里的 $Q(s',a')$ 已经变大，价值就这样一步步传回起点。</li>
+      <li><strong>网络会举一反三</strong>：改参数不只影响这一个点，相似的 $(s,a)$ 打分也会跟着变，所以没见过的输入也能大致估出来。这既是网络版能处理连续状态的原因，也是它会<strong>高估</strong>的来源。</li>
+    </ul>
   </section>
 
   <section style="margin-top:44px">
