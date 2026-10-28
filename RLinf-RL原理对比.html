@@ -189,6 +189,15 @@
       <li><strong>为什么取 log</strong>：$\nabla\log\pi=\nabla\pi/\pi$。常被采到的动作出现次数多，每次的贡献就按概率调小一些，所以动作不会只因为“被采得多”就越推越高。</li>
     </ul>
     <p>一句话：<strong>先试，再按结果好坏调整每个动作的出现概率。</strong>所以这类方法叫“策略梯度”。</p>
+    <p><strong>“先试”具体怎么试？</strong>不是把每个动作都试一遍，也不是深度优先搜索。</p>
+    <ul>
+      <li><strong>每步只抽一个动作</strong>：到了状态 $s$，按 $\pi_\theta(a\mid s)$ 随机抽一个动作执行。概率高的常被抽中，概率低的偶尔也会被抽到，探索就靠这份随机性。</li>
+      <li><strong>一直走到底，不回头</strong>：执行后进入下一状态，再抽、再执行，直到回合结束。这样得到一条轨迹，也就是一个样本。不会退回去换个动作重试，真实环境（尤其是真机）也退不回去。</li>
+      <li><strong>多走几遍</strong>：同一个策略跑很多回合，或者开很多环境并行，比如仿真开 64 个。每步都是随机抽的，所以每条轨迹都不一样，合起来就覆盖了不同的动作。</li>
+      <li><strong>看结果、调概率</strong>：用每条轨迹后面实际拿到的回报（或 critic 的估计）给每个 $(s,a)$ 算出 $A$，再按上面的公式调整：好的调高，差的调低。</li>
+      <li><strong>调完再试</strong>：拿更新后的策略重新采轨迹，“采样 → 打分 → 更新”反复循环。</li>
+    </ul>
+    <p>用树来比喻：每个回合是从树根随机走到一片叶子的<strong>一条路径</strong>。走够多条路径以后，按每条路径的好坏去调整每个分叉口选哪边的概率。</p>
     <p>这个式子里 <a class="concept-link" href="为什么取log.html#concept-log-trick">$\nabla\log\pi$</a> 是自动微分白给的，<strong>全部的算法设计都花在 <a class="concept-link" href="两条主干-拆机手册.html#concept-advantage">A</a> 上</strong>：A 怎么估，方差多大，偏差多大，要不要 <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-actor-critic">critic</a>。顺带一个前提——你得能算出 $\log\pi$，这对高斯策略是白给的，对<a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">流匹配</a> / 扩散策略<strong>不是</strong>，于是有了家族 ③。</p>
     <p><strong>主干 B · <a class="concept-link" href="两条主干-拆机手册.html#concept-bellman">Bellman 方程</a>。</strong>不走梯度，走不动点迭代。学一个 Q 满足自一致性，再让策略去贪 Q：</p>
     <div class="fml tex">$$Q(s,a)=r+\gamma\,\mathbb{E}\Big[\mathop{\textcolor{#c4572a}{\max}}_{a'}\,Q(s',a')\Big],\qquad \pi(s)=\arg\max_a Q(s,a)$$<div class="fc">这个 $\max$ 是万恶之源；最大熵版本再加一项 $-\alpha\log\pi$</div></div>
