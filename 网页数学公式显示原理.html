@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>网页数学公式显示原理 · 从 LaTeX 到浏览器</title>
 <meta name="description" content="深入理解 KaTeX、MathJax、预渲染三种方案：工作原理、性能对比、如何选择">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<link rel="stylesheet" href="assets/katex/katex.min.css">
+<style>.katex-display{overflow-x:auto;overflow-y:hidden;max-width:100%;}</style>
 <link rel="stylesheet" href="concepts.css">
 <style>
 :root {
@@ -1219,14 +1220,13 @@ cp -r node_modules/katex/dist assets/katex/</code></pre>
 
 </div>
 
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js" onload="renderMathInElement(document.body, {
-  delimiters: [
-    {left: '$$', right: '$$', display: true},
-    {left: '$', right: '$', display: false}
-  ],
-  throwOnError: false
-});"></script>
+<script defer src="assets/katex/katex.min.js"></script>
+<script defer src="assets/katex/contrib/auto-render.min.js"></script>
+<script>
+window.KATEX_OPTS={delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false,strict:'ignore'};
+window.renderMath=function(el){if(window.renderMathInElement)renderMathInElement(el||document.body,window.KATEX_OPTS);};
+document.addEventListener('DOMContentLoaded',function(){window.renderMath();});
+</script>
 
 <script src="nav.js"></script>
 </body>

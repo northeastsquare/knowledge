@@ -135,6 +135,39 @@
   }
   blockquote{margin:10px 0;padding:10px 14px;border-left:3px solid var(--navy);background:var(--navy-soft);border-radius:0 8px 8px 0;font-size:14px;font-style:italic;}
   .card code{font-family:Consolas,ui-monospace,monospace;font-size:13.5px;}
+
+  /* ---------- RLinf 实现 ---------- */
+  #s-rlinf .card.wide{position:relative;width:min(1080px,calc(100vw - 32px));left:50%;transform:translateX(-50%);overflow:hidden;}
+  .rl-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .rl-arch{display:block;width:100%;height:auto;}
+  @media (max-width:900px){.rl-arch{min-width:780px;}}
+  .rl-arch text{fill:#1c1917;}
+  .rl-arch .rowlab{font-size:12px;font-weight:700;fill:#6b6560;}
+  .rl-arch .bx{stroke-width:1.5;}
+  .rl-arch .bx.s1{fill:#f5eeff;stroke:#7c3aed;}
+  .rl-arch .bx.env{fill:#eef2f7;stroke:#1e3a5f;}
+  .rl-arch .bx.ro{fill:#e9fbf6;stroke:#0e9488;}
+  .rl-arch .bx.tr{fill:#fff1e8;stroke:#c2410c;}
+  .rl-arch .t1,.rl-arch .t2,.rl-arch .lab{text-anchor:middle;}
+  .rl-arch .t1{font-size:14px;font-weight:700;}
+  .rl-arch .t2{font-size:11.5px;fill:#3a3530;}
+  .rl-arch .t3{font-size:9.5px;fill:#9a948d;}
+  .rl-arch .lab{font-size:11px;fill:#9a3412;font-weight:600;}
+  .rl-arch a{cursor:pointer;}
+  .rl-arch a:hover rect,.rl-arch a:focus rect{stroke-width:3;}
+  .rl-arch .arrows line,.rl-arch .arrows path{stroke:#6b6560;stroke-width:1.5;fill:none;marker-end:url(#rlar);}
+  .rl-arch .arrows .dash{stroke-dasharray:5 4;}
+  .rl-legend{font-size:13px;color:var(--muted);margin:8px 0 0;}
+  .rl-legend .sw{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin:0 4px 0 10px;border:1.5px solid;}
+  #s-rlinf .refs{font-size:13.5px;}
+  #s-rlinf .refs td:first-child{white-space:nowrap;}
+  #s-rlinf .knob{margin:14px 0 4px;padding:12px 16px;background:#fbf8f3;border:1px solid #eadfce;border-left:3px solid var(--accent);border-radius:0 8px 8px 0;font-size:14px;}
+  #s-rlinf .knob .kh{font-weight:700;color:var(--accent);margin-bottom:6px;font-size:13.5px;letter-spacing:.02em;}
+  #s-rlinf .knob ul{margin:0;padding-left:1.2em;}
+  #s-rlinf .knob li{margin:4px 0;line-height:1.7;}
+  #s-rlinf .knob .ksrc{margin-top:8px;font-size:12.5px;color:#8a8078;}
+  #s-rlinf .knob .ksrc a{color:#8a8078;}
+  @media (max-width:640px){#s-rlinf table{display:block;overflow-x:auto;}}
 </style>
 <link rel="stylesheet" href="concepts.css">
 </head>
@@ -163,7 +196,8 @@
     <a href="#s2">2 · 核心思想</a>
     <a href="#s3">3 · 三个关键设计</a>
     <a href="#s4">4 · 完整系统流程</a>
-    <a href="#s-faq">4½ · 运行时八问</a>
+    <a href="#s-faq">4½ · 运行时十问</a>
+    <a href="#s-rlinf">4¾ · RLinf 里怎么跑</a>
     <a href="#s5">5 · 实验结果</a>
     <a href="#s6">6 · 与已有方法的关系</a>
     <a href="#s7">7 · 局限与展望</a>
@@ -342,8 +376,8 @@
 
   <!-- 4.5 -->
   <section id="s-faq">
-    <h2><span class="no">4½</span>运行时到底怎么跑：八个常见疑问</h2>
-    <p class="lead">先说结论：VLA 每 10 步才推理一次；RL 只负责最难的那一段；"强化学习"指的是在线训练小网络，执行时 actor 只做一次前向。下面每条都标了论文出处页码（arXiv v2 PDF）。Q6–Q8 这三条超出论文范围，回答的是"论文没写的执行时序"，来源是 PI 未开源的实现与 RLinf 的复现代码。</p>
+    <h2><span class="no">4½</span>运行时到底怎么跑：十个常见疑问</h2>
+    <p class="lead">先说结论：VLA 每 10 步才推理一次；RL 只负责最难的那一段；"强化学习"指的是在线训练小网络，执行时 actor 只做一次前向。下面每条都标了论文出处页码（arXiv v2 PDF）。Q6–Q8 这三条超出论文范围，回答的是"论文没写的执行时序"，来源是 PI 未开源的实现与 RLinf 的复现代码。Q9–Q10 是落地时的实践问题：离线数据能不能用、单台真机够不够。</p>
 
     <div class="card" id="faq-when">
       <h3><span class="tag">Q1</span>这项工作是什么时候做的？</h3>
@@ -472,6 +506,110 @@
       </ul>
       <p><strong>为什么这样取舍合理</strong>：RLinf 的 rollout 首要目的是<strong>采数据训 actor-critic</strong>，不是做实时部署控制器。训练时停几十毫秒不损失什么；而异步化会引入"执行动作 ≠ 当次策略输出"的 off-policy 偏移，给稀疏奖励下的信用分配再添一层麻烦——RLT 的核心机制（reference dropout、β 锚定）都假设 ref chunk 和执行的 chunk 是同一时刻同一观测下的产物。</p>
       <p class="note"><strong>要在 RLinf 里补上衔接，改动不大</strong>：<code>_get_ref_chunk</code> 已经是"20 步取前 10 步"的形状，只要在 <code>extract_rlt_obs</code> 时把上一块剩下的 d 步覆写进 <code>ref_chunk</code> 前 d 位（<code>apply_rlt_interventions</code> 里已有同样的覆写模式可照抄），再打开 <code>rtc_enabled</code>。但<strong>这会改变 <code>next_obs</code> 语义</strong>——replay 里存的 <code>next_ref_chunk</code> 也得跟着变成"以旧前缀为条件的参考块"，否则 critic 的 TD 目标和推理时看到的东西对不上。</p>
+    </div>
+
+    <div class="card" id="faq-offline">
+      <h3><span class="tag">Q9</span>必须在线学习吗？能不能用录好的推理数据来做强化学习？</h3>
+      <p><strong>能用，但只靠录制数据，提升会很有限。</strong>RLT 第二阶段是从<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-replay-buffer">经验池</a>里反复抽样训练（off-policy），并不要求数据是刚采到的。</p>
+      <ul>
+        <li><strong>放得进经验池的条件</strong>：每块动作都有奖励（至少标出成功或失败），有下一时刻的观测，并且用<strong>同一个冻结的第一阶段模型</strong>从录制图像重新算出 z<sub>rl</sub> 和参考动作。</li>
+        <li><strong>问题一：critic 没见过 actor 的改动</strong>。录下来的多是 VLA 自己的动作或人接管的动作。actor 想在参考动作上做的修正，数据里从来没出现过，critic 对这些动作打分没有依据，容易打得过高。actor 就会往这些虚高的方向改，上机后反而变差。这就是离线强化学习的分布偏移问题。</li>
+        <li><strong>问题二：没有反馈回路</strong>。在线训练时，actor 改了以后会采到新数据，新数据会纠正 critic 之前的错误打分；离线训练没有这一步。</li>
+        <li><strong>兜底的是那根“绳子”</strong>：RLT 要求 actor 不能离参考动作太远，所以离线训练不至于学崩，效果类似 TD3+BC 这类保守的离线方法。但通常只能做到比 VLA 稍好、更稳，很难达到论文里在线训练带来的提速和成功率提升。</li>
+      </ul>
+      <p><strong>推荐做法：先离线、再在线。</strong>先用录制数据预填经验池，把 critic 预热好，actor 先离线练一轮，再上机在线训练。这样能减少在线所需的时间和人工干预。论文的预热阶段，本质上也是先用 VLA 采的数据填经验池。</p>
+      <p class="note">RLinf 现状：RLT 第二阶段的经验池配置里没有“从文件预加载”的开关，需要自己把录制数据转换成 {z<sub>rl</sub>, 本体状态, 参考动作} 的格式再灌进经验池。RLinf 的 <code>examples/offline_rl</code> 是 RECAP / STEAM 这类先给数据算优势、再按优势条件训练 VLA 的方法，和 RLT 不是同一条路线。</p>
+    </div>
+
+    <div class="card" id="faq-onerobot">
+      <h3><span class="tag">Q10</span>只有一台真机、一个场景，实时推理加在线学习会不会太慢？</h3>
+      <p><strong>一台真机够用，RLT 就是按这个前提设计的。时间主要花在机器人身上，算力不是瓶颈。</strong></p>
+      <ul>
+        <li><strong>不慢的部分</strong>：每个动作块（约 1 秒）只跑一次冻结 VLA 加一个小 MLP，而且只有前向计算，一张像样的 GPU 就能跟上 10 Hz。训练只更新几层 MLP，一次更新是毫秒级。</li>
+        <li><strong>真正慢的部分</strong>：采数据只能按真实时间走，一小时最多约 3600 块；每回合还要复位场景，往往比执行本身更费时间。奖励稀疏，前期失败多，有效信号少。RLinf 是同步模式，采完一轮再训练，所以每轮之间机器人会短暂停一下。</li>
+      </ul>
+      <p><strong>RLT 是怎么把真实时间压下来的</strong>（这正是它和传统真机 RL 的区别）：</p>
+      <ul>
+        <li><strong>只在关键阶段用 RL</strong>：平常的移动交给 VLA，只练那几秒的精细操作。经验池里存的也全是有价值的片段。</li>
+        <li><strong>在 VLA 的建议上小幅修正</strong>：起点本来就接近能完成任务，不用从零探索，需要的样本少得多。</li>
+        <li><strong>人可以随时接管</strong>：快失败时由人接手，避免浪费一整回合，接管的片段还能当示范用。</li>
+        <li><strong>每条经验反复用</strong>：同一批数据会被抽样训练很多次，弥补真机数据少的问题。</li>
+      </ul>
+      <p><strong>实践建议</strong>：</p>
+      <ul>
+        <li>把关键阶段划窄，例如只练插入或对准那一步。</li>
+        <li>复位尽量自动化，或者把场景设计得容易复原。</li>
+        <li>先用录制数据预热（见 Q9）。</li>
+        <li>适当调高每轮的更新次数，但太高 critic 会过拟合，要盯着曲线。</li>
+      </ul>
+      <p class="note">单任务按“几小时真机时间”来规划比较现实。如果几小时还看不到成功率上升，通常是关键阶段划得太宽，或者奖励定义有问题，而不是算力不够。</p>
+    </div>
+  </section>
+
+  <!-- 4¾ RLinf 实现 -->
+  <section id="s-rlinf">
+    <h2><span class="no">4¾</span>落到实处：RLinf 里 RLT 是怎么跑起来的</h2>
+    <p class="lead">PI 没有公开 RLT 的代码。下面按 <a href="https://github.com/RLinf/RLinf" target="_blank" rel="noreferrer">RLinf</a> 的<strong>复现</strong>把整个过程走一遍：每一步在做什么、数据从哪来到哪去。图里的框可以点，会打开对应源码，仅供想深挖时参考。</p>
+
+    <div class="card wide">
+      <h3>全流程一张图</h3>
+      <div class="rl-scroll"><svg class="rl-arch" viewBox="0 0 1040 520" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="RLinf 中 RLT 的完整流程">
+<defs><marker id="rlar" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#6b6560"/></marker></defs>
+<text class="rowlab" x="22" y="34">① 第一阶段 · 离线适配：只用示范数据，做一次</text>
+<text class="rowlab" x="22" y="204">② 第二阶段 · 在线采样：每个动作块（约 1 秒）循环一次</text>
+<text class="rowlab" x="22" y="394">③ 第二阶段 · 学习：用攒下的经验更新小网络（从右往左读）</text>
+<g class="arrows"><line x1="202" y1="94.0" x2="223" y2="94.0"/><line x1="406" y1="94.0" x2="427" y2="94.0"/><line x1="610" y1="94.0" x2="631" y2="94.0"/><line x1="814" y1="94.0" x2="835" y2="94.0"/><line x1="202" y1="264.0" x2="223" y2="264.0"/><line x1="406" y1="264.0" x2="427" y2="264.0"/><line x1="610" y1="264.0" x2="631" y2="264.0"/><line x1="814" y1="264.0" x2="835" y2="264.0"/><line x1="838" y1="454.0" x2="817" y2="454.0"/><line x1="634" y1="454.0" x2="613" y2="454.0"/><line x1="430" y1="454.0" x2="409" y2="454.0"/><line x1="226" y1="454.0" x2="205" y2="454.0"/><path class="dash" d="M928.0 144 V172 H381 V211"/><path d="M928.0 314 V401"/><path class="dash" d="M868 314 V342 H112.0 V317"/><path class="dash" d="M22 454.0 H10 V372 H520.0 V317"/></g>
+<a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/data/datasets/openpi/__init__.py#L73-L76" target="_blank" rel="noreferrer"><title>查看参考源码</title><rect class="bx s1" x="22" y="44" width="180" height="100" rx="10"/><text class="t1" x="112.0" y="68">示范数据</text><text class="t2" x="112.0" y="92">人类遥操作轨迹</text><text class="t2" x="112.0" y="109">图像 + 指令 + 动作</text><text class="t3" x="192" y="136" style="text-anchor:end">源码 ↗</text></a><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/models/embodiment/openpi/pi0.py#L776-L822" target="_blank" rel="noreferrer"><title>查看参考源码</title><rect class="bx s1" x="226" y="44" width="180" height="100" rx="10"/><text class="t1" x="316.0" y="68">VLA 微调</text><text class="t2" x="316.0" y="92">π0.5 照常学模仿动作</text><text class="t2" x="316.0" y="109">同时留下内部特征序列</text><text class="t3" x="396" y="136" style="text-anchor:end">源码 ↗</text></a><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/models/embodiment/modules/rlt_token_transformer.py#L107-L188" target="_blank" rel="noreferrer"><title>查看参考源码</title><rect class="bx s1" x="430" y="44" width="180" height="100" rx="10"/><text class="t1" x="520.0" y="68">压缩成 RL token</text><text class="t2" x="520.0" y="92">整段特征（上千个 token）</text><text class="t2" x="520.0" y="109">压成 1 个向量 z_rl</text><text class="t3" x="600" y="136" style="text-anchor:end">源码 ↗</text></a><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/models/embodiment/modules/rlt_token_transformer.py#L190-L297" target="_blank" rel="noreferrer"><title>查看参考源码</title><rect class="bx s1" x="634" y="44" width="180" height="100" rx="10"/><text class="t1" x="724.0" y="68">重建检验</text><text class="t2" x="724.0" y="92">只凭 z_rl 还原整段特征</text><text class="t2" x="724.0" y="109">还原得准 = 信息没丢</text><text class="t3" x="804" y="136" style="text-anchor:end">源码 ↗</text></a><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/models/embodiment/openpi/pi0.py#L824-L847" target="_blank" rel="noreferrer"><title>查看参考源码</title><rect class="bx s1" x="838" y="44" width="180" height="100" rx="10"/><text class="t1" x="928.0" y="68">打包并冻结</text><text class="t2" x="928.0" y="92">VLA + 编码器存成模型</text><text class="t2" x="928.0" y="109">第二阶段不再改动</text><text class="t3" x="1008" y="136" style="text-anchor:end">源码 ↗</text></a><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/workers/env/env_worker.py#L1100-L1145" target="_blank" rel="noreferrer"><title>查看参考源码</title><rect class="bx env" x="22" y="214" width="180" height="100" rx="10"/><text class="t1" x="112.0" y="238">机器人观测</text><text class="t2" x="112.0" y="262">相机图像 + 关节状态</text><text class="t2" x="112.0" y="279">当前是否在关键阶段</text><text class="t3" x="192" y="306" style="text-anchor:end">源码 ↗</text></a><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/models/embodiment/openpi/tasks/eval.py#L122-L164" target="_blank" rel="noreferrer"><title>查看参考源码</title><rect class="bx ro" x="226" y="214" width="180" height="100" rx="10"/><text class="t1" x="316.0" y="238">冻结 VLA 读状态</text><text class="t2" x="316.0" y="256">z_rl：场景摘要</text><text class="t2" x="316.0" y="273">参考动作：VLA 的建议</text><text class="t2" x="316.0" y="290">本体状态：机械臂位姿</text><text class="t3" x="396" y="306" style="text-anchor:end">源码 ↗</text></a><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/models/embodiment/mlp_policy/rlt_mlp_policy.py#L138-L158" target="_blank" rel="noreferrer"><title>查看参考源码</title><rect class="bx ro" x="430" y="214" width="180" height="100" rx="10"/><text class="t1" x="520.0" y="238">小 actor 修正</text><text class="t2" x="520.0" y="262">看着参考动作和状态</text><text class="t2" x="520.0" y="279">输出修正后的 10 步动作</text><text class="t3" x="600" y="306" style="text-anchor:end">源码 ↗</text></a><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/algorithms/rlt/route.py#L116-L244" target="_blank" rel="noreferrer"><title>查看参考源码</title><rect class="bx ro" x="634" y="214" width="180" height="100" rx="10"/><text class="t1" x="724.0" y="238">选谁来执行</text><text class="t2" x="724.0" y="256">关键阶段 → actor</text><text class="t2" x="724.0" y="273">其他时候 → VLA</text><text class="t2" x="724.0" y="290">必要时人来接管</text><text class="t3" x="804" y="306" style="text-anchor:end">源码 ↗</text></a><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/envs/real/env.py#L388" target="_blank" rel="noreferrer"><title>查看参考源码</title><rect class="bx env" x="838" y="214" width="180" height="100" rx="10"/><text class="t1" x="928.0" y="238">执行一个动作块</text><text class="t2" x="928.0" y="262">机器人走 10 步（约 1 秒）</text><text class="t2" x="928.0" y="279">得到奖励：成功 1 / 否则 0</text><text class="t3" x="1008" y="306" style="text-anchor:end">源码 ↗</text></a><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/workers/actor/fsdp_rlt_ac_policy_worker.py#L608-L659" target="_blank" rel="noreferrer"><title>查看参考源码</title><rect class="bx tr" x="838" y="404" width="180" height="100" rx="10"/><text class="t1" x="928.0" y="428">记录经验</text><text class="t2" x="928.0" y="452">（状态, 动作, 奖励, 下一状态）</text><text class="t2" x="928.0" y="469">人接管的片段另存一份</text><text class="t3" x="1008" y="496" style="text-anchor:end">源码 ↗</text></a><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/workers/actor/fsdp_rlt_ac_policy_worker.py#L234-L299" target="_blank" rel="noreferrer"><title>查看参考源码</title><rect class="bx tr" x="634" y="404" width="180" height="100" rx="10"/><text class="t1" x="724.0" y="428">critic 学打分</text><text class="t2" x="724.0" y="452">估计“这块动作 + 之后”</text><text class="t2" x="724.0" y="469">还能拿到多少回报</text><text class="t3" x="804" y="496" style="text-anchor:end">源码 ↗</text></a><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/workers/actor/fsdp_rlt_ac_policy_worker.py#L302-L368" target="_blank" rel="noreferrer"><title>查看参考源码</title><rect class="bx tr" x="430" y="404" width="180" height="100" rx="10"/><text class="t1" x="520.0" y="428">actor 学改进</text><text class="t2" x="520.0" y="452">往 critic 打高分的方向改</text><text class="t2" x="520.0" y="469">但别离参考动作太远</text><text class="t3" x="600" y="496" style="text-anchor:end">源码 ↗</text></a><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/workers/actor/fsdp_sac_policy_worker.py#L273-L319" target="_blank" rel="noreferrer"><title>查看参考源码</title><rect class="bx tr" x="226" y="404" width="180" height="100" rx="10"/><text class="t1" x="316.0" y="428">目标网络慢慢跟</text><text class="t2" x="316.0" y="452">用于打分的副本缓慢更新</text><text class="t2" x="316.0" y="469">让训练更稳</text><text class="t3" x="396" y="496" style="text-anchor:end">源码 ↗</text></a><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/workers/actor/fsdp_sac_policy_worker.py#L560-L671" target="_blank" rel="noreferrer"><title>查看参考源码</title><rect class="bx tr" x="22" y="404" width="180" height="100" rx="10"/><text class="t1" x="112.0" y="428">新 actor 上机</text><text class="t2" x="112.0" y="452">只同步小网络的权重</text><text class="t2" x="112.0" y="469">下一轮用新 actor 采样</text><text class="t3" x="192" y="496" style="text-anchor:end">源码 ↗</text></a>
+<text class="lab" x="640.0" y="166">第一阶段的成果：冻结后专门用来“读状态”</text><text class="lab" x="866.0" y="362">动作 + 当时的状态</text><text class="lab" x="370.0" y="336">下一块：重新观测</text><text class="lab" x="316.0" y="367">新 actor 权重</text>
+</svg></div>
+      <p class="rl-legend"><span class="sw" style="background:#f5eeff;border-color:#7c3aed"></span>离线适配<span class="sw" style="background:#eef2f7;border-color:#1e3a5f"></span>机器人 / 环境<span class="sw" style="background:#e9fbf6;border-color:#0e9488"></span>在线决策（只推理）<span class="sw" style="background:#fff1e8;border-color:#c2410c"></span>在线学习 · 虚线表示跨阶段或进入下一轮</p>
+    </div>
+
+    <div class="card">
+      <h3>第一阶段：教 VLA 用一个向量说清“现在是什么情况”</h3>
+      <p>拿人类示范数据照常微调 VLA（π0.5）。VLA 看图和指令时，内部会产生上千个 token 的特征，信息全但太大，没法直接喂给小网络。所以额外训练一个小模块，把这一整段特征<strong>压成一个向量 z<sub>rl</sub></strong>，再要求只凭这个向量把整段特征<strong>还原回来</strong>。还原得准，说明压缩时关键信息没丢。</p>
+      <p>两件事一起训：总损失 = 还原误差 + 模仿误差。还原误差不会反过来改动 VLA，VLA 只按模仿误差学习，所以它的动作能力不受影响。训完后 VLA 和压缩模块一起<strong>冻结</strong>，第二阶段只拿来“读状态”。</p>
+      <div class="knob"><div class="kh">工程数值 · 真机第一阶段</div><ul><li><b>底座</b>：π0.5，视觉语言部分 2B（PaliGemma / gemma_2b）+ 300M 动作专家；VLA 一次预测 <b>20 步</b>动作，流匹配去噪 <b>4 步</b>。注意这是 RLinf 真机配置改小后的值：π0 / π0.5 原版默认一次 50 步、去噪 10 步，论文里 VLA 的块长也是 H=50。RLinf 按 <code>pi05_franka_state</code> 的训练配置把块长定为 20，去噪步数减到 4，单次推理更快。ManiSkill 配置更小，是 10 步、去噪 5 步。</li><li><b>压缩比例</b>：最多 <b>1024</b> 个前缀 token、每个 2048 维 → <b>1 个 2048 维</b>向量 z<sub>rl</sub>；编码器和解码器各只有 <b>2 层</b> Transformer、8 个头，相对 VLA 很轻。</li><li><b>两项损失 1 : 1</b>：<code>rlt_alpha = 1.0</code>，还原误差和模仿误差同等权重。</li><li><b>训练量</b>：<b>2 万步</b>，每步 64 条样本（单卡 16），学习率 1e-5，前 1000 步预热后余弦降到 2.5e-6。一张卡上大约是“微调一次 VLA”的成本，只做一次。</li><li><b>示范数据量</b>：真机采集配置默认录 <b>20</b> 条示范（<code>num_data_episodes: 20</code>）；ManiSkill 用运动规划器自动生成 <b>400</b> 条成功轨迹。</li></ul><div class="ksrc">出处：<a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/examples/sft/config/realworld_rlt_stage1_sft_openpi_pi05.yaml#L27-L95" target="_blank" rel="noreferrer">第一阶段配置</a> · <a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/models/embodiment/openpi/rlt_config.py#L30-L39" target="_blank" rel="noreferrer">RL token 默认结构</a> · <a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/examples/embodiment/config/realworld_collect_data.yaml#L34" target="_blank" rel="noreferrer">真机采集配置</a> · <a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/docs/source-zh/rst_source/examples/embodied/rlt.rst#L485-L500" target="_blank" rel="noreferrer">仿真数据生成</a></div></div>
+    </div>
+
+    <div class="card">
+      <h3>第二阶段：每 1 秒一个循环</h3>
+      <ol>
+        <li><strong>看</strong>：机器人拍照、读关节状态，同时报告当前是否在关键阶段（真机由操作员踩踏板开启，仿真按任务进度自动判断）。</li>
+        <li><strong>读状态</strong>：冻结的 VLA 给出三样东西：场景摘要 z<sub>rl</sub>、它自己建议的<strong>参考动作</strong>，以及机械臂本体状态。</li>
+        <li><strong>修正</strong>：小 actor 看着参考动作和状态，输出修正后的 10 步动作。它学的是“在 VLA 的建议上改一点”，而不是从零规划。</li>
+        <li><strong>选谁执行</strong>：关键阶段执行 actor 的动作，其余时间执行 VLA 的参考动作；actor 明显不行时人可以接管（仿真里用一个专家策略模拟接管）。</li>
+        <li><strong>执行</strong>：机器人把这 10 步走完（10 Hz，约 1 秒），拿到奖励：成功为 1，否则为 0。执行时不同时推理下一块，所以不存在“上一块还没走完、下一块已经算出来”的衔接问题（见 <a href="#faq-rlinf">Q8</a>）。</li>
+        <li><strong>记下来</strong>：执行完再读一次状态，把“当时状态、执行的动作、奖励、下一状态”存进<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-replay-buffer">经验池</a>。人接管的片段另存一份，当作额外示范。</li>
+      </ol>
+      <div class="knob"><div class="kh">工程数值 · 真机第二阶段（Franka 插销任务）</div><ul><li><b>节拍</b>：控制频率 <b>10 Hz</b>，一块 = <b>10 步 = 1 秒</b>。VLA 每次给 20 步参考动作，actor 只看并修正前 10 步。</li><li><b>动作</b>：每步 <b>7 维</b>（机械臂末端运动 + 夹爪），一块共 70 个数。</li><li><b>状态</b>：本体状态 <b>19 维</b>，场景摘要 z<sub>rl</sub> <b>2048 维</b>。actor 输入 = 2048 + 19 + 70 = <b>2137 维</b>，输出 70 维。</li><li><b>几乎不加噪声</b>：actor 动作标准差固定 <b>0.002</b>，基本是确定性输出。</li><li><b>回合长度</b>：训练每回合最多 <b>300 步（30 秒，30 块）</b>，评估回合 100 步；奖励只看成功与否（0 / 1，不用稠密奖励）。</li><li><b>精度</b>：冻结 VLA 用 bf16 推理；小网络用 fp32，Q 学习和目标网络更稳。</li></ul><div class="ksrc">出处：<a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/examples/embodiment/config/realworld_rlt_stage2_ac_mlp.yaml#L114-L130" target="_blank" rel="noreferrer">环境与回合</a> · <a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/examples/embodiment/config/realworld_rlt_stage2_ac_mlp.yaml#L176-L212" target="_blank" rel="noreferrer">冻结 VLA 设置</a> · <a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/examples/embodiment/config/realworld_rlt_stage2_ac_mlp.yaml#L232-L246" target="_blank" rel="noreferrer">小网络形状</a> · <a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/envs/real/franka/base.py#L110" target="_blank" rel="noreferrer">10 Hz</a></div></div>
+    </div>
+
+    <div class="card">
+      <h3>学习：critic 打分，actor 改进</h3>
+      <ul>
+        <li><strong>critic 学打分</strong>：输入状态和一整块动作，估计“这块动作的奖励 + 之后还能拿多少”。用两个打分头取较小值，防止打分虚高；另有一份缓慢更新的<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-target-network">目标网络</a>提供参照，训练更稳。</li>
+        <li><strong>actor 学改进</strong>：一边往 critic 打高分的方向改，一边受一根“绳子”拉着，不准离参考动作太远（人接管过的地方就向人的动作靠）。这根绳子保证 RL 只做局部微调，不会把 VLA 原本会的东西学坏。</li>
+        <li><strong>防止照抄</strong>：训练时有一半概率把参考动作遮掉，逼 actor 自己理解状态，而不是简单复制 VLA 的建议。</li>
+        <li><strong>节奏</strong>：critic 每更新 4 次，actor 才更新 1 次。仿真里先攒够 1 万条经验、集中训练一轮再正式开始；之后每多一条经验就做约一次更新。每轮结束只把小网络的新权重同步给机器人端，VLA 始终不动。</li>
+      </ul>
+      <div class="knob"><div class="kh">工程数值 · 第二阶段学习</div><ul><li><b>网络规模</b>：actor 是 <b>3 层、每层 256</b> 的 MLP；critic 是 <b>2 个</b>同样大小的 Q 头（取较小值）。整个小网络只有百万级参数，一次更新是毫秒级。</li><li><b>折扣</b>：<code>γ = 0.96</code>（按步算），跨一整块 10 步相当于 0.96<sup>10</sup> ≈ <b>0.66</b>，所以 critic 主要看未来几秒。目标网络每次只跟进 <b>0.5%</b>（τ = 0.005）。</li><li><b>“绳子”很紧</b>：actor 损失 = −<b>0.1</b>·Q + <b>5</b>·BC，模仿参考动作的权重是 Q 的 50 倍，保证真机上只做小幅修正。</li><li><b>遮掉参考</b>：概率 <b>0.5</b>。</li><li><b>更新节奏</b>：真机用异步 runner（<code>run_realworld_async.sh</code>），机器人采样和 GPU 训练同时进行；每次训练做 <b>8</b> 次更新，每次抽 256 条经验，学习率 3e-4；critic 每 <b>4</b> 次、actor <b>1</b> 次。</li><li><b>仿真对照（ManiSkill）</b>：<b>64</b> 个环境并行；先攒 <b>1 万</b>条经验，集中做 <b>3 万</b>次更新，这段时间仍由参考动作执行；之后每来 <b>5</b> 条新经验就更新 5 次，约等于“一条经验一次更新”。BC / Q 权重在前 2 万次更新是 7 / 0.05，之后用 5 万次更新逐渐过渡到 2.5 / 0.45。γ = 0.99，每批 512 条，学习率 1e-4。仿真样本便宜，所以先保守、后放开；真机直接用一组更保守的固定权重。</li></ul><div class="ksrc">出处：<a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/examples/embodiment/config/realworld_rlt_stage2_ac_mlp.yaml#L62-L105" target="_blank" rel="noreferrer">真机学习配置</a> · <a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/models/embodiment/mlp_policy/mlp_policy.py#L60-L100" target="_blank" rel="noreferrer">网络结构</a> · <a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/examples/embodiment/config/maniskill_rlt_stage2_ac_mlp.yaml#L40-L96" target="_blank" rel="noreferrer">仿真学习配置</a></div></div>
+      <div class="knob"><div class="kh">工程数值 · 经验池与数据量</div><ul><li><b>一条经验 = 一个动作块（1 秒）</b>：当前和下一时刻各存一份 {z<sub>rl</sub> 2048 维、本体 19 维、参考动作 20×7}，再加实际执行的 70 维动作和奖励，合计约 4500 个数。<b>不存图像</b>，图像已被冻结 VLA 读成 z<sub>rl</sub>。</li><li><b>真机按“段”存</b>：每次采样跑 300 步 = <b>30 块</b>，打包成一段轨迹放进经验池。</li><li><b>真机容量：最近 200 段 ≈ 6000 条 ≈ 100 分钟</b>：<code>sample_window_size: 200</code> 只从最近 200 段里抽样；又因为 <code>auto_save: False</code>，内存缓存也被设成 200 段，更早的经验直接丢弃，也不落盘（重启训练经验池从零开始）。</li><li><b>多早开始学</b>：经验池有 <b>2 段</b>（60 块，约 <b>1 分钟</b>机器人时间）就开始训练，actor 也同时开始更新（<code>min_buffer_size: 2</code>、<code>train_actor_steps: 2</code>，单位都是“段”）。真机没有大规模预热。</li><li><b>每条经验被用多少次</b>：每次训练 8 × 256 = 2048 次抽样，而池子最多 6000 条，所以同一条经验会被反复使用。这就是真机数据少还能学的原因。</li><li><b>仿真对照</b>：ManiSkill 把每一块单独存成一条，只从最近 <b>5 万</b>条里抽；先攒够 <b>1 万</b>条（64 个环境并行，很快）再开始学。</li><li><b>整体时长</b>：配置里 <code>max_epochs: 8000</code> 只是上限，不代表要跑满；实际看评估成功率决定何时停。按 1 块 1 秒算，一小时机器人时间约 3600 条经验，大约是经验池容量的一半多。</li></ul><div class="ksrc">出处：<a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/examples/embodiment/config/realworld_rlt_stage2_ac_mlp.yaml#L94-L105" target="_blank" rel="noreferrer">真机经验池配置</a> · <a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/data/storage/replay/buffer.py#L262-L268" target="_blank" rel="noreferrer">缓存大小规则</a> · <a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/workers/actor/fsdp_sac_policy_worker.py#L718-L746" target="_blank" rel="noreferrer">何时开始训练</a> · <a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/workers/env/env_worker.py#L160-L164" target="_blank" rel="noreferrer">每段 30 块</a> · <a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/examples/embodiment/config/maniskill_rlt_stage2_ac_mlp.yaml#L85-L91" target="_blank" rel="noreferrer">仿真经验池</a></div></div>
+    </div>
+
+    <div class="card">
+      <h3>复现和论文的几处不同</h3>
+      <ul>
+        <li>底座是开源的 π0.5，不是论文里的 π0.6。</li>
+        <li>actor 几乎是确定性的（只加极小的噪声），也没有熵奖励；探索主要来自 VLA 的参考动作和上面的“遮掉参考”。</li>
+        <li>VLA 一次建议 20 步，actor 只修正并执行前 10 步。</li>
+      </ul>
+    </div>
+
+    <div class="card">
+      <h3>参考代码（选读）</h3>
+      <p>想对照实现时再看。链接固定在 RLinf commit <code>c70606f</code>；更多代码入口见<a href="代码索引.html#rl-token">代码索引</a>。</p>
+      <table class="refs"><tr><td>第一阶段入口与配置</td><td><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/examples/sft/train_vla_sft.py" target="_blank" rel="noreferrer">训练脚本</a> · <a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/examples/sft/config/realworld_rlt_stage1_sft_openpi_pi05.yaml" target="_blank" rel="noreferrer">真机配置</a></td></tr><tr><td>VLA 微调 + RL token 联合损失</td><td><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/models/embodiment/openpi/pi0.py#L776-L847" target="_blank" rel="noreferrer">sft_forward</a></td></tr><tr><td>RL token 编码 / 重建</td><td><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/models/embodiment/modules/rlt_token_transformer.py" target="_blank" rel="noreferrer">RLTTokenTransformer</a></td></tr><tr><td>冻结 VLA 读状态</td><td><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/models/embodiment/openpi/tasks/eval.py#L122-L164" target="_blank" rel="noreferrer">extract_rlt_obs</a></td></tr><tr><td>一次采样的总流程</td><td><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/algorithms/rlt/rollout.py#L38-L84" target="_blank" rel="noreferrer">predict_rlt_actions</a></td></tr><tr><td>小 actor / critic 网络</td><td><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/models/embodiment/mlp_policy/rlt_mlp_policy.py" target="_blank" rel="noreferrer">RLTMLPPolicy</a></td></tr><tr><td>选谁执行</td><td><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/algorithms/rlt/route.py" target="_blank" rel="noreferrer">route.py</a> · <a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/envs/real/wrappers/episode/policy_switch.py#L38-L56" target="_blank" rel="noreferrer">真机踏板开关</a></td></tr><tr><td>记录经验 / 训练节奏</td><td><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/workers/actor/fsdp_rlt_ac_policy_worker.py#L608-L659" target="_blank" rel="noreferrer">经验入池</a> · <a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/workers/actor/fsdp_rlt_ac_policy_worker.py#L731-L827" target="_blank" rel="noreferrer">更新次数</a></td></tr><tr><td>critic 与 actor 的损失</td><td><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/workers/actor/fsdp_rlt_ac_policy_worker.py#L234-L299" target="_blank" rel="noreferrer">forward_critic</a> · <a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/workers/actor/fsdp_rlt_ac_policy_worker.py#L302-L368" target="_blank" rel="noreferrer">forward_actor</a></td></tr><tr><td>第二阶段配置</td><td><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/examples/embodiment/config/realworld_rlt_stage2_ac_mlp.yaml" target="_blank" rel="noreferrer">真机</a> · <a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/examples/embodiment/config/maniskill_rlt_stage2_ac_mlp.yaml" target="_blank" rel="noreferrer">ManiSkill 仿真</a></td></tr><tr><td>官方使用文档</td><td><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/docs/source-zh/rst_source/examples/embodied/rlt.rst" target="_blank" rel="noreferrer">RLinf RLT 教程（中文）</a></td></tr></table>
     </div>
   </section>
 

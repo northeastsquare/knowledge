@@ -140,6 +140,10 @@
   .fml{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:13.5px; line-height:2.0; background:var(--surface-2); border:1px solid var(--line); border-left:3px solid var(--accent); border-radius:0 8px 8px 0; padding:13px 16px; margin:14px 0; overflow-x:auto; white-space:pre; color:var(--ink); font-variant-numeric:tabular-nums;}
   .fml .c{color:var(--ink-3);}
   .fml .h{color:var(--signal); font-weight:600;}
+  .fml.tex{font-family:inherit; white-space:normal; line-height:1.6; font-size:15px;}
+  .fml.tex .katex-display{margin:.5em 0;overflow-x:auto;overflow-y:hidden;}
+  .fml.tex .fc{font-size:13.5px; color:var(--ink-2,#55636e); margin:2px 0;}
+  .fml.tex .fc .h{color:var(--signal);}
   .axis{display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:14px; margin:18px 0 0;}
   .ax{border:1px solid var(--line); border-radius:12px; background:var(--surface); padding:14px 16px; box-shadow:var(--shadow);}
   .ax .n{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:11.5px; color:var(--accent); letter-spacing:.1em; text-transform:uppercase;}
@@ -148,6 +152,8 @@
   .lede{font-size:15px; color:var(--ink-2); border-left:3px solid var(--line-strong); padding-left:14px; margin:0 0 18px;}
 </style>
 <link rel="stylesheet" href="concepts.css">
+<link rel="stylesheet" href="assets/katex/katex.min.css">
+<style>.katex-display{overflow-x:auto;overflow-y:hidden;max-width:100%;}</style>
 </head>
 <body>
 <div class="grid" aria-hidden="true"></div>
@@ -172,14 +178,55 @@
   <section style="margin-top:44px">
     <h2>起点：两条主干</h2>
     <p class="lede">所有 on-policy 方法来自策略梯度定理，所有 off-policy / 离线方法来自 Bellman 方程。这是整张图的分水岭。</p>
-    <p><strong>主干 A · <a class="concept-link" href="为什么取log.html#concept-policy-gradient">策略梯度定理</a>。</strong>要最大化期望回报 J(θ)=E[Σγᵗr]，梯度形式是：</p>
-    <div class="fml">∇J(θ) = E[ ∇log π_θ(a|s) · <span class="h">A(s,a)</span> ]
-         <span class="c">└─ 唯一需要"猜"的东西，就是这个 A</span></div>
-    <p>这个式子里 <a class="concept-link" href="为什么取log.html#concept-log-trick"><code>∇log π</code></a> 是自动微分白给的，<strong>全部的算法设计都花在 <a class="concept-link" href="两条主干-拆机手册.html#concept-advantage">A</a> 上</strong>：A 怎么估，方差多大，偏差多大，要不要 <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-actor-critic">critic</a>。顺带一个前提——你得能算出 <code>log π</code>，这对高斯策略是白给的，对<a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">流匹配</a> / 扩散策略<strong>不是</strong>，于是有了家族 ③。</p>
+    <p><strong>主干 A · <a class="concept-link" href="为什么取log.html#concept-policy-gradient">策略梯度定理</a>。</strong>要最大化期望回报 $J(\theta)=\mathbb{E}\big[\sum_t\gamma^t r_t\big]$，梯度形式是：</p>
+    <div class="fml tex">$$\nabla_\theta J(\theta)=\mathbb{E}\Big[\nabla_\theta\log\pi_\theta(a\mid s)\cdot \textcolor{#c4572a}{A(s,a)}\Big]$$<div class="fc">唯一需要“猜”的东西，就是这个 $A$</div></div>
+    <p><strong>直观意义：比平均好的动作以后多做，比平均差的动作以后少做。</strong></p>
+    <ul>
+      <li>$\nabla_\theta\log\pi_\theta(a\mid s)$：<strong>方向</strong>。参数往这个方向改，状态 $s$ 下选中动作 $a$ 的概率就会变大。</li>
+      <li>$A(s,a)$：<strong>打分</strong>。这次选 $a$ 比平均水平好多少；好就是正数，差就是负数。</li>
+      <li><strong>两者相乘</strong>：$A&gt;0$ 时沿方向走，提高 $a$ 的概率；$A&lt;0$ 时反着走，压低 $a$ 的概率；$A\approx0$ 时基本不动。分数越大，调得越多。</li>
+      <li>$\mathbb{E}$：对大量实际采到的 $(s,a)$ 取平均，单次运气好坏不会主导更新。</li>
+      <li><strong>为什么取 log</strong>：$\nabla\log\pi=\nabla\pi/\pi$。常被采到的动作出现次数多，每次的贡献就按概率调小一些，所以动作不会只因为“被采得多”就越推越高。</li>
+    </ul>
+    <p>一句话：<strong>先试，再按结果好坏调整每个动作的出现概率。</strong>所以这类方法叫“策略梯度”。</p>
+    <p><strong>“先试”具体怎么试？</strong>不是把每个动作都试一遍，也不是深度优先搜索。</p>
+    <ul>
+      <li><strong>每步只抽一个动作</strong>：到了状态 $s$，按 $\pi_\theta(a\mid s)$ 随机抽一个动作执行。概率高的常被抽中，概率低的偶尔也会被抽到，探索就靠这份随机性。</li>
+      <li><strong>一直走到底，不回头</strong>：执行后进入下一状态，再抽、再执行，直到回合结束。这样得到一条轨迹，也就是一个样本。不会退回去换个动作重试，真实环境（尤其是真机）也退不回去。</li>
+      <li><strong>多走几遍</strong>：同一个策略跑很多回合，或者开很多环境并行，比如仿真开 64 个。每步都是随机抽的，所以每条轨迹都不一样，合起来就覆盖了不同的动作。</li>
+      <li><strong>看结果、调概率</strong>：用每条轨迹后面实际拿到的回报（或 critic 的估计）给每个 $(s,a)$ 算出 $A$，再按上面的公式调整：好的调高，差的调低。</li>
+      <li><strong>调完再试</strong>：拿更新后的策略重新采轨迹，“采样 → 打分 → 更新”反复循环。</li>
+    </ul>
+    <p>用树来比喻：每个回合是从树根随机走到一片叶子的<strong>一条路径</strong>。走够多条路径以后，按每条路径的好坏去调整每个分叉口选哪边的概率。</p>
+    <p>这个式子里 <a class="concept-link" href="为什么取log.html#concept-log-trick">$\nabla\log\pi$</a> 是自动微分白给的，<strong>全部的算法设计都花在 <a class="concept-link" href="两条主干-拆机手册.html#concept-advantage">A</a> 上</strong>：A 怎么估，方差多大，偏差多大，要不要 <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-actor-critic">critic</a>。顺带一个前提——你得能算出 $\log\pi$，这对高斯策略是白给的，对<a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">流匹配</a> / 扩散策略<strong>不是</strong>，于是有了家族 ③。</p>
     <p><strong>主干 B · <a class="concept-link" href="两条主干-拆机手册.html#concept-bellman">Bellman 方程</a>。</strong>不走梯度，走不动点迭代。学一个 Q 满足自一致性，再让策略去贪 Q：</p>
-    <div class="fml">Q(s,a) = r + γ·E[ <span class="h">max</span> Q(s',a') ]     <span class="c">← 这个 max 是万恶之源</span>
-π ← argmax Q                        <span class="c">（最大熵版本：加 −α log π）</span></div>
+    <div class="fml tex">$$Q(s,a)=r+\gamma\,\mathbb{E}\Big[\mathop{\textcolor{#c4572a}{\max}}_{a'}\,Q(s',a')\Big],\qquad \pi(s)=\arg\max_a Q(s,a)$$<div class="fc">这个 $\max$ 是万恶之源；最大熵版本再加一项 $-\alpha\log\pi$</div></div>
     <p>好处是数据可以反复用（<a class="concept-link" href="两条主干-拆机手册.html#concept-off-policy">off-policy</a>），样本效率高一个量级。坏处全在那个 <code>max</code> 上：它<strong>专挑估计误差最大的动作</strong>，于是误差被系统性放大 —— 这就是<a class="concept-link" href="两条主干-拆机手册.html#concept-overestimation">价值高估</a>。家族 ② 和 ⑤ 的所有花招，本质都是在跟这个 max 搏斗。</p>
+    <p><strong>贝尔曼是广度优先搜索吗？不是。</strong>它只往前看<strong>一步</strong>，再往后的价值直接用估计值 $Q(s',a')$ 顶替，不会一层层展开整棵树。</p>
+    <ul>
+      <li><strong>经典动态规划（值迭代）</strong>：要事先知道环境模型。对每个状态把所有动作、所有下一状态都算一遍，确实是“每个状态遍历所有动作”，但只展开一层，靠反复迭代让价值慢慢传开。</li>
+      <li><strong>强化学习里的 Q 学习 / SAC / RLT 的 critic</strong>：不知道环境模型，也不遍历动作。每次只拿经验池里一条真实走过的 $(s,a,r,s')$ 来调整 Q。</li>
+      <li><strong>$\max_{a'}$ 怎么算</strong>：离散动作时，网络一次前向输出所有动作的 Q，取最大的那个，不用真去执行每个动作。连续动作没法枚举，就让 actor 给出一个“它认为最好”的 $a'$ 来近似这个 max，SAC 和 RLT 都这么做。</li>
+    </ul>
+    <p>和策略梯度放在一起看：<strong>策略梯度（蒙特卡洛）</strong>沿一条路走到底，看实际结果，<strong>窄而深</strong>；<strong>贝尔曼 / TD</strong> 只走一步，剩下的用估计值补上，<strong>窄而浅</strong>；<strong>动态规划</strong>把每个动作都展开但只展开一层，<strong>宽而浅</strong>。</p>
+    <p><strong>“用一条经验更新 Q”到底在改什么？</strong>$s$ 和 $a$ 不是变量，它们是经验池里记下的数据。真正被改的是 <strong>Q 这个打分器</strong>：输入 $(s,a)$，输出“在 $s$ 做 $a$，往后能拿多少回报”的估计。</p>
+    <ul>
+      <li><strong>表格版</strong>：每个 $(s,a)$ 对应表里一格，改的就是这一格里的数。</li>
+      <li><strong>神经网络版</strong>（SAC、RLT 用的）：打分由网络参数 $\phi$ 算出，即 $Q_\phi(s,a)$，改的是 $\phi$。</li>
+    </ul>
+    <p>一次更新分三步：</p>
+    <ol>
+      <li><strong>算目标</strong>：$y=r+\gamma\,Q(s',a')$，也就是“这一步实际拿到的奖励 + 到了 $s'$ 之后的估计值”。</li>
+      <li><strong>看当前打分</strong>：$Q(s,a)$。</li>
+      <li><strong>往目标挪一点</strong>：表格版直接改，$Q(s,a)\leftarrow Q(s,a)+\alpha\,(y-Q(s,a))$；网络版把 $(Q_\phi(s,a)-y)^2$ 当损失，做一步梯度下降改 $\phi$。</li>
+    </ol>
+    <p><strong>算一个例子</strong>：原来 $Q(s,a)=5$，这一步拿到 $r=1$，$Q(s',a')=6$，$\gamma=0.9$，目标 $y=1+0.9\times6=6.4$。学习率 $\alpha=0.1$ 时，表格版改成 $5+0.1\times1.4=5.14$。</p>
+    <p><strong>为什么这样能学对</strong>：</p>
+    <ul>
+      <li><strong>有真实信号</strong>：目标里的 $r$ 是环境真给的奖励，不是猜出来的。</li>
+      <li><strong>奖励会往前传</strong>：离成功最近的那一步先学到“这里值钱”；下次更新它前面一步时，目标里的 $Q(s',a')$ 已经变大，价值就这样一步步传回起点。</li>
+      <li><strong>网络会举一反三</strong>：改参数不只影响这一个点，相似的 $(s,a)$ 打分也会跟着变，所以没见过的输入也能大致估出来。这既是网络版能处理连续状态的原因，也是它会<strong>高估</strong>的来源。</li>
+    </ul>
   </section>
 
   <section style="margin-top:44px">
@@ -197,26 +244,24 @@
       <p id="concept-on-policy" class="desc concept-anchor">这一族的共同软肋是<strong>数据用一次就废</strong>——因为策略一更新，旧数据的分布就不对了。所以它们全部要回答同一个问题：能走多远？</p>
 
       <h3 id="concept-ppo" class="concept-anchor" style="margin-top:16px">PPO：用裁剪代替信任域 <a class="code-jump" href="代码索引.html#ppo" style="font:12px ui-monospace,Consolas,monospace;white-space:nowrap;text-decoration:none;border:1px dashed currentColor;border-radius:4px;padding:0 5px;margin-left:4px;opacity:.8">⟨/⟩ 代码</a></h3>
-      <p>理论上该约束 KL(π_new‖π_old) ≤ δ，但那要解带约束优化。PPO 的做法是把约束<strong>换成一个不再奖励越界的目标函数</strong>：</p>
-      <div class="fml">L = E[ min( r·A , clip(r, 1−ε, 1+ε)·A ) ]      r = π_θ/π_old</div>
-      <p>关键在这个 <code>min</code> 的非对称性：A&gt;0 时上界被 1+ε 截住，再增大 r 也没有额外收益；A&lt;0 时下界被 1−ε 截住。所以梯度在越界后<strong>直接归零</strong>，而不是变成惩罚。优势用 GAE 估：</p>
-      <div id="concept-gae" class="fml concept-anchor">A_t = Σ (γλ)^l · δ_{t+l}        δ_t = r_t + γV(s_{t+1}) − V(s_t)
-      <span class="c">λ→0：单步 TD，低方差高偏差    λ→1：蒙特卡洛，高方差低偏差</span></div>
+      <p>理论上该约束 $\mathrm{KL}(\pi_{\text{new}}\,\|\,\pi_{\text{old}})\le\delta$，但那要解带约束优化。PPO 的做法是把约束<strong>换成一个不再奖励越界的目标函数</strong>：</p>
+      <div class="fml tex">$$L^{\text{CLIP}}=\mathbb{E}\Big[\min\big(r\,A,\ \operatorname{clip}(r,\,1-\epsilon,\,1+\epsilon)\,A\big)\Big],\qquad r=\frac{\pi_\theta(a\mid s)}{\pi_{\text{old}}(a\mid s)}$$</div>
+      <p>关键在这个 <code>min</code> 的非对称性：$A\gt0$ 时上界被 $1+\epsilon$ 截住，再增大 $r$ 也没有额外收益；$A\lt0$ 时下界被 $1-\epsilon$ 截住。所以梯度在越界后<strong>直接归零</strong>，而不是变成惩罚。优势用 GAE 估：</p>
+      <div id="concept-gae" class="fml concept-anchor tex">$$\hat A_t=\sum_{l=0}^{\infty}(\gamma\lambda)^l\,\delta_{t+l},\qquad \delta_t=r_t+\gamma V(s_{t+1})-V(s_t)$$<div class="fc">$\lambda\to0$：单步 TD，低方差高偏差；$\lambda\to1$：蒙特卡洛，高方差低偏差</div></div>
       <p>代价很实在：<strong>必须养一个 critic</strong>。对 VLA 这意味着第二个几十亿参数的网络，所以 RLinf 让它跟语言主干共享参数、只挂个 value head。</p>
 
       <h3 id="concept-grpo" class="concept-anchor" style="margin-top:20px">GRPO：用组内比较替掉 critic <a class="code-jump" href="代码索引.html#grpo" style="font:12px ui-monospace,Consolas,monospace;white-space:nowrap;text-decoration:none;border:1px dashed currentColor;border-radius:4px;padding:0 5px;margin-left:4px;opacity:.8">⟨/⟩ 代码</a></h3>
       <p>一个观察：A(s,a) 本质是「这个动作比该状态的平均水平好多少」。既然 V(s) 就是个 baseline，那<strong>为什么不直接采一组样本、用组内均值当 baseline</strong>？</p>
-      <div class="fml">A_i = ( R_i − mean(R_1..R_G) ) / std(R_1..R_G)</div>
+      <div class="fml tex">$$A_i=\frac{R_i-\operatorname{mean}(R_1,\dots,R_G)}{\operatorname{std}(R_1,\dots,R_G)}$$</div>
       <p>省掉一整个 critic 网络。代价有三个，都是理论上的硬代价：<strong>① 要能从同一状态重复采样</strong>（仿真器行，真机基本不行）；<strong>② 只有轨迹级信号</strong>，组内所有时间步共享一个优势，细粒度信用分配没了；<strong>③ 全成或全败时 std→0、优势恒为 0</strong>，这组样本白采。第③点直接催生了「成功率过滤」。</p>
 
       <h3 id="concept-dapo" class="concept-anchor" style="margin-top:20px">DAPO：GRPO 的四个补丁</h3>
-      <p>都是针对具体病灶：<strong>Clip-Higher</strong>（ε_low 和 ε_high 解耦，上界放宽）治的是熵坍缩——对称裁剪会过度压制低概率 token 的上升空间；<strong>动态采样</strong>治的正是上面第③点；<strong>token 级损失</strong>治的是长序列被平均稀释；超长惩罚治长度失控。</p>
-      <div class="fml">min( r·A , clip(r, 1−ε_low, <span class="h">1+ε_high</span>)·A )    <span class="c">ε_high &gt; ε_low</span></div>
+      <p>都是针对具体病灶：<strong>Clip-Higher</strong>（$\epsilon_{\text{low}}$ 和 $\epsilon_{\text{high}}$ 解耦，上界放宽）治的是熵坍缩——对称裁剪会过度压制低概率 token 的上升空间；<strong>动态采样</strong>治的正是上面第③点；<strong>token 级损失</strong>治的是长序列被平均稀释；超长惩罚治长度失控。</p>
+      <div class="fml tex">$$\min\big(r\,A,\ \operatorname{clip}(r,\,1-\epsilon_{\text{low}},\,\textcolor{#c4572a}{1+\epsilon_{\text{high}}})\,A\big),\qquad \epsilon_{\text{high}}>\epsilon_{\text{low}}$$</div>
 
       <h3 id="concept-reinforce-plus-plus" class="concept-anchor" style="margin-top:20px">Reinforce++：把 KL 挪进奖励</h3>
       <p>连裁剪都不要，因为裁剪会给梯度估计引入偏差。KL 不作为损失项，而是<strong>直接从奖励里减掉</strong>，再做全局归一化：</p>
-      <div class="fml">A_t = r(o,q) − β·Σ_{i≥t} KL(i)        KL(t) = log[ π_old(o_t|·) / π_SFT(o_t|·) ]
-A_norm = (A − mean_batch) / std_batch</div>
+      <div class="fml tex">$$\begin{aligned}A_t&=r(o,q)-\beta\sum_{i\ge t}\mathrm{KL}(i),\qquad \mathrm{KL}(t)=\log\frac{\pi_{\text{old}}(o_t\mid\cdot)}{\pi_{\text{SFT}}(o_t\mid\cdot)}\\ A_{\text{norm}}&=\frac{A-\operatorname{mean}_{\text{batch}}(A)}{\operatorname{std}_{\text{batch}}(A)}\end{aligned}$$</div>
       <p>注意这个细节：把 KL 放进奖励里，它会被<strong>折扣与累积</strong>，语义上是「偏离参考策略要一路付代价」；放进损失里则只惩罚当前一步。两者不等价。</p>
     </div>
   </div>
@@ -224,24 +269,21 @@ A_norm = (A − mean_batch) / std_batch</div>
     <div class="camp-head"><span class="bar" style="background:var(--c-resid)"></span><h2 id="concept-sac" class="concept-anchor">② off-policy 最大熵：跟 max 搏斗 <a class="code-jump" href="代码索引.html#sac" style="font:12px ui-monospace,Consolas,monospace;white-space:nowrap;text-decoration:none;border:1px dashed currentColor;border-radius:4px;padding:0 5px;margin-left:4px;opacity:.8">⟨/⟩ 代码</a></h2><span class="cnt">主干 B</span></div>
     <div class="camp-body">
       <p class="desc">SAC 先把 Bellman 里那个硬 <code>max</code> 换成<strong>软的</strong>——在目标里加一个熵项，于是最优策略不再是 argmax 的尖峰，而是一个玻尔兹曼分布：</p>
-      <div class="fml">Q(s,a) = r + γ·E[ Q(s',a') <span class="h">− α log π(a'|s')</span> ]      <span class="c">软 Bellman</span>
-π* ∝ exp( Q(s,a) / α )                          <span class="c">最优策略是软最大，不是尖峰</span></div>
+      <div class="fml tex">$$\begin{aligned}Q(s,a)&=r+\gamma\,\mathbb{E}\Big[Q(s',a')\,\textcolor{#c4572a}{-\,\alpha\log\pi(a'\mid s')}\Big]\\ \pi^*(a\mid s)&\propto\exp\big(Q(s,a)/\alpha\big)\end{aligned}$$<div class="fc">第一行是软 Bellman 方程；第二行说明最优策略是“软最大”，不是尖峰</div></div>
       <p>这一步同时买到两样东西：<strong>探索变成目标的一部分</strong>（不用外挂噪声调度），以及 max 的尖锐性被削弱。但高估问题只是被缓解，没有消失。剩下三种变体是三种正交的压法：</p>
 
       <h3 style="margin-top:18px">SAC：双 Q 取小 + target 网络</h3>
-      <div class="fml">y = r + γ·[ <span class="h">min</span>(Q_θ̄1, Q_θ̄2)(s',a') − α log π(a'|s') ]</div>
-      <p><a class="concept-link" href="RLToken-漫画分镜解读.html#concept-twin-q">取小</a>是刻意引入<strong>负偏差</strong>去对冲 max 的正偏差；<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-target-network">target 网络</a> θ̄ 靠滑动平均缓慢跟随，切断「自己的误差立刻喂给自己」的正反馈回路。</p>
+      <div class="fml tex">$$y=r+\gamma\Big[\textcolor{#c4572a}{\min_{i=1,2}}\,Q_{\bar\theta_i}(s',a')-\alpha\log\pi(a'\mid s')\Big],\qquad a'\sim\pi(\cdot\mid s')$$</div>
+      <p><a class="concept-link" href="RLToken-漫画分镜解读.html#concept-twin-q">取小</a>是刻意引入<strong>负偏差</strong>去对冲 max 的正偏差；<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-target-network">target 网络</a> $\bar\theta$ 靠滑动平均缓慢跟随，切断「自己的误差立刻喂给自己」的正反馈回路。</p>
 
       <h3 id="concept-crossq" class="concept-anchor" style="margin-top:18px">CrossQ：反过来，把 target 删掉</h3>
       <p>一个反直觉的论断：target 网络虽然稳住了训练，但它<strong>人为延迟了价值传播</strong>，这是样本效率的隐形税。CrossQ 直接用当前参数算 <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-bootstrap">bootstrap</a> 目标：</p>
-      <div class="fml">y = r + γ·[ min Q_<span class="h">φ</span>(s',a') − α log π ]     <span class="c">φ 是当前参数，不是 θ̄</span></div>
+      <div class="fml tex">$$y=r+\gamma\Big[\min_i\,Q_{\textcolor{#c4572a}{\phi_i}}(s',a')-\alpha\log\pi(a'\mid s')\Big]$$<div class="fc">$\phi$ 是当前参数，不是 target 参数 $\bar\theta$</div></div>
       <p>那稳定性从哪来？—— 从 <strong>Batch Renormalization</strong>。关键技巧是把当前状态和后继状态<strong>拼成一个 batch 做联合前向</strong>，这样 BRN 的统计量覆盖两个分布，修正了 s 和 s' 分布不一致带来的偏移（这正是以往 BN 在 RL 里失败的原因）。再把 critic 加宽到 2048 补表达力。结果：UTD=1 就追平 REDQ/DroQ 的样本效率，算力省一个数量级。</p>
 
       <h3 id="concept-rlpd" class="concept-anchor" style="margin-top:18px">RLPD：用离线数据当锚，不做预训练</h3>
       <p>常规思路是「先离线预训练，再在线微调」，但那会引入两阶段的分布断层。RLPD 的主张是<strong>压根不用分阶段</strong>，只需三个最小改动：</p>
-      <div class="fml">batch = 50% D_online  +  50% D_offline    <span class="c">对称采样：演示数据永久当锚</span>
-critic: + LayerNorm                      <span class="c">限制外推幅度，防价值爆炸</span>
-critic: E=10 集成 + 随机子集              <span class="c">支撑高 UTD / 异步更新</span></div>
+      <div class="fml tex">$$\mathcal{B}=50\%\ \mathcal{D}_{\text{online}}\ \cup\ 50\%\ \mathcal{D}_{\text{offline}}$$<div class="fc">对称采样：演示数据永久当锚</div><div class="fc">critic 加 LayerNorm：限制外推幅度，防价值爆炸</div><div class="fc">critic 用 $E=10$ 的集成并随机取子集：支撑高 UTD / 异步更新</div></div>
       <p>LayerNorm 这一条理论上最有意思：它不是为了收敛更快，而是<strong>限制网络在 OOD 动作上输出任意大的值</strong>——把外推的灾难性后果钳住。这三招合起来说明了一件事：标准 off-policy 算法不需要复杂的保守性约束，也能吃下离线数据。</p>
     </div>
   </div>
@@ -250,18 +292,17 @@ critic: E=10 集成 + 随机子集              <span class="c">支撑高 UTD / 
     <div class="camp-head"><span class="bar" style="background:var(--c-noise)"></span><h2>③ 流 / 噪声空间：log π 算不出来怎么办</h2><span class="cnt">Axis 2</span></div>
     <div class="camp-body">
       <p class="desc">这一族解决的是一个纯粹的<strong>理论障碍</strong>。<a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">流匹配</a> / 扩散策略生成动作靠解 ODE：</p>
-      <div class="fml">A^0 ~ N(0,I)  →  dA/dτ = v_θ(A^τ, s)  →  A^1 = 最终动作</div>
-      <p>它是<strong>确定性映射</strong>：给定初始噪声，输出唯一。这意味着 log π(a|s) 需要沿轨迹积分 divergence，算不动也不可导。而主干 A 和主干 B 都需要 log π。三条解法：</p>
+      <div class="fml tex">$$A^0\sim\mathcal{N}(0,I)\ \longrightarrow\ \frac{dA^\tau}{d\tau}=v_\theta(A^\tau,s)\ \longrightarrow\ A^1=\text{最终动作}$$</div>
+      <p>它是<strong>确定性映射</strong>：给定初始噪声，输出唯一。这意味着 $\log\pi(a\mid s)$ 需要沿轨迹积分 divergence，算不动也不可导。而主干 A 和主干 B 都需要 $\log\pi$。三条解法：</p>
 
       <h3 id="concept-sac-flow" class="concept-anchor" style="margin-top:18px">SAC-Flow：把确定性路径改造成高斯链</h3>
       <p>思路是在每一步<strong>注入噪声并加漂移修正</strong>，让终点分布保持不变，但路径变成随机的。随机路径的密度就可以拆解：</p>
-      <div class="fml">log p(A) = Σ_k log N(A^{k+1} ; μ_k, Σ_k)     <span class="c">单步高斯的乘积 → 可导</span></div>
+      <div class="fml tex">$$\log p(A)=\sum_k\log\mathcal{N}\big(A^{k+1};\,\mu_k,\,\Sigma_k\big)$$<div class="fc">单步高斯的乘积 → 可导</div></div>
       <p>另一半贡献是把 K 步采样<strong>视作 RNN 展开</strong>——既然是展开就会有梯度爆炸/消失，于是用循环式 Transformer 结构重参数化速度网络来治。</p>
 
       <h3 id="concept-dsrl" class="concept-anchor" style="margin-top:18px">DSRL：不碰似然，换个动作空间</h3>
       <p>最优雅的一招：既然 <code>噪声 → 动作</code> 是确定性映射，那<strong>选噪声就等于选动作</strong>。于是冻结整个策略，把噪声本身定义成新的动作空间：</p>
-      <div class="fml">原 MDP: (s) → a，   π 不可算似然
-新 MDP: (s) → <span class="h">z</span>，  a = Flow_frozen(z, s)      <span class="c">z 是高斯的 → 似然白给</span></div>
+      <div class="fml tex">$$\begin{aligned}&\text{原 MDP：}&&s\mapsto a,&&\pi(a\mid s)\ \text{似然不可算}\\ &\text{新 MDP：}&&s\mapsto \textcolor{#c4572a}{z},\ \ a=\mathrm{Flow}_{\text{frozen}}(z,s),&&z\ \text{是高斯的，似然白给}\end{aligned}$$</div>
       <p>在这个新 MDP 上跑标准 SAC 就行，~500K 参数。理论代价是<strong>动作空间被冻结策略的像集限制住</strong>——只能在 VLA 能生成的动作里挑，出不了它的分布。这既是安全网（泛化不损），也是天花板。</p>
 
       <h3 style="margin-top:18px">πRL：把 ODE 转成 SDE</h3>
@@ -275,25 +316,17 @@ critic: E=10 集成 + 随机子集              <span class="c">支撑高 UTD / 
 
       <h3 id="concept-iql" class="concept-anchor" style="margin-top:18px">IQL：干脆不取 max <a class="code-jump" href="代码索引.html#iql" style="font:12px ui-monospace,Consolas,monospace;white-space:nowrap;text-decoration:none;border:1px dashed currentColor;border-radius:4px;padding:0 5px;margin-left:4px;opacity:.8">⟨/⟩ 代码</a></h3>
       <p>核心招数是用<strong>期望回归</strong>估计 V。把 τ 设成 0.7 这类大于 0.5 的值，非对称地加权正负残差：</p>
-      <div class="fml">L_V = E[ ρ_τ( Q(s,a) − V(s) ) ]        ρ_τ(u) = |τ − 1(u&lt;0)|·u²
-      <span class="c">τ&gt;0.5 时更重罚"低估"，于是 V 逼近数据内动作的高分位，近似 max 的效果</span>
-L_Q = E[ (Q(s,a) − (r + γV(s')))² ]   <span class="c">目标只用 V，从不枚举 a'</span>
-L_π = −E[ exp((Q−V)/β) · log π(a|s) ] <span class="c">优势加权 BC：只重加权数据内动作</span></div>
+      <div class="fml tex">$$\begin{aligned}L_V&=\mathbb{E}\big[\rho_\tau\big(Q(s,a)-V(s)\big)\big],\qquad \rho_\tau(u)=\big|\tau-\mathbf{1}(u\lt 0)\big|\,u^2\\ L_Q&=\mathbb{E}\Big[\big(Q(s,a)-(r+\gamma V(s'))\big)^2\Big]\\ L_\pi&=-\mathbb{E}\Big[\exp\big((Q(s,a)-V(s))/\beta\big)\,\log\pi(a\mid s)\Big]\end{aligned}$$<div class="fc">$L_V$：$\tau\gt0.5$ 时更重罚“低估”，于是 $V$ 逼近数据内动作的高分位，近似 $\max$ 的效果</div><div class="fc">$L_Q$：目标只用 $V$，从不枚举 $a&#39;$</div><div class="fc">$L_\pi$：优势加权 BC，只重新加权数据内的动作</div></div>
       <p>整套流程<strong>从头到尾没有任何一处对未见动作求值</strong>。这是它稳的全部原因。策略提升由「优势高的样本权重指数级更大」隐式完成。</p>
 
       <h3 style="margin-top:18px"><a class="concept-link" href="pi0.6-论文解读.html#concept-recap">RECAP</a>：把优势变成 CFG 的条件</h3>
       <p>对扩散 / 流策略，优势加权 BC 不好做。RECAP 换一个机制：<strong>把「优势高低」当成一个可以被条件化的属性</strong>。</p>
-      <div class="fml">算折扣回报 G_t → 训价值模型 V → 优势 A_t = G_t − V(s_t)
-A_t 高 → 当作<span class="h">条件</span>输入训练      A_t 低 → 当作<span class="h">无条件</span>输入训练
-推理: v = v_uncond + w·(v_cond − v_uncond)   <span class="c">guidance 强度 w 推向高优势方向</span></div>
+      <div class="fml tex"><div class="fc">先算折扣回报 $G_t$，训练价值模型 $V$，得到优势：</div>$$A_t=G_t-V(s_t)$$<div class="fc">$A_t$ 高的样本当作<span class="h">条件</span>输入训练，$A_t$ 低的当作<span class="h">无条件</span>输入训练。推理时用 guidance 推向高优势方向：</div>$$v=v_{\text{uncond}}+w\,\big(v_{\text{cond}}-v_{\text{uncond}}\big)$$</div>
       <p>这等于把 RL 的策略提升<strong>转译成生成模型自己的语言</strong>：不改损失形式，只改条件。好处是完全避开了 off-policy 的价值高估链条（因为只是监督学习），代价是提升幅度受数据覆盖范围限制。</p>
 
       <h3 id="concept-steam" class="concept-anchor" style="margin-top:18px">STEAM：优势信号从时序顺序里自监督出来</h3>
       <p>RECAP 仍然需要奖励才能算回报。STEAM 追问：<strong>能不能连奖励都不要</strong>？它的答案是利用一个免费的监督信号——专家演示里，<strong>时间本身就是进度</strong>。</p>
-      <div class="fml">取帧对 (f_i, f_j)，监督目标 = 有符号步长 (j − i)
-  j &gt; i → 正向进步        j &lt; i → 倒退（逆序喂入即可制造负样本）
-偏移按轨迹长度归一 (∝ L_max/L_τ)  <span class="c">→ 衡量"时间效率"而非步数，越快得分越高</span>
-集成聚合: A = <span class="h">min</span>_m A_m               <span class="c">worst-of-N：保守估计，压 OOD 高估</span></div>
+      <div class="fml tex"><div class="fc">取帧对 $(f_i,f_j)$，监督目标是有符号步长 $j-i$：$j\gt i$ 表示正向进步，$j\lt i$ 表示倒退（逆序喂入即可制造负样本）。偏移按轨迹长度归一，衡量“时间效率”而非步数，越快得分越高：</div>$$\Delta_{ij}\propto (j-i)\cdot\frac{L_{\max}}{L_\tau},\qquad A=\textcolor{#c4572a}{\min_m}\,A_m$$<div class="fc">集成取 worst-of-N：保守估计，压住 OOD 高估</div></div>
       <p>两个理论亮点：<strong>①</strong> 只从成功演示就能学到「什么是倒退」，靠的是把帧对逆序输入 —— 不需要失败数据；<strong>②</strong> worst-of-N 取集成最小值，和 SAC 双 Q 取小是同一个思想（用刻意的负偏差对冲乐观偏差），只是搬到了离线优势估计上。</p>
     </div>
   </div>
@@ -303,23 +336,19 @@ A_t 高 → 当作<span class="h">条件</span>输入训练      A_t 低 → 当
     <div class="camp-body">
       <h3>RLT：先解决状态表示，再谈 RL</h3>
       <p>RL 在 VLA 上难训，一个根因是<strong>状态维度太高</strong>——几十亿参数的特征直接喂 critic，样本效率无从谈起。RLT 先用<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-information-bottleneck">信息瓶颈</a>把它压掉：</p>
-      <div class="fml">冻结 VLA → encoder-decoder（自回归重建损失）→ <span class="h">z_rl</span>（紧凑表示）
-actor(z_rl, 本体感觉, <span class="h">ã</span>) → a          ã = VLA 参考动作块
-损失 + λ‖a − ã‖²                        <span class="c">锚定：不许跑离 VLA 先验太远</span></div>
+      <div class="fml tex"><div class="fc">冻结 VLA → encoder-decoder（自回归重建损失）→ <span class="h">$z_{\text{rl}}$</span>（紧凑表示）</div>$$a=\mathrm{actor}\big(z_{\text{rl}},\ s_{\text{prop}},\ \textcolor{#c4572a}{\tilde a}\big),\qquad L_{\text{actor}}=-Q(s,a)+\lambda\,\lVert a-\tilde a\rVert^2$$<div class="fc">$\tilde a$ 是 VLA 的参考动作块，$s_{\text{prop}}$ 是本体感觉；$\lambda$ 项是锚定，不许跑离 VLA 先验太远</div></div>
       <p>三件事一起发生：状态降维（样本效率）、<strong>以参考动作为条件</strong>（探索的起点不是随机而是 VLA 的行为先验，这是 Axis 4）、正则锚定（防止灾难性遗忘）。<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块</a>还顺手缩短了信用分配链。详见 <a href="RL-Token-论文解读.html">RL Token 精读</a>。</p>
 
       <h3 id="concept-opd" class="concept-anchor" style="margin-top:20px">OPD：优势不是学来的，是老师给的</h3>
       <p>如果已经有一个更强的同架构模型，那根本不必从奖励里辛苦提取信号。直接把<strong>师生 logprob 之差当优势</strong>：</p>
-      <div class="fml">A_OPD = log π_teacher(a_student|s) − <span class="c">sg</span>[ log π_student(a_student|s) ]</div>
+      <div class="fml tex">$$A_{\text{OPD}}=\log\pi_{\text{teacher}}(a_{\text{student}}\mid s)-\textcolor{#83919c}{\operatorname{sg}}\big[\log\pi_{\text{student}}(a_{\text{student}}\mid s)\big]$$</div>
       <p>注意两个设计的理论含义：<strong>① 在学生自己的 rollout 上评分</strong>（on-policy 蒸馏），所以纠正的是学生真实会犯的错，而非离线蒸馏里那些它根本不会到达的状态；<strong>② teacher 不生成动作，只打分</strong>，因此这是一个 dense、逐 token 的信号——比稀疏的成功/失败奖励富含的信息多几个数量级。<a class="concept-link" href="KI-知识隔离-论文解读.html#concept-stop-gradient">停梯度</a>符号保证梯度只流向学生。本质上这是<strong>反向 KL 的梯度</strong>，不是真正的 RL。</p>
     </div>
   </div>
   <div class="box">
     <h2 id="concept-action-credit-assignment" class="concept-anchor">横切问题：动作块把信用分配搞坏了</h2>
     <p>VLA 一次吐一整块动作（如 H=50），这在理论上制造了一个 <strong>semi-MDP</strong>：一次决策跨越多个时间步。于是「优势算在哪一级」不是实现细节，而是<strong>改变了 MDP 本身</strong>：</p>
-    <div class="fml">chunk-level:  整块当一个宏动作，共享 1 个优势   V: s → <span class="h">标量</span>
-action-level: 块内每步各有优势                V: s → <span class="h">K 维向量</span>
-token-level:  细到每个 token（仅 logprob）</div>
+    <div class="fml tex">$$\begin{aligned}&\text{chunk 级：}&&V:s\mapsto\textcolor{#c4572a}{\mathbb{R}}&&\text{整块当一个宏动作，共享 1 个优势}\\ &\text{action 级：}&&V:s\mapsto\textcolor{#c4572a}{\mathbb{R}^K}&&\text{块内每步各有优势}\\ &\text{token 级：}&&\text{每个 token 一个}&&\text{仅 logprob}\end{aligned}$$</div>
     <p>chunk-level 的问题是<strong>块内信息被抹平</strong>：50 步里只有第 37 步错了，整块一起被罚或被奖，梯度信号极其模糊。action-level 保留了块内的时间结构，代价是 critic 要输出 K 维。RLinf 的实测站得很稳：<strong>action-level 一致更优</strong>，成功率更高且 value loss 更低（ManiSkill、LIBERO-Goal 都成立）。</p>
     <p class="note">另一个同源问题：<strong>episode 提前成功后的时间步</strong>。它们已经不在任务的有效轨迹里，算进损失就是往梯度里掺噪声 —— 所以 GRPO 要开 valid action mask，PPO 要用 partial reset（因为目标是 success_once，固定长度会稀释信号）。RLT 把动作块从 50 缩到 10 也是同一动机：缩短信用分配链。</p>
   </div>
@@ -379,6 +408,13 @@ token-level:  细到每个 token（仅 logprob）</div>
     <a href="RLinf-RL方法对比.html">← 实用视角对比</a>
   </footer>
 </div>
+<script defer src="assets/katex/katex.min.js"></script>
+<script defer src="assets/katex/contrib/auto-render.min.js"></script>
+<script>
+window.KATEX_OPTS={delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false,strict:'ignore'};
+window.renderMath=function(el){if(window.renderMathInElement)renderMathInElement(el||document.body,window.KATEX_OPTS);};
+document.addEventListener('DOMContentLoaded',function(){window.renderMath();});
+</script>
 <script src="nav.js"></script>
 </body>
 </html>

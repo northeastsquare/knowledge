@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>π0.5：开放世界泛化的 VLA · 精读</title>
+<meta name="description" content="π0.5 精读：五类数据混训 + 先离散后连续的两阶段训练 + 先说子任务再出动作的分层推理，让 VLA 在没见过的家里收拾房间；附对照 openpi 源码的架构图与代码结构">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f1f4f6;
+    --surface:#fbfcfd;
+    --surface-2:#eaf0f4;
+    --ink:#16222e;
+    --ink-2:#51626f;
+    --ink-3:#83919c;
+    --accent:#0e6e8a;
+    --accent-strong:#0a4c60;
+    --signal:#c4572a;
+    --line:#d8e1e7;
+    --line-strong:#c3d0d9;
+    --grid-line:rgba(22,34,46,.05);
+    --shadow:0 1px 2px rgba(22,34,46,.04),0 14px 34px rgba(22,34,46,.07);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+      --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+      --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+      --line:#1e2d3a; --line-strong:#2b3d4b;
+      --grid-line:rgba(231,238,244,.045);
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+    --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+    --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+    --line:#1e2d3a; --line-strong:#2b3d4b;
+    --grid-line:rgba(231,238,244,.045);
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Sans",-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+    line-height:1.78; font-size:16px; -webkit-font-smoothing:antialiased;
+  }
+  .grid{
+    position:fixed; inset:0; z-index:-1; pointer-events:none;
+    background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);
+    background-size:28px 28px;
+  }
+  .wrap{max-width:860px; margin:0 auto; padding:0 24px 96px;}
+
+  .masthead{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px 24px 0; max-width:860px; margin:0 auto;
+  }
+  .back{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:13px; color:var(--accent); text-decoration:none; letter-spacing:.03em;
+  }
+  .back:hover{text-decoration:underline;}
+  .masthead .ref{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12.5px; color:var(--ink-3); letter-spacing:.04em;
+  }
+
+  .hero{padding:52px 0 34px; border-bottom:1px solid var(--line-strong);}
+  .eyebrow{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent);
+    margin-bottom:16px;
+  }
+  .hero h1{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:clamp(28px,4.6vw,42px); font-weight:700; line-height:1.2;
+    margin:0 0 16px; color:var(--ink); text-wrap:balance;
+  }
+  .hero .summary{
+    font-size:17px; color:var(--ink-2); max-width:640px; margin:0 0 22px;
+  }
+  .meta{
+    border:1px solid var(--line); border-radius:12px; background:var(--surface);
+    padding:14px 18px; font-size:13.5px; display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px 24px;
+    box-shadow:var(--shadow);
+  }
+  .meta .m{display:flex; flex-direction:column; gap:1px;}
+  .meta .m .k{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:11px;
+    color:var(--ink-3); letter-spacing:.08em; text-transform:uppercase;
+  }
+  .meta .m .v{color:var(--ink); font-weight:500;}
+
+  section{margin-top:40px;}
+  h2{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:21px; font-weight:600; margin:0 0 14px; color:var(--ink);
+    display:flex; align-items:center; gap:12px;
+  }
+  h2::before{
+    content:""; width:10px; height:10px; flex:none;
+    background:var(--accent); border-radius:2px; transform:rotate(45deg);
+  }
+  p{margin:0 0 12px;}
+  strong{font-weight:700;}
+  .hl{color:var(--accent); font-weight:600;}
+  a{color:var(--accent);}
+
+  ul,ol{margin:0 0 14px; padding-left:22px;}
+  li{margin-bottom:7px;}
+  li::marker{color:var(--accent);}
+
+  blockquote{
+    margin:16px 0; padding:14px 18px; border-left:3px solid var(--accent);
+    background:var(--surface-2); border-radius:0 10px 10px 0; color:var(--ink);
+  }
+  blockquote p{margin:0;}
+
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    padding:20px 22px; box-shadow:var(--shadow); margin:14px 0;
+  }
+  .card h3{font-size:16px; font-weight:700; margin:0 0 10px;}
+
+  table{width:100%; border-collapse:collapse; font-size:14px; margin:12px 0;}
+  th,td{padding:9px 12px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12.5px;
+    color:var(--accent-strong); background:var(--surface-2); letter-spacing:.03em; font-weight:600;
+  }
+  tr:last-child td{border-bottom:none;}
+  .tbl-wrap{overflow-x:auto;}
+
+  code{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:13.5px;
+    background:var(--surface-2); border:1px solid var(--line); border-radius:5px; padding:1px 6px;
+  }
+  pre{overflow-x:auto; background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:16px; font-size:13px; line-height:1.6;}
+  pre code{border:none; background:none; padding:0;}
+
+  .diagram{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px; margin:16px 0; box-shadow:var(--shadow); overflow-x:auto;}
+  .diagram svg{max-width:100%; height:auto; display:block;}
+  .diagram .caption{font-size:12.5px; color:var(--ink-3); margin-top:8px;}
+
+  footer{
+    margin-top:56px; padding-top:20px; border-top:1px solid var(--line-strong);
+    display:flex; justify-content:space-between; gap:12px; font-size:13px; color:var(--ink-3);
+  }
+  footer a{color:var(--accent); text-decoration:none;}
+  footer a:hover{text-decoration:underline;}
+  .toc{display:flex;flex-wrap:wrap;gap:6px;margin-top:18px}
+  .toc a{font-size:12.5px;padding:3px 10px;border:1px solid var(--line-strong);border-radius:999px;color:var(--ink-2);text-decoration:none;background:var(--surface)}
+  .toc a:hover{border-color:var(--accent);color:var(--accent)}
+  .hl-line{border-left:3px solid var(--accent);padding:8px 14px;background:var(--surface-2);border-radius:0 8px 8px 0}
+  .flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:14px 0}
+  .flow .st{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px;font-size:13.5px;line-height:1.65}
+  .flow .st b{display:block;color:var(--accent-strong);margin-bottom:4px;font-size:14.5px}
+  .demo .ctrl{display:flex;flex-wrap:wrap;gap:18px;margin-bottom:10px;font-size:13.5px}
+  .demo .ctrl label{display:flex;align-items:center;gap:8px}
+  .demo .ctrl b{min-width:2.5em;color:var(--accent-strong)}
+  .demo canvas{display:block;width:100%;background:var(--surface);border:1px solid var(--line);border-radius:8px}
+  .demo .legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--ink-2);margin:6px 0 12px}
+  .demo .legend span::before{content:"";display:inline-block;width:14px;height:3px;margin-right:5px;vertical-align:middle;background:var(--line-strong)}
+  .demo .legend .k1::before{background:var(--signal)} .demo .legend .k2::before{background:var(--accent)}
+  .demo .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
+  .demo .stats div{background:var(--surface-2);border-radius:8px;padding:8px 10px}
+  .demo .stats span{display:block;font-size:12px;color:var(--ink-3)} .demo .stats b{font-size:20px;color:var(--ink)}
+  .note{font-size:13px;color:var(--ink-2)}
+  .pipe{display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:13px}
+  .pipe span{background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:8px 10px;text-align:center}
+  .pipe small{color:var(--ink-3)} .pipe i{color:var(--accent);font-style:normal}
+  details.qz{border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin:8px 0;background:var(--surface)}
+  details.qz summary{cursor:pointer;font-weight:600} details.qz p{margin:8px 0 0}
+  /* 架构图 */
+  .arch-sec .answer.always{display:block !important;}
+  .arch-sec .answer.always .peek{display:none;}
+  .arch-lead{margin:4px 0 12px;color:var(--ink-2);}
+  .arch-lead .sw{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin:0 3px 0 8px;}
+  .arch-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 -4px;}
+  .arch{display:block;width:100%;height:auto;}
+  .arch-sec .card.wide{width:min(1080px,calc(100vw - 32px));left:50%;transform:translateX(-50%);}
+  @media (max-width:900px){.arch{min-width:760px;}}
+  .arch .rowlab{font-size:11px;font-weight:700;fill:#71748C;letter-spacing:.06em;}
+  .arch .bx{fill:#fff;stroke-width:1.5;}
+  .arch .bx.v{stroke:#0E9488;fill:#E9FBF6;}
+  .arch .bx.l{stroke:#4F46E5;fill:#EEEFFF;}
+  .arch .bx.a{stroke:#EA580C;fill:#FFF3EA;}
+  .arch .bx.tm{stroke:#7C3AED;fill:#F5EEFF;}
+  .arch .bx.sh{stroke:#4F46E5;fill:#fff;stroke-dasharray:5 4;}
+  .arch .bx.big{fill:#F8F8FD;stroke:#C7C9E6;stroke-dasharray:6 5;}
+  .arch .bx.out{stroke:#1B1D2E;fill:#fff;}
+  .arch text{text-anchor:middle;fill:#1B1D2E;}
+  .arch text.rowlab{text-anchor:start;}
+  .arch .t1{font-size:13px;font-weight:700;}
+  .arch .t2{font-size:11px;fill:#3A3D55;}
+  .arch .t2.b,.arch tspan.b{font-weight:700;fill:#3730A3;}
+  .arch .t2.em{fill:#9A3412;font-weight:600;}
+  .arch .t3{font-size:10px;fill:#71748C;font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;}
+  .arch .mono{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;}
+  .arch a{cursor:pointer;}
+  .arch a:hover rect,.arch a:focus rect{stroke-width:3;}
+  .arch a:hover .t1{text-decoration:underline;}
+  .arch .arrows line,.arch .arrows path{stroke:#71748C;stroke-width:1.5;fill:none;marker-end:url(#ar);}
+  .arch .arrows .dash{stroke-dasharray:5 4;}
+  .arch .arrows .loop,.arch .t3.loop{stroke:#7C3AED;fill:#7C3AED;}
+  .arch .arrows .loop{fill:none;}
+  .arch .arrows .kv{stroke:#4F46E5;stroke-width:2;}
+  .arch .t3.kv{fill:#3730A3;}
+  .arch-note{margin-top:12px;padding:10px 14px;border-radius:10px;background:#fff7e8;border:1px solid #F2D9A6;font-size:.92rem;color:var(--ink-2);}
+  .arch-table{width:100%;border-collapse:collapse;margin:10px 0 6px;font-size:.9rem;}
+  .arch-table th,.arch-table td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;}
+  .arch-table th{background:var(--surface-2);color:var(--accent-strong);font-size:.82rem;}
+  .arch-table td.ok{color:#115E56;font-weight:700;}
+  .arch-table td.no{color:#9F1239;font-weight:700;}
+  .arch-why{margin:10px 0 0;}
+  .arch-list{margin:6px 0 8px;padding-left:20px;}
+  @media (max-width:560px){.arch-table{font-size:.82rem;}.arch-table th,.arch-table td{padding:6px 6px;}}
+
+  .arch-sec .card{position:relative;overflow:hidden;}
+  @media (max-width:700px){.arch-table{display:block;overflow-x:auto;white-space:nowrap;}}
+  .rc .q-row{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:6px}
+  .rc .q-num{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;font-size:12px;color:var(--accent);letter-spacing:.06em;border:1px solid var(--line-strong);border-radius:999px;padding:1px 8px}
+  .rc .q-text{font-weight:700;font-size:16px}
+  .rc .answer .alab{display:none}
+  .cite{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;font-size:12px;color:var(--ink-3)}
+  .arch-table td.ok{color:#2e7d32} .arch-table td.no{color:#b23a48}
+  .arch-note{background:#fff7e8;border:1px solid #f2d9a6;color:#5b4a2a}
+  h3.sub{font-size:16px;margin:22px 0 8px}
+  pre.tree{font-size:12.5px;line-height:1.55}
+  pre.tree a{text-decoration:none;border-bottom:1px dashed var(--accent)}
+  @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .arch-note{background:#2a2410;border-color:#5a4a1e;color:#e7d9b0}}
+</style>
+<link rel="stylesheet" href="concepts.css">
+</head>
+<body>
+<div class="grid" aria-hidden="true"></div>
+
+<header class="masthead">
+  <a class="back" href="index.html">← 返回知识库</a>
+  <span class="ref">arXiv:2504.16054</span>
+</header>
+
+<div class="wrap">
+
+  <section class="hero">
+    <div class="eyebrow">精读笔记 · 泛化与训练配方</div>
+    <h1>π0.5：一个模型先说再做，在没见过的家里收拾房间</h1>
+    <p class="summary">结构几乎还是 π0，变的是<b>训练配方</b>：五类数据混训，先把动作当文字和网页数据一起训成"懂机器人的 VLM"，再接 <a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a>做连续动作；推理时同一个模型先说出子任务，再以它为提示词出动作。本页同时给出对照 openpi 源码的<a href="#s-arch">架构图</a>和<a href="#s-code">代码结构</a>。</p>
+    <div class="meta">
+      <div class="m"><span class="k">论文</span><span class="v">π0.5: a Vision-Language-Action Model with Open-World Generalization</span></div>
+      <div class="m"><span class="k">作者</span><span class="v">Physical Intelligence（Black, Brown, Darpinian, … Levine, Zhilinsky 等）</span></div>
+      <div class="m"><span class="k">首版</span><span class="v"><a href="https://arxiv.org/abs/2504.16054" target="_blank" rel="noreferrer">arXiv 2504.16054</a>（2025.04）</span></div>
+      <div class="m"><span class="k">代码</span><span class="v"><a href="https://github.com/Physical-Intelligence/openpi/tree/215abfb217dbac7d5f1273282331b9b1866c0479" target="_blank" rel="noreferrer">openpi @215abfb</a>（仅 flow 低层策略）</span></div>
+    </div>
+    <nav class="toc" aria-label="本页目录">
+      <a href="#s-one">一句话</a><a href="#s-problem">问题</a><a href="#concept-hierarchical-inference">分层推理</a><a href="#s-arch">架构图</a><a href="#concept-hybrid-training">两阶段训练</a><a href="#s-system">机器人</a><a href="#s-code">代码结构</a><a href="#s-results">结果</a><a href="#s-insight">深层理解</a><a href="#s-cost">代价</a><a href="#s-next">被谁接手</a><a href="#s-quiz">自测</a>
+    </nav>
+  </section>
+
+  <section id="s-one">
+    <h2>先建立坐标：π0 → π0-FAST → π0.5 各改了什么</h2>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th></th><th><a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">π0</a>（2024.10）</th><th><a class="concept-link" href="FAST-论文解读.html#concept-pi0-fast">π0-FAST</a>（2025.01）</th><th>π0.5（2025.04）</th></tr>
+        <tr><td><strong>动作怎么出</strong></td><td>300M <a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a>用 flow matching 一次出 50 步</td><td>VLM 主干自回归生成 FAST 离散 token，没有动作专家</td><td><b>训练时两种都有</b>：预训练只用 FAST token；后训练加动作专家。<b>推理只用 flow</b>，10 步去噪</td></tr>
+        <tr><td><strong>模型会说话吗</strong></td><td>不会，只出动作</td><td>只出动作 token</td><td><b>会</b>：先说出子任务（"pick up the plate"），再出动作；同一个输出口也做 VQA、目标框</td></tr>
+        <tr><td><strong>本体状态怎么进</strong></td><td>连续向量，后缀里 1 个 token</td><td>离散成 256 bin 写进提示词</td><td>离散成 256 bin 写进提示词（沿用 FAST 做法）</td></tr>
+        <tr><td><strong>时间步 τ 怎么进</strong></td><td>和动作 token 拼接过 MLP</td><td>—</td><td>单独过 MLP，用 <a class="concept-link" href="#concept-adarms">adaRMSNorm</a> 注入动作专家每一层</td></tr>
+        <tr><td><strong>训练数据</strong></td><td>自采跨本体灵巧数据 + OXE</td><td>同 π0</td><td>五类混训：移动操作 MM（约 400 小时、约 100 个家）、多环境固定臂 ME、实验室跨本体 CE、子任务标注 HL、网页图文 WD；后训练再加口头指令 VI</td></tr>
+        <tr><td><strong>主打</strong></td><td>灵巧、高频</td><td>训练快 5 倍</td><td><b>泛化</b>：在训练没见过的家里收拾厨房、卧室，一次 10–15 分钟</td></tr>
+      </table>
+    </div>
+    <p class="hl-line"><b>一句话：</b>π0.5 的网络结构基本就是 π0，真正变的是<b>训练配方</b>：先把动作当文字、和网页数据一起把 VLM 训成"懂机器人的 VLM"，再接一个动作专家做连续动作；推理时同一个模型先说出下一步该做什么，再把它当提示词出动作。论文反复证明的一件事是：<b>97.6% 的预训练数据不是目标机器人的家务数据</b>，泛化靠的是这些"别的数据"。</p>
+  </section>
+
+  <section id="s-problem">
+    <h2>问题：VLA 为什么"换个家就不行"</h2>
+    <p>π0 之前的 VLA 大多在和训练数据相同的环境里评测。真正进一个陌生的家，三件事同时变化：<b>环境</b>（布局、光线、柜门把手的样式）、<b>物体</b>（没见过的碗、衣服、玩具）、<b>任务长度</b>（"收拾厨房"要先拉抽屉、再拿盘子、再放进水槽，持续几分钟）。单靠目标机器人的数据来覆盖这些变化不现实：论文只有约 400 小时、约 100 个家的移动操作数据。</p>
+    <ol>
+      <li><strong>环境和物体的多样性</strong>要从别的来源借：更轻、更容易搬进不同家庭的固定机械臂（ME）；实验室里各种机器人做各种任务的数据（CE）；以及网页图文（WD）里关于"物体是什么"的常识。</li>
+      <li><strong>长任务</strong>要有结构：先决定"下一步做什么"，再决定"手怎么动"。以前通常是两个模型（一个 LLM 规划 + 一个底层策略，见 <a class="concept-link" href="PI-工作全景.html#concept-hi-robot">Hi Robot</a>），π0.5 想用一个模型同时做这两层。</li>
+      <li><strong>训练效率</strong>：数据种类越多，训练越贵。FAST 已经证明把动作当 token 训比 flow 快得多，但推理慢；需要一个"训练时离散、推理时连续"的办法。</li>
+    </ol>
+    <p class="hl-line">所以 π0.5 要同时解决三件事：<b>怎么混数据</b>、<b>怎么分层</b>、<b>怎么又训得快又推得快</b>。下面三节分别对应。</p>
+  </section>
+
+  <section id="concept-hierarchical-inference" class="concept-anchor">
+    <h2>分层推理：一个模型，先说再做</h2>
+    <p>模型表示的是联合分布 <code>π(a<sub>t:t+H</sub>, ℓ̂ | o<sub>t</sub>, ℓ)</code>：o 是所有相机图像加本体状态，ℓ 是总指令（"把盘子放进水槽"），ℓ̂ 是模型自己输出的文字（子任务，或者 VQA 的答案），a 是动作块。论文把它拆成两步（Sec IV-A）：</p>
+    <blockquote><p><code>π(a, ℓ̂ | o, ℓ) = π(a | o, ℓ̂) · π(ℓ̂ | o, ℓ)</code>　——　动作分布<b>只依赖子任务 ℓ̂，不直接依赖总指令 ℓ</b>。</p></blockquote>
+    <div class="flow">
+      <div class="st"><b>① 高层：π(ℓ̂ | o, ℓ)</b><span>看 4 路相机 + 总指令，自回归解码出一句子任务文字，比如 "pick up the cup"。这一步和 VLM 回答问题是同一个输出口，所以网页 VQA 数据直接帮到它。</span></div>
+      <div class="st"><b>② 低层：π(a | o, ℓ̂)</b><span>把子任务文字当提示词，看腕部 + 前置相机和状态，由动作专家 10 步 flow matching 出 50 步动作。它从来不看总指令。</span></div>
+      <div class="st"><b>③ 训练来源</b><span>MM / ME / CE 里多阶段的任务都人工标了子任务；训练时同一条数据既学"预测子任务文字"，也学"给定子任务出动作"。还标了目标框，让模型先说出相关物体在哪、再说子任务。</span></div>
+    </div>
+    <p>这和 LLM 的思维链是同一个思路：先把"收拾卧室"翻译成"整理毯子""捡起枕头"，动作策略只需要会做这些短而具体的事。<b>反直觉的实验结果</b>（Sec V-E，Fig 13）：全模型比"人当高层指挥"（human HL）还好；而<b>不做高层推理、只是把子任务数据放进训练</b>（implicit HL）是第二名，已经拿到大半收益；完全不放子任务数据（no HL）明显变差；用 GPT-4 零样本当高层最差。</p>
+  </section>
+
+  <!-- ============ 2b. 模型架构图（对照 openpi 源码） ============ -->
+  <section class="arch-sec" id="s-arch">
+    <h2>模型架构图：一次推理的数据流（对照 openpi 源码）</h2>
+
+    <article class="card wide" id="concept-pi05-architecture">
+      <p class="arch-lead">下图按 openpi 里 π0.5 的实现（<code>Pi0</code> 类加 <code>pi05=True</code>）画出一次推理的完整数据流。<b>点任意模块</b>可打开官方仓库对应的源码行（固定在 commit <code>215abfb</code>）。颜色：<span class="sw" style="background:#0E9488"></span>视觉 <span class="sw" style="background:#4F46E5"></span>语言 / 骨干 <span class="sw" style="background:#EA580C"></span>动作专家 <span class="sw" style="background:#7C3AED"></span>流匹配时间步。</p>
+      <div class="arch-scroll">
+      <svg class="arch" viewBox="0 0 1000 750" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Microsoft YaHei, sans-serif" role="img" aria-label="π0.5 模型架构图">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="#71748C"/></marker>
+        </defs>
+        <!-- 行标题 -->
+        <text x="12" y="22" class="rowlab">① 输入</text>
+        <text x="12" y="132" class="rowlab">② 编码成 token</text>
+        <text x="12" y="252" class="rowlab">③ 一个 Transformer，两套权重</text>
+        <text x="12" y="602" class="rowlab">④ 输出与采样</text>
+
+        <!-- ① 输入 -->
+        <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/model.py#L144-L210" target="_blank" rel="noreferrer">
+          <rect x="20" y="30" width="210" height="76" rx="10" class="bx v"/>
+          <text x="125" y="52" class="t1">3 张相机图 224×224</text>
+          <text x="125" y="70" class="t2">base / 左腕 / 右腕</text>
+          <text x="125" y="86" class="t2">缺的相机填 0 并用 mask 屏蔽</text>
+          <text x="125" y="100" class="t3">model.py preprocess_observation</text>
+        </a>
+        <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/tokenizer.py#L22-L48" target="_blank" rel="noreferrer">
+          <rect x="250" y="30" width="300" height="76" rx="10" class="bx l"/>
+          <text x="400" y="52" class="t1">文本提示 + 离散化的本体状态（π0.5 新）</text>
+          <text x="400" y="70" class="t2 mono">"Task: pick up the cup, State: 12 200 … 37;\nAction: "</text>
+          <text x="400" y="86" class="t2">状态每维切成 256 个 bin，变成数字写进提示词</text>
+          <text x="400" y="100" class="t3">tokenizer.py PaligemmaTokenizer.tokenize</text>
+        </a>
+        <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L228-L231" target="_blank" rel="noreferrer">
+          <rect x="590" y="30" width="160" height="76" rx="10" class="bx a"/>
+          <text x="670" y="52" class="t1">带噪动作块 x_t</text>
+          <text x="670" y="70" class="t2">50 步 × 32 维</text>
+          <text x="670" y="86" class="t2">采样时从纯高斯噪声出发</text>
+          <text x="670" y="100" class="t3">pi0.py sample_actions</text>
+        </a>
+        <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L47-L63" target="_blank" rel="noreferrer">
+          <rect x="770" y="30" width="210" height="76" rx="10" class="bx tm"/>
+          <text x="875" y="52" class="t1">流匹配时间步 τ</text>
+          <text x="875" y="70" class="t2">标量，1 = 纯噪声 → 0 = 动作</text>
+          <text x="875" y="86" class="t2">正余弦位置编码成 1024 维</text>
+          <text x="875" y="100" class="t3">pi0.py posemb_sincos</text>
+        </a>
+
+        <!-- ② 编码 -->
+        <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L81-L90" target="_blank" rel="noreferrer">
+          <rect x="20" y="140" width="210" height="84" rx="10" class="bx v"/>
+          <text x="125" y="162" class="t1">SigLIP So400m/14（27 层）</text>
+          <text x="125" y="180" class="t2">14×14 patch → 每图 16×16 = 256 token</text>
+          <text x="125" y="196" class="t2">head 线性层 1152→2048，共 768 图像 token</text>
+          <text x="125" y="214" class="t3">pi0.py __init__ · siglip.py</text>
+        </a>
+        <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L105-L137" target="_blank" rel="noreferrer">
+          <rect x="250" y="140" width="300" height="84" rx="10" class="bx l"/>
+          <text x="400" y="162" class="t1">PaliGemma 词表 embedding（2048 维）</text>
+          <text x="400" y="180" class="t2">最多 200 个文本 token（π0 只有 48，因为状态占位）</text>
+          <text x="400" y="196" class="t2">图像 token + 文本 token 拼成"前缀"，彼此全互看</text>
+          <text x="400" y="214" class="t3">pi0.py embed_prefix</text>
+        </a>
+        <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L139-L186" target="_blank" rel="noreferrer">
+          <rect x="590" y="140" width="160" height="84" rx="10" class="bx a"/>
+          <text x="670" y="162" class="t1">action_in_proj</text>
+          <text x="670" y="180" class="t2">线性层 32 → 1024</text>
+          <text x="670" y="196" class="t2">得到 50 个动作 token（"后缀"）</text>
+          <text x="670" y="214" class="t3">pi0.py embed_suffix</text>
+        </a>
+        <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L160-L169" target="_blank" rel="noreferrer">
+          <rect x="770" y="140" width="210" height="84" rx="10" class="bx tm"/>
+          <text x="875" y="162" class="t1">时间步 MLP（π0.5 新）</text>
+          <text x="875" y="180" class="t2">Linear → swish → Linear → swish</text>
+          <text x="875" y="196" class="t2">输出 1024 维条件向量，不拼进 token</text>
+          <text x="875" y="214" class="t3">pi0.py time_mlp_in / time_mlp_out</text>
+        </a>
+
+        <!-- ③ Transformer -->
+        <rect x="20" y="262" width="960" height="318" rx="14" class="bx big"/>
+        <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/gemma.py#L284-L336" target="_blank" rel="noreferrer">
+          <text x="500" y="284" class="t1">18 层 · 每层：RMSNorm → 共享自注意力 → 残差 → RMSNorm → FFN → 残差（gemma.py Block）</text>
+        </a>
+        <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/gemma.py#L58-L109" target="_blank" rel="noreferrer">
+          <rect x="40" y="300" width="400" height="140" rx="10" class="bx l"/>
+          <text x="240" y="324" class="t1">前缀专家：Gemma 2B（width 2048，MLP 16384）</text>
+          <text x="240" y="344" class="t2">处理 768 图像 token + ≤200 文本 token</text>
+          <text x="240" y="362" class="t2">权重直接来自 PaliGemma 预训练；层名无后缀（attn / mlp）</text>
+          <text x="240" y="380" class="t2">用普通 RMSNorm，不接收 τ</text>
+          <text x="240" y="404" class="t2">采样时只前向 1 次，K/V 存进 cache</text>
+          <text x="240" y="430" class="t3">gemma.py get_config · _name</text>
+        </a>
+        <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/gemma.py#L113-L133" target="_blank" rel="noreferrer">
+          <rect x="600" y="300" width="360" height="140" rx="10" class="bx a"/>
+          <text x="780" y="324" class="t1">动作专家：gemma_300m（width 1024，MLP 4096）</text>
+          <text x="780" y="344" class="t2">处理 50 个动作 token；从零初始化，层名带 _1 后缀</text>
+          <text x="780" y="362" class="t2 em">adaRMSNorm（π0.5 新）：τ 条件向量经零初始化的线性层</text>
+          <text x="780" y="380" class="t2 em">生成 scale / shift / gate，x·(1+scale)+shift，</text>
+          <text x="780" y="398" class="t2 em">残差写回时再乘 gate（_gated_residual）</text>
+          <text x="780" y="416" class="t2">采样时每步去噪都重新前向</text>
+          <text x="780" y="432" class="t3">gemma.py RMSNorm · _gated_residual</text>
+        </a>
+        <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/gemma.py#L158-L250" target="_blank" rel="noreferrer">
+          <rect x="40" y="466" width="920" height="104" rx="10" class="bx sh"/>
+          <text x="500" y="484" class="t2 b">共享自注意力（gemma.py Attention）· 每层一次 · 两套权重唯一的交汇处</text>
+          <text x="250" y="504" class="t2"><tspan class="b">输入 ←</tspan> 前缀 hidden（2048 维）→ q_einsum / kv_einsum → Q、K、V</text>
+          <text x="250" y="520" class="t2">采样时前缀不重算，这里的 K/V 直接取自 cache</text>
+          <text x="780" y="504" class="t2"><tspan class="b">输入 ←</tspan> 动作 hidden（1024 维）→ q/kv_einsum_1 → Q、K、V</text>
+          <text x="780" y="520" class="t2">两套投影都是 8 个头 × 256 维，所以能拼在一起</text>
+          <text x="500" y="540" class="t2 em">K = [K前缀 ; K动作]，V 同；加 RoPE（按全局位置）；每个 Q 按掩码对整条序列做一次 softmax，加权求和 V</text>
+          <text x="250" y="560" class="t2"><tspan class="b">输出 →</tspan> 前缀那段 → attn_vec_einsum（→2048）→ 残差回前缀专家</text>
+          <text x="780" y="560" class="t2"><tspan class="b">输出 →</tspan> 动作那段 → attn_vec_einsum_1 → ×gate 残差回动作专家</text>
+        </a>
+        <g class="arrows">
+          <line x1="200" y1="440" x2="200" y2="464"/>
+          <line x1="280" y1="464" x2="280" y2="442"/>
+          <line x1="740" y1="440" x2="740" y2="464"/>
+          <line x1="820" y1="464" x2="820" y2="442"/>
+        </g>
+        <text x="170" y="456" class="t3" style="text-anchor:end">Q K V ↓</text>
+        <text x="310" y="456" class="t3" style="text-anchor:start">↑ 注意力输出</text>
+        <text x="710" y="456" class="t3" style="text-anchor:end">Q K V ↓</text>
+        <text x="850" y="456" class="t3" style="text-anchor:start">↑ 注意力输出</text>
+
+        <!-- ④ 输出 -->
+        <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L233-L237" target="_blank" rel="noreferrer">
+          <rect x="20" y="610" width="530" height="56" rx="10" class="bx l"/>
+          <text x="285" y="632" class="t1">前缀 KV cache：图像 + 文本只算一次</text>
+          <text x="285" y="650" class="t2">18 层的 K/V 各存一份；10 步去噪里动作 token 的 Q 去查它（pi0.py sample_actions）</text>
+        </a>
+        <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L261-L271" target="_blank" rel="noreferrer">
+          <rect x="590" y="610" width="160" height="56" rx="10" class="bx a"/>
+          <text x="670" y="632" class="t1">action_out_proj</text>
+          <text x="670" y="650" class="t2">线性层 1024 → 32，得到速度场 v_t</text>
+        </a>
+        <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L271-L279" target="_blank" rel="noreferrer">
+          <rect x="770" y="610" width="210" height="56" rx="10" class="bx tm"/>
+          <text x="875" y="632" class="t1">欧拉积分 10 步</text>
+          <text x="875" y="650" class="t2">x ← x + dt·v_t，dt = −1/10</text>
+        </a>
+        <rect x="590" y="690" width="390" height="44" rx="10" class="bx out"/>
+        <text x="785" y="709" class="t1">50 × 32 的动作块 → 反归一化 → 机器人（50Hz）</text>
+        <text x="785" y="726" class="t2">各机器人只用前几维（DROID 用 8 维，取前 15 步执行）</text>
+
+        <!-- 箭头 -->
+        <g class="arrows">
+          <line x1="125" y1="106" x2="125" y2="138"/>
+          <line x1="400" y1="106" x2="400" y2="138"/>
+          <line x1="670" y1="106" x2="670" y2="138"/>
+          <line x1="875" y1="106" x2="875" y2="138"/>
+          <line x1="125" y1="224" x2="125" y2="298"/>
+          <line x1="400" y1="224" x2="400" y2="298"/>
+          <line x1="670" y1="224" x2="670" y2="298"/>
+          <path d="M875 224 L875 262 L875 298" class="dash"/>
+          <line x1="240" y1="580" x2="240" y2="608"/>
+          <line x1="670" y1="580" x2="670" y2="608"/>
+          <line x1="750" y1="638" x2="768" y2="638"/>
+          <path d="M875 666 L875 688" />
+          <path d="M770 655 C 758 655, 758 80, 752 68" class="dash loop"/>
+          <path d="M500 610 L500 570" class="dash kv"/>
+        </g>
+        <text x="760" y="245" class="t3" style="text-anchor:end">τ 不是 token，而是条件 →</text>
+        <text x="508" y="598" class="t3 kv" style="text-anchor:start">cache 的 K/V 拼在动作 K/V 前，每步去噪都查</text>
+        <text x="975" y="598" class="t3 loop" style="text-anchor:end">↑ 每步去噪把 x_t、τ 送回 ②</text>
+      </svg>
+      </div>
+      <div class="arch-note">本图画的是 <b>openpi 的实现</b>：只有流匹配动作头，没有论文里预训练阶段的 FAST 离散动作 token、子任务文字输出和 VQA 输出（openpi README 明确写了"目前只支持 flow matching head"）。论文 Fig.3 / Fig.18 的完整结构见下面第 3 张卡。</div>
+    </article>
+
+    <article class="card rc" id="concept-adarms">
+      <div class="q-row"><span class="q-num">读码</span><span class="q-text">代码里 π0.5 和 π0 到底差在哪？</span></div>
+      <div class="answer always"><span class="alab">A</span>同一个 <code>Pi0</code> 类，一个 <code>pi05</code> 开关。<a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0_config.py#L28-L41" target="_blank" rel="noreferrer">pi0_config.py 的注释 ↗</a> 写明只有两处不同，其余（SigLIP、Gemma 2B、300M 动作专家、50 步动作块、流匹配、10 步欧拉）完全一样：
+        <table class="arch-table">
+          <tr><th></th><th>π0</th><th>π0.5</th><th>源码</th></tr>
+          <tr><td><b>本体状态怎么进模型</b></td><td>连续向量 → <code>state_proj</code> 线性层 → 作为后缀里的 1 个 token，和动作 token 一起由动作专家处理</td><td>每维离散成 256 个 bin，以数字文本写进提示词 <code>State: 12 200 …</code>，由 VLM 骨干当文字读。后缀里只剩动作 token</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L151-L157" target="_blank" rel="noreferrer">pi0.py L151–157 ↗</a> · <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/tokenizer.py#L24-L29" target="_blank" rel="noreferrer">tokenizer.py L24–29 ↗</a></td></tr>
+          <tr><td><b>时间步 τ 怎么注入</b></td><td>τ 的正余弦编码和每个动作 token 拼接，过 <code>action_time_mlp</code>，τ 混在 token 里</td><td>τ 单独过 <code>time_mlp</code>，得到条件向量；动作专家每层的 RMSNorm 变成 <b>adaRMSNorm</b>，由条件向量生成 scale / shift / gate</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L162-L178" target="_blank" rel="noreferrer">pi0.py L162–178 ↗</a> · <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/gemma.py#L127-L133" target="_blank" rel="noreferrer">gemma.py L127–133 ↗</a></td></tr>
+          <tr><td><b>连带的小改动</b></td><td><code>max_token_len = 48</code></td><td><code>max_token_len = 200</code>，因为状态数字占了很多 token；微调时可用 <code>discrete_state_input=False</code> 关掉离散状态（LIBERO 配置就这么做）</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0_config.py#L37-L41" target="_blank" rel="noreferrer">pi0_config.py L37–41 ↗</a> · <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/training/config.py#L743-L745" target="_blank" rel="noreferrer">config.py pi05_libero ↗</a></td></tr>
+        </table>
+        <p class="arch-why"><b>为什么这样改。</b>状态进文字：论文 Sec IV-A 说本体状态"离散化后作为文本 token 输入"，这样状态和图像、指令在同一个 VLM 里被一起理解，预训练阶段（只有离散 token、没有动作专家）也能用上状态。adaRMSNorm：论文 Appendix E 写 π0.5 "用一个单独的 MLP 投影 τ，再用 adaptive RMSNorm 把时间步信息注入动作专家的每一层"，MLP 形式是 <code>swish(W2·swish(W1·φ(τ)))</code>。好处是 τ 不再占 token 位、也不和动作内容混在一起，每一层都能直接按噪声水平调整自己的尺度；这正是扩散模型里 adaLN（DiT）的做法。adaRMS 的线性层<a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/gemma.py#L128" target="_blank" rel="noreferrer">零初始化 ↗</a>，训练一开始等价于普通 RMSNorm、gate 为 0，即残差分支先关闭，再逐渐学开。</p>
+        <br><span class="cite">Sec IV-A · Appendix E · openpi pi0.py / gemma.py</span>
+      </div>
+    </article>
+
+    <article class="card rc">
+      <div class="q-row"><span class="q-num">读码</span><span class="q-text">注意力掩码：谁能看谁？</span></div>
+      <div class="answer always"><span class="alab">A</span>整个序列 = [图像 token | 文本 token | 动作 token]。<code>make_attn_mask</code> 用一个 <code>ar_mask</code> 数组切块：前缀全是 <code>False</code>（同一块，互相全看），后缀第一个动作 token 是 <code>True</code>（开新块），其余动作 token 是 <code>False</code>。得到的规则是：
+        <table class="arch-table">
+          <tr><th>查询 ↓ 能看到 →</th><th>图像 token</th><th>文本 token</th><th>动作 token</th></tr>
+          <tr><td>图像 token</td><td class="ok">✓</td><td class="ok">✓</td><td class="no">✗</td></tr>
+          <tr><td>文本 token</td><td class="ok">✓</td><td class="ok">✓</td><td class="no">✗</td></tr>
+          <tr><td>动作 token</td><td class="ok">✓</td><td class="ok">✓</td><td class="ok">✓（50 个彼此全看，不是因果）</td></tr>
+        </table>
+        信息<b>只从 VLM 流向动作专家</b>，VLM 看不到动作，所以前缀的 K/V 可以在采样前算一次就缓存。这也是 <a class="concept-link" href="KI-知识隔离-论文解读.html#concept-stop-gradient">知识隔离</a>里"单向信息流"在代码里的样子。论文 Fig.18 里还有一块 <a class="concept-link" href="FAST-论文解读.html#concept-fast">FAST 动作 token</a>：它们因果地看前缀和之前的 FAST token，流匹配动作 token 不看它们；openpi 没有实现这一块。
+        <br><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L19-L44" target="_blank" rel="noreferrer">pi0.py make_attn_mask ↗</a> · <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L124-L133" target="_blank" rel="noreferrer">前缀 ar_mask ↗</a> · <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L181-L182" target="_blank" rel="noreferrer">后缀 ar_mask ↗</a>
+        <br><span class="cite">Appendix E · Fig 18</span>
+      </div>
+    </article>
+
+    <article class="card rc">
+      <div class="q-row"><span class="q-num">读码</span><span class="q-text">论文的完整架构比 openpi 多什么？</span></div>
+      <div class="answer always"><span class="alab">A</span>论文 Fig.3 的 π0.5 在同一个 VLM 上还有一个<b>文本输出口</b>，openpi 没有：
+        <ul class="arch-list">
+          <li><b>预训练阶段</b>（α=0，没有动作专家）：动作用 FAST 离散 token 当文字一起训；同时训子任务文字、VQA、目标框等输出。见 <a href="#concept-hybrid-training">两阶段训练</a>。</li>
+          <li><b>后训练阶段</b>：加入随机初始化的动作专家（即图中橙色部分），用流匹配训连续动作；文本输出口保留。</li>
+          <li><b>推理</b>：先自回归解码出子任务文字 ℓ̂（如 "pick up the plate"），再把 ℓ̂ 当提示词、走图中流程 10 步去噪出动作。见<a href="#concept-hierarchical-inference">分层推理</a>。</li>
+        </ul>
+        openpi 的 <code>Pi0(pi05=True)</code> 只实现了"给定提示词 → 流匹配出动作"这一段，提示词由调用方直接给（如 DROID 的任务指令），没有子任务解码。离散动作侧另有独立的 <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0_fast.py" target="_blank" rel="noreferrer">pi0_fast.py ↗</a>（π0-FAST），但那是另一个模型类，不和流匹配头合在一起。
+        <br><span class="cite">Fig 3 · Sec IV-B/C/D · openpi README</span>
+      </div>
+    </article>
+
+    <article class="card rc">
+      <div class="q-row"><span class="q-num">读码</span><span class="q-text">按什么顺序读 openpi 的 π0.5 代码？</span></div>
+      <div class="answer always"><span class="alab">A</span>commit <code>215abfb</code>，自上而下 6 步：
+        <table class="arch-table">
+          <tr><th>#</th><th>文件 · 行</th><th>看什么</th></tr>
+          <tr><td>1</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0_config.py#L18-L41" target="_blank" rel="noreferrer">pi0_config.py L18–41 ↗</a></td><td>超参默认值：gemma_2b + gemma_300m、action_dim 32、action_horizon 50、pi05 开关、max_token_len 200</td></tr>
+          <tr><td>2</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/transforms.py#L248-L266" target="_blank" rel="noreferrer">transforms.py TokenizePrompt ↗</a> → <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/tokenizer.py#L22-L48" target="_blank" rel="noreferrer">tokenizer.py L22–48 ↗</a></td><td>数据进模型前，状态怎么被离散成数字拼进提示词</td></tr>
+          <tr><td>3</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L66-L100" target="_blank" rel="noreferrer">pi0.py __init__ L66–100 ↗</a></td><td>搭积木：两套 Gemma 配置进一个 <code>gemma.Module</code>，SigLIP，几个线性层；<code>pi05</code> 分支多了 time_mlp、少了 state_proj</td></tr>
+          <tr><td>4</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L105-L186" target="_blank" rel="noreferrer">pi0.py embed_prefix / embed_suffix ↗</a></td><td>输入怎么变成前缀 token、后缀 token 和 ar_mask；adaRMS 条件从哪来</td></tr>
+          <tr><td>5</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/gemma.py#L113-L133" target="_blank" rel="noreferrer">gemma.py RMSNorm ↗</a> · <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/gemma.py#L158-L250" target="_blank" rel="noreferrer">Attention ↗</a> · <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/gemma.py#L284-L336" target="_blank" rel="noreferrer">Block ↗</a></td><td>两套权重怎么在一层里共存：各算各的 Q/K/V 和 FFN，注意力拼在一起算；adaRMS 的 scale/shift/gate 怎么用</td></tr>
+          <tr><td>6</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L188-L214" target="_blank" rel="noreferrer">pi0.py compute_loss ↗</a> · <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L216-L279" target="_blank" rel="noreferrer">sample_actions ↗</a></td><td>训练：一次前向算流匹配损失；推理：前缀算一次存 KV cache，后缀循环 10 步欧拉积分</td></tr>
+        </table>
+        更多概念对应的源码行见 <a href="代码索引.html">代码索引</a>；π0 本身的流匹配推导见 <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">π0 精读</a>。
+      </div>
+    </article>
+  </section>
+
+
+
+  <section id="concept-hybrid-training" class="concept-anchor">
+    <h2>两阶段训练：先把动作当文字训，再接动作专家</h2>
+    <p>联合损失（Eq. 1）只有两项：</p>
+    <blockquote><p><code>E[ H(x<sub>1:M</sub>, f<sup>ℓ</sup>(o, ℓ)) + α · ‖ ω − a<sub>t:t+H</sub> − f<sup>a</sup>(a<sup>τ,ω</sup>, o, ℓ) ‖² ]</code></p></blockquote>
+    <p>第一项是所有文字 token 的交叉熵——子任务、VQA 答案、目标框坐标，<b>以及 FAST 编码的动作 token</b>，它们都是 PaliGemma 词表里的 token。第二项是动作专家的 flow matching 损失，α 控制它的权重。整个配方就是在两个阶段给 α 取不同的值：</p>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th></th><th>预训练（Pre-training）</th><th>后训练（Post-training）</th></tr>
+        <tr><td><strong>α</strong></td><td><b>0</b>：没有动作专家，模型就是一个标准的自回归 VLM</td><td><b>10.0</b>：加入<b>随机初始化</b>的动作专家，两项一起优化</td></tr>
+        <tr><td><strong>步数</strong></td><td>280k 梯度步</td><td>80k 梯度步</td></tr>
+        <tr><td><strong>动作怎么表示</strong></td><td>全部用 <a class="concept-link" href="FAST-论文解读.html#concept-fast">FAST</a> 离散 token，当下一个 token 预测</td><td>FAST token 继续训（保住文字能力），同时用 flow matching 训连续动作</td></tr>
+        <tr><td><strong>数据</strong></td><td>MM + ME + CE（含 OXE）+ HL + WD，所有任务一视同仁</td><td>MM + ME 里成功且不太长的片段 + WD + 多环境的 HL + <b>口头指令 VI</b>；去掉实验室 CE，聚焦家务</td></tr>
+        <tr><td><strong>目的</strong></td><td>便宜、稳定地把各种知识装进 VLM</td><td>专门化到移动操作，并装上能实时推理的动作头</td></tr>
+      </table>
+    </div>
+    <ul>
+      <li><strong>为什么预训练不用 flow</strong>：FAST 论文证明离散 token 训练在算力上高效得多（本文 Fig 12：π0 训到 300k 步仍不如 π0.5）；而且动作和文字共用一个输出口，VLM 的语言能力不会被一个随机初始化的动作头的梯度冲掉——这个问题后来在<a class="concept-link" href="KI-知识隔离-论文解读.html#concept-knowledge-insulation">知识隔离</a>里被单独研究。</li>
+      <li><strong>为什么推理不用 FAST</strong>：自回归解码几十个 token 要走 2B 主干几十次，约 750ms 一块；flow 动作专家 10 步约 100ms。</li>
+      <li><strong>两种动作表示互不相见</strong>：注意力掩码让 flow 的动作 token 不看 FAST token，反之亦然（Appendix E，Fig 18），避免一种表示"抄"另一种的答案。</li>
+      <li><strong>口头指令 VI 是什么</strong>：专家在机器人旁边，用语言实时"遥操作"已训练好的低层策略——每次说一句子任务、看机器人做完再说下一句。这样采到的是"好的高层决策"示范。它只占高层数据的约 11%，但去掉后性能显著下降（Fig 13）。</li>
+      <li><strong>动作空间统一</strong>：所有动作按各自数据集的 1% / 99% 分位数归一化到 [−1, 1]，统一到最大维度（代码里是 32 维），维度不够的补 0；关节控制和末端控制用提示词里的 <code>&lt;control mode&gt;</code> 区分。</li>
+    </ul>
+  </section>
+
+  <section id="s-system">
+    <h2>机器人与推理回路</h2>
+    <ul>
+      <li><strong>两种移动操作平台</strong>：都有两条 6 自由度手臂 + 平行夹爪、腕部相机，一个前置和一个后置相机，全向轮底盘（线速度 2 维 + 角速度 1 维），升降躯干（1 或 2 维）。状态和动作空间共 18 或 19 维。</li>
+      <li><strong>相机分工</strong>：高层推理用全部 4 路相机；低层出动作只用两只腕部 + 前置相机。</li>
+      <li><strong>控制</strong>：模型以 50Hz 直接给出手臂、夹爪、躯干的目标位姿和底盘目标速度（带动作分块），由简单的 PD 控制器跟踪。没有轨迹规划，没有碰撞检测，导航和操作全部端到端。</li>
+      <li><strong>一轮推理</strong>：拍 4 路图 → 解码子任务文字 ℓ̂ → 以 ℓ̂ 为提示词、拍腕部 + 前置图 → 10 步去噪得到动作块 → 执行。</li>
+    </ul>
+  </section>
+
+  <section id="s-code">
+    <h2>代码结构：openpi 里和 π0.5 有关的全部文件</h2>
+    <p>官方实现在 <a href="https://github.com/Physical-Intelligence/openpi/tree/215abfb217dbac7d5f1273282331b9b1866c0479" target="_blank" rel="noreferrer">Physical-Intelligence/openpi ↗</a>（以下链接固定在 commit <code>215abfb</code>）。先看目录，再看一次推理和一次训练分别经过哪些文件。提醒：openpi 只实现了 π0.5 的 <b>flow matching 低层策略</b>，没有子任务文字解码和 FAST 离散头。</p>
+    <pre class="tree"><code>openpi/
+├─ <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/scripts/train.py">scripts/train.py</a>                训练入口：init_train_state → 循环 train_step（调 model.compute_loss）
+├─ <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/scripts/serve_policy.py">scripts/serve_policy.py</a>         推理入口：加载 checkpoint，起 WebSocket 服务，机器人端连进来
+├─ <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/scripts/compute_norm_stats.py">scripts/compute_norm_stats.py</a>   统计状态 / 动作的归一化分位数（新数据集微调前先跑）
+├─ src/openpi/
+│  ├─ models/
+│  │  ├─ <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0_config.py">pi0_config.py</a>    Pi0Config：pi05 开关、action_dim 32、action_horizon 50、max_token_len 200
+│  │  ├─ <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py">pi0.py</a>           Pi0 模型：embed_prefix / embed_suffix / compute_loss / sample_actions（π0 和 π0.5 共用）
+│  │  ├─ <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/gemma.py">gemma.py</a>         两套专家共用的 Transformer：RMSNorm（含 adaRMS）、Attention、Block、Module
+│  │  ├─ <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/siglip.py">siglip.py</a>        SigLIP So400m/14 视觉编码器（来自 big_vision）
+│  │  ├─ <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/tokenizer.py">tokenizer.py</a>     PaligemmaTokenizer（π0.5 的"状态写进提示词"）、FASTTokenizer、BinningTokenizer
+│  │  ├─ <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/model.py">model.py</a>         Observation 数据结构、preprocess_observation（缩放到 224、训练时增广、相机 mask）
+│  │  ├─ pi0_fast.py · gemma_fast.py   π0-FAST，另一个模型类（见 <a href="FAST-论文解读.html#s-code">FAST 精读</a>）
+│  │  └─ lora.py                       LoRA 低显存微调
+│  ├─ models_pytorch/                  同一模型的 PyTorch 版（pi0_pytorch.py），接口对齐
+│  ├─ policies/
+│  │  ├─ <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/policies/policy.py">policy.py</a>        Policy.infer：输入变换 → sample_actions → 输出变换，并记 infer_ms
+│  │  ├─ <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/policies/policy_config.py">policy_config.py</a> create_trained_policy：加载权重和 norm stats，把变换链拼起来
+│  │  └─ <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/policies/droid_policy.py">droid_policy.py</a> · libero_policy.py · aloha_policy.py   各机器人观测/动作 ↔ 模型统一格式
+│  ├─ training/
+│  │  ├─ <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/training/config.py">config.py</a>        TrainConfig、DataConfig、ModelTransformFactory、_CONFIGS（pi05_droid、pi05_libero…）
+│  │  ├─ <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/training/data_loader.py">data_loader.py</a>   LeRobot / RLDS 数据集 → 变换 → batch
+│  │  ├─ <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/training/weight_loaders.py">weight_loaders.py</a> 从 pi05_base 等 checkpoint 或 PaliGemma 原始权重加载
+│  │  └─ optimizer.py · checkpoints.py · sharding.py
+│  ├─ <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/transforms.py">transforms.py</a>       数据变换积木：Normalize、DeltaActions、ResizeImages、TokenizePrompt、PadStatesAndActions…
+│  ├─ serving/websocket_policy_server.py
+│  └─ shared/normalize.py              NormStats、分位数统计
+└─ examples/droid · libero · aloha_*   机器人 / 仿真端客户端（调用 openpi-client 连服务）</code></pre>
+
+    <h3 class="sub">一次推理经过哪些文件（以 <code>pi05_droid</code> 为例）</h3>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>#</th><th>代码</th><th>做什么</th></tr>
+        <tr><td>1</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/scripts/serve_policy.py#L88-L122" target="_blank" rel="noreferrer">serve_policy.py · create_policy / main ↗</a></td><td>按配置名取 <code>TrainConfig</code>，下载 checkpoint，建 Policy，起 WebSocket 服务</td></tr>
+        <tr><td>2</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/training/config.py#L629-L641" target="_blank" rel="noreferrer">config.py · pi05_droid ↗</a></td><td><code>Pi0Config(action_horizon=15, pi05=True)</code>；数据变换用 <code>DroidInputs(model_type=PI05)</code></td></tr>
+        <tr><td>3</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/policies/policy_config.py#L16-L94" target="_blank" rel="noreferrer">policy_config.py · create_trained_policy ↗</a></td><td>加载 bf16 权重；从 checkpoint 的 <code>assets/</code> 读 norm stats；把输入变换链拼成：repack → InjectDefaultPrompt → 数据变换（DroidInputs）→ Normalize → 模型变换；输出链反过来</td></tr>
+        <tr><td>4</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/policies/droid_policy.py#L30-L73" target="_blank" rel="noreferrer">droid_policy.py · DroidInputs ↗</a></td><td>状态 = 7 个关节 + 夹爪 = 8 维；图像 = 外置相机 + 左腕相机，第三路填 0 并 mask 掉</td></tr>
+        <tr><td>5</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/transforms.py#L115-L148" target="_blank" rel="noreferrer">transforms.py · Normalize ↗</a></td><td>状态、动作按训练集分位数归一化到 [−1, 1]（和论文 1% / 99% 分位数一致）</td></tr>
+        <tr><td>6</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/training/config.py#L107-L165" target="_blank" rel="noreferrer">config.py · ModelTransformFactory（PI05 分支） ↗</a></td><td>ResizeImages(224) → <code>TokenizePrompt(discrete_state_input=True)</code>（状态写进提示词）→ PadStatesAndActions(32)</td></tr>
+        <tr><td>7</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/policies/policy.py#L68-L108" target="_blank" rel="noreferrer">policy.py · Policy.infer ↗</a></td><td>加 batch 维 → <code>Observation.from_dict</code> → jit 过的 <code>sample_actions</code>（上面架构图的全部流程）→ 去 batch 维 → 输出变换</td></tr>
+        <tr><td>8</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/policies/droid_policy.py#L76-L81" target="_blank" rel="noreferrer">droid_policy.py · DroidOutputs ↗</a></td><td>Unnormalize 之后只取前 8 维交给机器人；DROID 配置每次执行 15 步</td></tr>
+      </table>
+    </div>
+
+    <h3 class="sub">一次训练经过哪些文件（以 <code>pi05_libero</code> 微调为例）</h3>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>#</th><th>代码</th><th>做什么</th></tr>
+        <tr><td>1</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/training/config.py#L743-L762" target="_blank" rel="noreferrer">config.py · pi05_libero ↗</a></td><td>从 <code>pi05_base</code> 权重出发；<code>action_horizon=10</code>、<code>discrete_state_input=False</code>（仿真里关掉离散状态）；batch 256，余弦学习率峰值 5e-5、预热 10k，30k 步，EMA 0.999</td></tr>
+        <tr><td>2</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/training/data_loader.py#L223-L270" target="_blank" rel="noreferrer">data_loader.py · create_data_loader ↗</a></td><td>读 LeRobot 数据集，套数据变换 + Normalize + 模型变换，出 <code>(Observation, Actions)</code> batch</td></tr>
+        <tr><td>3</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/training/weight_loaders.py#L38-L56" target="_blank" rel="noreferrer">weight_loaders.py · CheckpointWeightLoader ↗</a> · <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/scripts/train.py#L85-L135" target="_blank" rel="noreferrer">train.py · init_train_state ↗</a></td><td>加载预训练参数并和当前模型形状合并；按 <code>freeze_filter</code> 决定哪些参数可训（LoRA 时只训 LoRA）</td></tr>
+        <tr><td>4</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/scripts/train.py#L137-L192" target="_blank" rel="noreferrer">train.py · train_step ↗</a></td><td>调 <code>model.compute_loss</code>（flow matching 损失）→ 梯度裁剪 → AdamW → EMA；记录 loss 和梯度范数</td></tr>
+        <tr><td>5</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L188-L214" target="_blank" rel="noreferrer">pi0.py · compute_loss ↗</a></td><td>采 τ ~ Beta(1.5, 1)，构造 x_t，一次前向前缀 + 后缀，只对后 50 个输出算 MSE</td></tr>
+      </table>
+    </div>
+    <p class="note">论文里的预训练（FAST token + 子任务 + VQA，α=0）和后训练（α=10）在 openpi 里都没有对应代码；<code>pi05_base</code> 就是官方后训练完成后的权重，用户只能从它开始微调。更多概念到源码行的对应见 <a href="代码索引.html#pi05-architecture">代码索引</a>。</p>
+  </section>
+
+  <section id="s-results">
+    <h2>关键结果</h2>
+    <div class="card">
+      <h3>1. 真的能进没见过的家（Sec V-A，Fig 7）</h3>
+      <p>在训练集之外的 3 个真实厨房、3 个真实卧室里，用两种机器人做"物品放进抽屉""衣服放进洗衣篮""餐具放进水槽"，每个任务 2–5 分钟、多个阶段，只给一句总指令。各家各任务的平均完成度都比较高，且和 mock 环境里的分数接近——说明 mock 评测能代表真实表现。</p>
+    </div>
+    <div class="card">
+      <h3>2. 泛化随"见过多少个家"增长（Sec V-B，Fig 8–9）</h3>
+      <p>把移动操作数据按地点切成 3 / 12 / 22 / 53 / 82 / 104 个家，固定训练步数（40k）后训练。完成度和语言跟随率都随地点数稳步上升；到 104 个家时，<b>和一个直接在测试家庭数据上训练的模型表现相当</b>。反过来，不走预训练配方、只用 104 个家或测试家庭数据直接训，都差很多——别的数据源是必要的。分布外物体的语言跟随提升得比分布内慢，但也在涨。</p>
+    </div>
+    <div class="card">
+      <h3>3. 每类数据各管什么（Sec V-C，Fig 10–11）</h3>
+      <div class="tbl-wrap"><table>
+        <tr><th>去掉</th><th>完成度（mock 家）</th><th>语言跟随</th></tr>
+        <tr><td>ME（多环境固定臂）</td><td>显著下降</td><td>显著下降</td></tr>
+        <tr><td>CE（实验室跨本体）</td><td>显著下降</td><td>显著下降</td></tr>
+        <tr><td>ME + CE</td><td>下降更多</td><td>下降更多</td></tr>
+        <tr><td>WD（网页图文）</td><td>差异不显著</td><td><b>分布外物体明显变差</b>；高层推理也显著变差（Fig 13）</td></tr>
+      </table></div>
+      <p>跨本体数据的收益来自两方面：ME 带来别的<b>环境</b>，CE 带来别的<b>任务</b>。网页数据管的是"认识没见过的东西"和"决定下一步做什么"。</p>
+    </div>
+    <div class="card">
+      <h3>4. 对比 π0 和 π0-FAST+Flow（Sec V-D，Fig 12）</h3>
+      <p>同样的机器人数据、相近的步数：π0.5 显著好于 π0；也显著好于"用 Eq. 1 的混合配方、但只用动作数据训"的 π0-FAST+Flow。π0 多训到 300k 步仍追不上，印证 FAST 论文的结论：离散 token 训练在算力上更高效。π0.5 比 π0-FAST+Flow 多出来的只有 HL 和 WD 数据，这部分差距就是"会说话"带来的。</p>
+    </div>
+    <div class="card">
+      <h3>5. 高层推理的几种做法（Sec V-E，Fig 13）</h3>
+      <p>排名：全模型 &gt; 人类当高层（oracle）≈ 隐式 HL（不做高层推理，但训练里有子任务数据）&gt; 去掉 VI &gt; 去掉 WD &gt; 去掉 HL &gt; GPT-4 零样本当高层。两个重要信息：训练里<b>放进子任务数据本身</b>就拿到大半收益；<b>11% 的口头指令数据</b>对高层决策至关重要。</p>
+    </div>
+  </section>
+
+  <section id="s-insight">
+    <h2>深层理解：这篇真正改变了什么</h2>
+    <ul>
+      <li><strong>把"泛化"从模型问题变成数据配方问题。</strong>网络结构几乎没动，所有收益来自数据怎么混、分几个阶段训。后来的 π 系列工作基本都沿着"配方"而不是"结构"在改。</li>
+      <li><strong>动作 token 和文字 token 同一个出口，是分层能力的来源。</strong>子任务预测、VQA、目标框、FAST 动作在预训练里是同一类任务，所以网页知识能直接流到"下一步做什么"的决策里；而低层动作被刻意隔开（只看 ℓ̂，不看 ℓ），不用背负语义理解。</li>
+      <li><strong>"训练时离散、推理时连续"成为默认做法。</strong>FAST 负责训得快、保住语言能力，flow 动作专家负责推得快、动作细。后训练阶段才引入随机初始化的动作专家，使其梯度不会在预训练阶段破坏 VLM——知识隔离一文随后把这个现象说清楚并给出单阶段方案。</li>
+      <li><strong>语言成为一种新的示范形式。</strong>口头指令 VI 不是遥操作，而是人用语言"开"机器人；它采的是决策层的数据，便宜且高效，占比 11% 却不可或缺。</li>
+      <li><strong>评测范式的改变。</strong>全部实验都在训练集之外的环境进行，并用"完成度"而不是二值成功率衡量长任务。</li>
+    </ul>
+  </section>
+
+  <section id="s-cost">
+    <h2>代价与边界</h2>
+    <ul>
+      <li><strong>仍然会出错</strong>（Sec VI）：陌生样式的抽屉把手、物理上难开的柜门；手臂遮挡要擦的污渍这类部分可观测问题；高层推理有时"走神"，比如放东西时反复开关抽屉。</li>
+      <li><strong>提示词很简单。</strong>能理解多复杂的指令取决于标注数据的复杂度；更细的偏好和约束要靠更丰富的标注（人工或合成）。</li>
+      <li><strong>上下文很短，没有记忆。</strong>跨房间导航、记住东西放在哪，这类任务需要更长的上下文或显式记忆。</li>
+      <li><strong>两阶段训练贵且绕。</strong>预训练 280k 步 + 后训练 80k 步；动作专家在后训练才开始学。知识隔离一文给出了单阶段替代方案。</li>
+      <li><strong>开源只有一半。</strong>openpi 放出了 flow 低层策略的权重和代码（pi05_base / pi05_droid / pi05_libero），高层子任务推理、FAST 头和训练数据都没有公开。</li>
+    </ul>
+  </section>
+
+  <section id="s-next">
+    <h2>被谁接手</h2>
+    <ul>
+      <li><strong>训练配方</strong> → <a class="concept-link" href="KI-知识隔离-论文解读.html#concept-knowledge-insulation">知识隔离（2025.05）</a>：把"为什么要先离散再连续"讲清楚，并改成单阶段：动作专家的梯度不回传到 VLM，FAST token 和 flow 同时训。</li>
+      <li><strong>从示范到经验</strong> → <a class="concept-link" href="pi0.6-论文解读.html#concept-recap">π*0.6 / RECAP（2025.11）</a>：在 π0.5 的基础上加价值函数和优势条件，让模型从自己的成败里学。</li>
+      <li><strong>更多输入形式</strong> → <a class="concept-link" href="pi0.7_问答学习卡.html#concept-world-model">π0.7（2026.04）</a>：子任务文字之外，还能输入速度/质量元信息和视觉子目标来"指挥"同一个模型。</li>
+      <li><strong>实时性</strong> → <a class="concept-link" href="RTC-训练时-论文解读.html#concept-rtc">实时动作分块（RTC）</a>：解决动作块之间衔接的延迟问题，π0.5 的 50 步动作块是它的直接对象。</li>
+      <li><strong>复现与扩展</strong> → <a href="OpenVLA-vs-pi系列-对比.html">OpenVLA vs π 系列</a>里可以看到，离散 token 与连续生成两条路线在 π0.5 之后开始互相借鉴。</li>
+    </ul>
+    <p>做题巩固：<a href="pi0.5_论文测验_精美版.html">π0.5 论文精读测验（25 题）→</a></p>
+  </section>
+
+  <section id="s-quiz">
+    <h2>自测</h2>
+    <details class="qz"><summary>π0.5 和 π0 的网络结构差在哪？</summary><p>几乎一样（SigLIP + Gemma 2B + 300M 动作专家）。代码里只有两处不同：本体状态离散成数字写进提示词；时间步 τ 单独过 MLP 后用 adaRMSNorm 注入动作专家每一层。</p></details>
+    <details class="qz"><summary>低层动作分布依赖总指令 ℓ 吗？</summary><p>不依赖。π(a | o, ℓ̂) 只看观测和模型自己预测的子任务 ℓ̂；总指令只影响高层 π(ℓ̂ | o, ℓ)。</p></details>
+    <details class="qz"><summary>预训练和后训练的 α 分别是多少，意味着什么？</summary><p>预训练 α=0：没有动作专家，动作全部用 FAST token 当文字训。后训练 α=10：加入随机初始化的动作专家，flow matching 损失和交叉熵一起优化。</p></details>
+    <details class="qz"><summary>推理时为什么不用 FAST token？</summary><p>自回归解码几十个 token 要过 2B 主干几十次，约 750ms 一块；flow 动作专家 10 步约 100ms。所以训练用 FAST 拿效率，推理用 flow 拿速度。</p></details>
+    <details class="qz"><summary>去掉网页数据 WD 影响什么？</summary><p>mock 家的整体完成度差异不显著，但分布外物体的语言跟随明显变差，高层子任务推理也显著变差——网页知识主要用在"认识新东西"和"决定下一步"。</p></details>
+    <details class="qz"><summary>"隐式 HL"是什么，结果说明了什么？</summary><p>训练里保留子任务数据，但推理时不做高层推理、直接把总指令喂给低层。它是第二名，说明把子任务数据放进训练本身就拿到了大半收益。</p></details>
+    <details class="qz"><summary>openpi 里的 π0.5 实现了论文的哪一部分？</summary><p>只有 flow matching 低层策略（给定提示词出动作），由 Pi0 类加 pi05=True 实现；没有子任务文字解码、FAST 离散头和两阶段预训练代码。</p></details>
+  </section>
+
+  <aside class="concept-related" aria-label="相关概念">
+    <strong>相关概念</strong>
+    <a class="concept-link" href="#concept-hierarchical-inference">分层推理：先说子任务再出动作</a>
+    <a class="concept-link" href="#concept-hybrid-training">两阶段训练：先离散后连续</a>
+    <a class="concept-link" href="#concept-adarms">adaRMSNorm：时间步注入</a>
+    <a class="concept-link" href="FAST-论文解读.html#concept-fast">FAST：DCT 与 BPE 压缩动作</a>
+    <a class="concept-link" href="KI-知识隔离-论文解读.html#concept-knowledge-insulation">知识隔离：单阶段训练配方</a>
+    <a class="concept-link" href="pi0.6-论文解读.html#concept-recap">RECAP：从示范走向经验学习</a>
+    <a class="concept-link" href="concepts.html">全部概念 →</a>
+  </aside>
+
+  <footer>
+    <span>精读笔记 · π0.5 · 出处：Physical Intelligence, <a href="https://arxiv.org/abs/2504.16054" target="_blank" rel="noreferrer">arXiv 2504.16054</a> · <a href="https://www.physicalintelligence.company/blog/pi05" target="_blank" rel="noreferrer">官方博客</a> · <a href="pi0.5_论文测验_精美版.html">25 题测验</a></span>
+    <a href="index.html">返回知识库 →</a>
+  </footer>
+</div>
+<script src="nav.js"></script>
+</body>
+</html>

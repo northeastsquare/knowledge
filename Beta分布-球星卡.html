@@ -5,10 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Beta 分布 · 别慌球星卡</title>
 <meta name="description" content="用棒球球星卡讲清 Beta 分布：它只是 0~1 上的一个形状旋钮，附 5 个可动手的小实验">
-<script>
-MathJax={tex:{inlineMath:[['$','$']],displayMath:[['$$','$$']]}};
-</script>
-<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
+<link rel="stylesheet" href="assets/katex/katex.min.css">
+<style>.katex-display{overflow-x:auto;overflow-y:hidden;max-width:100%;}</style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bangers&family=ZCOOL+KuaiLe&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
@@ -409,10 +407,17 @@ function runE(){const [al,be]=$('eP').value.split(',').map(Number);let lo=+$('eL
   $('eOut').innerHTML=`Beta(${al}, ${be}) · P(${lo.toFixed(2)} ≤ x ≤ ${hi.toFixed(2)}) = 面积 = <b>${area.toFixed(3)}</b> · 全部面积 = <b>1</b> · 曲线最高处 <b>${peak.toFixed(2)}</b>（密度，不是概率）`;}
 ['eP','eL','eR'].forEach(i=>$(i).addEventListener('input',runE));
 runE();
-if(window.MathJax&&MathJax.typesetPromise)MathJax.typesetPromise().catch(e=>console.log(e));
+if(window.renderMath)renderMath();
 </script>
 
 
+<script defer src="assets/katex/katex.min.js"></script>
+<script defer src="assets/katex/contrib/auto-render.min.js"></script>
+<script>
+window.KATEX_OPTS={delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false,strict:'ignore'};
+window.renderMath=function(el){if(window.renderMathInElement)renderMathInElement(el||document.body,window.KATEX_OPTS);};
+document.addEventListener('DOMContentLoaded',function(){window.renderMath();});
+</script>
 <script src="nav.js"></script>
 </body>
 </html>
