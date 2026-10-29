@@ -211,6 +211,11 @@
   .arch .arrows .loop{fill:none;}
   .arch .arrows .kv{stroke:#4F46E5;stroke-width:2;}
   .arch .t3.kv{fill:#3730A3;}
+  .arch .bx.hl{stroke:#B45309;fill:#FFF8E6;}
+  .arch .bx.f{stroke:#BE185D;fill:#FDEEF5;}
+  .arch .bx.txo{fill:#F7F7FF;stroke:#4F46E5;stroke-dasharray:6 4;}
+  .arch .tag{font-size:10px;font-weight:700;}
+  .arch .tag.tr{fill:#BE185D;} .arch .tag.both{fill:#15803D;} .arch .tag.unk{fill:#71748C;}
   .arch-note{margin-top:12px;padding:10px 14px;border-radius:10px;background:#fff7e8;border:1px solid #F2D9A6;font-size:.92rem;color:var(--ink-2);}
   .arch-table{width:100%;border-collapse:collapse;margin:10px 0 6px;font-size:.9rem;}
   .arch-table th,.arch-table td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;}
@@ -466,7 +471,186 @@
         <text x="975" y="598" class="t3 loop" style="text-anchor:end">↑ 每步去噪把 x_t、τ 送回 ②</text>
       </svg>
       </div>
-      <div class="arch-note">本图画的是 <b>openpi 的实现</b>：只有流匹配动作头，没有论文里预训练阶段的 FAST 离散动作 token、子任务文字输出和 VQA 输出（openpi README 明确写了"目前只支持 flow matching head"）。论文 Fig.3 / Fig.18 的完整结构见下面第 3 张卡。</div>
+      <div class="arch-note">本图画的是 <b>openpi 的实现</b>：只有流匹配动作头，没有论文里预训练阶段的 FAST 离散动作 token、子任务文字输出和 VQA 输出（openpi README 明确写了"目前只支持 flow matching head"）。论文 Fig.3 / Fig.18 的完整结构见<a href="#s-arch-paper">下一张图：论文完整版</a>。</div>
+    </article>
+
+        <article class="card wide" id="s-arch-paper">
+      <h3 style="margin:0 0 6px">论文完整版：一个 VLM，两个输出口</h3>
+      <p class="arch-lead">上图只画了 openpi 实现的部分。这张图按论文重画（Fig.3、Fig.4、Fig.18，Sec IV、Appendix E），补上 openpi 缺的<b>文本输出口</b>：目标框、子任务文字、网页问答答案、FAST 离散动作 token；上图里纯属代码实现的细节（文件名、KV cache、32 维补零、DROID 配置等）这里都省略了。每个输出下面标了它在哪个阶段用到：<span style="color:#15803D;font-weight:700">训练 + 推理</span>、<span style="color:#BE185D;font-weight:700">只在训练用</span>。颜色：<span class="sw" style="background:#0E9488"></span>视觉 <span class="sw" style="background:#4F46E5"></span>语言 / 骨干 <span class="sw" style="background:#B45309"></span>文本输出（框 / 子任务 / 问答） <span class="sw" style="background:#BE185D"></span>FAST 离散动作 <span class="sw" style="background:#EA580C"></span>动作专家 <span class="sw" style="background:#7C3AED"></span>流匹配。</p>
+      <div class="arch-scroll">
+      <svg class="arch" viewBox="0 0 1000 780" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Microsoft YaHei, sans-serif" role="img" aria-label="论文完整版 π0.5 架构图">
+        <text x="12" y="22" class="rowlab">① 输入：前缀（图像、提示词、状态彼此双向全看）+ 动作专家的输入</text>
+        <text x="12" y="146" class="rowlab">② 一个 Transformer，两套权重（按 token 类型分流，Sec IV-A）</text>
+        <text x="12" y="380" class="rowlab">③ 两个输出口</text>
+        <text x="12" y="634" class="rowlab">④ 推理：同一个模型跑两段（Sec IV-B）</text>
+
+        <!-- ① 输入 -->
+        <rect x="20" y="30" width="220" height="88" rx="10" class="bx v"/>
+        <text x="130" y="52" class="t1">多路相机图像</text>
+        <text x="130" y="70" class="t2">高层推理用 4 路：前、后、双腕</text>
+        <text x="130" y="86" class="t2">低层动作用 3 路：前 + 双腕</text>
+        <text x="130" y="104" class="t2">SigLIP（400M）→ 图像 token</text>
+
+        <rect x="255" y="30" width="260" height="88" rx="10" class="bx l"/>
+        <text x="385" y="52" class="t1">文字提示 ℓ</text>
+        <text x="385" y="70" class="t2">机器人数据：高层指令 "clean the bedroom"</text>
+        <text x="385" y="86" class="t2">网页数据：问题 "What kind of pie is this?"</text>
+        <text x="385" y="104" class="t2">另加 &lt;control mode&gt; 区分关节 / 末端控制</text>
+
+        <rect x="530" y="30" width="180" height="88" rx="10" class="bx l"/>
+        <text x="620" y="52" class="t1">本体状态 q_t</text>
+        <text x="620" y="70" class="t2">每维离散成一个数字</text>
+        <text x="620" y="86" class="t2">当作文本 token</text>
+        <text x="620" y="104" class="t2">和提示词一起进前缀</text>
+
+        <a href="#concept-adarms">
+          <rect x="725" y="30" width="255" height="88" rx="10" class="bx a"/>
+          <text x="852" y="52" class="t1">带噪动作块 + 时间步 τ</text>
+          <text x="852" y="70" class="t2">后训练才有；50 步动作，从高斯噪声出发</text>
+          <text x="852" y="86" class="t2">线性层投影成 50 个动作 token</text>
+          <text x="852" y="104" class="t2">τ 经 MLP，用 adaRMSNorm 注入每层</text>
+        </a>
+
+        <!-- ② Transformer -->
+        <rect x="20" y="154" width="960" height="196" rx="14" class="bx big"/>
+        <rect x="40" y="172" width="580" height="112" rx="10" class="bx l"/>
+        <text x="330" y="196" class="t1">VLM 主干：PaliGemma（Gemma 2B，18 层，权重来自网页预训练）</text>
+        <text x="330" y="216" class="t2">处理图像、提示词、状态，以及它自己正在输出的文本 token</text>
+        <text x="330" y="234" class="t2 em">预训练阶段只有它（α = 0）：就是一个标准的自回归 VLM，</text>
+        <text x="330" y="250" class="t2 em">动作、子任务、框、问答答案全当作词表里的"下一个 token"预测</text>
+        <text x="330" y="272" class="t2">后训练继续用这些文本损失，保住语言和看图能力</text>
+
+        <a href="#concept-adarms">
+          <rect x="640" y="172" width="320" height="112" rx="10" class="bx a"/>
+          <text x="800" y="196" class="t1">动作专家（300M，宽 1024）</text>
+          <text x="800" y="216" class="t2 em">后训练才加入，随机初始化（α = 10）</text>
+          <text x="800" y="234" class="t2">只处理 50 个动作 token，彼此双向全看</text>
+          <text x="800" y="250" class="t2">看得到前缀，看不到 FAST token</text>
+          <text x="800" y="272" class="t2">训练目标：流匹配速度场</text>
+        </a>
+
+        <a href="#s-mask-paper">
+          <rect x="40" y="296" width="920" height="42" rx="10" class="bx sh"/>
+          <text x="500" y="314" class="t2 b">两套权重只在每层的自注意力里交汇（Fig.18 掩码）</text>
+          <text x="500" y="330" class="t2">信息单向：VLM → 动作专家；VLM 的 token（包括 FAST token）都看不到动作专家</text>
+        </a>
+
+        <!-- ③ 输出：文本口 -->
+        <rect x="20" y="388" width="610" height="222" rx="12" class="bx txo"/>
+        <text x="325" y="408" class="t1">文本输出口：VLM 词表 logits，自回归逐个 token 解码，交叉熵损失</text>
+        <text x="325" y="424" class="t3">机器人数据（HL 标注）的输出顺序：框 → 子任务 → 动作（Sec IV-C、Fig.4）</text>
+
+        <rect x="36" y="434" width="178" height="96" rx="10" class="bx hl"/>
+        <text x="125" y="454" class="t1">① 目标框</text>
+        <text x="125" y="472" class="t2 mono">&lt;loc0405&gt;…&lt;loc0197&gt; closet</text>
+        <text x="125" y="488" class="t2">PaliGemma 的坐标 token</text>
+        <text x="125" y="504" class="t2">先框出相关物体</text>
+        <text x="125" y="522" class="tag unk">训练用；推理是否输出论文未写</text>
+
+        <a href="#concept-hierarchical-inference">
+          <rect x="228" y="434" width="178" height="96" rx="10" class="bx hl"/>
+          <text x="317" y="454" class="t1">② 子任务文字 ℓ̂</text>
+          <text x="317" y="472" class="t2 mono">Subtask: move to closet</text>
+          <text x="317" y="488" class="t2">高层推理的产物</text>
+          <text x="317" y="504" class="t2">数据：HL 标注 + 口头指令 VI</text>
+          <text x="317" y="522" class="tag both">训练 + 推理</text>
+        </a>
+
+        <a href="FAST-论文解读.html#concept-fast">
+          <rect x="420" y="434" width="196" height="96" rx="10" class="bx f"/>
+          <text x="518" y="454" class="t1">③ FAST 离散动作 token</text>
+          <text x="518" y="472" class="t2">动作块做 DCT + BPE 压缩</text>
+          <text x="518" y="488" class="t2">借用词表末尾的 token 编号</text>
+          <text x="518" y="504" class="t2">因果：只看前缀和之前的 FAST</text>
+          <text x="518" y="522" class="tag tr">只在训练用（让 VLM 学会动作）</text>
+        </a>
+
+        <rect x="36" y="544" width="580" height="56" rx="10" class="bx hl"/>
+        <text x="326" y="564" class="t1">或：网页数据的答案（WD）</text>
+        <text x="326" y="580" class="t2">图像描述、VQA 问答、物体定位，如 "This is a delicious-looking pecan pie…"</text>
+        <text x="326" y="594" class="tag both">预训练 + 后训练都训（保语义）；推理时动作流程里不用</text>
+
+        <!-- ③ 输出：动作口 -->
+        <rect x="650" y="388" width="330" height="222" rx="12" class="bx txo" style="stroke:#EA580C"/>
+        <text x="815" y="408" class="t1">动作输出口：动作专家，非自回归</text>
+        <rect x="666" y="420" width="298" height="52" rx="10" class="bx a"/>
+        <text x="815" y="441" class="t1">线性层 → 速度场 v</text>
+        <text x="815" y="459" class="t2">训练：和 ω − a 比，算流匹配损失</text>
+        <rect x="666" y="484" width="298" height="52" rx="10" class="bx tm"/>
+        <text x="815" y="505" class="t1">10 步积分去噪</text>
+        <text x="815" y="523" class="t2">推理时每步把新动作和 τ 送回动作专家</text>
+        <rect x="666" y="548" width="298" height="52" rx="10" class="bx out"/>
+        <text x="815" y="569" class="t1">连续动作块（50 步）</text>
+        <text x="815" y="587" class="tag both">训练 + 推理 · 50Hz 交给 PD 控制器</text>
+
+        <!-- ④ 推理两段 -->
+        <a href="#concept-hierarchical-inference">
+          <rect x="20" y="644" width="290" height="116" rx="10" class="bx hl"/>
+          <text x="165" y="666" class="t1">第 1 段 · 高层推理</text>
+          <text x="165" y="686" class="t2">前缀 = 4 路图像 + 高层指令 ℓ + 状态</text>
+          <text x="165" y="704" class="t2">VLM 自回归解码出子任务 ℓ̂</text>
+          <text x="165" y="722" class="t2">（这一段不用动作专家）</text>
+          <text x="165" y="744" class="t2">π(ℓ̂ | o, ℓ)</text>
+        </a>
+        <rect x="355" y="644" width="290" height="116" rx="10" class="bx l"/>
+        <text x="500" y="666" class="t1">把 ℓ̂ 换进提示词</text>
+        <text x="500" y="686" class="t2">动作只看子任务 ℓ̂，不再看原指令 ℓ</text>
+        <text x="500" y="704" class="t2">"收拾卧室" → "拿起枕头"</text>
+        <text x="500" y="722" class="t2">动作策略只需会做短而具体的事</text>
+        <text x="500" y="744" class="t2">π(a, ℓ̂ | o, ℓ) = π(a | o, ℓ̂) · π(ℓ̂ | o, ℓ)</text>
+        <rect x="690" y="644" width="290" height="116" rx="10" class="bx a"/>
+        <text x="835" y="666" class="t1">第 2 段 · 低层动作</text>
+        <text x="835" y="686" class="t2">前缀 = 3 路图像 + ℓ̂ + 状态</text>
+        <text x="835" y="704" class="t2">动作专家 10 步去噪出动作块</text>
+        <text x="835" y="722" class="t2">FAST token 一个都不解码（太慢）</text>
+        <text x="835" y="744" class="t2">π(a | o, ℓ̂)</text>
+
+        <g class="arrows">
+          <line x1="130" y1="118" x2="130" y2="170"/>
+          <line x1="385" y1="118" x2="385" y2="170"/>
+          <line x1="620" y1="118" x2="560" y2="170"/>
+          <line x1="852" y1="118" x2="852" y2="170"/>
+          <line x1="330" y1="338" x2="330" y2="386"/>
+          <line x1="815" y1="338" x2="815" y2="386"/>
+          <line x1="214" y1="482" x2="226" y2="482"/>
+          <line x1="406" y1="482" x2="418" y2="482"/>
+          <line x1="815" y1="472" x2="815" y2="482"/>
+          <line x1="815" y1="536" x2="815" y2="546"/>
+          <line x1="310" y1="702" x2="353" y2="702"/>
+          <line x1="645" y1="702" x2="688" y2="702"/>
+        </g>
+      </svg>
+      </div>
+      <div class="arch-note"><b>和上图（openpi）的差别</b>：上图只有右边的"动作输出口"和第 2 段低层推理；左边整个文本输出口（框、子任务、网页答案、FAST token）和第 1 段高层推理 openpi 都没有，提示词由调用方直接给。各开源实现分别补了哪一块，见下面两张卡。</div>
+    </article>
+
+    <article class="card rc" id="s-mask-paper">
+      <div class="q-row"><span class="q-num">读论文</span><span class="q-text">论文完整版的注意力掩码（Fig.18）：谁能看谁？</span></div>
+      <div class="answer always"><span class="alab">A</span>训练时一条序列 = [前缀：图像 + 提示词 + 状态 | FAST 动作 token | 流匹配动作 token]，规则是：
+        <table class="arch-table">
+          <tr><th>查询 ↓ 能看到 →</th><th>前缀</th><th>FAST token</th><th>流匹配动作 token</th></tr>
+          <tr><td>前缀</td><td class="ok">✓ 双向全看</td><td class="no">✗</td><td class="no">✗</td></tr>
+          <tr><td>FAST token</td><td class="ok">✓</td><td class="ok">✓ 因果（只看前面的）</td><td class="no">✗</td></tr>
+          <tr><td>流匹配动作 token</td><td class="ok">✓</td><td class="no">✗ 防止"抄答案"</td><td class="ok">✓ 双向全看</td></tr>
+        </table>
+        两个关键的 ✗：流匹配动作 token 不看 FAST token，否则它可以直接从离散动作里抄出答案，学不到真本事；VLM 一侧谁也不看动作专家，所以信息只从 VLM 流向动作专家。框和子任务文字是普通的自回归文本输出，Fig.18 没单独画它们；推理第 2 段时 ℓ̂ 已经解码完、放进了前缀，所以低层动作照样"只看前缀"。
+        <br>论文没写的一点：动作专家的梯度会不会经过注意力回传、改动 VLM。同组的<a class="concept-link" href="KI-知识隔离-论文解读.html#concept-stop-gradient">知识隔离</a>论文专门研究了这件事，给动作专家看的 VLM K/V 加了 stop-gradient；openpi 发布的 π0.5 权重注明是用知识隔离训练的。
+        <br><span class="cite">Fig 18 · Appendix E · Sec IV-B · KI Sec 5</span>
+      </div>
+    </article>
+
+    <article class="card rc">
+      <div class="q-row"><span class="q-num">开源</span><span class="q-text">哪些开源实现补了论文的哪一块？</span></div>
+      <div class="answer always"><span class="alab">A</span>没有一个开源实现包含完整的文本输出口；离散动作那一半能在 π0-FAST 的代码里看到同款做法：
+        <table class="arch-table">
+          <tr><th>实现</th><th>有</th><th>没有</th><th>参考</th></tr>
+          <tr><td><b>openpi</b> π0.5（官方）</td><td>流匹配那一半：离散状态进提示词、adaRMSNorm、动作专家</td><td>FAST 损失、子任务、目标框、网页问答输出</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/README.md#L8" target="_blank" rel="noreferrer">README ↗</a></td></tr>
+          <tr><td><b>openpi</b> π0-FAST（官方，另一个模型）</td><td>离散那一半的同款做法："Action: " + FAST token + "|" 接在前缀后面，前缀双向、后缀因果，只在后缀算交叉熵；FAST 的 token 编号映射到 PaliGemma 词表末尾（跳过最后 128 个特殊 token）</td><td>动作专家；子任务和框</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/tokenizer.py#L64-L100" target="_blank" rel="noreferrer">tokenizer.py ↗</a> · <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/tokenizer.py#L136-L139" target="_blank" rel="noreferrer">映射到词表末尾 ↗</a> · <a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0_fast.py#L198-L233" target="_blank" rel="noreferrer">pi0_fast.py 损失 ↗</a></td></tr>
+          <tr><td><b>LeRobot</b> pi05（复现，PyTorch）</td><td>流匹配那一半；可选开关 <code>knowledge_insulation</code>（默认关）：动作 token 看的 VLM K/V 截断梯度</td><td>同样没有 FAST、子任务、框、问答输出</td><td><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/pi05/modeling_pi05.py#L275-L283" target="_blank" rel="noreferrer">modeling_pi05.py ↗</a></td></tr>
+        </table>
+        所以上面那张"论文完整版"里，目标框、子任务、网页问答和"FAST + 流匹配同时训"这几块，目前只能按论文文字理解，没有公开代码可对照。
+        <br><span class="cite">openpi 215abfb · LeRobot 72e1d9e</span>
+      </div>
     </article>
 
     <article class="card rc" id="concept-adarms">
@@ -500,7 +684,7 @@
 
     <article class="card rc">
       <div class="q-row"><span class="q-num">读码</span><span class="q-text">论文的完整架构比 openpi 多什么？</span></div>
-      <div class="answer always"><span class="alab">A</span>论文 Fig.3 的 π0.5 在同一个 VLM 上还有一个<b>文本输出口</b>，openpi 没有：
+      <div class="answer always"><span class="alab">A</span>论文 Fig.3 的 π0.5 在同一个 VLM 上还有一个<b>文本输出口</b>，openpi 没有（画成图见上面的<a href="#s-arch-paper">论文完整版架构图</a>）：
         <ul class="arch-list">
           <li><b>预训练阶段</b>（α=0，没有动作专家）：动作用 FAST 离散 token 当文字一起训；同时训子任务文字、VQA、目标框等输出。见 <a href="#concept-hybrid-training">两阶段训练</a>。</li>
           <li><b>后训练阶段</b>：加入随机初始化的动作专家（即图中橙色部分），用流匹配训连续动作；文本输出口保留。</li>
