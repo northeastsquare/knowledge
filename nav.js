@@ -26,6 +26,7 @@
         { t: 'RLinf 里的 RL 方法详细对比', h: 'RLinf-RL方法对比.html' },
         { t: 'VLA 强化学习方法全景对比', h: 'VLA-RL-方法全景对比.html' },
         { t: 'Diffusion Policy：扩散动作策略', h: 'DiffusionPolicy-论文解读.html' },
+        { t: 'ACT 动作分块 Transformer · LeRobot 全图解', h: 'LeRobot-ACT-算法详解.html' },
         { t: 'OpenVLA vs π 系列：动作怎么生成', h: 'OpenVLA-vs-pi系列-对比.html' },
         { t: '代码索引：关键概念的官方实现', h: '代码索引.html' }
       ]

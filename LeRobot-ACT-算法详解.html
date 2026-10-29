@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ACT 动作分块 Transformer · LeRobot 实现全图解</title>
+<link rel="stylesheet" href="concepts.css">
+<link rel="stylesheet" href="assets/katex/katex.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#f1f4f6;--surface:#fbfcfd;--surface-2:#eaf0f4;--ink:#16222e;--ink-2:#51626f;--ink-3:#83919c;
+ --train:#c4572a;--train-bg:#fbeee7;--infer:#0e6e8a;--infer-bg:#e3f1f5;--line:#d8e1e7;--line-strong:#c3d0d9;
+ --shadow:0 1px 2px rgba(22,34,46,.04),0 14px 34px rgba(22,34,46,.07)}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans",-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;font-size:16px;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background-image:linear-gradient(rgba(22,34,46,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(22,34,46,.05) 1px,transparent 1px);background-size:28px 28px}
+.wrap{max-width:980px;margin:0 auto;padding:0 22px 100px}
+.wide{max-width:1240px;margin:0 auto;padding:0 16px}
+header.hero{padding:56px 0 28px}
+.kicker{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-2)}
+.kicker b{color:var(--infer)}
+h1{font-family:"Noto Serif SC",serif;font-size:38px;line-height:1.3;margin:10px 0 12px}
+.lede{font-size:17.5px;color:var(--ink-2);max-width:760px}
+.lede b{color:var(--ink)}
+.facts{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:24px 0 0}
+.fact{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.fact .n{font-family:"IBM Plex Mono",monospace;font-size:22px;font-weight:600;color:var(--infer)}
+.fact .l{font-size:13px;color:var(--ink-2);line-height:1.5}
+h2{font-family:"Noto Serif SC",serif;font-size:27px;margin:64px 0 6px;padding-top:10px}
+h2 .no{font-family:"IBM Plex Mono",monospace;font-size:14px;color:var(--ink-3);display:block;letter-spacing:.12em}
+h3{font-size:19px;margin:34px 0 8px}
+p{margin:10px 0}
+a{color:var(--infer)}
+code,.mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.88em}
+code{background:var(--surface-2);padding:1px 5px;border-radius:4px}
+pre{background:#14202b;color:#dbe6ee;padding:14px 16px;border-radius:10px;overflow-x:auto;font-size:13px;line-height:1.6}
+pre code{background:none;padding:0;color:inherit}
+pre .c{color:#7f97a8}
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14.5px;background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+th,td{padding:8px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{background:var(--surface-2);font-weight:600;font-size:13.5px}
+tr:last-child td{border-bottom:none}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin:16px 0;box-shadow:var(--shadow)}
+.note{border-left:4px solid var(--ink-3);background:var(--surface);padding:10px 16px;margin:14px 0;border-radius:0 8px 8px 0}
+.note.train{border-color:var(--train);background:var(--train-bg)}
+.note.infer{border-color:var(--infer);background:var(--infer-bg)}
+.note.warn{border-color:#b8860b;background:#fbf5e3}
+.tag{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:11.5px;padding:1px 8px;border-radius:999px;vertical-align:2px;margin-left:6px;border:1px solid}
+.tag.train{color:var(--train);border-color:var(--train);background:var(--train-bg)}
+.tag.infer{color:var(--infer);border-color:var(--infer);background:var(--infer-bg)}
+.tag.both{color:var(--ink-2);border-color:var(--line-strong);background:var(--surface-2)}
+.code-ref{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13.5px;margin:10px 0 0;padding:10px 14px;background:var(--surface-2);border-radius:8px}
+.code-ref b{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-2);letter-spacing:.08em}
+.code-ref a{font-family:"IBM Plex Mono",monospace;font-size:12.5px;text-decoration:none}
+.code-ref a:hover{text-decoration:underline}
+.step{position:relative;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px 22px 18px 74px;margin:18px 0;box-shadow:var(--shadow);scroll-margin-top:20px}
+.step .badge{position:absolute;left:20px;top:18px;width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:"IBM Plex Mono",monospace;font-weight:600;color:#fff;background:var(--ink)}
+.step.train .badge{background:var(--train)}.step.infer .badge{background:var(--infer)}
+.step h3{margin:4px 0 6px}
+.step:target{outline:3px solid #f2c14e;outline-offset:3px}
+.shape{font-family:"IBM Plex Mono",monospace;font-size:13px;background:#fff;border:1px dashed var(--line-strong);border-radius:6px;padding:6px 10px;margin:8px 0;white-space:pre-wrap;line-height:1.6}
+.fm{overflow-x:auto;padding:4px 0}
+.katex-display{overflow-x:auto;overflow-y:hidden;max-width:100%}
+/* 总图 */
+.figure{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 14px 8px;box-shadow:var(--shadow);margin:20px 0}
+.fig-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 4px 8px}
+.fig-bar .t{font-weight:600;margin-right:auto}
+.fig-bar button{font:inherit;font-size:13.5px;padding:5px 14px;border-radius:999px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink-2);cursor:pointer}
+.fig-bar button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.fig-bar button[data-mode=train].on{background:var(--train);border-color:var(--train)}
+.fig-bar button[data-mode=infer].on{background:var(--infer);border-color:var(--infer)}
+#bigmap{width:100%;height:auto;display:block}
+#bigmap text{font-family:"IBM Plex Sans","PingFang SC","Microsoft YaHei",sans-serif}
+#bigmap .m{font-family:"IBM Plex Mono",monospace}
+#bigmap .tr,#bigmap .inf{transition:opacity .25s}
+#bigmap.mode-train .inf{opacity:.1}
+#bigmap.mode-infer .tr{opacity:.1}
+#bigmap a .box{transition:filter .15s}
+#bigmap a:hover .box{filter:brightness(.95) drop-shadow(0 2px 6px rgba(0,0,0,.18))}
+#bigmap text{pointer-events:none}
+#bigmap .box{fill:#fff;stroke:#94a7b4;stroke-width:1.6}
+#bigmap .box.train{fill:#fbeee7;stroke:#d98a63}
+#bigmap .box.infer{fill:#e3f1f5;stroke:#6fb0c6}
+#bigmap .k{font-size:14px;font-weight:600;fill:#16222e}
+#bigmap .s{font-size:11.5px;fill:#4a5c6a}
+#bigmap .m{font-size:11px;fill:#51626f}
+#bigmap .ln{fill:none;stroke:#16222e;stroke-width:1.7}
+#bigmap .ln.train{stroke:#c4572a}
+#bigmap .ln.infer{stroke:#0e6e8a}
+#bigmap .ln.dash{stroke-dasharray:5 4}
+#bigmap .lbl{font-size:11.5px;fill:#51626f;font-family:"IBM Plex Mono",ui-monospace,monospace}
+#bigmap .lg text{font-size:11.5px;fill:#51626f}
+.fig-cap{font-size:13.5px;color:var(--ink-2);margin:6px 6px 4px}
+/* 时间集成实验 */
+.lab{border:1px solid var(--line);background:var(--surface);border-radius:12px;padding:14px 18px;margin:18px 0}
+.lab h4{margin:0 0 8px;font-size:15.5px}
+.lab label{font-size:14px;color:var(--ink-2);margin-right:14px;white-space:nowrap}
+.lab input[type=range]{vertical-align:middle;width:160px;accent-color:var(--infer)}
+.lab canvas{width:100%;display:block;margin-top:10px;border-radius:8px;background:#fff;border:1px solid var(--line)}
+.lab .out{font-size:14px;color:var(--ink-2);margin-top:8px}
+.timeline{border-left:3px solid var(--line-strong);margin:18px 0 18px 8px;padding-left:22px}
+.tl{position:relative;margin:0 0 18px}
+.tl::before{content:"";position:absolute;left:-30px;top:7px;width:13px;height:13px;border-radius:50%;background:var(--surface);border:3px solid var(--ink-3)}
+.tl.key::before{border-color:var(--train);background:var(--train)}
+.tl .y{font-family:"IBM Plex Mono",monospace;font-size:13px;color:var(--ink-3)}
+.tl .h{font-weight:600}
+.toc{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:14px;margin:18px 0 0}
+.toc a{text-decoration:none;color:var(--ink-2)}
+.toc a:hover{color:var(--infer)}
+details{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 16px;margin:10px 0}
+summary{cursor:pointer;font-weight:600}
+@media (max-width:760px){h1{font-size:28px}.facts{grid-template-columns:repeat(2,1fr)}.step{padding-left:20px}.step .badge{position:static;margin-bottom:6px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<div class="kicker"><b>ACT</b> · Action Chunking with Transformers · RSS 2023 · LeRobot 实现</div>
+<h1 id="concept-act" class="concept-anchor">ACT：看一眼，规划接下来 2 秒的动作</h1>
+<p class="lede">ACT 是一种<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-behavior-cloning">行为克隆</a>算法。它每看一次画面，就一次性输出接下来 <b>100 步</b>（50Hz 下约 2 秒）的关节目标位置，而不是一步一步地猜。网络是一个 <b>CVAE</b>：训练时用一个额外的编码器把"人这次的操作风格"压成隐变量 z，推理时扔掉编码器，令 z = 0。</p>
+<div class="facts">
+<div class="fact"><div class="n">k = 100</div><div class="l">每次预测的动作步数（chunk size）</div></div>
+<div class="fact"><div class="n">50 条</div><div class="l">每个真机任务的示范数量，约 10 分钟数据</div></div>
+<div class="fact"><div class="n">~80M</div><div class="l">参数量；2080 Ti 上训练约 5 小时</div></div>
+<div class="fact"><div class="n">0.01 s</div><div class="l">单次推理耗时（同一张 2080 Ti）</div></div>
+</div>
+<nav class="toc">
+<a href="#history">1 前世今生</a><a href="#bigpicture">2 一张图看全流程</a><a href="#train-detail">3 训练细节 ①–⑨</a><a href="#infer-detail">4 推理细节 ⑩–⑪</a><a href="#why">5 为什么有效</a><a href="#lerobot">6 LeRobot 上手</a><a href="#compare">7 对比与局限</a><a href="#refs">8 资料</a>
+</nav>
+</header>
+
+<div class="note"><b>读这页之前，可以先带着这几个问题：</b><br>
+① 一次预测 100 步，为什么比一步一步预测更准？<br>
+② 训练时有 CVAE 编码器，推理时却令 z = 0。这样做为什么不出问题？<br>
+③ 1202 个 token 是怎么来的？100 个动作又从哪里"长"出来？<br>
+④ 时间集成里，旧预测和新预测哪个权重大？<br>
+⑤ LeRobot 默认是"执行完 100 步再看一眼"，还是"每步都看"？</div>
+
+<h2 id="history"><span class="no">01 · HISTORY</span>前世今生</h2>
+<p>ACT 本身不复杂，它是几条老路线的交汇点。要解决的问题也很具体：<b>用 2 万美元以内的廉价双臂，做毫米级的精细操作</b>。</p>
+<div class="timeline">
+<div class="tl"><div class="y">1989 → 2011</div><div class="h">行为克隆与误差累积</div>ALVINN（1989）把开车当成"看图 → 输出方向盘"的监督学习，这就是行为克隆（BC）。它的老毛病是<b>误差累积</b>：每步小错让机器人走到没见过的状态，错误越滚越大。DAgger（2011）靠专家在线纠错来缓解，但遥操作时很难让人随时标注。</div>
+<div class="tl"><div class="y">2015</div><div class="h">CVAE：条件变分自编码器</div>Sohn 等人提出 CVAE，在给定条件 x 时，用隐变量 z 表示"同一条件下的不同答案"。ACT 用它来吸收人类示范里的随机性。</div>
+<div class="tl"><div class="y">2017 → 2020</div><div class="h">Transformer 与 DETR</div>Transformer（2017）擅长处理序列。DETR（2020）用"ResNet 特征图 + Transformer 编码器 + 一组可学习 query 的解码器"直接输出 N 个检测框。<b>ACT 的策略网络几乎就是 DETR</b>，只是把"N 个框"换成"k 个未来动作"，原始代码也是在 DETR 代码上改的。</div>
+<div class="tl"><div class="y">2021 → 2022</div><div class="h">BeT、RT-1、VINN</div>这些方法用 Transformer 或最近邻做模仿学习，但都是<b>每次输出一步动作</b>，BeT 和 RT-1 还把动作离散化成格子。在 ACT 论文的精细任务上，它们的最终成功率大多接近 0。</div>
+<div class="tl key"><div class="y">2023.04 · RSS 2023</div><div class="h">ALOHA + ACT 诞生</div>Tony Z. Zhao、Vikash Kumar、Sergey Levine、Chelsea Finn（Stanford / Berkeley / Meta）发表《Learning Fine-Grained Bimanual Manipulation with Low-Cost Hardware》。论文有两半：<b>ALOHA</b> 是一套低成本双臂遥操作硬件，<b>ACT</b> 是配套的学习算法。核心想法借自心理学的"动作分块"：人做事是一段一段规划的，不是一个肌肉指令一个肌肉指令地想。同年 Diffusion Policy 也提出预测动作序列，两者是同期工作。</div>
+<div class="tl"><div class="y">2024.01</div><div class="h">Mobile ALOHA</div>Fu、Zhao、Finn 把 ALOHA 装到移动底盘上，用 ACT 等策略配合静态 ALOHA 数据联合训练，完成炒虾、推椅子等任务。<b>注意：炒菜等演示属于 Mobile ALOHA，不是 ACT 原论文。</b></div>
+<div class="tl"><div class="y">2024.05</div><div class="h">LeRobot 开源</div>Hugging Face 发布 LeRobot，ACT 是首批收录的策略之一，并附带 ALOHA 仿真预训练权重。之后配合 SO-100 / SO-101 低成本机械臂，ACT 成了 LeRobot 教程里默认推荐的入门策略。</div>
+<div class="tl"><div class="y">2024 → 至今</div><div class="h">动作分块成为标配</div>π0 一次输出 50 步动作块，再用<a class="concept-link" href="RTC-实时动作分块-论文解读.html#concept-temporal-ensembling">实时动作分块（RTC）</a>处理块与块的衔接；ALOHA Unleashed（2024，系鞋带、挂衣服）改用扩散策略。生成动作的方式变了，<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">"一次输出一段动作"</a>这个思路一直沿用到今天的 VLA。</div>
+</div>
+
+<h2 id="bigpicture"><span class="no">02 · BIG PICTURE</span>一张图看全流程</h2>
+<p>下图把<b>数据 → 训练 → 推理 → 机器人</b>画在同一张图里。橙色只在训练时走，青色只在推理时走，黑色两边共用。中间的大框是策略网络本身，训练和推理用的是同一个。<b>点击任意方框可以跳到对应编号的细节说明</b>，用右上角按钮可以只看其中一条路径。</p>
+</div>
+
+<div class="wide"><div class="figure">
+<div class="fig-bar"><span class="t">ACT 全流程总图</span>
+<button data-mode="all" class="on">全部</button><button data-mode="train">只看训练</button><button data-mode="infer">只看推理</button></div>
+<svg id="bigmap" viewBox="0 0 1200 880" role="img" aria-label="ACT 训练与推理全流程图">
+<defs>
+<marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#16222e"/></marker>
+<marker id="aht" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c4572a"/></marker>
+<marker id="ahi" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0e6e8a"/></marker>
+</defs>
+
+<!-- 策略网络外框 -->
+<rect x="262" y="40" width="560" height="620" rx="16" fill="#f7fafb" stroke="#c3d0d9" stroke-width="1.4" stroke-dasharray="6 4"/>
+<text class="s" x="278" y="70" style="font-size:12.5px">策略网络 π_θ —— 训练与推理共用同一组权重</text>
+
+<!-- ① 示范采集 -->
+<a href="#s1"><g class="node">
+<rect class="box" x="30" y="60" width="180" height="96" rx="10"/>
+<text class="k" x="120" y="86" text-anchor="middle">① 示范采集</text>
+<text class="s" x="120" y="108" text-anchor="middle">ALOHA 遥操作 · 50Hz</text>
+<text class="s" x="120" y="126" text-anchor="middle">4 相机 + 双臂关节角</text>
+<text class="s" x="120" y="144" text-anchor="middle">每任务 50 条 ≈ 10 分钟</text>
+</g></a>
+
+<!-- ② 切片采样 -->
+<a href="#s2"><g class="node">
+<rect class="box" x="30" y="230" width="180" height="110" rx="10"/>
+<text class="k" x="120" y="256" text-anchor="middle">② 切片采样</text>
+<text class="s" x="120" y="278" text-anchor="middle">t 时刻一帧观测</text>
+<text class="s" x="120" y="296" text-anchor="middle">+ 未来 100 步真值动作</text>
+<text class="s" x="120" y="314" text-anchor="middle">越界处标 action_is_pad</text>
+</g></a>
+
+<!-- ③ CVAE 编码器（仅训练） -->
+<a href="#s3"><g class="node tr">
+<rect class="box train" x="330" y="440" width="214" height="112" rx="10"/>
+<text class="k" x="437" y="466" text-anchor="middle">③ CVAE 编码器</text>
+<text class="s" x="437" y="487" text-anchor="middle">[CLS] + qpos + 100 步动作</text>
+<text class="s" x="437" y="505" text-anchor="middle">= 102 token → μ, log σ²</text>
+<text class="s" x="437" y="523" text-anchor="middle">重参数化采样 z ∈ R³²</text>
+<text class="m" x="437" y="541" text-anchor="middle">仅训练；丢掉后仍可用</text>
+</g></a>
+
+<!-- ④ ResNet -->
+<a href="#s4"><g class="node">
+<rect class="box" x="330" y="96" width="214" height="104" rx="10"/>
+<text class="k" x="437" y="121" text-anchor="middle">④ ResNet18 主干</text>
+<text class="s" x="437" y="142" text-anchor="middle">每路 480×640 → 15×20×512</text>
+<text class="s" x="437" y="160" text-anchor="middle">展平 = 300 token，× 4 路</text>
+<text class="s" x="437" y="178" text-anchor="middle">+ 2D 正弦位置编码</text>
+</g></a>
+
+<!-- ⑤ 拼 token -->
+<a href="#s5"><g class="node">
+<rect class="box" x="330" y="256" width="214" height="104" rx="10"/>
+<text class="k" x="437" y="281" text-anchor="middle">⑤ 拼 token</text>
+<text class="s" x="437" y="302" text-anchor="middle">z + qpos + 1200 视觉</text>
+<text class="s" x="437" y="320" text-anchor="middle">= 1202 × 512</text>
+<text class="m" x="437" y="340" text-anchor="middle">推理时 z = 0（全零向量）</text>
+</g></a>
+
+<!-- ⑥ Encoder -->
+<a href="#s6"><g class="node">
+<rect class="box" x="590" y="256" width="210" height="104" rx="10"/>
+<text class="k" x="695" y="281" text-anchor="middle">⑥ Transformer 编码器</text>
+<text class="s" x="695" y="302" text-anchor="middle">4 层 · 8 头 · d=512</text>
+<text class="s" x="695" y="320" text-anchor="middle">自注意力融合画面/关节/z</text>
+<text class="s" x="695" y="338" text-anchor="middle">输出 1202 个 memory</text>
+</g></a>
+
+<!-- ⑦ Decoder -->
+<a href="#s7"><g class="node">
+<rect class="box" x="590" y="396" width="210" height="112" rx="10"/>
+<text class="k" x="695" y="421" text-anchor="middle">⑦ Transformer 解码器</text>
+<text class="s" x="695" y="442" text-anchor="middle">100 个可学习 query</text>
+<text class="s" x="695" y="460" text-anchor="middle">（decoder_pos_embed）</text>
+<text class="s" x="695" y="478" text-anchor="middle">自注意力 + 交叉注意力</text>
+<text class="s" x="695" y="496" text-anchor="middle">100 个未来时刻并行输出</text>
+</g></a>
+
+<!-- ⑧ 动作头 -->
+<a href="#s8"><g class="node">
+<rect class="box" x="590" y="546" width="210" height="70" rx="10"/>
+<text class="k" x="695" y="571" text-anchor="middle">⑧ 动作头 Linear</text>
+<text class="s" x="695" y="593" text-anchor="middle">512 → 14，得 â[t : t+100]</text>
+</g></a>
+
+<!-- ⑨ 损失 -->
+<a href="#s9"><g class="node tr">
+<rect class="box train" x="330" y="690" width="360" height="76" rx="10"/>
+<text class="k" x="510" y="714" text-anchor="middle">⑨ 损失与反向传播</text>
+<text class="s" x="510" y="735" text-anchor="middle">L1 重构（屏蔽补齐位） + 10 × KL</text>
+<text class="s" x="510" y="753" text-anchor="middle">Adam 1e-5，更新全部参数含 ResNet</text>
+</g></a>
+
+<!-- ⑩ select_action -->
+<a href="#s10"><g class="node inf">
+<rect class="box infer" x="880" y="120" width="280" height="110" rx="10"/>
+<text class="k" x="1020" y="146" text-anchor="middle">⑩ select_action</text>
+<text class="s" x="1020" y="168" text-anchor="middle">队列非空就直接出队</text>
+<text class="s" x="1020" y="186" text-anchor="middle">队列空才调用一次网络</text>
+<text class="m" x="1020" y="206" text-anchor="middle">默认 n_action_steps = 100</text>
+</g></a>
+
+<!-- ⑪ 时间集成 -->
+<a href="#s11"><g class="node inf">
+<rect class="box infer" x="880" y="270" width="280" height="110" rx="10"/>
+<text class="k" x="1020" y="296" text-anchor="middle">⑪ 时间集成（可选）</text>
+<text class="s" x="1020" y="318" text-anchor="middle">每步都预测，重叠时刻加权平均</text>
+<text class="s" x="1020" y="336" text-anchor="middle">同一下标才平均，不跨相邻时刻</text>
+<text class="m" x="1020" y="356" text-anchor="middle">w_i = exp(-m·i)，m 默认 0.01</text>
+</g></a>
+
+<!-- 机器人 -->
+<a href="#s11"><g class="node inf">
+<rect class="box infer" x="880" y="420" width="280" height="110" rx="10"/>
+<text class="k" x="1020" y="446" text-anchor="middle">机器人执行</text>
+<text class="s" x="1020" y="468" text-anchor="middle">50Hz 下发关节目标</text>
+<text class="s" x="1020" y="486" text-anchor="middle">电机内 PID 跟踪，状态变化</text>
+<text class="s" x="1020" y="504" text-anchor="middle">拍下一帧 → 回到 ④</text>
+</g></a>
+
+<!-- 连线 -->
+<path class="ln" d="M120,156 L120,230" marker-end="url(#ah)"/>
+<path class="ln" d="M210,290 L240,290 L240,150 L330,150" marker-end="url(#ah)"/>
+<path class="ln" d="M240,290 L240,500 L330,500" marker-end="url(#ah)"/>
+<path class="ln" d="M120,340 L120,720 L330,720" marker-end="url(#ah)"/>
+<text class="lbl" x="128" y="700">真值动作</text>
+<path class="ln" d="M437,200 L437,256" marker-end="url(#ah)"/>
+<path class="ln" d="M437,440 L437,360" marker-end="url(#aht)"/>
+<text class="lbl" x="447" y="402" fill="#c4572a">z</text>
+<path class="ln" d="M544,308 L590,308" marker-end="url(#ah)"/>
+<path class="ln" d="M695,360 L695,396" marker-end="url(#ah)"/>
+<path class="ln" d="M695,508 L695,546" marker-end="url(#ah)"/>
+<path class="ln" d="M620,616 L620,690" marker-end="url(#aht)"/>
+<text class="lbl" x="628" y="660" fill="#c4572a">â 与真值比</text>
+<path class="ln dash train" d="M690,714 L740,714 L740,672 L740,660" marker-end="url(#aht)"/>
+<text class="lbl" x="748" y="700" fill="#c4572a">梯度回流</text>
+<path class="ln inf" d="M800,581 L846,581 L846,175 L880,175" marker-end="url(#ahi)"/>
+<path class="ln inf" d="M1020,230 L1020,270" marker-end="url(#ahi)"/>
+<path class="ln inf" d="M1020,380 L1020,420" marker-end="url(#ahi)"/>
+<path class="ln inf" d="M880,475 L868,475 L868,132 L556,132 L556,180 L544,180" marker-end="url(#ahi)"/>
+<text class="lbl" x="700" y="124" fill="#0e6e8a">新观测 o(t+1)</text>
+
+<!-- 图例 -->
+<g class="lg">
+<rect x="30" y="836" width="14" height="14" rx="3" fill="#fff" stroke="#c3d0d9" stroke-width="1.6"/><text class="s" x="52" y="848">训练和推理都走</text>
+<rect x="196" y="836" width="14" height="14" rx="3" fill="#fbeee7" stroke="#c4572a" stroke-width="1.6"/><text class="s" x="218" y="848">只有训练时（橙色箭头同理）</text>
+<rect x="452" y="836" width="14" height="14" rx="3" fill="#e3f1f5" stroke="#0e6e8a" stroke-width="1.6"/><text class="s" x="474" y="848">只有推理时（青色箭头同理）</text>
+<text class="s" x="700" y="848">点任意方框 → 跳到该步细节</text>
+</g>
+</svg>
+<p class="fig-cap">读图顺序：训练沿 ①→②→③→④⑤⑥⑦⑧→⑨ 走，一次迭代更新一次参数；推理时 ③ 被丢掉，z 固定为 0，沿 ④⑤⑥⑦⑧→⑩→⑪ 循环，每圈看一次新画面。</p>
+</div></div>
+
+<div class="wrap">
+<div class="note"><b>只记一句话的版本：</b>训练时，CVAE 编码器看着"正确答案"（未来 100 步动作）写一张 32 维的小纸条 z 递给策略，策略结合画面和纸条去复原这 100 步；KL 项（β=10）逼着纸条尽量写不了什么内容。所以推理时递一张空白纸条（z=0），策略照样能输出一段合理的动作。</div>
+<h2 id="train-detail"><span class="no">03 · TRAINING</span>训练细节：沿总图 ① → ⑨ 走一遍</h2>
+<p>下面每一节对应总图里的一个编号，形状以 ACT 原论文的真机设置为例（4 路相机、双臂共 14 维）。代码链接固定到 LeRobot 提交 <code>72e1d9e</code>，保证行号指向正确的位置。</p>
+
+<div class="step train" id="s1"><div class="badge">1</div>
+<h3>示范采集：ALOHA 遥操作<span class="tag train">训练前</span></h3>
+<p>ALOHA 有两对机械臂。人用手推动小一号的<b>主臂</b>（WidowX，约 3300 美元），大一号的<b>从臂</b>（ViperX 6 自由度，约 5600 美元）按关节角一一跟随。整套硬件不到 2 万美元，以 50Hz 记录数据。</p>
+<div class="shape">观测 o_t = 4 路 RGB 相机（正前、顶部、左右手腕），每路 480×640
+       + 从臂关节位置 qpos，14 维 = 2 臂 × (6 关节 + 1 夹爪)
+动作 a_t = 主臂关节位置，14 维（绝对位置，下一时刻的目标）</div>
+<p><b>为什么动作取主臂而不是从臂？</b>从臂由电机内置的 PID 去追主臂的角度。人"用了多大力"体现在两者的位置差里。如果记录从臂的位置，这个力的信息就丢了。论文还发现，用相对位移（delta）代替绝对目标位置，效果会变差。</p>
+<p>每条示范持续 8–14 秒，即 400–700 步。每个任务录 50 条，穿魔术贴任务录了 100 条，合计约 10–20 分钟数据。</p>
+<div class="code-ref"><b>LEROBOT</b><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/configuration_act.py#L88">configuration_act.py#L88 归一化：图像/状态/动作都做 MEAN_STD</a><a href="https://huggingface.co/datasets/lerobot/aloha_sim_transfer_cube_human">数据集示例：aloha_sim_transfer_cube_human</a></div>
+</div>
+
+<div class="step train" id="s2"><div class="badge">2</div>
+<h3>切片采样：一帧观测配 100 步未来动作<span class="tag train">训练</span></h3>
+<p>每个训练样本取一个时刻 t，只拿<b>当前这一帧</b>观测（<code>n_obs_steps=1</code>，不看历史），再拿从 t 开始的 100 步真值动作作为监督目标。</p>
+<div class="shape">batch["observation.images.*"]  (B, 3, 480, 640) × 4 路
+batch["observation.state"]     (B, 14)
+batch["action"]                (B, 100, 14)   ← a[t : t+100]
+batch["action_is_pad"]         (B, 100)       ← 越过回合末尾的位置为 True</div>
+<p>例子：一条示范共 400 步，抽到 t = 350，那么只有 50 步真实动作，后 50 步是补齐的，<code>action_is_pad</code> 标为 True。这些位置在 ③ 中会被注意力屏蔽，在 ⑨ 中不计入损失。</p>
+<p>LeRobot 的实现方式：配置里声明 <code>action_delta_indices = range(100)</code>，数据集工厂按帧率换算成时间偏移 <code>[0, 1/fps, …, 99/fps]</code>，<code>LeRobotDataset</code> 据此自动取出未来动作并生成补齐掩码。</p>
+<div class="code-ref"><b>LEROBOT</b><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/configuration_act.py#L173">configuration_act.py#L173 action_delta_indices</a><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/datasets/factory.py#L39">factory.py#L39 resolve_delta_timestamps</a></div>
+</div>
+<div class="step train" id="s3"><div class="badge">3</div>
+<h3>CVAE 编码器：把"这次怎么做的"压成 z<span class="tag train">只在训练</span></h3>
+<p>这是一个 BERT 风格的 4 层 Transformer 编码器。它的输入序列是：</p>
+<div class="shape">[CLS]           1 个可学习 token
+qpos → Linear   1 个 token（14 → 512）
+action → Linear 100 个 token（每步 14 → 512）
+──────────────  共 k + 2 = 102 个 token，加固定的 1D 正弦位置编码
+padding mask：CLS 与 qpos 不屏蔽，动作部分沿用 action_is_pad</div>
+<p>取 [CLS] 位置的输出，经过 <code>Linear(512 → 64)</code>，前 32 维是均值 μ，后 32 维是 <span class="mono">2·log σ</span>（沿用原实现的写法）。然后用重参数化采样：</p>
+<div class="fm">$$z = \mu + \sigma \odot \epsilon,\quad \epsilon \sim \mathcal N(0, I),\quad z \in \mathbb R^{32}$$</div>
+<p><b>注意：编码器不看图像。</b>论文说这样做是为了训练更快。所以 z 只能描述"这段动作和当前关节角相比有什么特点"，比如偏快还是偏慢、先动左手还是先动右手。场景信息完全由策略网络自己从图像里读。</p>
+<div class="note train"><b>z 是用来干什么的？</b>人类示范有随机性：同一个画面，这次停顿了 0.5 秒，下次没有停；这次交接位置偏左，下次偏右。如果没有 z，策略只能把这些情况平均起来。z 相当于告诉策略"这一条走的是哪个版本"，让它可以专心学"在这个版本下应该怎么动"，而不会被迫学成平均值。</div>
+<div class="code-ref"><b>LEROBOT</b><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/modeling_act.py#L416-L460">modeling_act.py#L416-L460 VAE 编码器与重参数化</a></div>
+</div>
+
+<div class="step" id="s4"><div class="badge">4</div>
+<h3>ResNet18 主干：每路相机 → 300 个视觉 token<span class="tag both">训练 + 推理</span></h3>
+<p>每路图像用 ImageNet 预训练的 ResNet18 处理，取 <code>layer4</code> 的输出特征图，BatchNorm 层冻结（<code>FrozenBatchNorm2d</code>）。ResNet 总下采样 32 倍，所以：</p>
+<div class="shape">480×640×3  →  ResNet18 layer4  →  15×20×512
+            →  1×1 Conv(512→512)  →  展平成 300 个 token，每个 512 维
+            +  2D 正弦位置编码（行、列各占 256 维）
+4 路相机  →  1200 个视觉 token</div>
+<p>2D 位置编码让每个 token 记住自己在图像的哪一格。展平之后，Transformer 仍然知道"左上角"和"右下角"的区别。</p>
+<p>LeRobot 里所有相机<b>共用同一个 ResNet</b>，主干和其余部分的学习率都是 <code>1e-5</code>（通过 <code>optimizer_lr_backbone</code> 单独设置）。</p>
+<div class="code-ref"><b>LEROBOT</b><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/modeling_act.py#L333-L343">modeling_act.py#L333-L343 主干构建</a><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/modeling_act.py#L479-L494">#L479-L494 逐相机提特征</a><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/modeling_act.py#L695">#L695 2D 正弦位置编码</a></div>
+</div>
+<div class="step" id="s5"><div class="badge">5</div>
+<h3>拼 token：z + 关节 + 图像 = 1202 个<span class="tag both">训练 + 推理</span></h3>
+<div class="shape">token 0      z     → Linear(32 → 512)      训练时来自 ③，推理时 z = 0
+token 1      qpos  → Linear(14 → 512)
+token 2…1201 1200 个视觉 token                来自 ④
+────────────────────────────────────────
+encoder 输入 (1202, B, 512)
+位置编码：前 2 个用可学习的 1D Embedding，后 1200 个用 2D 正弦编码</div>
+<p>z 和图像在这里是<b>平等的 token</b>。Transformer 可以通过注意力自己决定 z 的影响有多大：训练时 z 携带了真值信息，策略会参考它；推理时 z = 0，策略只能依赖图像和关节状态。</p>
+<p>在 LeRobot 里，如果数据集只有环境状态（比如仿真里物体的坐标）而没有图像，会多一个 <code>env_state</code> token，用来代替视觉 token。</p>
+<div class="code-ref"><b>LEROBOT</b><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/modeling_act.py#L469-L499">modeling_act.py#L469-L499 拼接 encoder 输入</a></div>
+</div>
+
+<div class="step" id="s6"><div class="badge">6</div>
+<h3>Transformer 编码器：4 层自注意力<span class="tag both">训练 + 推理</span></h3>
+<p>结构是标准的 post-norm 编码器层：自注意力加前馈网络。主要参数为 <code>dim_model=512</code>、<code>n_heads=8</code>、<code>dim_feedforward=3200</code>、<code>dropout=0.1</code>。位置编码只加在 Q 和 K 上，V 不加（DETR 的做法）。</p>
+<p>这一步做的是信息融合。4 路相机的画面、两只手臂的关节角、z 在注意力中互相交换信息，输出 1202 个"已经看过全局"的特征，作为解码器的记忆（memory）。</p>
+<div class="code-ref"><b>LEROBOT</b><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/modeling_act.py#L524">modeling_act.py#L524 ACTEncoder</a><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/modeling_act.py#L561">#L561 ACTEncoderLayer.forward（q = k = x + pos）</a></div>
+</div>
+<div class="step" id="s7"><div class="badge">7</div>
+<h3>Transformer 解码器：100 个 query 各自"认领"一个未来时刻<span class="tag both">训练 + 推理</span></h3>
+<p>这是 ACT 能一次输出 100 步的关键。解码器的输入是一个全零张量 <code>(100, B, 512)</code>，真正起作用的是 <code>decoder_pos_embed = nn.Embedding(100, 512)</code>。这是 100 个可学习向量，第 i 个向量专门负责"未来第 i 步"。每一层的计算分三步：</p>
+<div class="shape">① 自注意力：100 个 query 互相看     → 保证相邻时刻的动作前后连贯
+② 交叉注意力：Q = query + 位置编码
+             K = memory + 位置编码，V = memory（来自 ⑥ 的 1202 个 token）
+                                     → 每个时刻自己去画面里找需要的信息
+③ 前馈网络
+输出 (100, B, 512)</div>
+<p>这和 DETR 中"100 个 object query 各自认领一个检测框"是同一套机制。动作是并行一次性解码出来的，不是像语言模型那样一个一个地生成，所以推理只需要一次前向传播。</p>
+<div class="note warn"><b>层数的一个历史问题：</b>论文附录写的是 7 层解码器。但原始代码有一个 bug，实际只用到第 1 层（见 <a href="https://github.com/tonyzhaozh/act/issues/25">tonyzhaozh/act#25</a>）。LeRobot 为了复现原始结果，把 <code>n_decoder_layers</code> 默认值设为 <b>1</b>。</div>
+<div class="code-ref"><b>LEROBOT</b><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/modeling_act.py#L376">modeling_act.py#L376 decoder_pos_embed</a><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/modeling_act.py#L504-L515">#L504-L515 全零输入 + 解码</a><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/modeling_act.py#L629">#L629 ACTDecoderLayer.forward</a><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/configuration_act.py#L108-L111">configuration_act.py#L108 层数注释</a></div>
+</div>
+
+<div class="step" id="s8"><div class="badge">8</div>
+<h3>动作头：512 → 14<span class="tag both">训练 + 推理</span></h3>
+<p>用一个 <code>Linear(512, 14)</code> 分别作用在 100 个输出上，得到 <code>â[t : t+100]</code>，形状为 <code>(B, 100, 14)</code>。输出的是<b>归一化后</b>的关节目标位置，LeRobot 的后处理器会按数据集统计量把它还原成真实角度。</p>
+<div class="code-ref"><b>LEROBOT</b><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/modeling_act.py#L379">modeling_act.py#L379 action_head</a><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/modeling_act.py#L389">#L389 ACT.forward（完整前向，返回动作与 μ、log σ²）</a></div>
+</div>
+<div class="step train" id="s9"><div class="badge">9</div>
+<h3>损失与反向传播<span class="tag train">只有训练</span></h3>
+<div class="fm">$$\mathcal L = \underbrace{\frac{1}{N}\sum_{t,i}\big|\hat a_i - a_i\big|}_{\text{只在非补齐位}}
+\;+\;\beta\cdot \underbrace{D_{\mathrm{KL}}\big(q_\phi(z\,|\,a_{t:t+k},\tilde o_t)\,\big\|\,\mathcal N(0,I)\big)}_{\text{把 } z \text{ 拉向标准正态}},\quad \beta=10$$</div>
+<p>两项各管一件事：</p>
+<table>
+<tr><th>项</th><th>作用</th><th>漏掉会怎样</th></tr>
+<tr><td>L1 重构</td><td>让预测的 100 步动作贴合示范</td><td>策略根本不模仿</td></tr>
+<tr><td>KL 正则</td><td>把 z 的分布拉向 N(0, I)，限制它携带的信息量</td><td>编码器会把整段动作"抄"进 z，推理时 z=0，策略就什么都不会了</td></tr>
+</table>
+<p>β = 10 在这里算比较大。它换来的是：z 只保留"风格"这类低维信息，绝大部分信息必须由策略从图像里自己读。这也是推理时敢把 z 置零的底气。</p>
+<div class="note warn"><b>一处原文的不一致：</b>论文 Algorithm 1 的伪代码写的是 <code>L_reconst = MSE</code>，但正文明确说"我们用 L1 而非常见的 L2，L1 对动作序列的建模更精确"，消融实验也证明换不回来。LeRobot 的实现按正文用 L1。另外论文把 KL 权重记作 β，代码里叫 <code>kl_weight</code>，默认 <code>10.0</code>。</div>
+<p>Adam，学习率 <code>1e-5</code>，batch size 8，dropout 0.1。LeRobot 里 ResNet 主干被单独分到一个参数组（<code>optimizer_lr_backbone</code>，默认也是 1e-5），整体约 80M 参数，单卡 2080 Ti 约 5 小时。</p>
+<div class="code-ref"><b>LEROBOT</b><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/modeling_act.py#L140-L167">modeling_act.py#L140-L167 损失计算</a><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/modeling_act.py#L75-L94">#L75-L94 主干单独的学习率</a><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/configuration_act.py#L123-L128">configuration_act.py#L123 kl_weight / lr 默认值</a></div>
+</div>
+
+<h2 id="infer-detail"><span class="no">04 · INFERENCE</span>推理细节：⑩ → ⑪ 再回到 ④</h2>
+<p>推理时 ③ 整块被删掉，模型只剩"看图 → 出 100 步"。不一样的地方在于<b>这 100 步怎么用</b>。LeRobot 提供了两种方式，默认是第一种。</p>
+
+<div class="step infer" id="s10"><div class="badge">10</div>
+<h3>方式一：队列，一次预测用 100 步<span class="tag infer">默认</span></h3>
+<p><code>select_action()</code> 每被调用一次，只返回一个动作。内部维护一个长度 100 的队列：</p>
+<div class="shape">队列空 → 调一次网络拿到 (B, 100, 14)，取前 n_action_steps 步压入队列
+队列非空 → 直接吐出一个，不碰网络
+100 步用完 → 再看一眼画面，重新预测</div>
+<p>好处是推理极省，50Hz 下每 2 秒才跑一次网络（每次约 10ms）。代价是这 2 秒内<b>机器人是闭着眼睛走的</b>：中途被碰一下、物体滑了，它不会察觉，只能等下一个块。</p>
+<div class="note infer"><b>推论：</b><code>n_action_steps</code> 是"盲跑多久"的旋钮。<code>chunk_size</code> 决定网络能规划多远，<code>n_action_steps</code> 决定实际执行多远。可以预测 100 步只执行 10 步，用反应速度换推理开销。</div>
+<div class="code-ref"><b>LEROBOT</b><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/modeling_act.py#L104-L127">modeling_act.py#L104-L127 select_action 队列逻辑</a><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/configuration_act.py#L85-L86">configuration_act.py#L85-L86 chunk_size / n_action_steps</a></div>
+</div>
+
+<div class="step infer" id="s11"><div class="badge">11</div>
+<h3>方式二：时间集成，每个时刻都看、都平均<span class="tag infer">temporal_ensemble_coeff</span></h3>
+<p>开启后，<b>每个时间步都重新预测一整个块</b>。于是在时刻 t，手里有来自不同次预测的、对同一个未来时刻的多个版本，把它们加权平均：</p>
+<div class="fm">$$a_t=\frac{\sum_i w_i\,A_t[i]}{\sum_i w_i},\qquad w_i=\exp(-m\cdot i)$$</div>
+<p>$A_t[i]$ 是第 i 次预测对时刻 t 给出的动作，$i$ 越小越旧，<b>所以旧预测权重更大</b>。m 控制新观测进入的速度，默认 <code>0.01</code>，m 越小越相信新预测。</p>
+<div class="note infer"><b>关键细节，容易看错：</b>平均的是<b>同一个未来时刻</b>的多次预测，不是把相邻时刻的动作做平滑。普通平滑会引入偏差（把"该走到哪"往回拉），这里不会。论文特别强调这点。</div>
+<div class="note warn"><b>注意默认是关的。</b>LeRobot 里 <code>temporal_ensemble_coeff</code> 默认 <code>None</code>，也就是走 ⑩ 的队列。开启时必须令 <code>n_action_steps=1</code>，否则直接报 <code>NotImplementedError</code>。</div>
+
+<div class="lab" id="lab-te">
+<h4>动手看：m 怎么影响"新信息进来的速度"</h4>
+<p style="margin:4px 0 8px;font-size:14.5px">假设第 0 次预测说"这一步该到 0"，之后每次新预测都说"该到 1"（比如机器人被推了一下）。拖动 m 看平均值的追赶速度。</p>
+<label>m = <b id="mv">0.010</b> <input type="range" id="ms" min="0.001" max="0.3" step="0.001" value="0.01"></label>
+<label><input type="checkbox" id="logscale"> 对数纵轴（看尾部）</label>
+<canvas id="tec" width="900" height="260"></canvas>
+<div class="out" id="teo"></div>
+</div>
+<div class="code-ref"><b>LEROBOT</b><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/modeling_act.py#L170-L258">modeling_act.py#L170-L258 ACTTemporalEnsembler（在线加权平均）</a><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/modeling_act.py#L214">#L214 权重 exp(-m·i)</a></div>
+</div>
+<h2 id="why"><span class="no">05 · WHY IT WORKS</span>每一步为什么这么设计</h2>
+
+<h3>动作分块的 k 不是越大越好</h3>
+<p>论文在 4 个设置（2 个仿真任务 × 人工 / 脚本数据）上扫 chunk size，关掉时间集成，只看分块本身：</p>
+<table>
+<tr><th>k</th><th>平均成功率</th><th>说明</th></tr>
+<tr><td>1</td><td>1%</td><td>等于没有分块，单步预测，基本学不会</td></tr>
+<tr><td>100</td><td>44%（峰值附近）</td><td>论文的选择</td></tr>
+<tr><td>200 / 400</td><td>略降</td><td>接近开环，缺少反应能力，长序列也更难建模</td></tr>
+</table>
+<p>同一组实验里，给 BC-ConvMLP 和 VINN 也加上 k 步输出，它们同样大幅提升。可见<b>分块本身是通用的收益</b>，ACT 的增益来自"分块 + Transformer + CVAE"的组合。</p>
+
+<h3>三个部件各自的贡献</h3>
+<table>
+<tr><th>去掉什么</th><th>后果</th><th>证据</th></tr>
+<tr><td>动作分块</td><td>成功率跌到 1%</td><td>k 扫描实验</td></tr>
+<tr><td>Temporal Ensemble</td><td>平均掉约 3.3 个百分点（BC-ConvMLP 掉约 4）</td><td>论文 VI-A</td></tr>
+<tr><td>CVAE 目标</td><td>脚本数据几乎无影响；<b>人工数据 35.3% → 2%</b></td><td>论文 VI-B ——这是全文最有说服力的一张图</td></tr>
+</table>
+<div class="note"><b>怎么理解"CVAE 在人工数据上才重要"：</b>脚本策略是确定性的，同一观测永远对应同一动作，隐变量没东西可编码。人类示范则处处随机：停顿、交接点、抓取角度都不一样。没有 z，一个确定性网络被迫输出这些情况的中位数，而中位数往往是个谁都不对的形状。</div>
+
+<h3>它为什么快</h3>
+<p>100 步动作<b>一次前向并行解码</b>，不是自回归生成。对比扩散策略要迭代几十步去噪，ACT 只需要一次，2080 Ti 上约 10ms。这也是当年 ACT 相对 Diffusion Policy 的主要优势之一。</p>
+
+<h3>反直觉的几点，集中说清</h3>
+<details><summary>为什么推理时 z = 0 还能用？</summary>
+<p>训练时 KL 项（β = 10）一直在压 z 的信息量，逼它接近 N(0, I)。结果有两条：一是策略被迫从图像里读主要信息，不能只靠 z；二是先验均值 0 落在训练分布之内。所以递一张"空白纸条"不会掉出分布。不过要注意：z = 0 是<b>先验均值</b>，输出接近"平均风格"，并不是在多个模式里随机挑一个。这个策略在推理时是确定性的。</p></details>
+<details><summary>为什么不看历史观测？</summary>
+<p>LeRobot 里 <code>n_obs_steps</code> 被强制为 1。ACT 的设计是"用 100 步动作块替代历史"：它不需要看过去，因为过去的信息体现在当前状态里，而未来的一致性由解码器的 100 个 query 自注意力保证。反过来说，被遮挡或运动模糊的瞬时画面无法靠历史补救，这是它的一个脆弱点。</p></details>
+<details><summary>为什么用绝对关节位置而不是位移？</summary>
+<p>论文试过用 delta 关节位置，性能下降。绝对目标位置让每一帧的预测是自洽的，也让时间集成里的加权平均有意义（平均"目标位置"是合理的，平均"增量"则要另外解释）。</p></details>
+<details><summary>为什么分块加上时间集成，而不用 RTC？</summary>
+<p>ACT 的时间集成只是在<b>推理阶段</b>把多次预测做加权平均，没有解决"新块的第一帧与旧块最后一帧不连续"的本质问题。后来的<a class="concept-link" href="RTC-实时动作分块-论文解读.html#concept-temporal-ensembling">实时动作分块（RTC）</a>在 π0 等更大的模型上用"引导生成"来保证块间连续，这是同一条路上的下一步。</p></details>
+
+<h2 id="lerobot"><span class="no">06 · LEROBOT</span>在 LeRobot 里跑起来</h2>
+<p>ACT 已包含在 LeRobot 基础安装中，不用额外装依赖。下面的命令对应 main 分支（核对时提交 <code>72e1d9e</code>，2026-10）。</p>
+
+<h3>安装</h3>
+<pre><code>pip install lerobot
+<span class="c"># 或从源码</span>
+git clone https://github.com/huggingface/lerobot.git &amp;&amp; cd lerobot
+pip install -e ".[aloha]"   <span class="c"># 需要 ALOHA 仿真环境时</span></code></pre>
+
+<h3>训练</h3>
+<pre><code>lerobot-train \
+  --dataset.repo_id=lerobot/aloha_mobile_cabinet \
+  --policy.type=act \
+  --output_dir=outputs/train/act_demo \
+  --job_name=act_demo \
+  --policy.device=cuda</code></pre>
+<p>官方提示：先在默认超参上跑，不要急着调；100k 步在单卡上通常几小时；batch size 从 8 起，按显存增减。</p>
+
+<h3>评估与实机部署</h3>
+<pre><code><span class="c"># 仿真基准（LIBERO 等）</span>
+lerobot-eval \
+  --policy.path=lerobot/act_aloha_sim_transfer_cube_human \
+  --env.type=libero --env.task=libero_object \
+  --eval.n_episodes=10
+
+<span class="c"># 真机 rollout（SO-101）</span>
+lerobot-rollout \
+  --strategy.type=base \
+  --policy.path=outputs/train/act_demo/checkpoints/last/pretrained_model \
+  --robot.type=so101_follower --robot.port=/dev/ttyACM0 \
+  --robot.cameras="{ front: {type: opencv, index_or_path: 0, width: 640, height: 480, fps: 30}}" \
+  --display_data=true --duration=60</code></pre>
+
+<h3>关键超参速查（LeRobot 默认值）</h3>
+<table>
+<tr><th>参数</th><th>默认</th><th>含义</th></tr>
+<tr><td><code>chunk_size</code></td><td>100</td><td>一次预测多少步</td></tr>
+<tr><td><code>n_action_steps</code></td><td>100</td><td>一次预测实际执行多少步（盲跑长度）</td></tr>
+<tr><td><code>n_obs_steps</code></td><td>1</td><td>被强制为 1</td></tr>
+<tr><td><code>vision_backbone</code></td><td><code>resnet18</code></td><td>ImageNet 预训练，BN 冻结</td></tr>
+<tr><td><code>dim_model</code> / <code>n_heads</code> / <code>dim_feedforward</code></td><td>512 / 8 / 3200</td><td>Transformer 宽度</td></tr>
+<tr><td><code>n_encoder_layers</code></td><td>4</td><td>编码器层数</td></tr>
+<tr><td><code>n_decoder_layers</code></td><td><b>1</b></td><td>为复现原始实现的 bug 行为，见上文警告</td></tr>
+<tr><td><code>use_vae</code> / <code>latent_dim</code> / <code>n_vae_encoder_layers</code></td><td>True / 32 / 4</td><td>CVAE</td></tr>
+<tr><td><code>kl_weight</code></td><td>10.0</td><td>即论文的 β</td></tr>
+<tr><td><code>temporal_ensemble_coeff</code></td><td><code>None</code></td><td>开启时必须 <code>n_action_steps=1</code></td></tr>
+<tr><td><code>optimizer_lr</code> / <code>optimizer_lr_backbone</code></td><td>1e-5 / 1e-5</td><td>AdamW，weight decay 1e-4</td></tr>
+<tr><td><code>dropout</code></td><td>0.1</td><td>Transformer 层内</td></tr>
+</table>
+
+<h3>想读源码，按这个顺序</h3>
+<div class="card">
+<p class="mono" style="font-size:13.5px;margin:4px 0">
+<a href="https://github.com/huggingface/lerobot/blob/main/src/lerobot/policies/act/configuration_act.py">configuration_act.py</a>　→　配置与默认值（178 行，先看这个）<br>
+<a href="https://github.com/huggingface/lerobot/blob/main/src/lerobot/policies/act/modeling_act.py">modeling_act.py</a>　→　全部网络逻辑（757 行）<br>
+<span style="color:var(--ink-3)">　· L44–167　ACTPolicy：select_action / predict_action_chunk / 损失<br>
+　· L170–258　ACTTemporalEnsembler<br>
+　· L261–521　ACT.forward：VAE 编码 → 拼 token → 编码 → 解码 → 动作头<br>
+　· L524–677　编码器 / 解码器 / 层实现<br>
+　· L680–746　1D 与 2D 正弦位置编码</span><br>
+<a href="https://github.com/huggingface/lerobot/blob/main/docs/source/act.mdx">docs/source/act.mdx</a>　→　官方使用说明<br>
+<a href="https://github.com/huggingface/lerobot/blob/main/src/lerobot/scripts/lerobot_train.py">lerobot_train.py</a>　→　训练主循环
+</p>
+</div>
+<p>原始实现（PyTorch，基于 DETR 代码）：<a href="https://github.com/tonyzhaozh/act">tonyzhaozh/act</a>；论文与硬件：<a href="https://tonyzhaozh.github.io/aloha/">项目主页</a>。</p>
+
+<h2 id="compare"><span class="no">07 · COMPARE</span>与其他方法的关系</h2>
+<table>
+<tr><th></th><th>ACT</th><th>Diffusion Policy</th><th>BeT / RT-1</th><th>π0 系列</th></tr>
+<tr><td>输出</td><td>k 步连续动作</td><td>k 步连续动作</td><td>单步离散</td><td>50 步动作块</td></tr>
+<tr><td>怎么生成</td><td>CVAE，一次前向</td><td>扩散去噪，多步迭代</td><td>分类，单步</td><td>流匹配，多步积分</td></tr>
+<tr><td>多模态</td><td>靠 z（推理置零，偏平均）</td><td>靠噪声采样，天然多模态</td><td>靠离散 bin</td><td>靠流匹配采样</td></tr>
+<tr><td>推理成本</td><td>最低</td><td>较高</td><td>低</td><td>中等</td></tr>
+<tr><td>典型用途</td><td>单任务精细操作</td><td>多模态强的单任务</td><td>多任务、大规模数据</td><td>跨本体通用策略</td></tr>
+</table>
+<p>ACT 的定位很清楚：<b>用最少的推理开销，把单个任务做到稳定流畅</b>。它不擅长跨任务泛化，也没有语言接口。</p>
+
+<h3>已知局限</h3>
+<ul>
+<li><b>单任务</b>：每个任务单独训一套权重。</li>
+<li><b>依赖视角</b>：相机位置、光照、背景一变，性能就掉。</li>
+<li><b>分布外很脆</b>：仿真的插入任务上，目标位置偏移稍大就失败。</li>
+<li><b>推理确定性</b>：z=0 让它在多解场景下倾向"平均解"，不像扩散能采样出不同模式。</li>
+<li><b>误差仍会累积</b>：分块把有效视野缩短了 k 倍，但没有消除累积，只是减速。</li>
+</ul>
+
+<h2 id="refs"><span class="no">08 · REFS</span>资料</h2>
+<table>
+<tr><th>类型</th><th>链接</th></tr>
+<tr><td>论文</td><td><a href="https://arxiv.org/abs/2304.13705">Learning Fine-Grained Bimanual Manipulation with Low-Cost Hardware</a>（arXiv 2304.13705，RSS 2023）</td></tr>
+<tr><td>项目主页</td><td><a href="https://tonyzhaozh.github.io/aloha/">tonyzhaozh.github.io/aloha</a></td></tr>
+<tr><td>原始实现</td><td><a href="https://github.com/tonyzhaozh/act">github.com/tonyzhaozh/act</a></td></tr>
+<tr><td>解码器层数问题</td><td><a href="https://github.com/tonyzhaozh/act/issues/25">tonyzhaozh/act#25</a></td></tr>
+<tr><td>LeRobot 仓库</td><td><a href="https://github.com/huggingface/lerobot">github.com/huggingface/lerobot</a></td></tr>
+<tr><td>ACT 文档</td><td><a href="https://huggingface.co/docs/lerobot/act">huggingface.co/docs/lerobot/act</a></td></tr>
+<tr><td>模型与数据</td><td><a href="https://huggingface.co/lerobot/act_aloha_sim_transfer_cube_human">act_aloha_sim_transfer_cube_human</a> · <a href="https://huggingface.co/datasets/lerobot/aloha_sim_transfer_cube_human">数据集</a></td></tr>
+<tr><td>后继工作</td><td><a href="https://mobile-aloha.github.io/">Mobile ALOHA</a>（2024）</td></tr>
+</table>
+
+<div class="note"><b>这页和本地 PDF 的关系：</b>本页的架构数字、超参、任务成功率、消融结果都取自论文正文与附录；LeRobot 的行号与默认值取自 main 分支提交 <code>72e1d9e</code>（2026-10-28）。两者如果有出入，页面上都已标出（例如解码器层数、MSE/L1）。</div>
+
+<script>
+(function(){
+  var svg=document.getElementById('bigmap');
+  var btns=document.querySelectorAll('.fig-bar button');
+  function setMode(m){
+    svg.classList.remove('mode-train','mode-infer');
+    if(m==='train')svg.classList.add('mode-train');
+    if(m==='infer')svg.classList.add('mode-infer');
+    btns.forEach(function(b){b.classList.toggle('on',b.dataset.mode===m);});
+  }
+  btns.forEach(function(b){b.addEventListener('click',function(){setMode(b.dataset.mode);});});
+
+  var cv=document.getElementById('tec'),g=cv.getContext('2d');
+  var ms=document.getElementById('ms'),mv=document.getElementById('mv'),lg=document.getElementById('logscale'),out=document.getElementById('teo');
+  function draw(){
+    var m=parseFloat(ms.value);mv.textContent=m.toFixed(3);
+    var W=cv.width,H=cv.height,pad=42;
+    var N=200, vals=[], te=0, n=0;
+    for(var i=0;i<=N;i++){
+      if(i===0){te=0;n=1;}
+      else{
+        var w=Math.exp(-m*Math.min(n,100));
+        te=(te*(1-w)+1*w);
+        n++;
+      }
+      vals.push(te);
+    }
+    g.clearRect(0,0,W,H);
+    g.strokeStyle='#d8e1e7';g.lineWidth=1;
+    for(var k=0;k<=4;k++){var y=pad+(H-2*pad)*k/4;g.beginPath();g.moveTo(pad,y);g.lineTo(W-pad,y);g.stroke();}
+    g.fillStyle='#83919c';g.font='11px monospace';
+    g.fillText('1.0',6,pad+4);g.fillText('0',20,H-pad+4);
+    g.beginPath();g.moveTo(pad,H-pad);g.lineTo(W-pad,H-pad);g.strokeStyle='#94a7b4';g.stroke();
+    g.beginPath();
+    for(var i2=0;i2<=N;i2++){
+      var x=pad+(W-2*pad)*i2/N, y=H-pad-(H-2*pad)*vals[i2];
+      i2?g.lineTo(x,y):g.moveTo(x,y);
+    }
+    g.strokeStyle='#0e6e8a';g.lineWidth=2.2;g.stroke();
+    // 达到 50% / 90% 的时刻
+    function t90(th){for(var j=0;j<vals.length;j++)if(vals[j]>=th)return j;return -1;}
+    var a=t90(0.5),b=t90(0.9);
+    [[a,'#c4572a','50%'],[b,'#b8860b','90%']].forEach(function(p){
+      if(p[0]<0)return;
+      var x=pad+(W-2*pad)*p[0]/N;
+      g.beginPath();g.setLineDash([4,3]);g.moveTo(x,pad);g.lineTo(x,H-pad);
+      g.strokeStyle=p[1];g.lineWidth=1.4;g.stroke();g.setLineDash([]);
+      g.fillStyle=p[1];g.font='11px monospace';
+      g.fillText(p[2]+' @ 第'+p[0]+'次预测', Math.min(x+5,W-pad-90), pad+14);
+    });
+    g.fillStyle='#51626f';g.font='11.5px monospace';
+    g.fillText('横轴：第几次预测（每次都用新观测）　纵轴：集成后的动作值（真值恒为 1）',pad,H-10);
+    out.innerHTML='m = '+m.toFixed(3)+'：约 <b>'+(a<0?'—':a)+'</b> 次预测后追到一半，<b>'+(b<0?'—':b)+'</b> 次后追到 90%。'+
+      (m<=0.01?'m 很小，权重衰减很慢，旧预测像一条长尾巴——平滑但迟钝。'
+       :m>=0.08?'m 较大，几乎只信最近几次预测——反应快，但丧失了平滑的意义。'
+       :'中等偏平滑，接近论文默认档位。');
+  }
+  ms.addEventListener('input',draw);draw();
+
+  window.KATEX_OPTS={delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false,strict:'ignore'};
+  window.renderMath=function(el){if(window.renderMathInElement)renderMathInElement(el||document.body,window.KATEX_OPTS);};
+})();
+</script>
+<script defer src="assets/katex/katex.min.js"></script>
+<script defer src="assets/katex/contrib/auto-render.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded',function(){if(window.renderMath)window.renderMath();});
+</script>
+<script src="nav.js"></script>
+
+</div>
+</body>
+</html>
