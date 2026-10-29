@@ -213,6 +213,7 @@
   .arch .t3.kv{fill:#3730A3;}
   .arch .bx.hl{stroke:#B45309;fill:#FFF8E6;}
   .arch .bx.f{stroke:#BE185D;fill:#FDEEF5;}
+  .arch .bx.op{fill:#F4F4F6;stroke:#9CA3AF;stroke-dasharray:5 4;}
   .arch .bx.txo{fill:#F7F7FF;stroke:#4F46E5;stroke-dasharray:6 4;}
   .arch .tag{font-size:10px;font-weight:700;}
   .arch .tag.tr{fill:#BE185D;} .arch .tag.both{fill:#15803D;} .arch .tag.unk{fill:#71748C;}
@@ -482,7 +483,7 @@
         <text x="12" y="22" class="rowlab">① 输入：前缀（图像、提示词、状态彼此双向全看）+ 动作专家的输入</text>
         <text x="12" y="146" class="rowlab">② 一个 Transformer，两套权重（按 token 类型分流，Sec IV-A）</text>
         <text x="12" y="380" class="rowlab">③ 两个输出口</text>
-        <text x="12" y="634" class="rowlab">④ 推理：同一个模型跑两段（Sec IV-B）</text>
+        <text x="12" y="634" class="rowlab">④ 推理：每出一个动作块，同一个模型跑两段（Sec I、Sec IV-B）</text>
 
         <!-- ① 输入 -->
         <rect x="20" y="30" width="220" height="88" rx="10" class="bx v"/>
@@ -586,22 +587,22 @@
         <!-- ④ 推理两段 -->
         <a href="#concept-hierarchical-inference">
           <rect x="20" y="644" width="290" height="116" rx="10" class="bx hl"/>
-          <text x="165" y="666" class="t1">第 1 段 · 高层推理</text>
-          <text x="165" y="686" class="t2">前缀 = 4 路图像 + 高层指令 ℓ + 状态</text>
-          <text x="165" y="704" class="t2">VLM 自回归解码出子任务 ℓ̂</text>
+          <text x="165" y="666" class="t1">第 1 段 · 高层推理（VLM 跑多次）</text>
+          <text x="165" y="686" class="t2">前缀 4 路图像 + ℓ + 状态：VLM 前向 1 次</text>
+          <text x="165" y="704" class="t2">再逐个解码子任务 token：每个 token 1 次</text>
           <text x="165" y="722" class="t2">（这一段不用动作专家）</text>
           <text x="165" y="744" class="t2">π(ℓ̂ | o, ℓ)</text>
         </a>
-        <rect x="355" y="644" width="290" height="116" rx="10" class="bx l"/>
-        <text x="500" y="666" class="t1">把 ℓ̂ 换进提示词</text>
-        <text x="500" y="686" class="t2">动作只看子任务 ℓ̂，不再看原指令 ℓ</text>
+        <rect x="355" y="644" width="290" height="116" rx="10" class="bx op"/>
+        <text x="500" y="666" class="t1">中间步骤：不调用模型</text>
+        <text x="500" y="686" class="t2">只是把解码出的 ℓ̂ 拼进提示词，换掉 ℓ</text>
         <text x="500" y="704" class="t2">"收拾卧室" → "拿起枕头"</text>
-        <text x="500" y="722" class="t2">动作策略只需会做短而具体的事</text>
+        <text x="500" y="722" class="t2">动作只看子任务 ℓ̂，不再看原指令 ℓ</text>
         <text x="500" y="744" class="t2">π(a, ℓ̂ | o, ℓ) = π(a | o, ℓ̂) · π(ℓ̂ | o, ℓ)</text>
         <rect x="690" y="644" width="290" height="116" rx="10" class="bx a"/>
-        <text x="835" y="666" class="t1">第 2 段 · 低层动作</text>
-        <text x="835" y="686" class="t2">前缀 = 3 路图像 + ℓ̂ + 状态</text>
-        <text x="835" y="704" class="t2">动作专家 10 步去噪出动作块</text>
+        <text x="835" y="666" class="t1">第 2 段 · 低层动作（VLM 1 次 + 专家 10 次）</text>
+        <text x="835" y="686" class="t2">新前缀 3 路图像 + ℓ̂ + 状态：VLM 前向 1 次</text>
+        <text x="835" y="704" class="t2">动作专家去噪 10 次，每次都查这份前缀</text>
         <text x="835" y="722" class="t2">FAST token 一个都不解码（太慢）</text>
         <text x="835" y="744" class="t2">π(a | o, ℓ̂)</text>
 
@@ -621,7 +622,23 @@
         </g>
       </svg>
       </div>
-      <div class="arch-note"><b>和上图（openpi）的差别</b>：上图只有右边的"动作输出口"和第 2 段低层推理；左边整个文本输出口（框、子任务、网页答案、FAST token）和第 1 段高层推理 openpi 都没有，提示词由调用方直接给。各开源实现分别补了哪一块，见下面两张卡。</div>
+      <div class="arch-note"><b>和上图（openpi）的差别</b>：上图只有右边的"动作输出口"和第 2 段低层推理；左边整个文本输出口（框、子任务、网页答案、FAST token）和第 1 段高层推理 openpi 都没有，提示词由调用方直接给。推理时模型跑几次、各开源实现分别补了哪一块，见下面几张卡。</div>
+    </article>
+
+    <article class="card rc" id="s-infer-count">
+      <div class="q-row"><span class="q-num">常见疑问</span><span class="q-text">推理时模型到底跑了几次？是不是"高层 → 换提示词 → 低层"三次？</span></div>
+      <div class="answer always"><span class="alab">A</span>不是三次。中间的"把 ℓ̂ 换进提示词"<b>不调用模型</b>，只是把第 1 段解码出的文字拼进第 2 段的提示词。每出一个动作块，计算量是这样的：
+        <table class="arch-table">
+          <tr><th>段</th><th>谁在算</th><th>前向次数</th></tr>
+          <tr><td>第 1 段 · 高层</td><td>VLM（2B）</td><td>前缀（4 路图像 + 高层指令 + 状态）1 次；之后每解码一个子任务 token 再算 1 次，每次只算一个新 token（典型的 LLM 解码，用 KV cache），按 Fig.4 的例子估计，一个子任务大约十来个 token（论文没给数）</td></tr>
+          <tr><td>中间</td><td>无</td><td>0 次，只是文字替换</td></tr>
+          <tr><td>第 2 段 · 低层</td><td>VLM（2B）+ 动作专家（300M）</td><td>新前缀（3 路图像 + ℓ̂ + 状态）过 VLM 1 次，存 KV cache；动作专家去噪 10 次，每次查这份 cache</td></tr>
+        </table>
+        所以是"<b>同一份权重，两段调用</b>"：大头是两次前缀前向（每次都要处理全部图像 token），再加十来个便宜的单 token 解码步和 10 次小专家前向。动作专家只在第 2 段用；FAST token 推理时一个都不解码。
+        <br><b>论文原文</b>：p.2（Sec I）"At runtime, during each step of inference, the model first predicts the semantic subtask … and then predicts the low-level robot action chunk based on this subtask."；p.5（Sec IV-B）"standard autoregressive decoding for text tokens ℓ̂ followed by 10 denoising steps, conditioned on text tokens"；p.7（Sec IV-E）高层推理用全部 4 路相机，低层用两路腕部相机加前置相机。
+        <br><b>论文没写的</b>：子任务具体多少个 token、两段之间能不能复用前缀 KV cache（两段的相机组合和提示词都不一样，所以至少图像和提示词部分要重算，这是我的推断）、两段各自的耗时。
+        <br><span class="cite">Sec I p.2 · Sec IV-B p.5 · Sec IV-E p.7</span>
+      </div>
     </article>
 
     <article class="card rc" id="s-mask-paper">
