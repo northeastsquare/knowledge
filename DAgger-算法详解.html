@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DAgger 数据集聚合 · 数据采集与模型迭代全图解</title>
+<meta name="description" content="DAgger（Ross, Gordon, Bagnell, AISTATS 2011）：让学生自己开车，让专家给学生走到的每个状态打标签，再在全部数据上重训。对照论文算法 3.1 与 imitation 库源码。">
+<link rel="stylesheet" href="concepts.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#f1f4f6; --surface:#fbfcfd; --surface-2:#eaf0f4;
+  --ink:#16222e; --ink-2:#51626f; --ink-3:#83919c;
+  --line:#d8e1e7; --line-strong:#c3d0d9;
+  --collect:#0e6e8a; --collect-bg:#e3f1f5;
+  --iter:#c4572a; --iter-bg:#fbeee7;
+  --expert:#6d4bb0; --expert-bg:#efe9f8;
+  --warn:#b8860b; --warn-bg:#fbf5e3;
+  --shadow:0 1px 2px rgba(22,34,46,.04),0 14px 34px rgba(22,34,46,.07);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans",-apple-system,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;line-height:1.78;font-size:16px;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background-image:linear-gradient(rgba(22,34,46,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(22,34,46,.05) 1px,transparent 1px);background-size:28px 28px}
+.wrap{max-width:920px;margin:0 auto;padding:0 22px 100px}
+.wide{max-width:1260px;margin:0 auto;padding:0 16px}
+header.hero{padding:54px 0 26px}
+.kicker{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-2)}
+.kicker b{color:var(--collect)}
+h1{font-family:"IBM Plex Serif","Noto Serif SC",serif;font-size:38px;line-height:1.3;margin:10px 0 12px}
+.lede{font-size:17.5px;color:var(--ink-2);max-width:780px}
+.lede b{color:var(--ink)}
+.facts{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:24px 0 0}
+.fact{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.fact .n{font-family:"IBM Plex Mono",monospace;font-size:21px;font-weight:600;color:var(--collect)}
+.fact .l{font-size:13px;color:var(--ink-2);line-height:1.5}
+.toc{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:14px;margin:18px 0 0}
+.toc a{text-decoration:none;color:var(--ink-2)}
+.toc a:hover{color:var(--collect)}
+h2{font-family:"IBM Plex Serif","Noto Serif SC",serif;font-size:27px;margin:62px 0 8px;padding-top:10px;scroll-margin-top:60px}
+h2 .no{font-family:"IBM Plex Mono",monospace;font-size:14px;color:var(--ink-3);display:block;letter-spacing:.12em}
+h3{font-size:19px;margin:30px 0 8px;scroll-margin-top:60px}
+p{margin:10px 0}
+a{color:var(--collect)}
+code,.mono{font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;font-size:.88em}
+code{background:var(--surface-2);padding:1px 5px;border-radius:4px}
+.m{font-family:"IBM Plex Serif","Times New Roman",serif;font-style:italic;white-space:nowrap}
+.m sub,.m sup{font-style:normal;font-size:.72em}
+pre{background:#14202b;color:#dbe6ee;padding:14px 16px;border-radius:10px;overflow-x:auto;font-size:13px;line-height:1.65}
+pre code{background:none;padding:0;color:inherit}
+pre .c{color:#7f97a8}
+pre .k{color:#f2c14e}
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14.5px;background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+th,td{padding:8px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{background:var(--surface-2);font-weight:600;font-size:13.5px}
+tr:last-child td{border-bottom:none}
+.tbl{overflow-x:auto}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin:16px 0;box-shadow:var(--shadow)}
+.note{border-left:4px solid var(--ink-3);background:var(--surface);padding:10px 16px;margin:14px 0;border-radius:0 8px 8px 0}
+.note.collect{border-color:var(--collect);background:var(--collect-bg)}
+.note.iter{border-color:var(--iter);background:var(--iter-bg)}
+.note.expert{border-color:var(--expert);background:var(--expert-bg)}
+.note.warn{border-color:var(--warn);background:var(--warn-bg)}
+.code-ref{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13.5px;margin:10px 0 0;padding:10px 14px;background:var(--surface-2);border-radius:8px}
+.code-ref b{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink-2);letter-spacing:.08em}
+.code-ref a{font-family:"IBM Plex Mono",monospace;font-size:12.5px;text-decoration:none}
+.code-ref a:hover{text-decoration:underline}
+.algo{background:var(--surface);border:1px solid var(--line-strong);border-radius:12px;padding:6px 0;margin:16px 0;box-shadow:var(--shadow);font-size:15px}
+.algo .row{display:grid;grid-template-columns:34px 1fr 1fr;gap:12px;padding:7px 16px;border-bottom:1px dashed var(--line)}
+.algo .row:last-child{border-bottom:none}
+.algo .ln{font-family:"IBM Plex Mono",monospace;color:var(--ink-3);font-size:12.5px;padding-top:2px}
+.algo .what{color:var(--ink-2);font-size:14px}
+.algo .row.collect{background:linear-gradient(90deg,var(--collect-bg),transparent 60%)}
+.algo .row.iter{background:linear-gradient(90deg,var(--iter-bg),transparent 60%)}
+.algo .ind{padding-left:18px}
+details{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 16px;margin:10px 0}
+summary{cursor:pointer;font-weight:600}
+.pill{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:11.5px;padding:0 8px;border-radius:999px;border:1px solid;vertical-align:2px;margin-left:4px}
+.pill.collect{color:var(--collect);background:var(--collect-bg)}
+.pill.iter{color:var(--iter);background:var(--iter-bg)}
+.pill.expert{color:var(--expert);background:var(--expert-bg)}
+
+/* ===== 可编辑架构图 ===== */
+.figure{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 14px 10px;box-shadow:var(--shadow);margin:20px 0}
+.fig-bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:0 4px 10px}
+.fig-bar .fig-title{font-weight:700;font-size:16px;margin-right:auto;min-width:200px}
+.fig-bar button{font:inherit;font-size:13.5px;padding:5px 14px;border-radius:999px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink-2);cursor:pointer}
+.fig-bar button:hover{border-color:var(--collect);color:var(--ink)}
+.fig-bar button.primary{background:var(--ink);border-color:var(--ink);color:#fff}
+.fig-bar button[hidden]{display:none}
+.fig-status{font-size:12.5px;color:var(--ink-3);margin:0 6px 8px;min-height:1.2em}
+.fig-banner{display:none;align-items:center;flex-wrap:wrap;gap:8px;margin:0 4px 10px;padding:8px 12px;border-radius:8px;background:var(--warn-bg);border:1px solid #e6d29a;font-size:13.5px}
+.fig-banner.show{display:flex}
+.fig-banner button{font:inherit;font-size:13px;padding:2px 10px;border-radius:999px;border:1px solid var(--line-strong);background:var(--surface);cursor:pointer}
+.arch-scroll{overflow-x:auto;padding-bottom:4px}
+.arch-stage{position:relative;min-width:1140px;padding:34px 124px 28px 80px}
+.arch-grid{position:relative;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));grid-template-rows:auto auto auto auto;column-gap:92px;row-gap:66px}
+.lane{border-radius:14px;margin:-18px -40px;z-index:0;position:relative}
+.lane.collect{grid-column:1/-1;grid-row:1/3;background:rgba(14,110,138,.05);border:1px dashed rgba(14,110,138,.28)}
+.lane.iter{grid-column:1/-1;grid-row:3/5;background:rgba(196,87,42,.05);border:1px dashed rgba(196,87,42,.3)}
+.lane-tag{position:absolute;left:50%;transform:translateX(-50%);top:-12px;white-space:nowrap;font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.1em;z-index:3;background:var(--surface);padding:0 10px;border-radius:999px;border:1px dashed currentColor;line-height:22px}
+.lane.collect .lane-tag{color:var(--collect)}
+.lane.iter .lane-tag{color:var(--iter)}
+svg.wires{position:absolute;left:0;top:0;z-index:1;pointer-events:none;overflow:visible}
+svg.wires path.w{fill:none;stroke-width:1.8}
+svg.wires path.w.collect{stroke:var(--collect)}
+svg.wires path.w.iter{stroke:var(--iter)}
+svg.wires path.w.expert{stroke:var(--expert)}
+svg.wires path.w.dash{stroke-dasharray:6 5}
+.node{position:relative;z-index:2;align-self:start;background:#fff;border:1.6px solid #94a7b4;border-radius:12px;padding:10px 12px 10px;box-shadow:0 1px 2px rgba(22,34,46,.06)}
+.node.collect{border-color:#6fb0c6;background:#f6fbfd}
+.node.iter{border-color:#d98a63;background:#fffaf7}
+.node.expert{border-color:#a48bd6;background:#faf8fe}
+.node .badge{position:absolute;top:-12px;left:10px;font-family:"IBM Plex Mono",monospace;font-size:11.5px;font-weight:600;color:#fff;background:var(--ink);border-radius:999px;padding:0 8px;line-height:22px}
+.node.collect .badge{background:var(--collect)}
+.node.iter .badge{background:var(--iter)}
+.node.expert .badge{background:var(--expert)}
+.n-title{font-weight:700;font-size:14.5px;line-height:1.45;margin-top:4px}
+.n-math{font-family:"IBM Plex Serif","Times New Roman",serif;font-size:14px;color:var(--ink);margin:3px 0;line-height:1.5}
+.n-math i{font-style:italic}
+.n-math sub,.n-math sup{font-size:.72em}
+.n-desc{font-size:12.5px;color:var(--ink-2);line-height:1.55}
+.n-desc code,.n-math code{font-size:11.5px}
+.n-links{display:flex;flex-wrap:wrap;gap:4px;margin-top:7px}
+.chip{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:11px;line-height:1.4;padding:2px 7px;border-radius:6px;border:1px solid var(--line-strong);background:var(--surface-2);color:var(--ink-2);text-decoration:none;max-width:100%;overflow-wrap:anywhere}
+.chip::before{content:"⟨/⟩ ";color:var(--ink-3)}
+.chip.paper::before{content:"§ "}
+.chip.mini::before{content:"▸ "}
+.chip:hover{border-color:var(--collect);color:var(--collect)}
+.wl{position:absolute;z-index:3;transform:translate(-50%,-50%);max-width:96px;text-align:center;font-size:11.5px;line-height:1.35;padding:1px 5px;border-radius:5px;background:var(--surface);color:var(--ink-2);font-family:"IBM Plex Sans","PingFang SC",sans-serif;box-shadow:0 0 0 2px var(--surface)}
+.wl.narrow{max-width:66px}
+.wl.collect{color:var(--collect)}
+.wl.iter{color:var(--iter)}
+.wl.expert{color:var(--expert)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12.5px;color:var(--ink-2);margin:10px 6px 2px}
+.legend i{display:inline-block;width:22px;height:0;border-top:2px solid;vertical-align:middle;margin-right:6px}
+.legend i.d{border-top-style:dashed}
+.fig-cap{font-size:13.5px;color:var(--ink-2);margin:6px 6px 4px}
+/* 编辑态 */
+#arch.editing [contenteditable]{outline:1px dashed rgba(14,110,138,.55);outline-offset:2px;border-radius:3px;cursor:text;background:rgba(255,248,214,.55)}
+#arch.editing [contenteditable]:focus{outline:2px solid #f2c14e;background:#fffbe8}
+#arch.editing .chip{cursor:pointer;border-style:dashed}
+#arch.editing .fig-title[contenteditable],#arch.editing .fig-cap[contenteditable]{display:block}
+.add-link{font:inherit;font-size:11px;padding:1px 7px;border-radius:6px;border:1px dashed var(--collect);background:transparent;color:var(--collect);cursor:pointer;margin-top:6px}
+@media (max-width:760px){h1{font-size:28px}.facts{grid-template-columns:repeat(2,1fr)}.algo .row{grid-template-columns:28px 1fr}.algo .what{grid-column:2}}
+@media print{.fig-bar button,.fig-banner,.fig-status{display:none}.arch-stage{min-width:0}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="hero">
+<div class="kicker"><b>DAgger</b> · Dataset Aggregation · AISTATS 2011 · CMU · 论文 + 参考实现对照</div>
+<h1 id="concept-dagger" class="concept-anchor">DAgger：让学生自己开车，请专家给它走到的每个状态打标签</h1>
+<p class="lede">普通<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-behavior-cloning">行为克隆</a>只在专家走过的状态上学习。学生一旦犯错，就会进入训练集中没有的状态，错误随之累积。DAgger 的做法是：<b>让当前策略去环境里跑，让专家标注这些状态下的正确动作，把新数据并入旧数据，再在全部数据上重新训练</b>。重复 N 轮后，训练数据的分布就接近学生自己执行时会遇到的分布。</p>
+<div class="facts">
+  <div class="fact"><div class="n">T²ε → uTε</div><div class="l">误差上界从随时域平方增长，降到线性增长（定理 2.1 → 3.2）</div></div>
+  <div class="fact"><div class="n">β<sub>i</sub></div><div class="l">本轮由专家执行动作的概率；论文常用 β<sub>1</sub>=1，之后为 0</div></div>
+  <div class="fact"><div class="n">D ← D ∪ D<sub>i</sub></div><div class="l">数据只增不删，每轮在全部历史数据上训练</div></div>
+  <div class="fact"><div class="n">0 次</div><div class="l">Super Tux Kart：迭代 15 轮后，每圈掉出赛道 0 次</div></div>
+</div>
+<nav class="toc">
+  <a href="#sec-sources">0 论文与代码在哪</a>
+  <a href="#sec-problem">1 要解决的问题</a>
+  <a href="#sec-algo">2 算法 3.1 逐行读</a>
+  <a href="#sec-arch">3 架构图（可编辑）</a>
+  <a href="#sec-collect">4 数据采集方式</a>
+  <a href="#sec-iterate">5 模型迭代方式</a>
+  <a href="#sec-theory">6 为什么有效</a>
+  <a href="#sec-exp">7 论文实验</a>
+  <a href="#sec-diff">8 论文 vs 代码</a>
+  <a href="#sec-pitfalls">9 实践中的坑</a>
+</nav>
+</header>
+</div>
+<div class="wrap">
+
+<h2 id="sec-sources"><span class="no">00 · SOURCES</span>论文与代码在哪</h2>
+<div class="tbl"><table>
+<tr><th>资料</th><th>位置</th><th>说明</th></tr>
+<tr><td>原始论文</td><td><a href="https://arxiv.org/abs/1011.0686" target="_blank" rel="noreferrer">arXiv:1011.0686</a> · <a href="https://proceedings.mlr.press/v15/ross11a.html" target="_blank" rel="noreferrer">PMLR v15（AISTATS 2011）</a></td><td>Stéphane Ross、Geoffrey J. Gordon、J. Andrew Bagnell，CMU。题目 <i>A Reduction of Imitation Learning and Structured Prediction to No-Regret Online Learning</i></td></tr>
+<tr><td>作者报告</td><td><a href="https://www.cs.cmu.edu/~sross1/publications/Ross-AIStats11-Slides.pdf" target="_blank" rel="noreferrer">AISTATS 2011 slides</a></td><td>会议报告幻灯片</td></tr>
+<tr><td>实验视频</td><td><a href="https://www.youtube.com/watch?v=V00npNnWzSU" target="_blank" rel="noreferrer">Super Tux Kart</a> · <a href="https://www.youtube.com/watch?v=anOI0xZ3kGM" target="_blank" rel="noreferrer">Super Mario Bros</a></td><td>论文参考文献 Ross 2010a / 2010b，对比 Sup、SMILe、DAgger 的实际表现</td></tr>
+<tr><td>官方代码</td><td>没有</td><td>论文正文、脚注和参考文献都没有给出代码链接，我也没有找到作者发布的仓库。论文只公开了算法 3.1 和三组实验的特征、学习器设置</td></tr>
+<tr><td>参考实现 A（主线）</td><td><a href="https://github.com/HumanCompatibleAI/imitation/blob/e5ef18806c449ca47153b494a02471c5e2ae3a14/src/imitation/algorithms/dagger.py" target="_blank" rel="noreferrer">HumanCompatibleAI/imitation · dagger.py</a></td><td>CHAI 维护的模仿学习库，文件头直接引用 1011.0686。本页行号固定在提交 <code>e5ef188</code>（2025-01-07），依赖 Stable-Baselines3 2.2</td></tr>
+<tr><td>参考实现 B（最小版）</td><td><a href="https://github.com/avisingh599/imitation-dagger/blob/5adf710aa51e19045eeaea5b8d073c4f1bcfdc9d/dagger.py" target="_blank" rel="noreferrer">avisingh599/imitation-dagger · dagger.py</a></td><td>127 行：TORCS 赛车 + Keras CNN 从像素学转向，结构和论文的 Super Tux Kart 实验接近，适合对照最朴素的 <span class="m">β<sub>i</sub> = I(i=1)</span> 写法</td></tr>
+</table></div>
+<p>下面讲“论文怎么说”时引用算法 3.1 和定理编号；讲“代码怎么做”时引用实现 A 的具体行号，必要时用实现 B 对照。</p>
+
+<h2 id="sec-problem"><span class="no">01 · PROBLEM</span>要解决的问题：训练分布和执行分布不一致</h2>
+<p>记任务时域为 <span class="m">T</span>，专家策略为 <span class="m">π*</span>，学生策略为 <span class="m">π</span>，<span class="m">d<sub>π</sub></span> 表示执行 <span class="m">π</span> 时 T 步内状态的平均分布。模仿学习真正想要的是让学生<b>在它自己会遇到的状态上</b>和专家一致：</p>
+<p class="card"><span class="m">π̂ = argmin<sub>π∈Π</sub> E<sub>s∼d<sub>π</sub></sub>[ ℓ(s, π) ]</span>（论文式 1）</p>
+<p>难点在于 <span class="m">d<sub>π</sub></span> 依赖 <span class="m">π</span> 本身。普通监督学习（论文称 supervised approach，即行为克隆）退而求其次，只在专家分布上拟合：</p>
+<p class="card"><span class="m">π̂<sub>sup</sub> = argmin<sub>π∈Π</sub> E<sub>s∼d<sub>π*</sub></sub>[ ℓ(s, π) ]</span>（论文式 2）</p>
+<p>定理 2.1 给出它的代价：如果在专家分布上的错误率是 <span class="m">ε</span>，执行时的总代价最多比专家多 <span class="m">T²ε</span>，而且这个界是紧的。原因是学生一步走错，就会进入专家从没去过的状态，那里没有训练数据，后面更容易继续错。<a class="concept-link" href="LeRobot-ACT-算法详解.html#concept-act">ACT</a> 用动作分块减少决策次数来缓解这个问题，DAgger 的办法是直接去收集这些状态的数据。</p>
+<div class="tbl"><table>
+<tr><th>方法（论文第 2 节）</th><th>训练出的策略</th><th>误差界</th><th>问题</th></tr>
+<tr><td>Supervised / BC</td><td>平稳、确定</td><td><span class="m">T²ε</span></td><td>不会从错误中恢复</td></tr>
+<tr><td>Forward Training</td><td>非平稳：每个时刻 t 一个 <span class="m">π<sub>t</sub></span></td><td><span class="m">uTε</span></td><td>要训 T 个策略，T 大或不确定时不可行</td></tr>
+<tr><td>SMILe（类似 SEARN）</td><td>平稳、随机：多个策略的混合</td><td>近线性</td><td>混合里有差策略，执行不稳定；需要 <span class="m">O(T² log T)</span> 轮</td></tr>
+<tr><td><b>DAgger</b></td><td><b>平稳、确定</b></td><td><span class="m">uTε<sub>N</sub> + O(1)</span></td><td>每一步都要专家给标签</td></tr>
+</table></div>
+
+<h2 id="sec-algo"><span class="no">02 · ALGORITHM 3.1</span>算法 3.1 逐行读</h2>
+<div class="algo">
+  <div class="row"><span class="ln">1</span><span>Initialize <span class="m">D ← ∅</span></span><span class="what">空数据集</span></div>
+  <div class="row"><span class="ln">2</span><span>Initialize <span class="m">π̂<sub>1</sub></span> to any policy in <span class="m">Π</span></span><span class="what">因为通常取 <span class="m">β<sub>1</sub>=1</span>，第一轮用不到 <span class="m">π̂<sub>1</sub></span>，随便初始化即可</span></div>
+  <div class="row"><span class="ln">3</span><span><b>for</b> <span class="m">i = 1</span> to <span class="m">N</span> <b>do</b></span><span class="what">一共 N 轮</span></div>
+  <div class="row collect"><span class="ln">4</span><span class="ind">Let <span class="m">π<sub>i</sub> = β<sub>i</sub>π* + (1−β<sub>i</sub>)π̂<sub>i</sub></span></span><span class="what"><b>谁来开车</b>：专家和学生的混合策略</span></div>
+  <div class="row collect"><span class="ln">5</span><span class="ind">Sample T-step trajectories using <span class="m">π<sub>i</sub></span></span><span class="what"><b>去哪些状态</b>：由混合策略决定</span></div>
+  <div class="row collect"><span class="ln">6</span><span class="ind">Get dataset <span class="m">D<sub>i</sub> = {(s, π*(s))}</span> of visited states by <span class="m">π<sub>i</sub></span> and actions given by expert</span><span class="what"><b>标签是谁的</b>：永远是专家的，和实际执行了谁的动作无关</span></div>
+  <div class="row iter"><span class="ln">7</span><span class="ind">Aggregate datasets: <span class="m">D ← D ∪ D<sub>i</sub></span></span><span class="what"><b>数据怎么管</b>：只追加，不丢旧数据</span></div>
+  <div class="row iter"><span class="ln">8</span><span class="ind">Train classifier <span class="m">π̂<sub>i+1</sub></span> on <span class="m">D</span></span><span class="what"><b>模型怎么更新</b>：在全部数据上做普通监督学习</span></div>
+  <div class="row"><span class="ln">9</span><span><b>end for</b></span><span class="what"></span></div>
+  <div class="row"><span class="ln">10</span><span><b>Return</b> best <span class="m">π̂<sub>i</sub></span> on validation</span><span class="what">在验证集上选最好的一个，不一定是最后一轮的策略</span></div>
+</div>
+<p>第 4～6 行属于数据采集，第 7～8 行属于模型迭代。下一节的架构图把这两段和代码里的类、函数一一对上。</p>
+<h2 id="sec-arch"><span class="no">03 · ARCHITECTURE</span>架构图：一轮 DAgger 里数据和模型怎么流动</h2>
+<p>上半部分是数据采集（算法第 4～6 行），下半部分是模型迭代（第 7～8 行）。每个方块底部的小标签链接到代码行：<code>⟨/⟩</code> 指向 imitation 库，<code>▸</code> 指向最小实现 B，<code>§</code> 跳到本页对应讲解。</p>
+<p>图里的文字都能直接选中和复制。点“编辑”后可以改方块和箭头上的文字，在编辑状态下点代码标签可以改链接地址。修改会自动存到本浏览器；点“保存到页面文件”会把改好的整页 HTML 写回文件（Chrome / Edge 可以直接选中原文件覆盖，其他浏览器会下载一个同名文件）。</p>
+</div>
+
+<div class="wide">
+<figure class="figure" id="arch">
+  <div class="fig-bar">
+    <span class="fig-title" data-key="fig.title">DAgger 架构总图（第 i 轮）</span>
+    <button type="button" data-act="edit" class="primary">编辑</button>
+    <button type="button" data-act="save">保存到页面文件</button>
+    <button type="button" data-act="copy">复制图中全部文字</button>
+    <button type="button" data-act="reset" hidden>撤销本地修改</button>
+  </div>
+  <div class="fig-banner" id="arch-banner"><span>本浏览器里有一份基于旧版页面的修改，和当前页面内容不同。</span><button type="button" data-act="restore">载入那份修改</button><button type="button" data-act="discard">丢弃</button></div>
+  <div class="fig-status" id="arch-status" aria-live="polite"></div>
+  <div class="arch-scroll">
+  <div class="arch-stage">
+    <svg class="wires" aria-hidden="true">
+      <defs>
+        <marker id="ah-collect" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0e6e8a"/></marker>
+        <marker id="ah-iter" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c4572a"/></marker>
+        <marker id="ah-expert" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6d4bb0"/></marker>
+      </defs>
+    </svg>
+    <div class="arch-grid">
+      <div class="lane collect" aria-hidden="true"><span class="lane-tag">数据采集 · 算法第 4–6 行</span></div>
+      <div class="lane iter" aria-hidden="true"><span class="lane-tag">模型迭代 · 算法第 7–8 行</span></div>
+
+      <div class="node collect" data-node="learner" style="grid-column:1;grid-row:1">
+        <span class="badge">④</span>
+        <div class="n-title" data-key="learner.title">学生 π̂<sub>i</sub></div>
+        <div class="n-math" data-key="learner.math"><i>â<sub>t</sub></i> = <i>π̂<sub>i</sub></i>(<i>s<sub>t</sub></i>)</div>
+        <div class="n-desc" data-key="learner.desc">上一轮训练出的策略。imitation 调用 <code>policy.predict</code>，默认按策略分布随机采样动作。</div>
+        <div class="n-links" data-key="learner.links"><a class="chip" href="https://github.com/HumanCompatibleAI/imitation/blob/e5ef18806c449ca47153b494a02471c5e2ae3a14/src/imitation/algorithms/dagger.py#L511" target="_blank" rel="noreferrer">dagger.py#L511 get_robot_acts</a><a class="chip" href="https://github.com/HumanCompatibleAI/imitation/blob/e5ef18806c449ca47153b494a02471c5e2ae3a14/src/imitation/algorithms/bc.py#L341-L355" target="_blank" rel="noreferrer">bc.py#L341 默认 FeedForward32Policy</a></div>
+      </div>
+
+      <div class="node expert" data-node="expert" style="grid-column:2;grid-row:1">
+        <span class="badge">③</span>
+        <div class="n-title" data-key="expert.title">专家 π*</div>
+        <div class="n-math" data-key="expert.math"><i>a*<sub>t</sub></i> = <i>π*</i>(<i>s<sub>t</sub></i>)</div>
+        <div class="n-desc" data-key="expert.desc">人类、规划器或脚本。每一步都要给出动作，即使这一步最后执行的是学生的动作。</div>
+        <div class="n-links" data-key="expert.links"><a class="chip" href="https://github.com/HumanCompatibleAI/imitation/blob/e5ef18806c449ca47153b494a02471c5e2ae3a14/src/imitation/algorithms/dagger.py#L669-L675" target="_blank" rel="noreferrer">dagger.py#L669 generate_trajectories(policy=expert)</a><a class="chip mini" href="https://github.com/avisingh599/imitation-dagger/blob/5adf710aa51e19045eeaea5b8d073c4f1bcfdc9d/dagger.py#L10-L13" target="_blank" rel="noreferrer">B#L10 get_teacher_action</a></div>
+      </div>
+
+      <div class="node collect" data-node="beta" style="grid-column:3;grid-row:1">
+        <span class="badge">②</span>
+        <div class="n-title" data-key="beta.title">β 调度</div>
+        <div class="n-math" data-key="beta.math"><i>β<sub>i</sub></i> = I(<i>i</i>=1) 或 <i>p</i><sup><i>i</i>−1</sup></div>
+        <div class="n-desc" data-key="beta.desc">本轮每一步交给专家执行的概率。imitation 默认在 15 轮内从 1 线性降到 0。</div>
+        <div class="n-links" data-key="beta.links"><a class="chip" href="https://github.com/HumanCompatibleAI/imitation/blob/e5ef18806c449ca47153b494a02471c5e2ae3a14/src/imitation/algorithms/dagger.py#L45-L96" target="_blank" rel="noreferrer">dagger.py#L45 Linear/Exponential BetaSchedule</a><a class="chip" href="https://github.com/HumanCompatibleAI/imitation/blob/e5ef18806c449ca47153b494a02471c5e2ae3a14/src/imitation/algorithms/dagger.py#L354-L355" target="_blank" rel="noreferrer">dagger.py#L355 默认 Linear(15)</a><a class="chip" href="https://github.com/HumanCompatibleAI/imitation/blob/e5ef18806c449ca47153b494a02471c5e2ae3a14/src/imitation/algorithms/dagger.py#L499-L516" target="_blank" rel="noreferrer">dagger.py#L499 create_trajectory_collector</a><a class="chip paper" href="#sec-beta">β 怎么选</a></div>
+      </div>
+
+      <div class="node" data-node="init" style="grid-column:4;grid-row:1">
+        <span class="badge">①</span>
+        <div class="n-title" data-key="init.title">初始化</div>
+        <div class="n-math" data-key="init.math"><i>D</i> ← ∅，<i>π̂<sub>1</sub></i> 任意，<i>β<sub>1</sub></i> = 1</div>
+        <div class="n-desc" data-key="init.desc">第 1 轮全部由专家执行，相当于先做一次 BC。imitation 可以把已有示范 <code>expert_trajs</code> 直接放进 round-000。</div>
+        <div class="n-links" data-key="init.links"><a class="chip" href="https://github.com/HumanCompatibleAI/imitation/blob/e5ef18806c449ca47153b494a02471c5e2ae3a14/src/imitation/algorithms/dagger.py#L555-L613" target="_blank" rel="noreferrer">dagger.py#L555 SimpleDAggerTrainer.__init__</a><a class="chip mini" href="https://github.com/avisingh599/imitation-dagger/blob/5adf710aa51e19045eeaea5b8d073c4f1bcfdc9d/dagger.py#L32-L91" target="_blank" rel="noreferrer">B#L32 第 0 轮专家采集 + 首次拟合</a><a class="chip paper" href="#sec-algo">算法第 1–2 行</a></div>
+      </div>
+
+      <div class="node collect" data-node="mixer" style="grid-column:1/4;grid-row:2">
+        <span class="badge">⑤</span>
+        <div class="n-title" data-key="mixer.title">混合执行器 π<sub>i</sub> = β<sub>i</sub>π* + (1−β<sub>i</sub>)π̂<sub>i</sub></div>
+        <div class="n-math" data-key="mixer.math">以概率 <i>β<sub>i</sub></i> 执行 <i>a*<sub>t</sub></i>，否则执行 <i>â<sub>t</sub></i>；无论执行哪个，都另存一份 <i>a*<sub>t</sub></i></div>
+        <div class="n-desc" data-key="mixer.desc">imitation 把它写成 VecEnv 包装器：每个并行环境、每一步独立掷一次硬币 <code>mask = U(0,1) &gt; β</code>，被选中的位置换成学生动作。</div>
+        <div class="n-links" data-key="mixer.links"><a class="chip" href="https://github.com/HumanCompatibleAI/imitation/blob/e5ef18806c449ca47153b494a02471c5e2ae3a14/src/imitation/algorithms/dagger.py#L151-L198" target="_blank" rel="noreferrer">dagger.py#L151 InteractiveTrajectoryCollector</a><a class="chip" href="https://github.com/HumanCompatibleAI/imitation/blob/e5ef18806c449ca47153b494a02471c5e2ae3a14/src/imitation/algorithms/dagger.py#L232-L262" target="_blank" rel="noreferrer">dagger.py#L232 step_async 掷硬币</a><a class="chip paper" href="#sec-collect">数据采集方式</a></div>
+      </div>
+
+      <div class="node collect" data-node="env" style="grid-column:4;grid-row:2">
+        <span class="badge">⑥</span>
+        <div class="n-title" data-key="env.title">环境 / 系统动力学</div>
+        <div class="n-math" data-key="env.math"><i>s<sub>t+1</sub></i> ∼ <i>P</i>(· | <i>s<sub>t</sub></i>, <i>a<sub>t</sub></i>)</div>
+        <div class="n-desc" data-key="env.desc">执行了谁的动作，就进入谁造成的状态。学生的错误从这里进入数据。</div>
+        <div class="n-links" data-key="env.links"><a class="chip" href="https://github.com/HumanCompatibleAI/imitation/blob/e5ef18806c449ca47153b494a02471c5e2ae3a14/src/imitation/algorithms/dagger.py#L264-L287" target="_blank" rel="noreferrer">dagger.py#L264 step_wait</a><a class="chip mini" href="https://github.com/avisingh599/imitation-dagger/blob/5adf710aa51e19045eeaea5b8d073c4f1bcfdc9d/dagger.py#L104-L111" target="_blank" rel="noreferrer">B#L104 学生开车</a></div>
+      </div>
+
+      <div class="node iter" data-node="train" style="grid-column:1;grid-row:3">
+        <span class="badge">⑩</span>
+        <div class="n-title" data-key="train.title">监督训练 π̂<sub>i+1</sub></div>
+        <div class="n-math" data-key="train.math">min −log <i>π</i>(<i>a*</i> | <i>s</i>) − <i>λ<sub>H</sub></i>·H + <i>λ<sub>2</sub></i>‖<i>θ</i>‖²</div>
+        <div class="n-desc" data-key="train.desc">在全部 D 上打乱训练。imitation 在同一个网络上接着训（warm start），默认每轮 4 个 epoch。</div>
+        <div class="n-links" data-key="train.links"><a class="chip" href="https://github.com/HumanCompatibleAI/imitation/blob/e5ef18806c449ca47153b494a02471c5e2ae3a14/src/imitation/algorithms/dagger.py#L455-L497" target="_blank" rel="noreferrer">dagger.py#L455 extend_and_update</a><a class="chip" href="https://github.com/HumanCompatibleAI/imitation/blob/e5ef18806c449ca47153b494a02471c5e2ae3a14/src/imitation/algorithms/bc.py#L94-L156" target="_blank" rel="noreferrer">bc.py#L94 BC 损失</a><a class="chip" href="https://github.com/HumanCompatibleAI/imitation/blob/e5ef18806c449ca47153b494a02471c5e2ae3a14/src/imitation/algorithms/bc.py#L381-L510" target="_blank" rel="noreferrer">bc.py#L381 BC.train</a><a class="chip mini" href="https://github.com/avisingh599/imitation-dagger/blob/5adf710aa51e19045eeaea5b8d073c4f1bcfdc9d/dagger.py#L124-L127" target="_blank" rel="noreferrer">B#L124 model.fit 全量数据</a><a class="chip paper" href="#sec-iterate">模型迭代方式</a></div>
+      </div>
+
+      <div class="node iter" data-node="agg" style="grid-column:2;grid-row:3">
+        <span class="badge">⑨</span>
+        <div class="n-title" data-key="agg.title">数据聚合</div>
+        <div class="n-math" data-key="agg.math"><i>D</i> ← <i>D</i> ∪ <i>D<sub>i</sub></i></div>
+        <div class="n-desc" data-key="agg.desc">只读入还没加载过的轮次，追加到 <code>_all_demos</code>，再展平成 (obs, acts) 转移，装进打乱的 DataLoader。</div>
+        <div class="n-links" data-key="agg.links"><a class="chip" href="https://github.com/HumanCompatibleAI/imitation/blob/e5ef18806c449ca47153b494a02471c5e2ae3a14/src/imitation/algorithms/dagger.py#L398-L407" target="_blank" rel="noreferrer">dagger.py#L398 _load_all_demos</a><a class="chip" href="https://github.com/HumanCompatibleAI/imitation/blob/e5ef18806c449ca47153b494a02471c5e2ae3a14/src/imitation/algorithms/dagger.py#L423-L453" target="_blank" rel="noreferrer">dagger.py#L423 _try_load_demos</a><a class="chip" href="https://github.com/HumanCompatibleAI/imitation/blob/e5ef18806c449ca47153b494a02471c5e2ae3a14/src/imitation/data/rollout.py#L563-L610" target="_blank" rel="noreferrer">rollout.py#L563 flatten_trajectories</a></div>
+      </div>
+
+      <div class="node iter" data-node="di" style="grid-column:3;grid-row:3">
+        <span class="badge">⑧</span>
+        <div class="n-title" data-key="di.title">本轮数据 D<sub>i</sub></div>
+        <div class="n-math" data-key="di.math">demos/round-<i>i</i>/*.npz</div>
+        <div class="n-desc" data-key="di.desc">每条轨迹存成一个 npz 文件，按轮次分目录。中断后可以从目录恢复。</div>
+        <div class="n-links" data-key="di.links"><a class="chip" href="https://github.com/HumanCompatibleAI/imitation/blob/e5ef18806c449ca47153b494a02471c5e2ae3a14/src/imitation/algorithms/dagger.py#L130-L148" target="_blank" rel="noreferrer">dagger.py#L130 _save_dagger_demo</a><a class="chip" href="https://github.com/HumanCompatibleAI/imitation/blob/e5ef18806c449ca47153b494a02471c5e2ae3a14/src/imitation/algorithms/dagger.py#L418-L421" target="_blank" rel="noreferrer">dagger.py#L418 _demo_dir_path_for_round</a></div>
+      </div>
+
+      <div class="node expert" data-node="label" style="grid-column:4;grid-row:3">
+        <span class="badge">⑦</span>
+        <div class="n-title" data-key="label.title">专家打标签</div>
+        <div class="n-math" data-key="label.math">存 (<i>s<sub>t</sub></i>, <i>a*<sub>t</sub></i>)，不存实际执行的 <i>a<sub>t</sub></i></div>
+        <div class="n-desc" data-key="label.desc"><code>_last_user_actions</code> 保存的是传进来的专家动作，episode 结束时整条轨迹写盘。</div>
+        <div class="n-links" data-key="label.links"><a class="chip" href="https://github.com/HumanCompatibleAI/imitation/blob/e5ef18806c449ca47153b494a02471c5e2ae3a14/src/imitation/algorithms/dagger.py#L274-L285" target="_blank" rel="noreferrer">dagger.py#L274 acts=专家动作</a><a class="chip" href="https://github.com/HumanCompatibleAI/imitation/blob/e5ef18806c449ca47153b494a02471c5e2ae3a14/src/imitation/data/rollout.py#L120-L187" target="_blank" rel="noreferrer">rollout.py#L120 add_steps_and_auto_finish</a><a class="chip mini" href="https://github.com/avisingh599/imitation-dagger/blob/5adf710aa51e19045eeaea5b8d073c4f1bcfdc9d/dagger.py#L120-L122" target="_blank" rel="noreferrer">B#L120 事后补专家标签</a></div>
+      </div>
+
+      <div class="node iter" data-node="round" style="grid-column:1/4;grid-row:4">
+        <span class="badge">⑪</span>
+        <div class="n-title" data-key="round.title">进入下一轮 i ← i+1</div>
+        <div class="n-math" data-key="round.math"><i>π̂<sub>i+1</sub></i> 替换 ④ 的学生，<i>β<sub>i+1</sub></i> 由 ② 重新计算</div>
+        <div class="n-desc" data-key="round.desc">imitation 的 <code>train(total_timesteps)</code> 按累计环境步数停止。每轮至少采 3 个 episode，且至少 max(500, batch_size) 步。</div>
+        <div class="n-links" data-key="round.links"><a class="chip" href="https://github.com/HumanCompatibleAI/imitation/blob/e5ef18806c449ca47153b494a02471c5e2ae3a14/src/imitation/algorithms/dagger.py#L615-L694" target="_blank" rel="noreferrer">dagger.py#L615 SimpleDAggerTrainer.train</a><a class="chip" href="https://github.com/HumanCompatibleAI/imitation/blob/e5ef18806c449ca47153b494a02471c5e2ae3a14/src/imitation/algorithms/dagger.py#L494-L497" target="_blank" rel="noreferrer">dagger.py#L495 round_num += 1</a></div>
+      </div>
+
+      <div class="node iter" data-node="out" style="grid-column:4;grid-row:4">
+        <span class="badge">⑫</span>
+        <div class="n-title" data-key="out.title">输出策略</div>
+        <div class="n-math" data-key="out.math">best <i>π̂<sub>i</sub></i> on validation</div>
+        <div class="n-desc" data-key="out.desc">论文在验证集上挑最好的一轮。imitation 直接用最后一轮，想挑选就每轮调用 save_trainer 存档。</div>
+        <div class="n-links" data-key="out.links"><a class="chip" href="https://github.com/HumanCompatibleAI/imitation/blob/e5ef18806c449ca47153b494a02471c5e2ae3a14/src/imitation/algorithms/dagger.py#L518-L549" target="_blank" rel="noreferrer">dagger.py#L518 save_trainer</a><a class="chip paper" href="#sec-diff">论文 vs 代码</a></div>
+      </div>
+    </div>
+    <div class="wire-labels">
+      <div class="wl collect" data-edge="init-beta" data-key="e.init-beta">第 1 轮</div>
+      <div class="wl collect" data-edge="beta-mixer" data-key="e.beta-mixer">β<sub>i</sub></div>
+      <div class="wl expert" data-edge="expert-mixer" data-key="e.expert-mixer">a*<sub>t</sub></div>
+      <div class="wl collect" data-edge="learner-mixer" data-key="e.learner-mixer">â<sub>t</sub></div>
+      <div class="wl collect" data-edge="mixer-env" data-key="e.mixer-env">执行 a<sub>t</sub></div>
+      <div class="wl collect narrow" data-edge="env-loop" data-key="e.env-loop">s<sub>t+1</sub> 交回 ③④，重复 T 步</div>
+      <div class="wl collect" data-edge="env-label" data-key="e.env-label">访问到的 s<sub>t</sub></div>
+      <div class="wl expert" data-edge="mixer-label" data-key="e.mixer-label">只记 a*<sub>t</sub></div>
+      <div class="wl iter" data-edge="label-di" data-key="e.label-di">episode 结束写盘</div>
+      <div class="wl iter" data-edge="di-agg" data-key="e.di-agg">追加</div>
+      <div class="wl iter" data-edge="agg-train" data-key="e.agg-train">全量打乱</div>
+      <div class="wl iter" data-edge="train-round" data-key="e.train-round">得到 π̂<sub>i+1</sub></div>
+      <div class="wl iter narrow" data-edge="round-learner" data-key="e.round-learner">π̂<sub>i+1</sub> 当新学生</div>
+      <div class="wl iter" data-edge="round-out" data-key="e.round-out">i = N 时停止</div>
+    </div>
+  </div>
+  </div>
+  <div class="legend">
+    <span><i style="border-color:var(--collect)"></i>数据采集</span>
+    <span><i style="border-color:var(--expert)"></i>专家动作 / 标签</span>
+    <span><i style="border-color:var(--iter)"></i>模型迭代</span>
+    <span><i class="d" style="border-color:var(--ink-3)"></i>虚线：跨轮回流或只记录不执行</span>
+  </div>
+  <figcaption class="fig-cap" data-key="fig.cap">读法：沿 ①→⑥ 看一轮里机器怎么开、状态怎么来；沿 ⑦→⑪ 看数据怎么攒、模型怎么换。紫色箭头是 DAgger 和行为克隆的核心区别：执行的动作可以来自学生，但记下来的标签永远是专家动作。</figcaption>
+</figure>
+<script type="application/json" id="arch-edges">
+[
+  {"id":"init-beta","from":"init","to":"beta","fs":"left","ts":"right","kind":"collect"},
+  {"id":"beta-mixer","from":"beta","to":"mixer","fs":"bottom","ts":"top","tf":0.83,"kind":"collect"},
+  {"id":"expert-mixer","from":"expert","to":"mixer","fs":"bottom","ts":"top","tf":0.5,"kind":"expert"},
+  {"id":"learner-mixer","from":"learner","to":"mixer","fs":"bottom","ts":"top","tf":0.17,"kind":"collect"},
+  {"id":"mixer-env","from":"mixer","to":"env","fs":"right","ts":"left","kind":"collect"},
+  {"id":"env-loop","from":"env","to":"env","fs":"right","ts":"right","ff":0.3,"tf":0.75,"bend":46,"kind":"collect","dash":true,"lo":[44,0]},
+  {"id":"env-label","from":"env","to":"label","fs":"bottom","ts":"top","ff":0.7,"tf":0.7,"kind":"collect"},
+  {"id":"mixer-label","from":"mixer","to":"label","fs":"bottom","ts":"top","ff":0.95,"tf":0.2,"kind":"expert","dash":true},
+  {"id":"label-di","from":"label","to":"di","fs":"left","ts":"right","kind":"iter"},
+  {"id":"di-agg","from":"di","to":"agg","fs":"left","ts":"right","kind":"iter"},
+  {"id":"agg-train","from":"agg","to":"train","fs":"left","ts":"right","kind":"iter"},
+  {"id":"train-round","from":"train","to":"round","fs":"bottom","ts":"top","tf":0.17,"kind":"iter"},
+  {"id":"round-learner","from":"round","to":"learner","fs":"left","ts":"left","bend":58,"kind":"iter","dash":true,"lo":[-4,0]},
+  {"id":"round-out","from":"round","to":"out","fs":"right","ts":"left","kind":"iter"}
+]
+</script>
+</div>
+
+<div class="wrap">
+<h2 id="sec-collect"><span class="no">04 · DATA COLLECTION</span>数据采集方式：谁执行、谁标注、采多少</h2>
+<p>DAgger 的数据采集可以拆成三个独立的问题。行为克隆对三个问题的回答都是“专家”，DAgger 只把第一个换掉了。</p>
+<div class="tbl"><table>
+<tr><th></th><th>行为克隆</th><th>DAgger 第 i 轮</th><th>imitation 里在哪</th></tr>
+<tr><td><b>谁执行动作</b>（决定去哪些状态）</td><td>专家</td><td>混合策略 <span class="m">π<sub>i</sub></span>：概率 <span class="m">β<sub>i</sub></span> 用专家，否则用学生 <span class="m">π̂<sub>i</sub></span></td><td><a href="https://github.com/HumanCompatibleAI/imitation/blob/e5ef18806c449ca47153b494a02471c5e2ae3a14/src/imitation/algorithms/dagger.py#L254-L262" target="_blank" rel="noreferrer">step_async L254–262</a></td></tr>
+<tr><td><b>谁给标签</b></td><td>专家</td><td>专家，对每一个被访问的状态都要给</td><td><a href="https://github.com/HumanCompatibleAI/imitation/blob/e5ef18806c449ca47153b494a02471c5e2ae3a14/src/imitation/algorithms/dagger.py#L274-L283" target="_blank" rel="noreferrer">step_wait L274–283</a></td></tr>
+<tr><td><b>存什么</b></td><td>(s, 专家执行的 a)</td><td>(s, <span class="m">π*(s)</span>)，实际执行的动作不进数据集</td><td><a href="https://github.com/HumanCompatibleAI/imitation/blob/e5ef18806c449ca47153b494a02471c5e2ae3a14/src/imitation/algorithms/dagger.py#L261" target="_blank" rel="noreferrer">L261 _last_user_actions</a></td></tr>
+</table></div>
+
+<h3>imitation 里一步是怎么走的</h3>
+<p><code>SimpleDAggerTrainer.train</code> 调用通用的 <code>generate_trajectories</code>，传入的“策略”是专家，“环境”是包了一层的 <code>InteractiveTrajectoryCollector</code>。于是每一步都会先问专家，再由包装器决定实际执行谁的动作：</p>
+<pre><code><span class="c"># dagger.py L669–675：rollout 时把专家当作驱动策略</span>
+trajectories = rollout.generate_trajectories(
+    policy=self.expert_policy, venv=collector, ... , deterministic_policy=True)
+
+<span class="c"># dagger.py L254–262：InteractiveTrajectoryCollector.step_async(actions)
+# actions 是专家刚给出的动作 a*</span>
+actual_acts = np.array(actions)
+mask = self.rng.uniform(0, 1, size=(self.num_envs,)) <span class="k">&gt;</span> self.beta   <span class="c"># 每个环境各掷一次</span>
+if np.sum(mask) != 0:
+    actual_acts[mask] = self.get_robot_acts(self._last_obs[mask])  <span class="c"># 换成学生动作 â</span>
+self._last_user_actions = actions        <span class="c"># 记下专家动作</span>
+self.venv.step_async(actual_acts)        <span class="c"># 执行混合后的动作</span>
+
+<span class="c"># dagger.py L274–285：step_wait 把 (obs, 专家动作) 写进轨迹，episode 结束就落盘</span>
+fresh_demos = self.traj_accum.add_steps_and_auto_finish(
+    obs=next_obs, acts=self._last_user_actions, rews=rews, infos=infos, dones=dones)
+for traj_index, traj in enumerate(fresh_demos):
+    _save_dagger_demo(traj, traj_index, self.save_dir, self.rng)</code></pre>
+<div class="note expert"><b>关键点</b>：环境里走的是 <code>actual_acts</code>，数据集里存的是 <code>actions</code>（专家动作）。只要 <span class="m">β<sub>i</sub> &lt; 1</span>，数据里就会出现学生犯错后才会到达的状态，而这些状态上的标签是专家给出的纠正动作。行为克隆缺的正是这部分数据。</div>
+
+<h3>每轮采多少</h3>
+<div class="tbl"><table>
+<tr><th>来源</th><th>每轮数据量</th><th>轮数</th></tr>
+<tr><td>论文 · Super Tux Kart</td><td>跑 1 圈，约 1000 个样本</td><td>20</td></tr>
+<tr><td>论文 · Super Mario Bros</td><td>5000 个样本（一关跑完约 150 个）</td><td>20</td></tr>
+<tr><td>论文 · 定理 3.3</td><td>每轮 <span class="m">m = O(1)</span> 条轨迹即可</td><td><span class="m">N = O(T² log(1/δ))</span></td></tr>
+<tr><td>imitation 默认</td><td>至少 3 个 episode，且至少 max(500, batch_size) 步（<a href="https://github.com/HumanCompatibleAI/imitation/blob/e5ef18806c449ca47153b494a02471c5e2ae3a14/src/imitation/algorithms/dagger.py#L617-L620" target="_blank" rel="noreferrer">L617–620</a>）</td><td>由 <code>total_timesteps</code> 决定</td></tr>
+<tr><td>实现 B（TORCS）</td><td>1000 步，学生撞车就提前结束</td><td>1 轮专家 + 5 轮学生</td></tr>
+</table></div>
+
+<h3 id="sec-beta">β 怎么选</h3>
+<p>论文说 <span class="m">β<sub>i</sub></span> 唯一的要求是平均值 <span class="m">β̄<sub>N</sub> = (1/N)Σβ<sub>i</sub> → 0</span>。混入专家的理由是：前几轮学生数据少、错误多，完全让它开车，会去很多等它变好之后再也不会去的状态。</p>
+<div class="tbl"><table>
+<tr><th>轮次 i</th><th>I(i=1)（论文默认）</th><th>0.5<sup>i−1</sup>（Mario 最优）</th><th>0.9<sup>i−1</sup></th><th>imitation 默认 Linear(15)</th></tr>
+<tr><td>1</td><td>1</td><td>1</td><td>1</td><td>1</td></tr>
+<tr><td>2</td><td>0</td><td>0.5</td><td>0.9</td><td>0.933</td></tr>
+<tr><td>3</td><td>0</td><td>0.25</td><td>0.81</td><td>0.867</td></tr>
+<tr><td>5</td><td>0</td><td>0.0625</td><td>0.656</td><td>0.733</td></tr>
+<tr><td>10</td><td>0</td><td>0.002</td><td>0.387</td><td>0.4</td></tr>
+<tr><td>16</td><td>0</td><td>≈0</td><td>0.206</td><td>0</td></tr>
+</table></div>
+<ul>
+<li><b>论文结论</b>：Mario 上 <span class="m">β<sub>i</sub> = 0.5<sup>i−1</sup></span> 的平均距离 3030，略好于 <span class="m">I(i=1)</span> 的 2980。论文的解释是只用学生时，前几轮会产生大量 Mario 卡在同一个位置的数据；偶尔让专家接手能把它带出来，收集到的数据更多样。<span class="m">0.9<sup>i−1</sup></span> 收敛明显更慢，20 轮结束时还在上升。</li>
+<li><b>对应到 imitation</b>：<code>round_num</code> 从 0 开始，所以 <code>ExponentialBetaSchedule(p)</code> 返回 <span class="m">p<sup>round</sup></span>，正好等于论文的 <span class="m">p<sup>i−1</sup></span>；论文默认的 <span class="m">I(i=1)</span> 可以写成 <code>LinearBetaSchedule(1)</code>。库的默认值 <code>LinearBetaSchedule(15)</code> 比论文保守得多，前 15 轮都有专家参与执行。</li>
+</ul>
+
+<h2 id="sec-iterate"><span class="no">05 · MODEL ITERATION</span>模型迭代方式：在全部数据上重训，然后换掉学生</h2>
+<p>每轮采完数据，DAgger 做三件事：把 <span class="m">D<sub>i</sub></span> 并进 <span class="m">D</span>；在整个 <span class="m">D</span> 上做一次普通监督学习得到 <span class="m">π̂<sub>i+1</sub></span>；下一轮用 <span class="m">π̂<sub>i+1</sub></span> 当学生。训练本身和行为克隆完全一样，变的只是训练数据。</p>
+<h3>为什么是“聚合”，不是“替换”</h3>
+<p>论文把 DAgger 解释成在线学习里的 <i>Follow-The-Leader</i>：第 i 轮给出一个损失 <span class="m">ℓ<sub>i</sub>(π) = E<sub>s∼d<sub>π<sub>i</sub></sub></sub>[ℓ(s,π)]</span>，下一轮选“对至今所有损失之和最好”的策略，也就是在全部历史数据上训练。如果每轮只用最新数据，新策略只会修正上一个策略的错误，可能把以前学会的又忘掉，在几个策略之间来回摆动。Mario 实验里 SEARN 取 α=1（每轮完全换成新策略）就表现出这种不稳定。</p>
+<h3>imitation 里一轮训练怎么走</h3>
+<pre><code><span class="c"># DAggerTrainer.extend_and_update（L455–497）的流程，按调用顺序改写</span>
+_try_load_demos()                       <span class="c"># L423：本轮目录为空就抛 NeedsDemosException</span>
+  └ _load_all_demos()                   <span class="c"># L398：只加载 _last_loaded_round 之后的新轮次</span>
+      self._all_demos.extend(...)       <span class="c">#       追加到历史轨迹列表 = D ← D ∪ D_i</span>
+      flatten_trajectories(_all_demos)  <span class="c">#       全部轨迹展平成 (obs, acts) 转移</span>
+  └ DataLoader(transitions, batch_size, shuffle=True, drop_last=True)
+  └ bc_trainer.set_demonstrations(loader)
+bc_trainer.train(n_epochs=4)            <span class="c"># L489：默认 DEFAULT_N_EPOCHS = 4</span>
+self.round_num += 1                     <span class="c"># L495：下一轮的 β 和数据目录都由它决定</span></code></pre>
+<p>BC 的损失在 <a href="https://github.com/HumanCompatibleAI/imitation/blob/e5ef18806c449ca47153b494a02471c5e2ae3a14/src/imitation/algorithms/bc.py#L94-L156" target="_blank" rel="noreferrer">bc.py L94–156</a>：<code>loss = neglogp + ent_loss + l2_loss</code>，即专家动作的负对数似然，减去 <code>ent_weight</code>（默认 1e-3）乘熵，加上 <code>l2_weight</code>（默认 0）乘参数 L2。优化器默认 Adam，batch 32，策略默认是两层 32 单元的 <code>FeedForward32Policy</code>。</p>
+<div class="note iter"><b>warm start 和从头训</b>：论文写的是 “Train classifier <span class="m">π̂<sub>i+1</sub></span> on <span class="m">D</span>”，实验用的是岭回归和线性 SVM 这类凸模型，每轮重新求解和接着训的结果基本一致。imitation 在同一个网络、同一个优化器上继续训 4 个 epoch，实现 B 也是对同一个 Keras 模型反复 <code>fit</code>。用神经网络时两种做法结果可能不同；数据增长后每轮训练时间与 |D| 成正比。</div>
+
+<h2 id="sec-theory"><span class="no">06 · THEORY</span>为什么有效：把模仿学习归约成无悔在线学习</h2>
+<ol>
+<li><b>无悔（no-regret）</b>：在线学习算法每轮选一个策略、承受一个损失。如果它的平均损失和“事后看最好的固定策略”之差 <span class="m">γ<sub>N</sub></span> 随 N 趋于 0，就叫无悔。损失强凸时 Follow-The-Leader 满足 <span class="m">γ<sub>N</sub> = Õ(1/N)</span>。</li>
+<li><b>混入专家的代价</b>（引理 4.1）：<span class="m">‖d<sub>π<sub>i</sub></sub> − d<sub>π̂<sub>i</sub></sub>‖<sub>1</sub> ≤ 2Tβ<sub>i</sub></span>。<span class="m">β<sub>i</sub></span> 越小，采集时的状态分布越接近学生单独执行时的分布。</li>
+<li><b>定理 3.1</b>：取 <span class="m">N = Õ(T)</span> 轮，序列 <span class="m">π̂<sub>1:N</sub></span> 里存在一个策略，在它自己的状态分布上的损失不超过 <span class="m">ε<sub>N</sub> + O(1/T)</span>。<span class="m">ε<sub>N</sub></span> 是策略类 Π 里最好的策略在聚合分布上的损失。</li>
+<li><b>定理 3.2</b>：再结合定理 2.2，得到 <span class="m">J(π̂) ≤ J(π*) + uTε<sub>N</sub> + O(1)</span>。<span class="m">u</span> 是“偏离专家一步后剩余代价最多增加多少”；如果专家能在几步内把局面拉回来，<span class="m">u = O(1)</span>，误差就随 T 线性增长。</li>
+<li><b>有限样本</b>（定理 3.3）：每轮 <span class="m">m = O(1)</span> 条轨迹、<span class="m">N = O(T² log(1/δ))</span> 轮，以概率 <span class="m">1−δ</span> 得到同样形式的界。</li>
+</ol>
+<div class="note warn">保证说的是“序列里存在一个好策略”（论文脚注 3 补充：从序列里均匀随机挑一个执行也满足），并没有保证最后一轮最好。这就是算法第 10 行要在验证集上挑选的原因。另外，如果策略类表达不了聚合数据里的专家行为，<span class="m">ε<sub>N</sub></span> 本身就大，界也就失去意义。</div>
+
+<h2 id="sec-exp"><span class="no">07 · EXPERIMENTS</span>论文实验</h2>
+<div class="tbl"><table>
+<tr><th>任务</th><th>专家</th><th>输入与学习器</th><th>结果</th></tr>
+<tr><td>Super Tux Kart（Star Track 赛道，固定车速，学转向）</td><td>人类，摇杆值 [−1, 1]</td><td>800×600 画面缩到 25×19，取每个像素的 LAB 值；岭回归线性控制器（λ=1e-3），5 Hz</td><td>Supervised 加数据也不改善；SMILe（α=0.1）20 轮后平均每圈仍掉出约 2 次；DAgger 5 轮后几乎不掉，15 轮后 0 次</td></tr>
+<tr><td>Super Mario Bros（随机生成的难度 1 关卡，限时 60 秒）</td><td>能读取游戏内部状态、精确模拟未来的近似最优规划器</td><td>以 Mario 为中心 22×22 网格，每格 14 个二值特征，叠最近 4 帧和最近 6 个动作，共 27152 维稀疏特征；4 个独立线性 SVM 输出 {左, 右, 跳, 加速}，5 Hz</td><td>平均前进距离（每关全长约 4200～4300）：DAgger β=0.5<sup>i−1</sup> 为 3030，β=I(i=1) 为 2980，均优于 SMILe 和所有 α 下的 SEARN；Supervised 常在障碍前卡住，因为专家总在远处就起跳</td></tr>
+<tr><td>手写识别（Taskar OCR，约 6600 个单词）</td><td>真实标签</td><td>每个字母 8×16 二值像素，加上前一个预测字母的 26 维 one-hot；多类 SVM，从左到右贪心解码</td><td>不用前一字母 82%；用前一字母但训练时喂真实字母（Supervised）83.6%；DAgger 85.5%</td></tr>
+</table></div>
+<p>OCR 实验把结构化预测看成一种特殊的模仿学习：“状态”里包含之前的预测，学生预测错一个字母，后面的输入就变了。这里只有前一个字母这一小部分输入受策略影响，所以 SEARN α=1 也表现不错。</p>
+
+<h2 id="sec-diff"><span class="no">08 · PAPER VS CODE</span>论文 vs imitation 实现</h2>
+<div class="tbl"><table>
+<tr><th>环节</th><th>论文（算法 3.1）</th><th>imitation <code>e5ef188</code></th></tr>
+<tr><td>混合策略</td><td><span class="m">π<sub>i</sub> = β<sub>i</sub>π* + (1−β<sub>i</sub>)π̂<sub>i</sub></span>，按比例让专家选动作</td><td>每个并行环境、每一步独立判断 <code>U(0,1) &gt; β</code>（<a href="https://github.com/HumanCompatibleAI/imitation/blob/e5ef18806c449ca47153b494a02471c5e2ae3a14/src/imitation/algorithms/dagger.py#L257-L259" target="_blank" rel="noreferrer">L257–259</a>）</td></tr>
+<tr><td>β 默认值</td><td><span class="m">I(i=1)</span>，“实践中通常最好”</td><td><code>LinearBetaSchedule(15)</code>（<a href="https://github.com/HumanCompatibleAI/imitation/blob/e5ef18806c449ca47153b494a02471c5e2ae3a14/src/imitation/algorithms/dagger.py#L354-L355" target="_blank" rel="noreferrer">L355</a>）</td></tr>
+<tr><td>学生动作</td><td>确定性策略</td><td><code>policy.predict(obs)[0]</code>，SB3 默认 <code>deterministic=False</code>，会采样（<a href="https://github.com/HumanCompatibleAI/imitation/blob/e5ef18806c449ca47153b494a02471c5e2ae3a14/src/imitation/algorithms/dagger.py#L511" target="_blank" rel="noreferrer">L511</a>）</td></tr>
+<tr><td>标签</td><td><span class="m">(s, π*(s))</span></td><td>一致：存 <code>_last_user_actions</code>，专家用 <code>deterministic_policy=True</code></td></tr>
+<tr><td>聚合</td><td><span class="m">D ← D ∪ D<sub>i</sub></span></td><td>一致：按 <code>round-XXX/</code> 目录存盘，增量加载到 <code>_all_demos</code></td></tr>
+<tr><td>训练</td><td>在 D 上训练分类器（实验中是凸模型）</td><td>同一个 BC 网络继续训练，默认每轮 4 个 epoch</td></tr>
+<tr><td>停止条件</td><td>固定 N 轮</td><td>累计环境步数达到 <code>total_timesteps</code></td></tr>
+<tr><td>返回</td><td>验证集上最好的 <span class="m">π̂<sub>i</sub></span></td><td>最后一轮的 <code>policy</code>；<code>save_trainer</code> 可以按轮存 <code>policy-XXX.pt</code>，挑选要自己做</td></tr>
+</table></div>
+
+<h2 id="sec-pitfalls"><span class="no">09 · PITFALLS</span>实践中的坑</h2>
+<ul>
+<li><b>专家必须能标注任意状态。</b>规划器、脚本或仿真里的特权策略最容易满足（Mario 实验和实现 B 都是这种）。真人很难给“不是自己在开”的画面打准确的标签，所以后来出现了 HG-DAgger 这类由人决定何时接管的变体。π0.6 的 <a class="concept-link" href="pi0.6-论文解读.html#concept-recap">RECAP</a> 也把人工纠错数据并入全部数据重新训练，思路相近。</li>
+<li><b>标签要和状态对齐。</b>实现 B 第 0 轮（<a href="https://github.com/avisingh599/imitation-dagger/blob/5adf710aa51e19045eeaea5b8d073c4f1bcfdc9d/dagger.py#L33-L44" target="_blank" rel="noreferrer">L33–44</a>）先根据当前观测算动作，执行后才把<b>下一帧</b>图像和这个动作配对存下，差了一步；第一步还固定给 0。后面几轮是先记观测再按同一观测补标签，是对齐的。imitation 用 <code>flatten_trajectories</code> 把 <code>obs[:-1]</code> 和 <code>acts</code> 配对，没有这个问题。</li>
+<li><b>采集时学生是随机策略。</b>imitation 采集时对学生动作采样，评估时常用确定性动作，两者访问的状态分布不完全一样。需要的话可以把 <code>get_robot_acts</code> 换成 <code>predict(obs, deterministic=True)</code>。</li>
+<li><b>注释和代码不一致。</b><code>SimpleDAggerTrainer.__init__</code> 的注释说注入学生动作时“所有环境同时得到 robot action”，但 <code>step_async</code> 实际是逐环境掷硬币。以代码为准。</li>
+<li><b>数据只增不减。</b>早期差策略产生的状态会一直留在 D 里，每轮训练时间也随 |D| 增长。论文的 Mario 实验说明，适当的 β 可以减少无用的早期数据。</li>
+</ul>
+
+<aside class="concept-related" aria-label="相关概念">
+  <strong>相关概念</strong>
+  <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-behavior-cloning">行为克隆：DAgger 每轮的训练步骤</a>
+  <a class="concept-link" href="LeRobot-ACT-算法详解.html#concept-act">ACT：用动作分块缓解复合误差</a>
+  <a class="concept-link" href="pi0.6-论文解读.html#concept-recap">RECAP：带人工纠错的迭代训练</a>
+  <a class="concept-link" href="concepts.html">全部概念 →</a>
+</aside>
+
+<footer style="margin-top:48px;padding-top:18px;border-top:1px solid var(--line-strong);display:flex;justify-content:space-between;gap:12px;font-size:13px;color:var(--ink-3)">
+  <span>DAgger · Ross, Gordon, Bagnell, AISTATS 2011 · 代码行号固定在 imitation@e5ef188 与 imitation-dagger@5adf710</span>
+  <a href="index.html">返回知识库 →</a>
+</footer>
+</div>
+<script>
+/* 架构图：连线绘制 + 文字编辑 + 本地草稿 + 保存整页 HTML */
+(function () {
+  'use strict';
+  var fig = document.getElementById('arch');
+  if (!fig) return;
+  var stage = fig.querySelector('.arch-stage');
+  var svg = stage.querySelector('svg.wires');
+  var edges = JSON.parse(document.getElementById('arch-edges').textContent);
+  var statusEl = document.getElementById('arch-status');
+  var banner = document.getElementById('arch-banner');
+  var btn = function (act) { return fig.querySelector('[data-act="' + act + '"]'); };
+  var NS = 'http://www.w3.org/2000/svg';
+  var STORE = 'kb-arch-draft:' + decodeURIComponent(location.pathname.split('/').pop() || 'DAgger');
+
+  /* ---------- 连线 ---------- */
+  var NORMAL = { top: [0, -1], bottom: [0, 1], left: [-1, 0], right: [1, 0] };
+  function anchor(el, side, f) {
+    var s = stage.getBoundingClientRect(), r = el.getBoundingClientRect();
+    var x = r.left - s.left, y = r.top - s.top;
+    var vy = (f == null) ? Math.min(44, r.height / 2) : r.height * f;  // 左右出线默认对齐方块上部，保持水平
+    f = (f == null) ? 0.5 : f;
+    if (side === 'top') return [x + r.width * f, y];
+    if (side === 'bottom') return [x + r.width * f, y + r.height];
+    if (side === 'left') return [x, y + vy];
+    return [x + r.width, y + vy];
+  }
+  function layout() {
+    var w = stage.scrollWidth, h = stage.scrollHeight;
+    svg.setAttribute('width', w); svg.setAttribute('height', h);
+    svg.setAttribute('viewBox', '0 0 ' + w + ' ' + h);
+    svg.querySelectorAll('path.w').forEach(function (p) { p.remove(); });
+    edges.forEach(function (e) {
+      var a = stage.querySelector('[data-node="' + e.from + '"]');
+      var b = stage.querySelector('[data-node="' + e.to + '"]');
+      if (!a || !b) return;
+      var p0 = anchor(a, e.fs, e.ff), p3 = anchor(b, e.ts, e.tf);
+      var n0 = NORMAL[e.fs], n3 = NORMAL[e.ts];
+      var dist = Math.hypot(p3[0] - p0[0], p3[1] - p0[1]);
+      var k = e.bend || Math.max(22, Math.min(110, dist * 0.42));
+      var p1 = [p0[0] + n0[0] * k, p0[1] + n0[1] * k];
+      var p2 = [p3[0] + n3[0] * k, p3[1] + n3[1] * k];
+      var path = document.createElementNS(NS, 'path');
+      path.setAttribute('d', 'M' + p0 + ' C' + p1 + ' ' + p2 + ' ' + p3);
+      path.setAttribute('class', 'w ' + e.kind + (e.dash ? ' dash' : ''));
+      path.setAttribute('marker-end', 'url(#ah-' + e.kind + ')');
+      svg.appendChild(path);
+      var lab = stage.querySelector('.wl[data-edge="' + e.id + '"]');
+      if (lab) {
+        var mx = (p0[0] + 3 * p1[0] + 3 * p2[0] + p3[0]) / 8;
+        var my = (p0[1] + 3 * p1[1] + 3 * p2[1] + p3[1]) / 8;
+        var lo = e.lo || [0, 0];
+        lab.style.left = (mx + lo[0]) + 'px';
+        lab.style.top = (my + lo[1]) + 'px';
+      }
+    });
+  }
+  var raf = 0;
+  function relayout() { cancelAnimationFrame(raf); raf = requestAnimationFrame(layout); }
+  window.addEventListener('resize', relayout);
+  if (window.ResizeObserver) {
+    var ro = new ResizeObserver(relayout);
+    ro.observe(stage);
+    stage.querySelectorAll('.node').forEach(function (n) { ro.observe(n); });
+  }
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(relayout);
+  window.addEventListener('load', relayout);
+  layout();
+
+  /* ---------- 内容读写与清洗 ---------- */
+  var ALLOWED = { B: 1, STRONG: 1, I: 1, EM: 1, CODE: 1, SUB: 1, SUP: 1, BR: 1, SPAN: 1, A: 1 };
+  function safeHref(h) {
+    h = (h || '').trim();
+    if (/^https?:\/\//i.test(h) || /^#[\w\-.]*$/.test(h)) return h;
+    if (/^[^:\s]+$/.test(h)) return h;               // 站内相对路径
+    return '';
+  }
+  function cleanNode(node) {
+    Array.prototype.slice.call(node.childNodes).forEach(function (c) {
+      if (c.nodeType === 3) return;
+      if (c.nodeType !== 1) { c.remove(); return; }
+      var tag = c.tagName;
+      if (tag === 'SCRIPT' || tag === 'STYLE' || c.hasAttribute('data-ui')) { c.remove(); return; }
+      cleanNode(c);
+      if (tag === 'DIV' || tag === 'P') {               // 编辑器回车产生的块：拆成换行
+        if (c.previousSibling) c.parentNode.insertBefore(document.createElement('br'), c);
+        while (c.firstChild) c.parentNode.insertBefore(c.firstChild, c);
+        c.remove(); return;
+      }
+      if (!ALLOWED[tag]) {
+        while (c.firstChild) c.parentNode.insertBefore(c.firstChild, c);
+        c.remove(); return;
+      }
+      Array.prototype.slice.call(c.attributes).forEach(function (at) {
+        var keep = (at.name === 'class' && (tag === 'SPAN' || tag === 'A')) ||
+          (tag === 'A' && (at.name === 'target' || at.name === 'rel' || at.name === 'title'));
+        if (tag === 'A' && at.name === 'href') {
+          var h = safeHref(at.value);
+          if (h) c.setAttribute('href', h); else c.removeAttribute('href');
+          return;
+        }
+        if (!keep) c.removeAttribute(at.name);
+      });
+    });
+  }
+  function sanitize(html) {
+    var t = document.createElement('template');
+    t.innerHTML = html;
+    cleanNode(t.content);
+    var d = document.createElement('div');
+    d.appendChild(t.content);
+    return d.innerHTML;
+  }
+  function fields() { return fig.querySelectorAll('[data-key]'); }
+  function readValues() {
+    var o = {};
+    fields().forEach(function (el) { o[el.getAttribute('data-key')] = sanitize(el.innerHTML); });
+    return o;
+  }
+  function applyValues(v) {
+    fields().forEach(function (el) {
+      var k = el.getAttribute('data-key');
+      if (Object.prototype.hasOwnProperty.call(v, k)) el.innerHTML = sanitize(v[k]);
+    });
+    relayout();
+  }
+  function hash(s) { var h = 5381; for (var i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0; return (h >>> 0).toString(36); }
+  function same(a, b) { return JSON.stringify(a) === JSON.stringify(b); }
+  function status(msg) { statusEl.textContent = msg || ''; }
+  function stamp(t) { var d = new Date(t); return d.toLocaleDateString() + ' ' + d.toLocaleTimeString(); }
+
+  var baseline = readValues();
+  var baseHash = hash(JSON.stringify(baseline));
+  function readDraft() { try { return JSON.parse(localStorage.getItem(STORE) || 'null'); } catch (e) { return null; } }
+  function writeDraft(base) {
+    var v = readValues(), b = base || baseHash;
+    try {
+      if (same(v, baseline) && b === baseHash) localStorage.removeItem(STORE);
+      else localStorage.setItem(STORE, JSON.stringify({ base: b, items: v, savedAt: Date.now() }));
+    } catch (e) { status('浏览器禁止本地存储，修改只在当前标签页有效。'); return false; }
+    btn('reset').hidden = same(v, baseline);
+    return true;
+  }
+
+  var draft = readDraft();
+  if (draft && draft.items) {
+    if (draft.base === baseHash) {
+      if (!same(draft.items, baseline)) {
+        applyValues(draft.items);
+        btn('reset').hidden = false;
+        status('已载入本浏览器保存的修改（' + stamp(draft.savedAt) + '）。');
+      }
+    } else if (!same(draft.items, baseline)) {
+      banner.classList.add('show');
+    }
+  }
+  btn('restore').addEventListener('click', function () {
+    applyValues(draft.items); writeDraft(); banner.classList.remove('show');
+    status('已载入旧修改。确认无误后可以“保存到页面文件”。');
+  });
+  btn('discard').addEventListener('click', function () {
+    try { localStorage.removeItem(STORE); } catch (e) {}
+    banner.classList.remove('show'); status('已丢弃旧修改。');
+  });
+
+  /* ---------- 编辑模式 ---------- */
+  var editing = false, saveTimer = 0;
+  function textFields() { return fig.querySelectorAll('[data-key]:not(.n-links)'); }
+  function setEditing(on) {
+    editing = on;
+    fig.classList.toggle('editing', on);
+    textFields().forEach(function (el) {
+      if (on) { el.setAttribute('contenteditable', 'true'); el.setAttribute('spellcheck', 'false'); }
+      else { el.removeAttribute('contenteditable'); el.removeAttribute('spellcheck'); }
+    });
+    fig.querySelectorAll('.add-link').forEach(function (b) { b.remove(); });
+    if (on) {
+      fig.querySelectorAll('.n-links').forEach(function (box) {
+        var b = document.createElement('button');
+        b.type = 'button'; b.className = 'add-link'; b.setAttribute('data-ui', '');
+        b.textContent = '+ 代码链接';
+        box.parentNode.insertBefore(b, box.nextSibling);
+      });
+    }
+    btn('edit').textContent = on ? '完成编辑' : '编辑';
+    status(on ? '编辑中：直接改文字；点代码标签可改链接，链接地址留空即删除。修改自动存到本浏览器，Esc 退出，Ctrl/⌘+S 保存到页面文件。' : statusEl.textContent);
+    relayout();
+  }
+  function changed() {
+    relayout();
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function () { if (writeDraft()) status('已自动保存到本浏览器 · ' + new Date().toLocaleTimeString()); }, 400);
+  }
+  btn('edit').addEventListener('click', function () { setEditing(!editing); if (!editing) writeDraft(); });
+  fig.addEventListener('input', function (e) { if (editing && e.target.closest('[data-key]')) changed(); });
+  fig.addEventListener('paste', function (e) {
+    if (!editing || !e.target.closest || !e.target.closest('[contenteditable]')) return;
+    e.preventDefault();
+    var text = (e.clipboardData || window.clipboardData).getData('text/plain');
+    document.execCommand('insertText', false, text);
+  });
+  fig.addEventListener('keydown', function (e) {
+    if (!editing) return;
+    if (e.key === 'Escape') { setEditing(false); writeDraft(); }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); saveFile(); }
+  });
+  function editLink(chip) {
+    var url = prompt('链接地址（留空删除这个标签）', chip.getAttribute('href') || '');
+    if (url === null) return;
+    if (!url.trim()) { chip.remove(); changed(); return; }
+    var h = safeHref(url);
+    if (!h) { alert('只支持 http(s) 地址、站内相对路径或 #锚点。'); return; }
+    var label = prompt('标签文字', chip.textContent);
+    if (label === null) return;
+    chip.setAttribute('href', h);
+    chip.textContent = label.trim() || h;
+    changed();
+  }
+  fig.addEventListener('click', function (e) {
+    if (!editing) return;
+    var chip = e.target.closest('a.chip');
+    if (chip) { e.preventDefault(); editLink(chip); return; }
+    var add = e.target.closest('.add-link');
+    if (add) {
+      var box = add.previousSibling;
+      var a = document.createElement('a');
+      a.className = 'chip'; a.target = '_blank'; a.rel = 'noreferrer'; a.href = 'https://github.com/';
+      a.textContent = '新链接';
+      box.appendChild(a);
+      editLink(a);
+      if (!a.isConnected || a.getAttribute('href') === 'https://github.com/') { a.remove(); }
+      changed();
+    }
+  });
+  btn('reset').addEventListener('click', function () {
+    if (!confirm('撤销本浏览器里的全部修改，恢复成页面文件里的内容？')) return;
+    applyValues(baseline);
+    try { localStorage.removeItem(STORE); } catch (e) {}
+    btn('reset').hidden = true;
+    status('已恢复为页面文件中的内容。');
+  });
+
+  /* ---------- 复制全部文字 ---------- */
+  function plain(el) { return el ? el.innerText.replace(/\s+\n/g, '\n').trim() : ''; }
+  btn('copy').addEventListener('click', function () {
+    var lines = [plain(fig.querySelector('.fig-title')), ''];
+    var nodes = Array.prototype.slice.call(stage.querySelectorAll('.node'));
+    nodes.sort(function (a, b) {
+      var x = plain(a.querySelector('.badge')), y = plain(b.querySelector('.badge'));
+      return x < y ? -1 : (x > y ? 1 : 0);   // ①…⑫ 是连续码位
+    });
+    nodes.forEach(function (n) {
+      lines.push(plain(n.querySelector('.badge')) + ' ' + plain(n.querySelector('.n-title')));
+      lines.push('   ' + plain(n.querySelector('.n-math')));
+      lines.push('   ' + plain(n.querySelector('.n-desc')));
+      n.querySelectorAll('.n-links a').forEach(function (a) { lines.push('   - ' + a.textContent.trim() + ' ' + a.href); });
+      lines.push('');
+    });
+    lines.push('连线：');
+    edges.forEach(function (e) {
+      var a = stage.querySelector('[data-node="' + e.from + '"] .badge');
+      var b = stage.querySelector('[data-node="' + e.to + '"] .badge');
+      lines.push('  ' + plain(a) + ' → ' + plain(b) + '：' + plain(stage.querySelector('.wl[data-edge="' + e.id + '"]')));
+    });
+    lines.push('', plain(fig.querySelector('.fig-cap')));
+    var text = lines.join('\n');
+    function done() { status('已复制图中全部文字（含代码链接）。'); }
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(done, fallback);
+    else fallback();
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); done(); } catch (e) { status('复制失败，请手动选中文字复制。'); }
+      ta.remove();
+    }
+  });
+
+  /* ---------- 保存整页 HTML ---------- */
+  function serializePage() {
+    var root = document.documentElement.cloneNode(true);
+    root.querySelectorAll('.kb-root,[data-ui]').forEach(function (n) { n.remove(); });
+    root.querySelectorAll('style').forEach(function (s) { if (s.textContent.indexOf('.kb-navbar') !== -1) s.remove(); });
+    var body = root.querySelector('body');
+    body.classList.remove('kb-locked');
+    if (!body.className) body.removeAttribute('class');
+    root.querySelectorAll('[contenteditable],[spellcheck]').forEach(function (n) { n.removeAttribute('contenteditable'); n.removeAttribute('spellcheck'); });
+    var f = root.querySelector('#arch');
+    f.classList.remove('editing');
+    f.querySelectorAll('svg.wires path.w').forEach(function (p) { p.remove(); });
+    var sv = f.querySelector('svg.wires');
+    ['width', 'height', 'viewBox'].forEach(function (a) { sv.removeAttribute(a); });
+    f.querySelectorAll('.wl').forEach(function (n) { n.removeAttribute('style'); });
+    f.querySelectorAll('[data-key]').forEach(function (n) { n.innerHTML = sanitize(n.innerHTML); });
+    f.querySelector('#arch-status').textContent = '';
+    f.querySelector('#arch-banner').classList.remove('show');
+    f.querySelector('[data-act="reset"]').hidden = true;
+    f.querySelector('[data-act="edit"]').textContent = '编辑';
+    return '<!DOCTYPE html>\n' + root.outerHTML + '\n';
+  }
+  function fileName() {
+    var n = '';
+    try { n = decodeURIComponent(location.pathname.split('/').pop() || ''); } catch (e) {}
+    return /\.html?$/i.test(n) ? n : 'DAgger-算法详解.html';
+  }
+  function afterSaved(msg) {
+    var v = readValues();
+    try { localStorage.setItem(STORE, JSON.stringify({ base: hash(JSON.stringify(v)), items: v, savedAt: Date.now() })); } catch (e) {}
+    status(msg);
+  }
+  function saveFile() {
+    var html = serializePage(), name = fileName();
+    if (window.showSaveFilePicker) {
+      window.showSaveFilePicker({ suggestedName: name, types: [{ description: 'HTML 页面', accept: { 'text/html': ['.html'] } }] })
+        .then(function (h) { return h.createWritable().then(function (w) { return w.write(html).then(function () { return w.close(); }); }).then(function () { return h.name; }); })
+        .then(function (n) { afterSaved('已写入 ' + n + '。如果这是仓库里的原文件，提交后网页版也会更新。'); })
+        .catch(function (e) { if (e && e.name === 'AbortError') return; download(html, name); });
+      return;
+    }
+    download(html, name);
+  }
+  function download(html, name) {
+    var url = URL.createObjectURL(new Blob([html], { type: 'text/html;charset=utf-8' }));
+    var a = document.createElement('a');
+    a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1500);
+    afterSaved('已下载 ' + name + '。用它替换仓库里的同名文件并提交，网页版就会显示修改后的图。');
+  }
+  btn('save').addEventListener('click', saveFile);
+})();
+</script>
+<script src="nav.js"></script>
+</body>
+</html>
