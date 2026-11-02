@@ -25,4 +25,4 @@
 - 新页面要同时加到 `nav.js` 和 `index.html`。
 - `pdfs/` 只存在本地，已写进 `.gitignore`，不要提交、不要推送。
 - 讲到代码时，以本地源码为准，写清文件路径和行号（例如 LeRobot 在 `~/src/lerobot`）。
-- 不要直接推送到 `master`，除非用户明确要求。
+- 直接在 `master` 上提交并推送到 `origin master`，不要新建分支。
