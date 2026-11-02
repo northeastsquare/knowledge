@@ -522,6 +522,16 @@ footer a:hover {
   <h1>指数分布：等待的数学</h1>
   <p class="subtitle">为什么随机等车平均等 1 分钟，而不是 0.5 分钟？用动画和实验理解指数分布的无记忆性</p>
 </header>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>指数分布描述的是什么？ <a class="reading-goto" href="#s1">读这一节 ↓</a></li>
+    <li>车随机到达、平均间隔 10 分钟，随机到站平均要等多久？为什么不是一半？ <a class="reading-goto" href="#s5">读这一节 ↓</a></li>
+    <li>什么是无记忆性？ <a class="reading-goto" href="#s6">读这一节 ↓</a></li>
+  </ol>
+</div>
+
 
 <div class="wrap">
 
@@ -1412,6 +1422,25 @@ footer a:hover {
   <a class="concept-link" href="Beta分布-球星卡.html#concept-probability-density">概率密度</a>
 </div>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>指数分布描述的是什么？</b></p><p>等第一件随机事件发生需要多长时间；λ 是平均每单位时间发生的次数。 <a class="reading-goto" href="#s1">回到原文 ↑</a></p></li>
+        <li><p><b>车随机到达、平均间隔 10 分钟，随机到站平均要等多久？为什么不是一半？</b></p><p>平均要等整整 10 分钟。你更可能落进长间隔（长间隔陷阱），再加上无记忆性：不管什么时候到站，剩余等待都和从头等一样。 <a class="reading-goto" href="#s5">回到原文 ↑</a></p></li>
+        <li><p><b>什么是无记忆性？</b></p><p>已经等了 s，再等 t 的概率与从头开始等 t 的概率相同：P(T &gt; s+t | T &gt; s) = P(T &gt; t)。 <a class="reading-goto" href="#s6">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>速率 λ=0.1 次/分钟，换成尺度参数 θ 是多少？均值呢？</p><details><summary>看答案</summary><p>θ = 1/λ = 10 分钟，均值也是 10 分钟。代公式前先看清是哪种参数化，否则差一个倒数。</p></details></li>
+    <li><p>直方图里为什么第一个 1 分钟格子次数最多？</p><details><summary>看答案</summary><p>每一格 = “前面都没来” × “这一分钟来了”；后一格的第一个因子总是更小，所以越往后越少。不是车偏爱早到。</p></details></li>
+    <li><p>λ=0.1 时，中位数是多少？为什么比均值小？</p><details><summary>看答案</summary><p>中位数 = ln2/λ ≈ 6.9 分钟。分布严重右偏，少数人等得极久，把均值拉到 10 分钟。</p></details></li>
+    <li><p>给定样本 t₁…tₙ，λ 的最大似然估计是什么？</p><details><summary>看答案</summary><p>λ̂ = n / Σtᵢ，即样本均值的倒数。</p></details></li>
+  </ol>
+</div>
 <footer>
   <p style="font-size:20px;margin-bottom:12px;">⏰ 指数分布：等待的数学</p>
   <p><a href="index.html">返回知识库</a> · <a href="Gamma分布-等待时钟.html">Gamma 分布</a> · <a href="Beta分布-球星卡.html">Beta 分布</a></p>

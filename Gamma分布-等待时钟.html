@@ -441,6 +441,16 @@ details.proof > div p { color: var(--ink-dim); }
   <h1>Gamma 分布：等待时钟</h1>
   <p class="subtitle">不是抽象的 α 和 β，而是「等第 k 件事发生要多久」——用等车、排队、服务器请求理解 Gamma 分布</p>
 </header>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>Gamma 分布描述的是一种什么“等待”？ <a class="reading-goto" href="#s1">读这一节 ↓</a></li>
+    <li>它和指数分布是什么关系？ <a class="reading-goto" href="#s3">读这一节 ↓</a></li>
+    <li>这一页说“只需记三个数”，是哪三个？ <a class="reading-goto" href="#s-moments">读这一节 ↓</a></li>
+  </ol>
+</div>
+
 
 <div class="wrap">
 
@@ -896,6 +906,25 @@ $$p(\lambda\mid n,t)\propto\underbrace{\lambda^{a-1}e^{-b\lambda}}_{\text{先验
   <a class="concept-link" href="Beta分布-球星卡.html#concept-beta-distribution">Beta 分布</a>
 </div>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>Gamma 分布描述的是一种什么“等待”？</b></p><p>等第 k 件随机事件发生需要多长时间（事件按平均速率 λ 随机、独立地发生）。 <a class="reading-goto" href="#s1">回到原文 ↑</a></p></li>
+        <li><p><b>它和指数分布是什么关系？</b></p><p>k 段独立的 Exp(λ) 等待相加就是 Gamma(k, λ)；k=1 时就是指数分布。 <a class="reading-goto" href="#s3">回到原文 ↑</a></p></li>
+        <li><p><b>这一页说“只需记三个数”，是哪三个？</b></p><p>均值 α/λ、方差 α/λ²、众数 (α−1)/λ。 <a class="reading-goto" href="#s-moments">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>平均每分钟来 2 辆车（λ=2），等第 3 辆车：平均要等多久？标准差多少？</p><details><summary>看答案</summary><p>均值 3/2=1.5 分钟；方差 3/4，标准差约 0.87 分钟。</p></details></li>
+    <li><p>Gamma(2, λ) 与 Gamma(3, λ) 独立相加，结果是什么？如果两个 λ 不同还能这样加吗？</p><details><summary>看答案</summary><p>Gamma(5, λ)：先等 2 件再等 3 件，就是一共等 5 件。λ 不同时不能直接相加，结果不再是 Gamma。</p></details></li>
+    <li><p>把时间单位从分钟换成秒，λ 和曲线形状怎么变？</p><details><summary>看答案</summary><p>λ 除以 60，形状完全不变。形状只由 α 决定，所以 α 叫 shape，λ 叫 rate。</p></details></li>
+    <li><p>思考：变异系数是 1/√α，这说明“等很多件事”有什么特点？</p><details><summary>看答案</summary><p>等的件数越多，相对波动越小，总等待时间越“准时”；等 1 件事（指数分布）的相对波动最大。</p></details></li>
+  </ol>
+</div>
 <footer>
   <p>Gamma 分布：等待时钟 ⏱ · <a href="index.html" style="color:var(--accent);">返回知识库</a></p>
   <p style="margin-top:8px; font-size:12px;">三个可交互实验 + 完整推导 · 别慌，拖动看看曲线怎么变</p>

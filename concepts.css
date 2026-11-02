@@ -43,3 +43,25 @@ a.concept-link:focus-visible, .concept-related a:focus-visible {
 }
 .concept-related a:hover { border-color: currentColor; text-decoration: underline; text-underline-offset: 3px; }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto !important; } }
+/* Reading guide (top) and review exercises (bottom) */
+.reading-guide, .reading-review {
+  box-sizing: border-box;
+  width: calc(100% - 32px);
+  max-width: 1100px;
+  margin: 24px auto;
+  padding: 18px 22px;
+  border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+  border-left: 4px solid #3095a4;
+  border-radius: 10px;
+  font: 15px/1.7 -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  text-align: left;
+}
+.reading-guide > strong, .reading-review > strong { display: block; font-size: 16px; margin-bottom: 4px; }
+.reading-guide p, .reading-review p { margin: 4px 0; }
+.reading-guide ol, .reading-review ol { margin: 8px 0; padding-left: 1.6em; }
+.reading-guide li, .reading-review li { margin: 8px 0; }
+.reading-guide a, .reading-review a { color: inherit; text-decoration: underline; text-underline-offset: 3px; }
+.reading-goto { font-size: 13px; opacity: .75; white-space: nowrap; }
+.reading-review details { margin: 6px 0 10px; padding: 8px 12px; border-radius: 8px; background: color-mix(in srgb, currentColor 6%, transparent); }
+.reading-review summary { cursor: pointer; font-weight: 600; }
+.reading-review details[open] > summary { margin-bottom: 4px; }

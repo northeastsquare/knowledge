@@ -267,9 +267,19 @@
       <a href="#s-one">一句话</a><a href="#s-problem">问题</a><a href="#concept-hierarchical-inference">分层推理</a><a href="#s-arch">架构图</a><a href="#concept-hybrid-training">两阶段训练</a><a href="#s-system">机器人</a><a href="#s-code">代码结构</a><a href="#s-results">结果</a><a href="#s-insight">深层理解</a><a href="#s-cost">代价</a><a href="#s-next">被谁接手</a><a href="#s-quiz">自测</a>
     </nav>
   </section>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>π0.5 和 π0 相比，主要变的是结构还是训练配方？ <a class="reading-goto" href="#rq-1">读这一节 ↓</a></li>
+    <li>VLA 为什么“换个家就不行”？ <a class="reading-goto" href="#rq-2">读这一节 ↓</a></li>
+    <li>“一个模型先说再做”具体怎么做？ <a class="reading-goto" href="#rq-3">读这一节 ↓</a></li>
+  </ol>
+</div>
+
 
   <section id="s-one">
-    <h2>先建立坐标：π0 → π0-FAST → π0.5 各改了什么</h2>
+    <h2 id="rq-1">先建立坐标：π0 → π0-FAST → π0.5 各改了什么</h2>
     <div class="tbl-wrap">
       <table>
         <tr><th></th><th><a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">π0</a>（2024.10）</th><th><a class="concept-link" href="FAST-论文解读.html#concept-pi0-fast">π0-FAST</a>（2025.01）</th><th>π0.5（2025.04）</th></tr>
@@ -285,7 +295,7 @@
   </section>
 
   <section id="s-problem">
-    <h2>问题：VLA 为什么"换个家就不行"</h2>
+    <h2 id="rq-2">问题：VLA 为什么"换个家就不行"</h2>
     <p>π0 之前的 VLA 大多在和训练数据相同的环境里评测。真正进一个陌生的家，三件事同时变化：<b>环境</b>（布局、光线、柜门把手的样式）、<b>物体</b>（没见过的碗、衣服、玩具）、<b>任务长度</b>（"收拾厨房"要先拉抽屉、再拿盘子、再放进水槽，持续几分钟）。单靠目标机器人的数据来覆盖这些变化不现实：论文只有约 400 小时、约 100 个家的移动操作数据。</p>
     <ol>
       <li><strong>环境和物体的多样性</strong>要从别的来源借：更轻、更容易搬进不同家庭的固定机械臂（ME）；实验室里各种机器人做各种任务的数据（CE）；以及网页图文（WD）里关于"物体是什么"的常识。</li>
@@ -296,7 +306,7 @@
   </section>
 
   <section id="concept-hierarchical-inference" class="concept-anchor">
-    <h2>分层推理：一个模型，先说再做</h2>
+    <h2 id="rq-3">分层推理：一个模型，先说再做</h2>
     <p>模型表示的是联合分布 <code>π(a<sub>t:t+H</sub>, ℓ̂ | o<sub>t</sub>, ℓ)</code>：o 是所有相机图像加本体状态，ℓ 是总指令（"把盘子放进水槽"），ℓ̂ 是模型自己输出的文字（子任务，或者 VQA 的答案），a 是动作块。论文把它拆成两步（Sec IV-A）：</p>
     <blockquote><p><code>π(a, ℓ̂ | o, ℓ) = π(a | o, ℓ̂) · π(ℓ̂ | o, ℓ)</code>　——　动作分布<b>只依赖子任务 ℓ̂，不直接依赖总指令 ℓ</b>。</p></blockquote>
     <div class="flow">
@@ -902,6 +912,24 @@
     <details class="qz"><summary>openpi 里的 π0.5 实现了论文的哪一部分？</summary><p>只有 flow matching 低层策略（给定提示词出动作），由 Pi0 类加 pi05=True 实现；没有子任务文字解码、FAST 离散头和两阶段预训练代码。</p></details>
   </section>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>π0.5 和 π0 相比，主要变的是结构还是训练配方？</b></p><p>结构几乎还是 π0，变的是训练配方：五类数据混训，先把动作当文字和网页数据一起训，再接动作专家出连续动作。 <a class="reading-goto" href="#rq-1">回到原文 ↑</a></p></li>
+        <li><p><b>VLA 为什么“换个家就不行”？</b></p><p>进一个陌生的家，环境（布局、光线、把手）、物体（没见过的碗、衣服）和任务要求同时变化，而之前的 VLA 多在和训练相同的环境里评测。 <a class="reading-goto" href="#rq-2">回到原文 ↑</a></p></li>
+        <li><p><b>“一个模型先说再做”具体怎么做？</b></p><p>模型先根据图像和总指令 ℓ 自回归输出子任务文本 ℓ̂（如“拿起盘子”），再以 ℓ̂ 为条件用动作专家生成动作块。 <a class="reading-goto" href="#rq-3">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>把训练用的家从 3 个增加到 104 个，结果怎样变化？</p><details><summary>看答案</summary><p>在固定训练步数下，完成度和语言跟随率都随地点数稳步上升：泛化来自见过足够多样的环境。</p></details></li>
+    <li><p>π0.5 显著好于“同样混合配方、但只用动作数据”的 π0-FAST+Flow，这说明什么？</p><details><summary>看答案</summary><p>收益不只来自训练配方本身，网页数据、高层子任务等非动作数据对泛化有实打实的贡献。</p></details></li>
+    <li><p>思考：为什么第一阶段先把动作当离散文字训，而不是一开始就接动作专家？</p><details><summary>看答案</summary><p>离散 token 训练快、稳，能和网页数据用同一个交叉熵一起训，先得到一个“懂机器人的 VLM”；随机初始化的动作专家后接，也避免它的梯度一开始就冲乱骨干。</p></details></li>
+  </ol>
+</div>
   <aside class="concept-related" aria-label="相关概念">
     <strong>相关概念</strong>
     <a class="concept-link" href="#concept-hierarchical-inference">分层推理：先说子任务再出动作</a>

@@ -214,6 +214,16 @@
       <a href="#s-one">一句话</a><a href="#s-problem">问题</a><a href="#s-demo">动手看</a><a href="#concept-rtc">推理时 RTC</a><a href="#concept-trtc">训练时 RTC</a><a href="#s-why">为什么成立</a><a href="#s-code">读代码</a><a href="#s-results">结果</a><a href="#s-insight">深层理解</a><a href="#s-cost">代价</a><a href="#s-next">被谁接手</a><a href="#s-quiz">自测</a>
     </nav>
   </section>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>推理时 RTC 的代价在哪？ <a class="reading-goto" href="#rq-1">读这一节 ↓</a></li>
+    <li>训练时 RTC 改了哪些地方？ <a class="reading-goto" href="#rq-2">读这一节 ↓</a></li>
+    <li>这篇真正改变了什么？ <a class="reading-goto" href="#rq-3">读这一节 ↓</a></li>
+  </ol>
+</div>
+
 
   <section id="s-one">
     <h2>先建立坐标：四种“块与块怎么接”</h2>
@@ -268,7 +278,7 @@
   </section>
 
   <section id="concept-rtc" class="concept-anchor">
-    <h2>推理时 RTC：把衔接当成“补全图像”，每一步去噪都做一次引导</h2>
+    <h2 id="rq-1">推理时 RTC：把衔接当成“补全图像”，每一步去噪都做一次引导</h2>
     <p>前作 <a href="https://arxiv.org/abs/2506.07339" target="_blank" rel="noreferrer">Real-Time Chunking（arXiv 2506.07339）</a> 把块间衔接看成<b><a class="concept-link" href="RTC-实时动作分块-论文解读.html#concept-inpainting">图像补全（inpainting）</a></b>：前 d 步像图像中已知的像素，其余部分要补全。它用的是不需要训练的伪逆引导（ΠGDM）。设 flow 约定为 <code>A<sup>τ</sup> = τ·A + (1−τ)·ε</code>，τ=1 时是干净动作。每个去噪步做四件事：</p>
     <div class="flow">
       <div class="st"><b>① 估计终点</b>用当前速度一步跳到 τ=1：<code>Â¹ = A<sup>τ</sup> + (1−τ)·v</code></div>
@@ -281,7 +291,7 @@
   </section>
 
   <section id="concept-trtc" class="concept-anchor">
-    <h2>训练时 RTC：三处改动</h2>
+    <h2 id="rq-2">训练时 RTC：三处改动</h2>
     <p>目标是直接学习条件分布 <code>p(A<sub>t+d:H</sub> | o<sub>t</sub>, A<sub>t:t+d</sub>)</code>，前缀和后缀都取自同一条真实动作块。</p>
     <div class="flow">
       <div class="st"><b>① 每个 token 有自己的 τ</b>标准 flow 中整个块共用一个 τ。现在 τ 变成形状 <code>(batch, H)</code>。对于 adaLN-zero 结构（π0.6 的<a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a>、DiT），只需让 scale/shift/gate 逐 token 不同，<b>参数量不变</b>。</div>
@@ -345,7 +355,7 @@ for _ in range(num_steps):
   </section>
 
   <section id="s-insight">
-    <h2>深层理解：这篇真正改变了什么</h2>
+    <h2 id="rq-3">深层理解：这篇真正改变了什么</h2>
     <ul>
       <li><strong>执行层的问题，可以在训练层解决。</strong>RTC 把实时性当作采样算法问题，训练时 RTC 把它变成数据增强：训练分布里本来就包含“带延迟的条件生成”这种情形。</li>
       <li><strong>flow 时间步是通用的条件接口。</strong>τ 不只是噪声日程，还可以逐 token 表达“这一位有多确定”。同样的思路可以推广到其他已知部分动作的场景，例如固定的末端位姿或安全约束。论文没有做这些实验，这里是推论。</li>
@@ -383,6 +393,24 @@ for _ in range(num_steps):
     <details class="qz"><summary>它能完全替代推理时 RTC 吗？</summary><p>大多数场景可以，真机上效果持平且更省计算。但它只支持硬前缀、需要事先确定延迟分布、要额外微调；需要软约束或现成 checkpoint 时，推理时 RTC 仍然有用。</p></details>
   </section>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>推理时 RTC 的代价在哪？</b></p><p>每一步去噪都要用梯度把新块往已执行的 d 步上“拽”，额外的反向传播增加了推理计算。 <a class="reading-goto" href="#rq-1">回到原文 ↑</a></p></li>
+        <li><p><b>训练时 RTC 改了哪些地方？</b></p><p>训练中随机模拟一段延迟 d，把动作块前缀设为真实动作（τ=1，不加噪），只学生成剩下的部分，直接学条件分布 p(A_{t+d:H} | o_t, A_{t:t+d})。 <a class="reading-goto" href="#rq-2">回到原文 ↑</a></p></li>
+        <li><p><b>这篇真正改变了什么？</b></p><p>执行层的问题可以在训练层解决：把实时性从采样算法问题变成数据增强，训练分布里本来就包含带延迟的条件生成。 <a class="reading-goto" href="#rq-3">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>训练时前缀那 d 步要不要计算损失？</p><details><summary>看答案</summary><p>不要。前缀是给定的真实动作，只在需要生成的后缀上算损失。</p></details></li>
+    <li><p>训练时延迟 d 是固定值还是随机抽？为什么？</p><details><summary>看答案</summary><p>随机抽，覆盖部署时可能遇到的各种延迟；代价是需要事先确定延迟分布。</p></details></li>
+    <li><p>思考：如果手头只有一个现成 checkpoint、不能再微调，用哪种 RTC？</p><details><summary>看答案</summary><p>推理时 RTC：它不改权重，只改采样；训练时 RTC 需要额外微调。</p></details></li>
+  </ol>
+</div>
   <aside class="concept-related" aria-label="相关概念">
     <strong>相关概念</strong>
     <a class="concept-link" href="concepts.html#rtc">RTC 概念卡</a>

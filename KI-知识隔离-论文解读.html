@@ -161,6 +161,16 @@
     本页依据论文正文与附录 A–C 整理。正文没有给出精确数值的图表结果只写趋势；我自己的推断单独用灰色框标出。
   </div>
 </header>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>把随机初始化的动作专家接到 VLM 上一起训，会出什么问题？ <a class="reading-goto" href="#rq-1">读这一节 ↓</a></li>
+    <li>论文切断了哪一条通路？切完之后又靠什么补回来？ <a class="reading-goto" href="#rq-2">读这一节 ↓</a></li>
+    <li>为什么是“隔离”而不是直接冻结骨干？ <a class="reading-goto" href="#rq-3">读这一节 ↓</a></li>
+  </ol>
+</div>
+
 
 <nav class="toc" aria-label="本页目录">
   <a href="#s1">01 画面</a><a href="#s2">02 病理</a><a href="#s3">03 证据</a><a href="#s4">04 手术</a><a href="#s5">05 条件</a><a href="#s6">06 旋钮</a><a href="#s7">07 数字</a><a href="#s8">08 误读</a><a href="#s9">09 追问</a><a href="#s10">10 知识网</a><a href="#s11">11 自测</a>
@@ -180,7 +190,7 @@
 <!-- ============ 02 ============ -->
 <section id="s2">
   <div class="n">02 · 病理</div>
-  <h2>梯度是信使，也可能是污染源</h2>
+  <h2 id="rq-1">梯度是信使，也可能是污染源</h2>
   <p>在 <a class="concept-link" href="pi0-论文解读.html#concept-action-expert">π0</a> 的训练方式里，骨干和动作专家之间有两条通道：前向的 K/V（读），以及反向的梯度（写）。直觉上人们更关注前向，因为它是“知识从 VLM 流向动作”的那一条。论文指出，反向那条路同样存在，而且在新专家刚初始化时最危险。</p>
 
   <div class="rig" role="img" aria-label="骨干向动作专家前向传递 K 和 V；动作专家的梯度被剪断，不回传到骨干">
@@ -213,7 +223,7 @@
 <!-- ============ 04 ============ -->
 <section id="s4">
   <div class="n">04 · 手术</div>
-  <h2>一刀切断，两处补上</h2>
+  <h2 id="rq-2">一刀切断，两处补上</h2>
   <p>论文同时做了三件事。第 III 件是切断，前两件是补偿：切断之后，骨干需要别的信号来学机器人。</p>
 
   <ul class="cut3">
@@ -278,7 +288,7 @@
     <p>训练 VLA 时，骨干通过离散动作 token（以及通用视觉语言数据）学习；连续输出的动作专家只读取骨干、不反向更新骨干。这样，新加入的随机参数不会冲掉预训练知识，同时仍保留连续动作的快速推理。</p>
   </div>
 
-  <h3>为什么是隔离，不是冻结</h3>
+  <h3 id="rq-3">为什么是隔离，不是冻结</h3>
   <p>冻结看起来最安全，但 VLM 预训练时没见过机器人数据，冻住的表征不够用。骨干<span class="hl-r">必须学</span>，但<span class="hl-r">不能被新人的梯度推着走</span>。把论文里的几种选择排在一起：</p>
 
   <div class="four">
@@ -442,6 +452,25 @@
   </details>
 </section>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>把随机初始化的动作专家接到 VLM 上一起训，会出什么问题？</b></p><p>专家的梯度沿 K/V 通道回传进骨干，把预训练的语义知识冲乱。症状是训练慢、语言跟随变差（指令说放勺子，机器人却去抓别的东西）。 <a class="reading-goto" href="#rq-1">回到原文 ↑</a></p></li>
+        <li><p><b>论文切断了哪一条通路？切完之后又靠什么补回来？</b></p><p>在专家读骨干 K/V 的地方套 stop-gradient，专家的损失不再改骨干。补偿有两处：骨干自己预测 FAST 离散动作 token，以及和不含动作的 VLM 数据联训。 <a class="reading-goto" href="#rq-2">回到原文 ↑</a></p></li>
+        <li><p><b>为什么是“隔离”而不是直接冻结骨干？</b></p><p>VLM 预训练时没见过机器人数据，冻住的表征不够用。骨干仍要更新，只是改由离散动作和 VLM 数据这类“干净”的信号来改，而不是专家的梯度。 <a class="reading-goto" href="#rq-3">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>为什么只需要在一处套 stop-gradient？</p><details><summary>看答案</summary><p>注意力掩码让骨干看不到专家（可见性表右上角是 0），骨干的前向计算根本不依赖专家；专家影响骨干参数的唯一路径就是它读取的 K/V，在那里切断就够了。</p></details></li>
+    <li><p>论文说 stop-gradient 合理“当且仅当”什么条件成立？反过来会怎样？</p><details><summary>看答案</summary><p>当且仅当骨干同时在学预测动作（FAST token）。如果骨干不预测动作，切断后它收不到任何关于机器人的信号，表征就学不到操作所需的东西。</p></details></li>
+    <li><p>写出总损失由哪两项组成。</p><details><summary>看答案</summary><p>L = 交叉熵（文字 token + FAST 动作 token）+ α·流匹配损失，两项各带掩码，一个 batch 里同时算。</p></details></li>
+    <li><p>思考：真机每个任务每个策略只跑 10 个 episode，读结果时要注意什么？</p><details><summary>看答案</summary><p>样本很少，几个百分点的差异可能只是噪声；要看论文的显著性检验，以及多个任务上的趋势是否一致。</p></details></li>
+  </ol>
+</div>
   <aside class="concept-related" aria-label="相关概念">
     <strong>相关概念</strong>
     <a class="concept-link" href="pi0.5_论文测验_精美版.html#concept-two-stage-training">π0.5：两阶段动作训练</a>

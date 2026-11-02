@@ -103,9 +103,19 @@
   <p class="sub">从赌局、炮弹、保险到 AI：370 年演化，17 个展品</p>
   <p class="stat">1654—2024 · 每个分布解决了什么问题 · 谁发明的 · 为什么长这样</p>
 </div>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>概率论是从什么问题里诞生的？ <a class="reading-goto" href="#rq-1">读这一节 ↓</a></li>
+    <li>指数、Gamma、卡方这几件展品是什么关系？ <a class="reading-goto" href="#concept-gamma-distribution">读这一节 ↓</a></li>
+    <li>对数正态里的 μ、σ 指的是谁的均值和标准差？ <a class="reading-goto" href="#concept-log-normal-distribution">读这一节 ↓</a></li>
+  </ol>
+</div>
+
 
 <div class="exhibit">
-  <div class="head"><h2>序厅：概率是怎么来的</h2><span class="era">1654</span></div>
+  <div class="head"><h2 id="rq-1">序厅：概率是怎么来的</h2><span class="era">1654</span></div>
   <div class="body">
     <p>概率论诞生于<span class="hl">一场赌局没打完</span>的争吵。</p>
     <div class="who"><b>帕斯卡（Blaise Pascal）和费马（Pierre de Fermat）</b>，1654 年通信。问题：两个赌徒约定"先赢 3 局者拿走全部赌注"，打到 2:1 时因故中断，钱该怎么分？</div>
@@ -362,6 +372,25 @@ M1001 80h400000v40h-400000z"/></svg></span></span></span><span class="vlist-s">�
   </div>
 </div>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>概率论是从什么问题里诞生的？</b></p><p>一场没打完的赌局：赌注该怎么分。这个争吵催生了用“可能性”做计算的方法。 <a class="reading-goto" href="#rq-1">回到原文 ↑</a></p></li>
+        <li><p><b>指数、Gamma、卡方这几件展品是什么关系？</b></p><p>指数是形状为 1 的 Gamma；整数形状的 Gamma 是多段独立指数等待之和；卡方是形状 k/2、速率 1/2 的 Gamma。 <a class="reading-goto" href="#concept-gamma-distribution">回到原文 ↑</a></p></li>
+        <li><p><b>对数正态里的 μ、σ 指的是谁的均值和标准差？</b></p><p>是 log X 的均值和标准差，不是 X 自己的。 <a class="reading-goto" href="#concept-log-normal-distribution">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>泊松分布的 λ 和指数分布的 λ 是同一个东西吗？</p><details><summary>看答案</summary><p>是同一个泊松过程的两面：泊松数“固定窗口里来几次”（平均 λ 次），指数量“等下一次要多久”（平均 1/λ）。</p></details></li>
+    <li><p>t 分布的自由度增大时会怎样？</p><details><summary>看答案</summary><p>尾部变薄，逐渐接近标准正态；自由度小时尾部更厚。</p></details></li>
+    <li><p>Dirichlet 分布和 Beta 分布是什么关系？</p><details><summary>看答案</summary><p>Dirichlet 是 Beta 的多维推广：抽出的是一组和为 1 的非负概率；只有两个分量时就是 Beta。</p></details></li>
+    <li><p>思考：Cauchy 分布为什么没有均值？</p><details><summary>看答案</summary><p>尾部太厚，求均值的积分发散；样本均值不会随样本增多而收敛。</p></details></li>
+  </ol>
+</div>
 <aside class="concept-related" aria-label="相关概念">
   <strong>把概率知识接回机器人学习</strong>
   <a class="concept-link" href="Beta分布-球星卡.html#concept-probability-density">概率密度与面积</a>

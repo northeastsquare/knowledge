@@ -257,6 +257,16 @@
       <span class="star-note"><span class="star-badge">★</span>反直觉精华，重点抠</span>
     </div>
   </header>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>π0.5 要解决的核心问题是什么？用什么方法？ <a class="reading-goto" href="#reading-answers">看答案 ↓</a></li>
+    <li>移动机械臂做家务的数据只占 2.4%，为什么还能泛化到新家？ <a class="reading-goto" href="#reading-answers">看答案 ↓</a></li>
+    <li>训练和推理分别用哪种动作表示？ <a class="reading-goto" href="#reading-answers">看答案 ↓</a></li>
+  </ol>
+</div>
+
 
   <!-- ============ 1. 核心思想与动机 ============ -->
   <section class="cat cat-motive">
@@ -479,6 +489,24 @@
     </article>
   </section>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>π0.5 要解决的核心问题是什么？用什么方法？</b></p><p>开放世界泛化：在训练时完全没见过的真实家庭里干活。方法是在异质数据上联合训练，把其他机器人、高层子任务、口头指令、网页多模态数据统一成同一种序列一起训。</p></li>
+        <li><p><b>移动机械臂做家务的数据只占 2.4%，为什么还能泛化到新家？</b></p><p>97.6% 的样本来自其他机器人和网页数据等，泛化靠从异质来源迁移知识，而不是在目标平台上暴力采数据。</p></li>
+        <li><p><b>训练和推理分别用哪种动作表示？</b></p><p>预训练用 FAST 离散 token（训练快、稳、语言跟随强）；后训练加入动作专家学 flow matching，推理用 10 步 flow matching 出连续动作。</p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>联合损失里的 α 在预训练和后训练分别取多少？</p><details><summary>看答案</summary><p>预训练 α=0：只用离散 token，当标准 VLM 训；后训练 α=10，加入随机初始化的动作专家训练 flow matching。</p></details></li>
+    <li><p>FAST token 与 flow matching 的动作 token 为什么互不 attend？</p><details><summary>看答案</summary><p>避免两种动作表示之间的信息泄漏。信息只从 VLM 单向流向动作专家，没有 VLM embedding 反过来看专家。</p></details></li>
+    <li><p>思考：低层动作只依赖预测出的子任务 ℓ̂，不直接看总指令 ℓ，好处是什么？</p><details><summary>看答案</summary><p>分工清楚：高层把长指令拆成当前一步，低层只需要执行一条短而具体的指令，更容易从各种数据里学到并复用。</p></details></li>
+  </ol>
+</div>
   <aside class="concept-related" aria-label="相关概念">
     <strong>相关概念</strong>
     <a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a>

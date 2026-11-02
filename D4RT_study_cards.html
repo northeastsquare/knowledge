@@ -185,6 +185,16 @@
       <span>位姿 <b>200+ FPS</b></span>
     </div>
   </header>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>D4RT 把“4D 重建”的提问方式换成了什么？ <a class="reading-goto" href="#reading-answers">看答案 ↓</a></li>
+    <li>为什么查询里要把 t_tgt 和 t_cam 拆成两个独立索引？ <a class="reading-goto" href="#reading-answers">看答案 ↓</a></li>
+    <li>D4RT 不直接回归相机外参，那位姿是怎么算出来的？ <a class="reading-goto" href="#reading-answers">看答案 ↓</a></li>
+  </ol>
+</div>
+
 
   <p id="concept-query-decoding" class="subtitle concept-anchor"><b>可查询解码：</b>把源帧上的二维点与源时刻、目标时刻、参考相机时刻组成查询，解码器返回该点在目标时刻、指定相机坐标系中的三维位置。整段视频先编码成固定场景表征，各查询独立解码，因此同一接口可回答深度、三维轨迹与相机参数问题。这里查询的是几何与运动；策略中的<a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a>则生成要执行的控制序列。</p>
 
@@ -233,6 +243,26 @@
   <!-- LIST MODE -->
   <div id="listView"></div>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>D4RT 把“4D 重建”的提问方式换成了什么？</b></p><p>从“为每个任务设计专门解码器、对整段视频逐帧稠密解码”，换成一个统一接口：对任意时空点独立查询 q=(u, v, t_src, t_tgt, t_cam)，输出它的 3D 位置 P。深度、点云、轨迹、相机参数都只是换一种查询取值。</p></li>
+        <li><p><b>为什么查询里要把 t_tgt 和 t_cam 拆成两个独立索引？</b></p><p>“这个点处在哪个时刻的状态”和“用哪一帧相机的坐标系来表达它”是两件事。拆开后就能问“第 3 帧的点在第 10 帧时，从第 1 帧相机看在哪里”。</p></li>
+        <li><p><b>D4RT 不直接回归相机外参，那位姿是怎么算出来的？</b></p><p>在两帧上用同一批网格点构造两组查询，只把 t_cam 分别设成 i 和 j，得到同一批 3D 点在两个参考系下的坐标，再求两组点云之间的刚体变换。</p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>用查询参数写出：怎样得到某一帧的深度图？</p><details><summary>看答案</summary><p>对该帧所有像素查询，令 t_src = t_tgt = t_cam 都等于这一帧，只取输出 P 的 Z 分量。</p></details></li>
+    <li><p>怎样得到一个点在整段视频里的 3D 轨迹？</p><details><summary>看答案</summary><p>固定 (u, v) 和 t_src，让 t_tgt = t_cam 一起从 1 扫到 T。</p></details></li>
+    <li><p>为什么每个查询之间互不 attention？</p><details><summary>看答案</summary><p>训练时只需解码少量查询就有监督信号，省算力；推理时查询可以在任意帧上自由选取、彼此独立并行。</p></details></li>
+    <li><p>思考：L1 loss 之前为什么要先做 sign(x)·log(1+|x|) 变换？</p><details><summary>看答案</summary><p>远处的点坐标数值大，原始误差会主导 loss；对数压缩后近处细节也能得到足够的训练信号。</p></details></li>
+    <li><p>confidence 以 −log(c) 出现在 loss 里，模型学到了什么？</p><details><summary>看答案</summary><p>没把握的点可以调低 c 来减小误差权重，但要付出 −log(c) 的代价，于是模型学会如实校准自己的不确定性。</p></details></li>
+  </ol>
+</div>
   <aside class="concept-related" aria-label="相关概念">
     <strong>相关概念</strong>
     <a href="PUMA-论文解读.html#concept-motion-perception">历史光流与目标未来预测</a>

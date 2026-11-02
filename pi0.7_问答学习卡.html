@@ -236,17 +236,17 @@
     <div class="keys">
       <div class="key anim" style="--accent:var(--c1)">
         <div class="n">01</div>
-        <h3>方法论,而非新架构</h3>
+        <h3 id="rq-1">方法论,而非新架构</h3>
         <p>作者明确说不提新架构,而是提出一套"让 VLA 用上更多样数据源"的方法 + 实证分析。</p>
       </div>
       <div class="key anim" style="--accent:var(--c3);animation-delay:.08s">
         <div class="n">02</div>
-        <h3>Diverse prompting</h3>
+        <h3 id="rq-2">Diverse prompting</h3>
         <p>把 <code>metadata</code> + <code>subgoal images</code> + 更丰富的 subtask 语言塞进 prompt,训练时全部随机 dropout,测试时可任意组合。</p>
       </div>
       <div class="key anim" style="--accent:var(--c12);animation-delay:.16s">
         <div class="n">03</div>
-        <h3>混合质量数据可扩展</h3>
+        <h3 id="rq-3">混合质量数据可扩展</h3>
         <p>带 metadata 时数据越多越好(哪怕平均质量下降);不带 metadata 反而越训越差。</p>
       </div>
     </div>
@@ -260,6 +260,16 @@
       <span class="hint-text" id="modehint">答案全部展开,适合通读</span>
     </div>
   </header>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>π0.7 提出了新架构吗？它的贡献到底是什么？ <a class="reading-goto" href="#rq-1">读这一节 ↓</a></li>
+    <li>Diverse prompting 往 prompt 里塞了哪些东西？ <a class="reading-goto" href="#rq-2">读这一节 ↓</a></li>
+    <li>质量参差的数据越多，模型会越好还是越差？ <a class="reading-goto" href="#rq-3">读这一节 ↓</a></li>
+  </ol>
+</div>
+
 
   <!-- ===== LAYOUT ===== -->
   <div class="layout">
@@ -883,6 +893,24 @@ Speed: 8000. Quality: 5. Mistake: false. Control Mode: joint.
         </div>
       </section>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>π0.7 提出了新架构吗？它的贡献到底是什么？</b></p><p>没有新架构。它提出一套让 VLA 用上更多样数据源的方法，并做了实证分析。 <a class="reading-goto" href="#rq-1">回到原文 ↑</a></p></li>
+        <li><p><b>Diverse prompting 往 prompt 里塞了哪些东西？</b></p><p>episode 元数据（速度、质量、是否出错）、子目标图像和更丰富的子任务语言；训练时全部随机 dropout，测试时可以任意组合。 <a class="reading-goto" href="#rq-2">回到原文 ↑</a></p></li>
+        <li><p><b>质量参差的数据越多，模型会越好还是越差？</b></p><p>取决于有没有元数据：带元数据时数据越多越好（哪怕平均质量下降）；不带元数据反而越训越差。 <a class="reading-goto" href="#rq-3">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>训练时“整体速度”这个元数据是怎么离散化的？推理时又设成多少？</p><details><summary>看答案</summary><p>训练时按 500 步区间离散（如 1750–2250 步记作 “2000 steps”）；推理时设为该任务 episode 长度的第 15 百分位，即偏快。</p></details></li>
+    <li><p>给 π0.5 做微调时，可以从 π0.7 借鉴哪一条最实用的经验？</p><details><summary>看答案</summary><p>别丢失败和低质量数据：标注 quality（1–5）、speed、mistake 后混进训练，测试时 prompt 成 quality 5、无 mistake。</p></details></li>
+    <li><p>思考：为什么不带元数据时，混合质量数据会越训越差？</p><details><summary>看答案</summary><p>模型分不清哪些示范好、哪些差，只能学它们的平均行为，差数据越多平均越差；元数据把质量变成条件，模型就能分开学，推理时再指定“要好的”。</p></details></li>
+  </ol>
+</div>
       <aside class="concept-related" aria-label="相关概念">
         <strong>相关概念</strong>
         <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">流匹配：从噪声到连续动作</a>

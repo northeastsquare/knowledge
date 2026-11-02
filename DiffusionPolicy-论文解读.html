@@ -329,6 +329,17 @@ $\sigma=0$ 时完全确定</div>
 </div>
 
 <hr class=”dash”>
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <ol class="reading-ex">
+    <li><p>障碍物左右都能绕开，示范一半往左一半往右。MSE 回归和扩散分别会输出什么？</p><details><summary>看答案</summary><p>MSE 输出两者的平均——正中间撞上障碍；扩散是采样，每次落进其中一个模式，要么左要么右。</p></details></li>
+    <li><p>To=2、Tp=16、Ta=8 分别是什么意思？Ta 设得太大或太小各有什么问题？</p><details><summary>看答案</summary><p>看过去 2 步观测，预测未来 16 步，只执行前 8 步再重新规划。Ta 太大，开环执行太久，对扰动反应慢；Ta 太小，频繁重规划，容易在不同模式间来回切换、动作不连贯。</p></details></li>
+    <li><p>DDIM 为什么不用重新训练就能减少推理步数？</p><details><summary>看答案</summary><p>DDPM、iDDPM、DDIM 共用同一个“猜噪声”的训练目标，DDIM 只改采样过程：取确定性采样（σ=0）后可以跳步，同一个网络直接复用。</p></details></li>
+    <li><p>思考：为什么真机推理只把观测编码一次？</p><details><summary>看答案</summary><p>策略建模的是 p(A|O)，观测只作条件、不参与去噪，所以视觉编码器跑一次，结果在每个去噪步里复用，省掉大量计算。</p></details></li>
+  </ol>
+</div>
   <aside class="concept-related" aria-label="相关概念">
     <strong>相关概念</strong>
     <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">流匹配：改为预测速度场</a>

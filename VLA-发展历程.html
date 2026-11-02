@@ -241,6 +241,16 @@
       </ol>
     </aside>
   </header>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>这一页用哪五条技术主线串起各个方法？ <a class="reading-goto" href="#threads-title">读这一节 ↓</a></li>
+    <li>读每个阶段时要问哪四件事？ <a class="reading-goto" href="#stages-title">读这一节 ↓</a></li>
+    <li>最新一站的 VLA 和以前有什么不同？ <a class="reading-goto" href="#rq-3">读这一节 ↓</a></li>
+  </ol>
+</div>
+
 
   <!-- 00 -->
   <section class="section" id="define" aria-labelledby="define-title">
@@ -419,7 +429,7 @@
       <article class="stage" id="p7">
         <div class="stage-mark"><b>P7</b>2025H2<br>—2026</div>
         <div class="stage-card">
-          <div class="stage-top"><div class="idx">阶段 7 · 闭环：从经验中变好（进行中）</div><h3>把经验、奖励与身体差异接回模型</h3><p>VLA 不再只是一个推理一次就结束的模型，而是能被真机经验、仿真、奖励和人类反馈持续修正的行动系统。本库的大部分论文都在这一站。</p></div>
+          <div class="stage-top"><div class="idx">阶段 7 · 闭环：从经验中变好（进行中）</div><h3 id="rq-3">把经验、奖励与身体差异接回模型</h3><p>VLA 不再只是一个推理一次就结束的模型，而是能被真机经验、仿真、奖励和人类反馈持续修正的行动系统。本库的大部分论文都在这一站。</p></div>
           <div class="stage-body">
             <div class="grid4">
               <div class="blk"><div class="label">问题</div>模仿学习的天花板就是示范者的水平；精细接触、动态目标、长时程任务的成功率难以继续提高。</div>
@@ -602,6 +612,24 @@
     <p class="tbl-note">维护约定：日期以 arXiv 首版为准；有精读页面的写 kb 字段，并选择对应的回路环节 loop；如果是代表性模型，同时在 MODELS 里加一行。每个季度检查一次 P7 和 05 节的“现状”描述是否过时。</p>
   </section>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>这一页用哪五条技术主线串起各个方法？</b></p><p>动作表示、骨干与架构、数据、训练范式、执行与实时性。 <a class="reading-goto" href="#threads-title">回到原文 ↑</a></p></li>
+        <li><p><b>读每个阶段时要问哪四件事？</b></p><p>问题 → 突破 → 代价 → 被谁接手：它想把什么做成通用能力，又给下一阶段留下了什么缺口。 <a class="reading-goto" href="#stages-title">回到原文 ↑</a></p></li>
+        <li><p><b>最新一站的 VLA 和以前有什么不同？</b></p><p>不再是推理一次就结束的模型，而是能被真机经验、仿真、奖励和人类反馈持续修正的行动系统。 <a class="reading-goto" href="#rq-3">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>“VLM 学会输出动作，动作头学会生成”这一站，同时发生了哪两件独立的事？</p><details><summary>看答案</summary><p>语义一侧，VLM 被直接改造成策略（RT-2 一类）；动作一侧，扩散模型和动作分块让模仿学习精度大幅提升（Diffusion Policy、ACT 一类）。</p></details></li>
+    <li><p>“慢思考配快执行”这一站，主流架构收敛到什么？训练配方开始关注什么？</p><details><summary>看答案</summary><p>收敛到“VLM 慢系统 + 动作快系统”；配方开始关注怎样保住 VLM 原有知识（如知识隔离）。</p></details></li>
+    <li><p>思考：读完一篇新论文，怎么回到这张地图上给它定位？</p><details><summary>看答案</summary><p>先看它属于哪个阶段，再问它推进了五条主线中的哪一两条、解决了上一站留下的什么缺口、又留下了什么代价。</p></details></li>
+  </ol>
+</div>
   <aside class="concept-related" aria-label="相关概念"><strong>相关概念 · 把历史接到方法</strong><a href="pi0-论文解读.html#concept-flow-matching">动作怎么生成：流匹配</a><a href="RLToken-漫画分镜解读.html#concept-action-chunk">一次输出一段：动作分块</a><a href="RLToken-漫画分镜解读.html#concept-actor-critic">策略怎么改进：Actor–Critic</a><a href="pi0.6-论文解读.html#concept-recap">从经验中学：RECAP</a><a href="ObjectCentric-RL-论文解读.html#concept-residual-rl">只学修正量：残差 RL</a><a href="Qwen-VLA-论文解读.html#concept-cross-embodiment">怎么换身体：跨本体</a><a href="InternData-A1-论文解读.html#concept-synthetic-data">合成数据</a><a href="DynamicVLA-论文解读.html#concept-latency">怎么赶上变化：感知—执行时延</a><a href="concepts.html">全部概念 →</a></aside>
   
 <p class="route-backlink" style="max-width:900px;margin:28px auto 0;padding:0 24px;font-size:14px;"><a href="VLA-RL-路线图.html">→ 本页在 VLA × 强化学习整体路线中的位置：路线图（截至 2026）</a></p>

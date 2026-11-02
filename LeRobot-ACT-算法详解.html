@@ -131,6 +131,16 @@ summary{cursor:pointer;font-weight:600}
 <a href="#history">1 前世今生</a><a href="#bigpicture">2 一张图看全流程</a><a href="#train-detail">3 训练细节 ①–⑨</a><a href="#infer-detail">4 推理细节 ⑩–⑪</a><a href="#why">5 为什么有效</a><a href="#lerobot">6 LeRobot 上手</a><a href="#compare">7 对比与局限</a><a href="#refs">8 资料</a>
 </nav>
 </header>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>ACT 每看一眼画面输出多少动作？为什么要一次出这么多？ <a class="reading-goto" href="#concept-act">读这一节 ↓</a></li>
+    <li>CVAE 编码器压缩出的 z 是什么？推理时从哪里来？ <a class="reading-goto" href="#rq-2">读这一节 ↓</a></li>
+    <li>解码器怎么做到一次并行输出 100 步？ <a class="reading-goto" href="#rq-3">读这一节 ↓</a></li>
+  </ol>
+</div>
+
 
 <div class="note"><b>读这页之前，可以先带着这几个问题：</b><br>
 ① 一次预测 100 步，为什么比一步一步预测更准？<br>
@@ -338,7 +348,7 @@ batch["action_is_pad"]         (B, 100)       ← 越过回合末尾的位置为
 <div class="code-ref"><b>LEROBOT</b><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/configuration_act.py#L173">configuration_act.py#L173 action_delta_indices</a><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/datasets/factory.py#L39">factory.py#L39 resolve_delta_timestamps</a></div>
 </div>
 <div class="step train" id="s3"><div class="badge">3</div>
-<h3>CVAE 编码器：把"这次怎么做的"压成 z<span class="tag train">只在训练</span></h3>
+<h3 id="rq-2">CVAE 编码器：把"这次怎么做的"压成 z<span class="tag train">只在训练</span></h3>
 <p>这是一个 BERT 风格的 4 层 Transformer 编码器。它的输入序列是：</p>
 <div class="shape">[CLS]           1 个可学习 token
 qpos → Linear   1 个 token（14 → 512）
@@ -383,7 +393,7 @@ encoder 输入 (1202, B, 512)
 <div class="code-ref"><b>LEROBOT</b><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/modeling_act.py#L524">modeling_act.py#L524 ACTEncoder</a><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/modeling_act.py#L561">#L561 ACTEncoderLayer.forward（q = k = x + pos）</a></div>
 </div>
 <div class="step" id="s7"><div class="badge">7</div>
-<h3>Transformer 解码器：100 个 query 各自"认领"一个未来时刻<span class="tag both">训练 + 推理</span></h3>
+<h3 id="rq-3">Transformer 解码器：100 个 query 各自"认领"一个未来时刻<span class="tag both">训练 + 推理</span></h3>
 <p>这是 ACT 能一次输出 100 步的关键。解码器的输入是一个全零张量 <code>(100, B, 512)</code>，真正起作用的是 <code>decoder_pos_embed = nn.Embedding(100, 512)</code>。这是 100 个可学习向量，第 i 个向量专门负责"未来第 i 步"。每一层的计算分三步：</p>
 <div class="shape">① 自注意力：100 个 query 互相看     → 保证相邻时刻的动作前后连贯
 ② 交叉注意力：Q = query + 位置编码
@@ -652,6 +662,25 @@ lerobot-rollout \
 <script>
 document.addEventListener('DOMContentLoaded',function(){if(window.renderMath)window.renderMath();});
 </script>
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>ACT 每看一眼画面输出多少动作？为什么要一次出这么多？</b></p><p>一次输出接下来 100 步（50Hz 下约 2 秒）。整段一起预测更连贯，也减少了逐步预测时误差的累积。 <a class="reading-goto" href="#concept-act">回到原文 ↑</a></p></li>
+        <li><p><b>CVAE 编码器压缩出的 z 是什么？推理时从哪里来？</b></p><p>z 编码的是“这次示范具体是怎么做的”（风格、节奏），帮模型区分同一场景下不同的示范方式。它只在训练时由真实动作算出，推理时直接取 0（先验均值）。 <a class="reading-goto" href="#rq-2">回到原文 ↑</a></p></li>
+        <li><p><b>解码器怎么做到一次并行输出 100 步？</b></p><p>输入 100 个 query，每个 query 各自“认领”一个未来时刻，与 DETR 的 100 个 object query 同一套机制，并行解码，不是自回归。 <a class="reading-goto" href="#rq-3">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>拼进 Transformer 编码器的 1202 个 token 是怎么来的？</p><details><summary>看答案</summary><p>1 个 z + 1 个关节状态 + 4 路相机 × 300 个视觉 token（ResNet18 layer4 特征图展平）= 1202。</p></details></li>
+    <li><p>一条示范共 400 步，训练时抽到 t=350，后面不足 100 步怎么办？</p><details><summary>看答案</summary><p>只有 50 步真实动作，后 50 步补齐，并用掩码标出，补齐部分不参与损失。</p></details></li>
+    <li><p>采集示范时，动作为什么取主臂的角度而不是从臂？</p><details><summary>看答案</summary><p>从臂由电机 PID 追主臂，总有滞后；主臂的角度才是人真正想要的动作。</p></details></li>
+    <li><p>思考：z 和图像一样只是一个普通 token，这样设计有什么好处？</p><details><summary>看答案</summary><p>Transformer 可以通过注意力自己决定 z 的影响有多大，不需要手工设计 z 怎么注入网络。</p></details></li>
+  </ol>
+</div>
 <script src="nav.js"></script>
 
 </div>

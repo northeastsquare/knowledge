@@ -145,6 +145,16 @@
       <div class="stat"><span class="n">2</span><span class="l">条坐标轴（更新范围 · 训练环境）</span></div>
     </div>
   </section>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>给预训练 VLA 做 RL 精调，有哪几大类方法？ <a class="reading-goto" href="#rq-1">读这一节 ↓</a></li>
+    <li>整模型 RL 的上限和代价？ <a class="reading-goto" href="#rq-2">读这一节 ↓</a></li>
+    <li>RL token 在残差路线之上多做了什么？ <a class="reading-goto" href="#rq-3">读这一节 ↓</a></li>
+  </ol>
+</div>
+
 
   <section class="spectrum">
     <div class="spec-head"><span>整模型 RL</span><span>← 更新范围 →</span><span>冻结 VLA + 轻量头</span></div>
@@ -160,7 +170,7 @@
   </section>
 
   <section>
-    <h2>总对比表</h2>
+    <h2 id="rq-1">总对比表</h2>
     <div class="tbl-wrap">
       <table>
         <thead>
@@ -186,7 +196,7 @@
   </section>
 
   <div class="camp">
-    <div class="camp-head"><span class="bar" style="background:var(--c-full)"></span><h2>① 整模型 RL</h2><span class="cnt">4 个</span></div>
+    <div class="camp-head"><span class="bar" style="background:var(--c-full)"></span><h2 id="rq-2">① 整模型 RL</h2><span class="cnt">4 个</span></div>
     <div class="camp-body">
       <p class="desc">直接更新整个 VLA。上限最高、能真正改变行为模式，但计算和样本成本最贵，<a class="concept-link" href="RLinf-RL原理对比.html#concept-on-policy">on-policy</a> 方法尤其难上真机。RECAP 用<strong>离线 RL</strong>绕开在线探索，是这一类的实用代表。</p>
       <div class="mcard"><div class="mt"><a class="concept-link" href="pi0.6-论文解读.html#concept-recap">RECAP（π0.6）</a></div><div class="md">优势条件策略抽取：价值函数估每步优势，把「演示 + 自主 rollout + 人类干预」全喂给模型，吞吐 >2×。</div></div>
@@ -218,7 +228,7 @@
   </div>
 
   <div class="camp">
-    <div class="camp-head"><span class="bar" style="background:var(--c-rlt)"></span><h2>④ RL token（本文路线）</h2><span class="cnt">1 个</span></div>
+    <div class="camp-head"><span class="bar" style="background:var(--c-rlt)"></span><h2 id="rq-3">④ RL token（本文路线）</h2><span class="cnt">1 个</span></div>
     <div class="camp-body">
       <p class="desc">在「残差 / 轻量头」之上更进一步：不直接拿 VLA 高维特征，而是<strong>先抽一个紧凑表示（<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-rl-token">RL token</a>）</strong>，再训轻量 <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-actor-critic">actor-critic</a>，并且用<strong>参考动作 + KL 正则</strong>锚定、用<strong><a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块</a></strong>缩短信用分配。是「冻结 VLA + 轻量 RL」里数据效率最极致的做法。</p>
       <div class="mcard"><div class="mt"><a href="RL-Token-论文解读.html">RLT（RL Token）</a></div><div class="md">RL token（信息瓶颈表示）+ actor 以参考动作 ã 为条件 + KL 正则 + reference dropout；真机几分钟~几小时，关键阶段提速最高 3×。</div></div>
@@ -244,6 +254,24 @@
     </ul>
   </div>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>给预训练 VLA 做 RL 精调，有哪几大类方法？</b></p><p>按改动从多到少：整模型 RL、噪声/潜空间 RL、残差策略、RL token、从零小模型（对照基线）。 <a class="reading-goto" href="#rq-1">回到原文 ↑</a></p></li>
+        <li><p><b>整模型 RL 的上限和代价？</b></p><p>上限最高，能真正改变行为模式，但计算和样本最贵；RECAP 用离线 RL 绕开在线探索，是实用代表。 <a class="reading-goto" href="#rq-2">回到原文 ↑</a></p></li>
+        <li><p><b>RL token 在残差路线之上多做了什么？</b></p><p>不直接拿 VLA 高维特征，先抽一个紧凑表示再训 actor-critic，并用参考动作和正则把它锚在 VLA 附近。 <a class="reading-goto" href="#rq-3">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>噪声/潜空间 RL 怎样冻结 VLA 还能做 RL？</p><details><summary>看答案</summary><p>在生成过程内部做 RL：要么微调动作专家（πRL），要么学一个选噪声、steer 去噪的小策略（DSRL、GR-RL）。</p></details></li>
+    <li><p>大多数残差方法局限在哪里？</p><details><summary>看答案</summary><p>局限在单步动作，信用分配链更长。</p></details></li>
+    <li><p>思考：有仿真器、要大改行为，选哪类？只有真机、要在几小时内把精度提上去呢？</p><details><summary>看答案</summary><p>前者走整模型或噪声空间（如 πRL），靠密集奖励批量练；后者走残差或 RL token 这类轻量头。</p></details></li>
+  </ol>
+</div>
   <aside class="concept-related" aria-label="相关概念">
     <strong>相关概念</strong>
     <a href="RLinf-RL原理对比.html#concept-ppo">PPO：更新完整策略的一条路线</a>

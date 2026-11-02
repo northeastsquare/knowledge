@@ -80,6 +80,16 @@
   <p class="sub">它不是一个新世界，只是"在 0 到 1 之间抽数"时，能拧形状的一个旋钮。</p>
   <div class="dont"><span>不用背 Γ 函数</span><span>不用先会积分</span><span>只认两个数：α、β</span><span>5 个小实验自己玩</span></div>
 </div>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>纵轴的“概率密度”为什么可以大于 1？概率究竟藏在哪里？ <a class="reading-goto" href="#concept-probability-density">读这一节 ↓</a></li>
+    <li>投手投了 h 个好球、k 个坏球，他真实好球率的“可信程度”画成什么曲线？ <a class="reading-goto" href="#concept-beta-distribution">读这一节 ↓</a></li>
+    <li>π0 训练时为什么用 Beta(1.5, 1) 抽噪声程度？计算机又是怎么抽出来的？ <a class="reading-goto" href="#concept-noise-schedule">读这一节 ↓</a></li>
+  </ol>
+</div>
+
 
 <div class="card">
   <h2 id="concept-probability-density" class="concept-anchor"><span class="no">0</span>先搞懂：分布、横轴、纵轴</h2>
@@ -325,6 +335,25 @@
   <div class="tip">自测标准：Q1、Q4、Q5、Q8 都能不看答案答对，就抓住了 Beta 的核心：α、β 当旋钮，α+β 管宽窄，会把 CDF 反过来抽样。</div>
 </div>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>纵轴的“概率密度”为什么可以大于 1？概率究竟藏在哪里？</b></p><p>概率是曲线下的面积，密度只是高度；总面积等于 1 就行。例如 Beta(1.5, 1) 在 x=1 处高 1.5，但总面积仍是 1。单个点的概率是 0。 <a class="reading-goto" href="#concept-probability-density">回到原文 ↑</a></p></li>
+        <li><p><b>投手投了 h 个好球、k 个坏球，他真实好球率的“可信程度”画成什么曲线？</b></p><p>Beta(h+1, k+1)。比例不变、数据变多时，曲线中心不动但越来越瘦，表示越来越确定。 <a class="reading-goto" href="#concept-beta-distribution">回到原文 ↑</a></p></li>
+        <li><p><b>π0 训练时为什么用 Beta(1.5, 1) 抽噪声程度？计算机又是怎么抽出来的？</b></p><p>它单调上升、偏向 t=1（openpi 里 t=1 是纯噪声），让更难的高噪声段多练；它的 CDF 是 x^1.5，可以直接逆变换：抽均匀数 u，令 x=u^(2/3)。 <a class="reading-goto" href="#concept-noise-schedule">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>Beta(2,2)、Beta(20,20)、Beta(200,200) 均值都是 0.5，哪一个“最自信”？它们的标准差大约是多少？</p><details><summary>看答案</summary><p>Beta(200,200) 最瘦、最自信。标准差约为 0.22、0.08、0.025：数据量每乘 10，宽度大约缩小 √10 倍。</p></details></li>
+    <li><p>抽 3 个 0~1 的均匀随机数只留最大的那个，它服从什么分布？最大值不超过 0.5 的概率是多少？</p><details><summary>看答案</summary><p>服从 Beta(3, 1)。三个数都 ≤ 0.5 的概率是 0.5³ = 0.125。</p></details></li>
+    <li><p>对 π0 的 Beta(1.5, 1)，算一下“偏噪声”（t ≥ 0.5）的概率。</p><details><summary>看答案</summary><p>F(0.5)=0.5^1.5≈0.354，所以 P(t≥0.5)=1−0.354≈0.646，正是实验 0 里黄色面积的读数。</p></details></li>
+    <li><p>思考：训练时随机抽 t，推理时却按固定步长均匀走，为什么不两边都随机？</p><details><summary>看答案</summary><p>训练要让每个 batch 覆盖各种噪声程度、不记住固定顺序；推理是从纯噪声一步步积分到干净动作，必须按顺序走完整条路径，随机跳只会让积分出错。</p></details></li>
+  </ol>
+</div>
 <aside class="concept-related" aria-label="相关概念">
   <strong>接着理解：从概率分布到动作生成</strong>
   <a class="concept-link" href="概率分布博物馆.html#concept-beta-distribution">Beta 与其他分布的关系</a>

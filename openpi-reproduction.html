@@ -370,6 +370,16 @@
     </div>
   </div>
 </header>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>openpi 里真正能“开箱跑”的有哪些？ <a class="reading-goto" href="#rq-1">读这一节 ↓</a></li>
+    <li>每个改进项的隔离实验，关键要定清哪两件事？ <a class="reading-goto" href="#rq-2">读这一节 ↓</a></li>
+    <li>为什么不要在 openpi 上开 10 个分支？ <a class="reading-goto" href="#rq-3">读这一节 ↓</a></li>
+  </ol>
+</div>
+
 
 <div class="shell">
 <div class="layout">
@@ -391,7 +401,7 @@
     <section id="sec-0">
       <div class="sec-head">
         <span class="sec-num">00</span>
-        <h2 class="sec-title">先给结论</h2>
+        <h2 id="rq-1" class="sec-title">先给结论</h2>
       </div>
 
       <ol>
@@ -451,7 +461,7 @@
     <section id="sec-2">
       <div class="sec-head">
         <span class="sec-num">02</span>
-        <h2 class="sec-title">10 个改进项的隔离实验设计</h2>
+        <h2 id="rq-2" class="sec-title">10 个改进项的隔离实验设计</h2>
       </div>
 
       <p>这张表是整个工作的核心。关键是每个改进对应的<strong>唯一被改动的变量</strong>，和<strong>能看到收益的前提条件</strong>。</p>
@@ -746,7 +756,7 @@
       <h3>Phase 0（约 1 周）</h3>
       <p><span class="flag">先打通</span>跑通 <code>pi05_libero</code> 官方 docker 闭环，复现出接近 94 / 97 的数字。这一步卡住的人非常多（norm stats、XLA 显存、docker 内 CUDA），先付这个成本。</p>
 
-      <h3>关键工程决策</h3>
+      <h3 id="rq-3">关键工程决策</h3>
       <p><strong>不要在 openpi 上开 10 个分支，做一个 fork + 特征开关。</strong> 否则每个消融项的差异里都混着数据管线、归一化、评测脚本的漂移，你的「增量」就不可归因了。</p>
 
 <pre><span class="k">vla-ablation/</span>
@@ -858,6 +868,23 @@
 </div>
 </div>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>openpi 里真正能“开箱跑”的有哪些？</b></p><p>3 个模型：π0、π0-FAST、π0.5。KI 训练配方、π0.5 的异构共训等并不是同一类东西，很多只能评测或完全未开放。 <a class="reading-goto" href="#rq-1">回到原文 ↑</a></p></li>
+        <li><p><b>每个改进项的隔离实验，关键要定清哪两件事？</b></p><p>唯一被改动的变量，以及能看到收益的前提条件。 <a class="reading-goto" href="#rq-2">回到原文 ↑</a></p></li>
+        <li><p><b>为什么不要在 openpi 上开 10 个分支？</b></p><p>每个分支的差异里会混进数据管线、归一化、评测脚本的漂移，增量就不可归因。应该做一个 fork 加特征开关。 <a class="reading-goto" href="#rq-3">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>Phase 0 的目标是什么？</p><details><summary>看答案</summary><p>先跑通 pi05_libero 官方 docker 闭环，复现出接近 94 / 97 的数字；norm stats、XLA 显存、docker 是常见卡点。</p></details></li>
+    <li><p>思考：如果基准成功率已经接近天花板，再做消融会出现什么错误结论？</p><details><summary>看答案</summary><p>改进项的收益被天花板压平，看起来“没用”；所以需要一套不被天花板效应污染的评测协议，否则全部数字都不可信。</p></details></li>
+  </ol>
+</div>
 <footer class="shell">
   <span>OpenPI 复现笔记 · π0 / π0-FAST / π0.5 · 改进项归因与仿真选型</span>
   <span>2026-10-28</span>

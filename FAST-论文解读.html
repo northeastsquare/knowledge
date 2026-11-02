@@ -203,6 +203,16 @@
       <a href="#s-one">一句话</a><a href="#s-problem">问题</a><a href="#s-demo">动手看</a><a href="#concept-fast">算法五步</a><a href="#concept-fast-plus">FAST+</a><a href="#concept-pi0-fast">π0-FAST</a><a href="#s-code">读代码</a><a href="#s-results">结果</a><a href="#s-insight">深层理解</a><a href="#s-cost">代价</a><a href="#s-next">被谁接手</a><a href="#s-quiz">自测</a>
     </nav>
   </section>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>每步每维一个分箱 token，为什么在高频控制数据上“学不动”？ <a class="reading-goto" href="#rq-1">读这一节 ↓</a></li>
+    <li>FAST 怎么把一段动作压成少量 token？ <a class="reading-goto" href="#rq-2">读这一节 ↓</a></li>
+    <li>π0-FAST 和 π0 的结构差在哪？ <a class="reading-goto" href="#rq-3">读这一节 ↓</a></li>
+  </ol>
+</div>
+
 
   <section id="s-one">
     <h2>先建立坐标：三种“动作怎么出”</h2>
@@ -221,7 +231,7 @@
   </section>
 
   <section id="s-problem">
-    <h2>问题：为什么分箱 token 在高频下“学不动”</h2>
+    <h2 id="rq-1">问题：为什么分箱 token 在高频下“学不动”</h2>
     <p>分箱的做法是：对<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块</a> <code>a<sub>1:H</sub></code>（H 步 × D 维）的<b>每一步、每一维</b>独立离散成 256 个 bin 之一，得到 <code>H×D</code> 个 token：<code>[T<sub>1,1</sub>…T<sub>1,D</sub>, …, T<sub>H,1</sub>…T<sub>H,D</sub>]</code>。</p>
     <ol>
       <li><strong>玩具实验</strong>：让小 Transformer 根据 4 个点预测一条三次样条。曲线本身不变，只改采样率（每条 25 → 800 个点）。分箱 token 在低采样率下预测很准；采样率越高误差越大，最后模型干脆<b>一直复制第一个动作</b>。</li>
@@ -254,7 +264,7 @@
   </section>
 
   <section id="concept-fast" class="concept-anchor">
-    <h2>FAST 算法五步（Frequency-space Action Sequence Tokenization）</h2>
+    <h2 id="rq-2">FAST 算法五步（Frequency-space Action Sequence Tokenization）</h2>
     <div class="flow">
       <div class="st"><b>① 归一化</b><span>每个动作维度的训练集第 1 / 99 分位数映射到 [−1, 1]。用分位数是为了抗离群值，也方便不同机器人共用一个 tokenizer。</span></div>
       <div class="st concept-anchor" id="concept-dct"><b>② 逐维 DCT</b><span>对 H×D 动作块的每一维沿时间轴做离散余弦变换。低频系数描述整体走势，高频系数描述突变。平滑的轨迹只需要少数几个系数。</span></div>
@@ -283,7 +293,7 @@
   </section>
 
   <section id="concept-pi0-fast" class="concept-anchor">
-    <h2>π0-FAST：模型怎么搭、怎么训、怎么推</h2>
+    <h2 id="rq-3">π0-FAST：模型怎么搭、怎么训、怎么推</h2>
     <ol>
       <li><strong>结构</strong>：π0 的 PaliGemma（Gemma 2B + SigLIP）主干，<b>去掉动作专家</b>。动作也变成词表里的 token，与文字共用同一个输出头。</li>
       <li><strong>输入序列</strong>：<code>[图像 token] Task: 指令, State: 256-bin 离散状态;\n</code> 作为前缀，<code>Action: [FAST token…] |</code> 作为后缀。前缀内部双向注意力，后缀因果注意力。</li>
@@ -379,6 +389,25 @@
     <details class="qz"><summary>FAST 让训练快 5 倍，为什么 π0.5 推理时又换回 flow？</summary><p>FAST 推理要用 2B 主干逐 token 解码（约 750ms/块），flow 动作专家 10 步积分约 100ms。π0.5 用 FAST 训练拿收敛速度和语言能力，用 flow 推理拿速度。</p></details>
   </section>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>每步每维一个分箱 token，为什么在高频控制数据上“学不动”？</b></p><p>采样越密，相邻 token 越像，“下一个 token 约等于上一个”成了最省事的答案；每个 token 带的新信息很少，交叉熵学不到真正的动作结构。 <a class="reading-goto" href="#rq-1">回到原文 ↑</a></p></li>
+        <li><p><b>FAST 怎么把一段动作压成少量 token？</b></p><p>归一化 → 每一维做 DCT → 乘缩放系数 γ 后取整 → 按“低频优先”展平 → 用 BPE 合并成离散 token。解码是完全逆过程。 <a class="reading-goto" href="#rq-2">回到原文 ↑</a></p></li>
+        <li><p><b>π0-FAST 和 π0 的结构差在哪？</b></p><p>π0-FAST 去掉了动作专家，直接用 PaliGemma 主干自回归吐 FAST token，训练用交叉熵；π0 用独立动作专家做 flow matching。 <a class="reading-goto" href="#rq-3">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>1 秒、50Hz、14 维的双臂动作：分箱要多少 token？FAST 大约多少？</p><details><summary>看答案</summary><p>分箱 50×14=700 个；FAST 约 53 个。</p></details></li>
+    <li><p>为什么展平时要“低频优先”，而不是先把一维的所有频率写完？</p><details><summary>看答案</summary><p>按维度展平时，前面的 token 只描述一个维度；低频优先让最先生成的 token 就确定所有维度的整体轮廓，后面再补细节，自回归更好学。</p></details></li>
+    <li><p>去掉 BPE 会怎样？</p><details><summary>看答案</summary><p>仍比分箱好，但量化后有大量 0 token，会稀释学习信号，序列也更长、解码更慢。</p></details></li>
+    <li><p>思考：π0-FAST 训练快、语言跟随强，但推理慢。慢在哪里？</p><details><summary>看答案</summary><p>动作要逐 token 自回归解码，每个 token 都要过一遍主干；π0 的动作专家一次出整段，只需约 10 步积分。</p></details></li>
+  </ol>
+</div>
   <aside class="concept-related" aria-label="相关概念">
     <strong>相关概念</strong>
     <a class="concept-link" href="concepts.html#fast">FAST 概念卡</a>

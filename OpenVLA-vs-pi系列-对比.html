@@ -180,9 +180,19 @@
       <div class="m"><span class="k">主题</span><span class="v">动作表示 · 骨干与架构</span></div>
     </div>
   </section>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>OpenVLA 和 π0 最核心的分歧是什么？ <a class="reading-goto" href="#rq-1">读这一节 ↓</a></li>
+    <li>为什么说动作头是分水岭？ <a class="reading-goto" href="#rq-2">读这一节 ↓</a></li>
+    <li>今天两条路线还是“谁离散、谁连续”吗？ <a class="reading-goto" href="#rq-3">读这一节 ↓</a></li>
+  </ol>
+</div>
+
 
   <section>
-    <h2>一句话区别</h2>
+    <h2 id="rq-1">一句话区别</h2>
     <div class="vs">
       <div class="card"><h3 class="tag-a concept-anchor" id="concept-action-binning">OpenVLA：把动作当文字</h3><p>沿用 RT-2 路线。每个动作维度切成 256 个 bin，借用词表里的 token，由 Llama 2 <strong>自回归</strong>地一个一个输出，一次只输出一步动作。</p></div>
       <div class="card"><h3 class="tag-b">π0：VLM 负责理解，动作专家负责生成</h3><p>VLM 之外另接一个约 300M 的"<a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a>"，用 <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">flow matching</a> 从噪声中生成<strong>连续</strong>动作，一次输出一段 <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">action chunk</a>（50 步）。</p></div>
@@ -207,7 +217,7 @@
   </section>
 
   <section>
-    <h2>为什么动作头是分水岭</h2>
+    <h2 id="rq-2">为什么动作头是分水岭</h2>
     <ul>
       <li><strong>精度</strong>：每维 256 个 bin 是粗量化，细腻的连续控制会损失精度；flow 直接在连续空间建模，还能表达多峰分布（同一场景下有多种合理做法）。</li>
       <li><strong>速度</strong>：自回归每输出一个维度就要前向一次，7 维动作就要解码 7 个 token；动作块配合并行生成，一次推理就能覆盖未来多步。</li>
@@ -217,7 +227,7 @@
   </section>
 
   <section>
-    <h2>后来两条路线互相借鉴</h2>
+    <h2 id="rq-3">后来两条路线互相借鉴</h2>
     <div class="vs">
       <div class="card"><h3 class="tag-a concept-anchor" id="concept-openvla-oft">OpenVLA → OpenVLA-OFT（2025.02）</h3><p>放弃逐 token 解码，改为<strong>并行解码 + 动作块 + 连续动作 L1 回归</strong>，速度和成功率都大幅提升，实际已向 π0 的"一次输出一段连续动作"靠拢。<a href="https://arxiv.org/abs/2502.19645" target="_blank" rel="noreferrer">arXiv 2502.19645</a></p></div>
       <div class="card"><h3 class="tag-b">π0 → π0-FAST / π0.5 / π*0.6 / π0.7</h3><p>反过来引入离散 token：<a class="concept-link" href="FAST-论文解读.html#concept-pi0-fast">π0-FAST</a> 用 <a class="concept-link" href="FAST-论文解读.html#concept-dct">DCT</a> + <a class="concept-link" href="FAST-论文解读.html#concept-bpe">BPE</a> 压缩动作 token（<a href="FAST-论文解读.html">精读</a>）；<a class="concept-link" href="pi0.5_论文测验_精美版.html#concept-fast">π0.5</a> 训练时用离散 token、推理时用 flow；<a class="concept-link" href="pi0.6-论文解读.html#concept-recap">π*0.6</a> 加入 RL（RECAP）；<a class="concept-link" href="pi0.7_问答学习卡.html#concept-prompt-conditioning">π0.7</a> 让模型可以通过提示调节行为。</p></div>
@@ -259,6 +269,24 @@
     </ul>
   </section>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>OpenVLA 和 π0 最核心的分歧是什么？</b></p><p>动作怎么生成：OpenVLA 把动作当文字，每维 256 个 bin 自回归出 token；π0 让 VLM 负责理解，另接约 300M 的动作专家用 flow matching 生成连续动作块。 <a class="reading-goto" href="#rq-1">回到原文 ↑</a></p></li>
+        <li><p><b>为什么说动作头是分水岭？</b></p><p>精度上，256 个 bin 是粗量化；速度上，自回归每一维都要前向一次，而 flow 一次出整段动作块。 <a class="reading-goto" href="#rq-2">回到原文 ↑</a></p></li>
+        <li><p><b>今天两条路线还是“谁离散、谁连续”吗？</b></p><p>不是了。OpenVLA-OFT 改成并行解码 + 动作块 + 连续 L1 回归；π 系列反过来用 FAST 离散 token。分界变成：训练时用离散 token 保住语义，推理时用连续动作保证精度和速度。 <a class="reading-goto" href="#rq-3">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>（本页自测题）OpenVLA 输出一个 7 维动作要解码几个 token？π0 一次推理输出多少步？</p><details><summary>看答案</summary><p>OpenVLA 要 7 个 token（每维一个）；π0 一次输出一个 50 步的动作块。</p></details></li>
+    <li><p>（本页自测题）为什么说 π0 的动作专家会“伤害”VLM 的语言知识？π0.5 怎么补救？</p><details><summary>看答案</summary><p>随机初始化的专家梯度回传进骨干，冲淡预训练知识；π0.5 训练时让骨干预测 FAST 离散 token，并配合知识隔离（stop-gradient）和网页数据联训。</p></details></li>
+    <li><p>思考：只有一张消费级显卡，想读懂 VLA 的最小形态并改代码，先上手哪个？</p><details><summary>看答案</summary><p>先读 OpenVLA：结构是标准 PyTorch + HuggingFace 的 VLM 加分箱 tokenizer，单卡就能做 LoRA 微调；做灵巧、高频、双臂任务再用 openpi。</p></details></li>
+  </ol>
+</div>
     <aside class="concept-related" aria-label="相关概念">
     <strong>相关概念</strong>
     <a class="concept-link" href="FAST-论文解读.html#concept-fast">分箱之后：FAST 动作压缩</a>

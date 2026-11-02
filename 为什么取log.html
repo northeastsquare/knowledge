@@ -207,6 +207,16 @@
      是因为不取 log，这个公式<strong>根本算不出来</strong>。</p>
   <div class="hint">↓ 带虚线的符号，鼠标放上去看它是什么</div>
 </header>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>策略梯度里为什么一定要取 log？ <a class="reading-goto" href="#rq-1">读这一节 ↓</a></li>
+    <li>“把 P 硬塞回去”做了什么？ <a class="reading-goto" href="#concept-log-trick">读这一节 ↓</a></li>
+    <li>RL 和行为克隆是什么关系？ <a class="reading-goto" href="#rq-3">读这一节 ↓</a></li>
+  </ol>
+</div>
+
 
 <section class="act rise">
   <div class="act-no">01</div>
@@ -243,7 +253,7 @@
 <section class="act rise">
   <div class="act-no">02</div>
   <div class="tag">Act II · 死路</div>
-  <h2>硬求导，撞墙</h2>
+  <h2 id="rq-1">硬求导，撞墙</h2>
   <p>R(τ) 里没有 θ，所以导数只落在概率上。看起来毫无压力：</p>
 
   <div class="stage bad dead">
@@ -484,7 +494,7 @@
 <section class="act rise">
   <div class="act-no">06</div>
   <div class="tag">收尾 · 一句话记住</div>
-  <h2>RL 就是"带权重的模仿学习"</h2>
+  <h2 id="rq-3">RL 就是"带权重的模仿学习"</h2>
   <p>把这个梯度和你熟悉的<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-behavior-cloning">行为克隆</a>放在一起看，两件事会突然变成同一件事：</p>
 
   <div class="final">
@@ -513,6 +523,24 @@
   </div>
 </section>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>策略梯度里为什么一定要取 log？</b></p><p>不是为了好看或数值稳定，而是不取 log 公式根本算不出来：∇P 不是一个对 P 的期望，没法用采样来估计。 <a class="reading-goto" href="#rq-1">回到原文 ↑</a></p></li>
+        <li><p><b>“把 P 硬塞回去”做了什么？</b></p><p>乘一个 P 再除一个 P：∇P = P·∇log P，梯度变成“按 P 采样、再求 ∇log P 的平均”，跑几条轨迹就能估计。 <a class="reading-goto" href="#concept-log-trick">回到原文 ↑</a></p></li>
+        <li><p><b>RL 和行为克隆是什么关系？</b></p><p>RL 是带权重的模仿学习：行为克隆提高示范动作的 log π，RL 用回报（或优势）给自己采到的动作的 log π 加权。 <a class="reading-goto" href="#rq-3">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>log 是怎么“顺手干掉物理学”的？</p><details><summary>看答案</summary><p>轨迹概率是初始状态、各步策略和环境转移的连乘；取 log 变成求和，环境转移项不含 θ，求导后为 0，所以不需要知道环境动力学。</p></details></li>
+    <li><p>∇log π = ∇π / π 里那个 1/π 解决了什么偏心问题？</p><details><summary>看答案</summary><p>高概率动作被采到的次数多，不除以 π 会被反复推高；除以 π 后，稀有动作偶尔被采到时得到更大的补偿，期望上才公平。</p></details></li>
+    <li><p>思考：如果所有轨迹的回报都是正数，直接用 R 当权重会怎样？</p><details><summary>看答案</summary><p>所有被采到的动作概率都被推高，只是推多推少，梯度方差很大；需要减去基线，这正是“优势”的来历（见两条主干页）。</p></details></li>
+  </ol>
+</div>
 <aside class="concept-related" aria-label="相关概念">
   <strong>相关概念</strong>
   <a href="两条主干-拆机手册.html#concept-advantage">优势与 baseline</a>

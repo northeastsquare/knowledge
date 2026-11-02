@@ -153,6 +153,16 @@
   <p class="meta">Real-Time Execution of Action Chunking Flow Policies · Kevin Black, Manuel Y. Galliker, Sergey Levine</p>
   <div class="one"><b>一句话：</b>模型算动作要时间，机器人却不能停。RTC 让下一段动作块在生成时，把“已经注定会发生”的前几步当成已知条件，像补全一张图那样把剩下的部分接上去。它只改推理过程，不用重新训练，任何<a class="concept-link" href="DiffusionPolicy-论文解读.html#concept-diffusion-policy">扩散</a>或 flow 策略都能套。</div>
 </header>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>机器人为什么会“卡”？ <a class="reading-goto" href="#rq-1">读这一节 ↓</a></li>
+    <li>RTC 的核心想法是什么？ <a class="reading-goto" href="#rq-2">读这一节 ↓</a></li>
+    <li>RTC 改了模型权重吗？ <a class="reading-goto" href="#rq-3">读这一节 ↓</a></li>
+  </ol>
+</div>
+
 
 <!-- ============ 0 地图 ============ -->
 <h2><span class="no">0</span>先看地图</h2>
@@ -189,7 +199,7 @@
 </div>
 
 <!-- ============ 1 为什么卡 ============ -->
-<h2><span class="no">1</span>问题：为什么机器人会“卡”</h2>
+<h2 id="rq-1"><span class="no">1</span>问题：为什么机器人会“卡”</h2>
 <p class="sub">先把时间画出来。卡顿不是模型不准，而是“想”和“做”没有排好队。</p>
 
 <h3>一个动作块是什么</h3>
@@ -250,7 +260,7 @@
 </div>
 
 <!-- ============ 2 核心想法 ============ -->
-<h2><span class="no">2</span>核心想法：把衔接当成补全</h2>
+<h2 id="rq-2"><span class="no">2</span>核心想法：把衔接当成补全</h2>
 <p class="sub">这是全文最值得记住的一句话。</p>
 
 <div class="analogy">
@@ -292,7 +302,7 @@
 <p>关键在于：前缀并不是简单“复制”进去。论文用的是<b>引导（guidance）</b>：在生成过程中不断检查当前的预测是否偏离前缀，偏了就往回拉。所以前缀是软硬兼施的约束，而不是硬拼接。</p>
 
 <!-- ============ 3 怎么做 ============ -->
-<h2><span class="no">3</span>怎么做：去噪的每一步都要加一次“拉回”</h2>
+<h2 id="rq-3"><span class="no">3</span>怎么做：去噪的每一步都要加一次“拉回”</h2>
 <p class="sub">RTC 不改模型的权重，改的是 flow 的采样过程。下面是一个去噪步的完整流程。</p>
 
 <div class="diagram">
@@ -609,6 +619,25 @@
   <a href="pi0-论文解读.html">π0 精读<small>RTC 最初运行的模型家族</small></a>
 </div>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>机器人为什么会“卡”？</b></p><p>不是模型不准，而是“想”和“做”没排好队：同步执行要停下等推理；朴素异步时新块从纯噪声生成，不知道机器人此刻在哪，接缝处会跳。 <a class="reading-goto" href="#rq-1">回到原文 ↑</a></p></li>
+        <li><p><b>RTC 的核心想法是什么？</b></p><p>把块间衔接当成图像补全：新块的前 d 步是已执行、不可改的动作，相当于已知像素，其余部分去噪生成并与前缀连贯。 <a class="reading-goto" href="#rq-2">回到原文 ↑</a></p></li>
+        <li><p><b>RTC 改了模型权重吗？</b></p><p>没有，只改 flow 的采样过程：每个去噪步都估计干净终点，算与已知动作的加权误差，再把修正“拉回”当前状态。 <a class="reading-goto" href="#rq-3">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>异步执行能成立的可行性条件是什么？</p><details><summary>看答案</summary><p>d ≤ H − s：推理延迟不能超过“预测长度减执行长度”。块越长、每次执行越短，能容忍的延迟越大。</p></details></li>
+    <li><p>为什么引导权重用软掩码，而不是只约束前 d 步？</p><details><summary>看答案</summary><p>只约束前 d 步引导太弱，后面的部分仍可能“换一个策略”；让所有与旧块重叠的位置都参与、权重递减，衔接更稳。</p></details></li>
+    <li><p>为什么要把引导系数裁剪在 β（实验中为 5）？</p><details><summary>看答案</summary><p>去噪最开始时引导系数趋于无穷大，数值不稳定；裁剪只影响最早几步。</p></details></li>
+    <li><p>思考：RTC 和 temporal ensembling（TE）的根本区别？</p><details><summary>看答案</summary><p>TE 事后把几个预测平均，是时间上的平滑；RTC 事前约束新预测与已知动作一致，所以延迟变大时仍能稳定。</p></details></li>
+  </ol>
+</div>
   <aside class="concept-related" aria-label="相关概念">
     <strong>相关概念</strong>
     <a class="concept-link" href="RTC-训练时-论文解读.html#concept-trtc">训练时 RTC：把补全学进模型</a>

@@ -176,10 +176,20 @@
       <div class="m"><span class="k">主题</span><span class="v">VLA · 强化学习 · 经验学习</span></div>
     </div>
   </section>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>纯模仿学习训练的 VLA 有哪两个天花板？ <a class="reading-goto" href="#rq-1">读这一节 ↓</a></li>
+    <li>RECAP 是什么？ <a class="reading-goto" href="#rq-2">读这一节 ↓</a></li>
+    <li>优势是怎么喂给 VLA 的？ <a class="reading-goto" href="#rq-3">读这一节 ↓</a></li>
+  </ol>
+</div>
+
 
   <!-- 以下每节：替换占位内容为真实内容，可加 ul/ol/table/blockquote/mermaid 图；保留 h2 标题与整体结构不变 -->
   <section>
-    <h2>它解决的问题</h2>
+    <h2 id="rq-1">它解决的问题</h2>
     <p>纯<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-behavior-cloning">模仿学习</a>训练的 VLA 存在两个天花板：一是<span class="hl">复合误差</span>（compounding errors），策略一跑偏就越滚越远；二是<span class="hl">性能上限被示范数据锁死</span>——最多只能做到和人类遥操作示范一样好，没法更快、更稳、更适应新环境。</p>
     <p>自然的答案是"让机器人像人一样<strong>练出来</strong>"——用强化学习（RL）在真实部署中自己收集经验、纠正自己的错误。但把 RL 套到大型 VLA 上，难点集中成三件事：</p>
     <ul>
@@ -191,7 +201,7 @@
   </section>
 
   <section>
-    <h2>方法主线</h2>
+    <h2 id="rq-2">方法主线</h2>
     <p id="concept-recap" class="concept-anchor">RECAP = <strong>R</strong>L with <strong>E</strong>xperience and <strong>C</strong>orrections via <strong>A</strong>dvantage-conditioned <strong>P</strong>olicies（通过优势条件化策略，用经验与纠错做 RL）。这里的<a class="concept-link" href="两条主干-拆机手册.html#concept-advantage">优势</a>衡量动作相对参考行为好多少；RECAP 将它作为策略的输入条件，不等同于 PPO 的策略梯度更新。整条流水线只有三个子程序，反复循环即可： <a class="code-jump" href="代码索引.html#recap" style="font:12px ui-monospace,Consolas,monospace;white-space:nowrap;text-decoration:none;border:1px dashed currentColor;border-radius:4px;padding:0 5px;margin-left:4px;opacity:.8">⟨/⟩ 代码</a></p>
     <ol>
       <li><strong>预训练一个"带优势条件化"的通用 VLA（π0.6）</strong>：在数万小时、多任务多机器人的离线数据集上，先训一个分布式价值函数，再训一个以"二值优势指示 <code>I_t</code>"为输入的策略，用离线 RL 的方式把 RL 能力烙进底座模型；</li>
@@ -290,7 +300,7 @@
   </section>
 
   <section>
-    <h2>可复用设计</h2>
+    <h2 id="rq-3">可复用设计</h2>
     <ul>
       <li><strong>二值优势指示作为文本前缀</strong>：<code>"Advantage: positive/negative"</code> 直接接入 VLA 输入，只影响动作对数似然，不动语言与子任务部分；</li>
       <li><strong>优势条件化的闭式改进</strong>：<code>π̂(a|o) ∝ π_ref(a|o) · π_ref(a|I,o)/π_ref(a|o)</code>，配合 30% dropout 即可在推理时用 CFG（γ&gt;1）进一步锐化，无需额外训练；</li>
@@ -322,6 +332,25 @@
     </ul>
   </section>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>纯模仿学习训练的 VLA 有哪两个天花板？</b></p><p>复合误差（一跑偏就越滚越远），以及性能上限被示范数据锁死。 <a class="reading-goto" href="#rq-1">回到原文 ↑</a></p></li>
+        <li><p><b>RECAP 是什么？</b></p><p>RL with Experience and Corrections via Advantage-conditioned Policies：用自主经验和专家纠正，通过“以优势为条件”的策略做强化学习。 <a class="reading-goto" href="#rq-2">回到原文 ↑</a></p></li>
+        <li><p><b>优势是怎么喂给 VLA 的？</b></p><p>二值化成一句文本前缀 “Advantage: positive/negative”，只影响动作的对数似然；推理时固定为 positive。 <a class="reading-goto" href="#rq-3">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>π0.6 相对 π0.5 的架构改动有哪些？</p><details><summary>看答案</summary><p>VLM 换成 Gemma 3 4B，动作专家增大到 860M，预训练加入多个机器人平台，沿用知识隔离。</p></details></li>
+    <li><p>优势阈值在预训练和微调时分别怎么取？</p><details><summary>看答案</summary><p>预训练取每个任务价值 30% 分位；微调时让每轮约 40% 的 rollout 优势为正。</p></details></li>
+    <li><p>叠 T 恤任务为什么把阈值收紧到只留 10% 正优势？</p><details><summary>看答案</summary><p>示范本身质量高但慢，只有最好的 10% 被标为 positive，才能推动策略做得更快。</p></details></li>
+    <li><p>思考：为什么说优势条件化是“最省力”的把 RL 塞进生成式 VLA 的办法？</p><details><summary>看答案</summary><p>不用碰流匹配策略算不出对数似然的难题，训练仍是监督学习，只是多了一个条件前缀。</p></details></li>
+  </ol>
+</div>
   <aside class="concept-related" aria-label="相关概念">
     <strong>相关概念</strong>
     <a class="concept-link" href="pi0.7_问答学习卡.html#concept-prompt-conditioning">从优势条件到多样化 prompt</a>

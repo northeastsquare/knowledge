@@ -179,9 +179,19 @@
       <div class="m"><span class="k">主题</span><span class="v">VLA · Flow Matching</span></div>
     </div>
   </section>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>机器人学习走向“通用”有哪三道坎？ <a class="reading-goto" href="#rq-1">读这一节 ↓</a></li>
+    <li>训练时预测方向 u = A − ε，不也相当于直接预测终点吗？ <a class="reading-goto" href="#rq-2">读这一节 ↓</a></li>
+    <li>为什么说“底座 + 动作头”是 VLA 的正解？ <a class="reading-goto" href="#rq-3">读这一节 ↓</a></li>
+  </ol>
+</div>
+
 
   <section>
-    <h2>它解决的问题</h2>
+    <h2 id="rq-1">它解决的问题</h2>
     <p>机器人学习要走向"通用"，横着三道坎：<strong>数据稀缺、泛化差、鲁棒性不足</strong>。想靠每个任务单独采数据、单独训小模型，永远追不上通用智能。π0 的思路是把大模型预训练的逻辑搬进机器人：先在<b>海量、多样的<a class="concept-link" href="Qwen-VLA-论文解读.html#concept-cross-embodiment">跨本体数据</a></b>上预训练一个"机器人基础模型"，再用高质量数据微调出想要的技能。</p>
     <p>但直接照搬这条路会撞上两个技术硬伤：</p>
     <ul>
@@ -390,7 +400,7 @@
     <p><strong>为什么还要 10 步而不是一步 <code>ε + v₀</code></strong>：路径若严格是直线，一步就够。但网络学到的是各位置的"平均方向"，同一观测下有多个合理动作，路径中途会有弯曲，所以要边走边重新看当前位置、修正方向。步数越多越准越慢，10 步是精度与延迟的折中。想彻底去掉积分，要么让路径更直，要么像 <a class="concept-link" href="DiffusionPolicy-论文解读.html#concept-consistency">consistency</a> 那样让网络直接学终点（代价是训练更难）。</p>
 
     <div class="card" style="background:var(--surface-2);border-left:3px solid var(--signal);">
-      <h3 style="margin:0 0 10px;color:var(--signal);">🤔 训练时预测方向 u = A - ε，不也相当于预测终点吗？</h3>
+      <h3 id="rq-2" style="margin:0 0 10px;color:var(--signal);">🤔 训练时预测方向 u = A - ε，不也相当于预测终点吗？</h3>
       <p style="margin:0 0 8px;"><b>看起来像，但本质不同。</b>训练目标 <code>u = A - ε</code> 确实包含终点 A 的信息，但网络学到的函数是 <code>v_θ(A^τ, τ, 观测)</code>，输入包含<b>当前位置</b>和<b>时间步</b>。</p>
 
       <p style="margin:12px 0 6px;"><b>如果路径完美是直线</b>：</p>
@@ -614,7 +624,7 @@
   </section>
 
   <section>
-    <h2>我真正学到的内容</h2>
+    <h2 id="rq-3">我真正学到的内容</h2>
     <ul>
       <li><strong>"底座 + 动作头"是 VLA 的正解</strong>：VLM 负责理解与语义，动作专家负责高精度连续输出，两者靠 self-attention 交互；动作头可以独立瘦身（宽度 / MLP 减半），兼顾表达与实时性。</li>
       <li><strong>离散化动作 token 是自回归 VLA 的硬伤</strong>：对连续、高频、灵巧动作，扩散 / 流匹配 + 动作块是更对口的表示；这也解释了 OpenVLA 为什么在这些任务上打不过 π0。</li>
@@ -655,6 +665,25 @@
     </ul>
   </section>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>机器人学习走向“通用”有哪三道坎？</b></p><p>数据稀缺、泛化差、鲁棒性不足。π0 的思路是把大模型“预训练 + 后训练”的逻辑搬到机器人上。 <a class="reading-goto" href="#rq-1">回到原文 ↑</a></p></li>
+        <li><p><b>训练时预测方向 u = A − ε，不也相当于直接预测终点吗？</b></p><p>不一样。网络学到的是 v_θ(A^τ, τ, 观测)，输入包含当前位置和时间步，是一个速度场；推理时沿这个场积分，每一步都在根据当前位置修正方向。 <a class="reading-goto" href="#rq-2">回到原文 ↑</a></p></li>
+        <li><p><b>为什么说“底座 + 动作头”是 VLA 的正解？</b></p><p>VLM 负责理解与语义，动作专家负责高精度连续输出，两者靠 self-attention 交互；动作头权重独立，可以单独瘦身加速。 <a class="reading-goto" href="#rq-3">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>π0 预训练用了多少数据？</p><details><summary>看答案</summary><p>约 1 万小时跨本体数据；自有灵巧操作数据覆盖 7 种机器人配置、68 个任务，共 903M timesteps。</p></details></li>
+    <li><p>动作专家用独立权重（2-expert MoE）有什么好处？</p><details><summary>看答案</summary><p>给预训练 VLM 接新模态时只加一小套权重、靠 attention 交互，不污染原主干，还能各自调宽度。</p></details></li>
+    <li><p>这篇论文的结果有什么“偏软”的地方？</p><details><summary>看答案</summary><p>主要用 rubric 平均进度分，缺少闭环成功率、失败恢复率这类更硬、可跨论文对比的指标。</p></details></li>
+    <li><p>思考：推理时速度场把噪声“拉回”训练分布，为什么动作仍可能失败？</p><details><summary>看答案</summary><p>落在训练分布里只说明动作“像示范”，不保证适合此刻的场景；观测理解错、分布本身覆盖不到、多步执行误差累积，都会导致失败。</p></details></li>
+  </ol>
+</div>
   <aside class="concept-related" aria-label="相关概念">
     <strong>相关概念</strong>
     <a class="concept-link" href="FAST-论文解读.html#concept-fast">FAST：离散动作表示</a>

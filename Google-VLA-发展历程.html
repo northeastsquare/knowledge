@@ -190,6 +190,16 @@
       <div class="m"><span class="k">主线</span><span class="v">RL → 语言规划 → RT → VLA → Gemini</span></div>
     </div>
   </section>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>QT-Opt 证明了什么？代价是什么？ <a class="reading-goto" href="#concept-qt-opt">读这一节 ↓</a></li>
+    <li>SayCan 怎么让大语言模型指挥机器人？ <a class="reading-goto" href="#concept-saycan">读这一节 ↓</a></li>
+    <li>RT-2 为什么被认为是第一个 VLA？ <a class="reading-goto" href="#concept-rt-2">读这一节 ↓</a></li>
+  </ol>
+</div>
+
 
   <section>
     <h2>一段话看懂</h2>
@@ -261,6 +271,25 @@
     </ol>
   </section>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>QT-Opt 证明了什么？代价是什么？</b></p><p>证明端到端视觉 RL 能在真机上学会抓取，陌生物体成功率 96%；代价是一个技能要几个月的机器人时间。 <a class="reading-goto" href="#concept-qt-opt">回到原文 ↑</a></p></li>
+        <li><p><b>SayCan 怎么让大语言模型指挥机器人？</b></p><p>PaLM 给每个技能打“有用分”，技能的价值函数给“可行分”，两者相乘选下一步。缺点是 LLM 看不到图像，能力上限取决于技能库。 <a class="reading-goto" href="#concept-saycan">回到原文 ↑</a></p></li>
+        <li><p><b>RT-2 为什么被认为是第一个 VLA？</b></p><p>骨干直接用 VLM，把动作写成文字 token 输出，并和网页数据共同微调——视觉、语言、动作第一次在同一个网络里。 <a class="reading-goto" href="#concept-rt-2">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>RT-1 和 RT-2 的泛化能力分别来自哪里？</p><details><summary>看答案</summary><p>RT-1 没有 VLM 骨干，泛化只来自 13 万条机器人数据；RT-2 继承了网页规模的视觉语言知识，在没见过的物体和指令上泛化约为 RT-1 的 2 倍。</p></details></li>
+    <li><p>RT-2 为什么要用网页数据和机器人数据“共同微调”？</p><details><summary>看答案</summary><p>只用机器人数据微调会让 VLM 忘掉网页知识；混着训才能保住语义理解。</p></details></li>
+    <li><p>Code as Policies 比 SayCan 多了什么？还缺什么？</p><details><summary>看答案</summary><p>LLM 不再从固定技能列表选，而是写带循环、条件和数值计算的程序，表达力大增；但底层控制仍是手写原语。</p></details></li>
+    <li><p>思考：Language to Rewards 走的是另一条“语言→控制”的路，它把分工怎么切？</p><details><summary>看答案</summary><p>语言只负责定义目标（翻译成奖励函数参数），MPC 优化器负责实时算出怎么做。</p></details></li>
+  </ol>
+</div>
   <aside class="concept-related" aria-label="相关概念"><strong>相关概念</strong><a class="concept-link" href="PI-工作全景.html#concept-pi0-overview">动作从 token 走向连续生成：π 系列</a><a class="concept-link" href="KI-知识隔离-论文解读.html#concept-co-training">网页知识怎样进入动作策略</a><a class="concept-link" href="Qwen-VLA-论文解读.html#concept-cross-embodiment">跨机器人数据如何统一</a><a class="concept-link" href="concepts.html">全部概念 →</a></aside>
 
   <footer>

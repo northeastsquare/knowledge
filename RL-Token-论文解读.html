@@ -187,6 +187,16 @@
     </div>
   </div>
 </div>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>直接微调整个 VLA 和抛开 VLA 训小模型，各卡在哪里？ <a class="reading-goto" href="#rq-1">读这一节 ↓</a></li>
+    <li>RL Token 的核心分工是什么？ <a class="reading-goto" href="#rq-2">读这一节 ↓</a></li>
+    <li>RL 是不是每个控制步都在推理？ <a class="reading-goto" href="#rq-3">读这一节 ↓</a></li>
+  </ol>
+</div>
+
 
 <div class="wrap">
 
@@ -217,7 +227,7 @@
       <p>自然的想法是：用强化学习（RL）让机器人在真实任务上自己练，把最难的阶段练好。但现实约束很紧——每跑一集要时间、失败有损耗，通常只有<span class="hl-orange">几小时的训练预算</span>。</p>
     </div>
     <div class="card">
-      <h3>于是陷入两难</h3>
+      <h3 id="rq-1">于是陷入两难</h3>
       <table>
         <tr><th>方案</th><th>优点</th><th>缺点</th></tr>
         <tr><td><strong>直接微调整个 VLA</strong><br><span style="color:var(--faint)"><a class="concept-link" href="pi0.6-论文解读.html#concept-recap">RECAP</a> / <a class="concept-link" href="RLinf-RL原理对比.html#concept-ppo">PPO</a> 类</span></td><td>保留泛化能力</td><td>计算贵、样本效率低，几小时练不出来</td></tr>
@@ -230,7 +240,7 @@
 
   <!-- 2 -->
   <section id="s2">
-    <h2><span class="no">2</span>核心思想：分工</h2>
+    <h2 id="rq-2"><span class="no">2</span>核心思想：分工</h2>
     <p class="lead">别去动那个笨重的 VLA，让它"吐"出一个好用又小的表示 + 一组参考动作，交给轻量网络快速精修。</p>
     <div class="callout">
       <div class="ttl">一句话总结</div>
@@ -376,7 +386,7 @@
 
   <!-- 4.5 -->
   <section id="s-faq">
-    <h2><span class="no">4½</span>运行时到底怎么跑：十个常见疑问</h2>
+    <h2 id="rq-3"><span class="no">4½</span>运行时到底怎么跑：十个常见疑问</h2>
     <p class="lead">先说结论：VLA 每 10 步才推理一次；RL 只负责最难的那一段；"强化学习"指的是在线训练小网络，执行时 actor 只做一次前向。下面每条都标了论文出处页码（arXiv v2 PDF）。Q6–Q8 这三条超出论文范围，回答的是"论文没写的执行时序"，来源是 PI 未开源的实现与 RLinf 的复现代码。Q9–Q10 是落地时的实践问题：离线数据能不能用、单台真机够不够。</p>
 
     <div class="card" id="faq-when">
@@ -681,6 +691,25 @@
     </div>
   </section>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>直接微调整个 VLA 和抛开 VLA 训小模型，各卡在哪里？</b></p><p>微调整个 VLA 梯度贵、要海量交互，几小时训不出来；从零训小模型能快速学会，却丢掉了 VLA 的泛化和常识。 <a class="reading-goto" href="#rq-1">回到原文 ↑</a></p></li>
+        <li><p><b>RL Token 的核心分工是什么？</b></p><p>不动笨重的 VLA，让它吐出一个紧凑的表示（RL token）和一组参考动作，交给轻量 actor-critic 在线快速精修。 <a class="reading-goto" href="#rq-2">回到原文 ↑</a></p></li>
+        <li><p><b>RL 是不是每个控制步都在推理？</b></p><p>不是。VLA 每 10 步才推理一次；C=10 是 RL 动作块长度，一次输出 10 个控制步；RL 只负责插入、紧固这类关键阶段，执行时 actor 只做一次前向。 <a class="reading-goto" href="#rq-3">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>VLA 原生一次预测 H=50 步，RL 为什么只用其中 C=10 步的子块？</p><details><summary>看答案</summary><p>以块为单位把稀疏奖励的“记功距离”缩短约 10 倍，比单步 RL 好学；块又不能太长，否则反应变慢、修正粒度太粗。</p></details></li>
+    <li><p>actor 的输入除了 RL token 还有什么？为什么要再加正则？</p><details><summary>看答案</summary><p>还有 VLA 采样的参考动作块 ã，actor 输出对它的修正；正则把输出拉向参考动作，避免早期乱探索毁掉 VLA 本来的能力。</p></details></li>
+    <li><p>RL token 是怎么训出来的？</p><details><summary>看答案</summary><p>在少量任务演示上做适配：在 VLA 最后一层 token 序列后加一个可学习的 &lt;rl&gt; token，经小 encoder 压成瓶颈向量，再要求它能重建原始特征（重建损失）。之后冻结。</p></details></li>
+    <li><p>思考：replay buffer 里的旧经验为什么能反复用？</p><details><summary>看答案</summary><p>actor-critic 是 off-policy 的：critic 学的是 Q 值，可以用任何策略采到的转移训练，所以旧数据不会因为策略更新而作废，样本效率高。</p></details></li>
+  </ol>
+</div>
   <aside class="concept-related" aria-label="相关概念">
     <strong>相关概念</strong>
     <a href="RLToken-漫画分镜解读.html#concept-target-network">Target 网络与训练目标</a>

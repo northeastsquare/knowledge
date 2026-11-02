@@ -150,7 +150,7 @@
 
   <section class="hero">
     <div class="eyebrow">框架专题 · RLinf</div>
-    <h1>RLinf 里的 RL 方法详细对比</h1>
+    <h1 id="rq-1">RLinf 里的 RL 方法详细对比</h1>
     <p class="sub">RLinf（"inf" = Infrastructure / Infinite）不是一种算法，而是把<strong>十几种 RL 算法塞进同一套接口</strong>的具身 RL 基础设施。这一页按「数据从哪来、要不要 critic、改模型哪部分」把内置的 15 种 RL 算法 + 5 种 SFT/模仿配方摊开对比。</p>
     <div class="stats">
       <div class="stat"><span class="n">15</span><span class="l">RL 算法</span></div>
@@ -159,6 +159,16 @@
       <div class="stat"><span class="n">15+</span><span class="l">仿真器</span></div>
     </div>
   </section>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>RLinf 是一种算法吗？ <a class="reading-goto" href="#rq-1">读这一节 ↓</a></li>
+    <li>on-policy 和 off-policy 两族的根本取舍是什么？ <a class="reading-goto" href="#rq-2">读这一节 ↓</a></li>
+    <li>VLA 一次输出一个动作块，给 RL 带来什么新问题？ <a class="reading-goto" href="#rq-3">读这一节 ↓</a></li>
+  </ol>
+</div>
+
 
   <section class="spectrum">
     <div class="spec-head"><span>严格 on-policy</span><span>← 数据来源 →</span><span>纯离线（不交互）</span></div>
@@ -210,7 +220,7 @@
   </div>
 
   <div class="camp">
-    <div class="camp-head"><span class="bar" style="background:var(--c-resid)"></span><h2>② off-policy 最大熵</h2><span class="cnt">3 个</span></div>
+    <div class="camp-head"><span class="bar" style="background:var(--c-resid)"></span><h2 id="rq-2">② off-policy 最大熵</h2><span class="cnt">3 个</span></div>
     <div class="camp-body">
       <p class="desc">SAC 一脉。样本效率远高于 ①（能反复复用 <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-replay-buffer">replay buffer</a>），代价是<strong><a class="concept-link" href="两条主干-拆机手册.html#concept-overestimation">价值高估</a></strong>要靠一堆工程手段压住。RLinf 的三个变体正好是三种压法：CrossQ 改架构、RLPD 改数据配比 + 集成、SAC 本身靠 target 网络。</p>
       <div class="mcard"><div class="mt">SAC</div><div class="md">软 Bellman + 自动调温度 α，双 Q + target 网络。</div></div>
@@ -248,7 +258,7 @@
     </div>
   </div>
   <div class="box">
-    <h2>VLA 专属：动作块带来的粒度问题</h2>
+    <h2 id="rq-3">VLA 专属：动作块带来的粒度问题</h2>
     <p>VLA 一次输出一个<strong><a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块</a></strong>，这让「优势 / logprob 算在哪一级」成了真问题。RLinf 把它做成配置项，支持三级粒度：</p>
     <dl class="kv">
       <dt>chunk-level</dt><dd>整块当一个宏动作，共享一个奖励和<a class="concept-link" href="两条主干-拆机手册.html#concept-advantage">优势</a>；critic 只出一个标量。</dd>
@@ -295,6 +305,25 @@
     </ul>
   </div>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>RLinf 是一种算法吗？</b></p><p>不是。它是具身 RL 基础设施，把十几种 RL 算法塞进同一套接口。 <a class="reading-goto" href="#rq-1">回到原文 ↑</a></p></li>
+        <li><p><b>on-policy 和 off-policy 两族的根本取舍是什么？</b></p><p>on-policy 只用刚采的数据更新一次、稳；off-policy 能反复复用 replay buffer，样本效率高得多，但要压住价值高估。 <a class="reading-goto" href="#rq-2">回到原文 ↑</a></p></li>
+        <li><p><b>VLA 一次输出一个动作块，给 RL 带来什么新问题？</b></p><p>优势和 logprob 算在哪一级（单步、动作块还是整条轨迹）成了真问题；RLinf 把粒度做成配置项。 <a class="reading-goto" href="#rq-3">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>PPO 的价值估计用 action-level 还是 chunk-level？</p><details><summary>看答案</summary><p>action-level。</p></details></li>
+    <li><p>GRPO 为什么要开 Valid Action Mask？</p><details><summary>看答案</summary><p>任务提前完成后的时间步不应计入损失，要 mask 掉。</p></details></li>
+    <li><p>RLT 和 OPD 都“不改 VLA 本体”，目的有何不同？</p><details><summary>看答案</summary><p>RLT 换一个更好的状态表示再做 RL；OPD 根本不做 RL，用 teacher 的 logprob 当优势做在线蒸馏。</p></details></li>
+    <li><p>思考：真机上没有仿真器、不想做新 rollout，该走哪一族？</p><details><summary>看答案</summary><p>离线优势条件：IQL（优势加权 BC）或 RECAP/STEAM（把优势变成条件），只用已有数据重新打分再训。</p></details></li>
+  </ol>
+</div>
   <aside class="concept-related" aria-label="相关概念">
     <strong>相关概念</strong>
     <a href="为什么取log.html#concept-policy-gradient">策略梯度的起点</a>

@@ -217,6 +217,16 @@
       <span class="code">代码链接：跳到 openpi 固定提交的源码行</span>
     </div>
   </section>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>π0 的模型结构一句话是什么？ <a class="reading-goto" href="#rq-1">读这一节 ↓</a></li>
+    <li>π0 的训练分几个阶段？ <a class="reading-goto" href="#rq-2">读这一节 ↓</a></li>
+    <li>只用高质量数据训练会怎样？ <a class="reading-goto" href="#rq-3">读这一节 ↓</a></li>
+  </ol>
+</div>
+
 
   <!-- ============ 摘要 ============ -->
   <section class="block">
@@ -301,7 +311,7 @@
 
   <!-- ============ IV 模型 ============ -->
   <section class="block">
-    <h2>IV. π0 模型</h2>
+    <h2 id="rq-1">IV. π0 模型</h2>
     <div class="en-title">THE π0 MODEL</div>
     <div class="pair">
       <div class="en">
@@ -324,7 +334,7 @@
 
   <!-- ============ V 数据与训练 ============ -->
   <section class="block">
-    <h2>V. 数据收集与训练配方</h2>
+    <h2 id="rq-2">V. 数据收集与训练配方</h2>
     <div class="en-title">DATA COLLECTION AND TRAINING RECIPE</div>
     <div class="pair">
       <div class="en">
@@ -496,7 +506,7 @@
 
   <!-- ============ VII 讨论 ============ -->
   <section class="block">
-    <h2>VII. 讨论、局限与未来工作</h2>
+    <h2 id="rq-3">VII. 讨论、局限与未来工作</h2>
     <div class="en-title">DISCUSSION, LIMITATIONS, AND FUTURE WORK</div>
     <div class="pair">
       <div class="en">
@@ -621,6 +631,24 @@
     </p>
   </section>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>π0 的模型结构一句话是什么？</b></p><p>沿用后融合 VLM 配方，在预训练 VLM 上接一个 3 亿参数的动作专家，用流匹配生成高频连续动作块。 <a class="reading-goto" href="#rq-1">回到原文 ↑</a></p></li>
+        <li><p><b>π0 的训练分几个阶段？</b></p><p>像 LLM 一样分预训练和后训练：先在多样的大混合数据上预训练，再用少量高质量数据后训练到具体任务。 <a class="reading-goto" href="#rq-2">回到原文 ↑</a></p></li>
+        <li><p><b>只用高质量数据训练会怎样？</b></p><p>模型会很脆弱（brittle）：没见过犯错和纠错，一出偏差就不会恢复。 <a class="reading-goto" href="#rq-3">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>预训练混合数据覆盖多少种机器人配置、多少个任务？开源数据占多少？</p><details><summary>看答案</summary><p>7 种机器人配置、68 个任务；开源数据（OXE、Bridge v2、DROID）占 9.1%。</p></details></li>
+    <li><p>语言跟随实验里的 flat、human、HL 三种条件分别是什么？</p><details><summary>看答案</summary><p>flat 只给任务描述；human 由专家给中间指令；HL 由高层 VLM 策略给中间指令。</p></details></li>
+    <li><p>思考：为什么预训练要“杂”、后训练要“精”？</p><details><summary>看答案</summary><p>多样且质量参差的数据让模型见过各种错误和恢复方式，更鲁棒；高质量数据教它流畅高效地完成任务。两者合起来才既稳又好。</p></details></li>
+  </ol>
+</div>
     <aside class="concept-related" aria-label="相关概念">
     <strong>相关概念</strong>
     <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">流匹配：训练与推理拆解</a>

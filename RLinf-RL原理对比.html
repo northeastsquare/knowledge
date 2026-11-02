@@ -166,7 +166,7 @@
 
   <section class="hero">
     <div class="eyebrow">原理视角 · RLinf</div>
-    <h1>同一个梯度，十五种估计法</h1>
+    <h1 id="rq-1">同一个梯度，十五种估计法</h1>
     <p class="sub">RLinf 里的算法看着五花八门，其实几乎全都在算<strong>同一个东西</strong>——策略梯度里的那一项优势，或者 Bellman 方程里的那一个价值。这一页不讲怎么配参数，只顺着两条主干把它们的分歧点推一遍：优势怎么估、似然怎么算、分布偏移怎么修、探索从哪来。</p>
     <div class="stats">
       <div class="stat"><span class="n">2</span><span class="l">条理论主干</span></div>
@@ -174,9 +174,19 @@
       <div class="stat"><span class="n">3</span><span class="l">个硬难题</span></div>
     </div>
   </section>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>RLinf 里十几种算法，本质上都在算什么？ <a class="reading-goto" href="#rq-1">读这一节 ↓</a></li>
+    <li>所有方法来自哪两条主干？ <a class="reading-goto" href="#rq-2">读这一节 ↓</a></li>
+    <li>流匹配/扩散策略做 RL 的理论障碍是什么？ <a class="reading-goto" href="#rq-3">读这一节 ↓</a></li>
+  </ol>
+</div>
+
 
   <section style="margin-top:44px">
-    <h2>起点：两条主干</h2>
+    <h2 id="rq-2">起点：两条主干</h2>
     <p class="lede">所有 on-policy 方法来自策略梯度定理，所有 off-policy / 离线方法来自 Bellman 方程。这是整张图的分水岭。</p>
     <p><strong>主干 A · <a class="concept-link" href="为什么取log.html#concept-policy-gradient">策略梯度定理</a>。</strong>要最大化期望回报 $J(\theta)=\mathbb{E}\big[\sum_t\gamma^t r_t\big]$，梯度形式是：</p>
     <div class="fml tex">$$\nabla_\theta J(\theta)=\mathbb{E}\Big[\nabla_\theta\log\pi_\theta(a\mid s)\cdot \textcolor{#c4572a}{A(s,a)}\Big]$$<div class="fc">唯一需要“猜”的东西，就是这个 $A$</div></div>
@@ -289,7 +299,7 @@
   </div>
 
   <div class="camp">
-    <div class="camp-head"><span class="bar" style="background:var(--c-noise)"></span><h2>③ 流 / 噪声空间：log π 算不出来怎么办</h2><span class="cnt">Axis 2</span></div>
+    <div class="camp-head"><span class="bar" style="background:var(--c-noise)"></span><h2 id="rq-3">③ 流 / 噪声空间：log π 算不出来怎么办</h2><span class="cnt">Axis 2</span></div>
     <div class="camp-body">
       <p class="desc">这一族解决的是一个纯粹的<strong>理论障碍</strong>。<a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">流匹配</a> / 扩散策略生成动作靠解 ODE：</p>
       <div class="fml tex">$$A^0\sim\mathcal{N}(0,I)\ \longrightarrow\ \frac{dA^\tau}{d\tau}=v_\theta(A^\tau,s)\ \longrightarrow\ A^1=\text{最终动作}$$</div>
@@ -390,6 +400,25 @@
     </ul>
   </div>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>RLinf 里十几种算法，本质上都在算什么？</b></p><p>几乎都在估计策略梯度里的同一项——优势（这个动作比平均好多少），只是估计方法不同。 <a class="reading-goto" href="#rq-1">回到原文 ↑</a></p></li>
+        <li><p><b>所有方法来自哪两条主干？</b></p><p>on-policy 方法来自策略梯度定理；off-policy 和离线方法来自 Bellman 方程。 <a class="reading-goto" href="#rq-2">回到原文 ↑</a></p></li>
+        <li><p><b>流匹配/扩散策略做 RL 的理论障碍是什么？</b></p><p>动作由确定性 ODE 生成，算不出 log π，而策略梯度和最大熵 RL 都要它。 <a class="reading-goto" href="#rq-3">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>GRPO 用什么代替 critic？</p><details><summary>看答案</summary><p>同一个状态采一组动作，用组内相对回报（减去组平均）当优势，省掉价值网络。</p></details></li>
+    <li><p>SAC 为什么用双 Q 取小？CrossQ 又反其道删掉了什么？</p><details><summary>看答案</summary><p>max 会带来价值高估，双 Q 取小是刻意引入负偏差去对冲；CrossQ 删掉 target 网络，认为它人为延迟了价值传播，影响样本效率。</p></details></li>
+    <li><p>DSRL 怎么绕开“log π 算不出来”？</p><details><summary>看答案</summary><p>噪声到动作是确定性映射，选噪声就等于选动作：冻结整个流模型，在噪声空间上训练一个小策略。</p></details></li>
+    <li><p>思考：纯离线 RL 为什么不能直接用 max Q(s′, a′)？</p><details><summary>看答案</summary><p>max 会去问数据里从没出现过的动作值多少，网络对这些 OOD 动作的估计不可靠，往往被高估，策略就被骗过去。</p></details></li>
+  </ol>
+</div>
   <aside class="concept-related" aria-label="相关概念">
     <strong>相关概念</strong>
     <a href="两条主干-拆机手册.html#concept-bellman">Bellman 与价值传播</a>

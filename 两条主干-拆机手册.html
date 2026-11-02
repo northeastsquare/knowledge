@@ -235,12 +235,22 @@
     <h1><span class="sm">原理页里那两条「主干」，到底是什么</span>两台机器<br>拆开看</h1>
     <p class="slug">原理对比页开头说：<em>所有 on-policy 方法来自策略梯度定理，所有 off-policy / 离线方法来自 Bellman 方程</em>。这句话是整张图的分水岭，但它把两台构造完全不同的机器压缩成了一行字。这一页把它们拆开摆在台面上 —— 每台机器解决什么问题、靠什么零件转动、哪里必然会坏。</p>
   </section>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>两条主干最终交付的产品是什么？ <a class="reading-goto" href="#rq-1">读这一节 ↓</a></li>
+    <li>“力度”为什么不能直接用总回报 R？ <a class="reading-goto" href="#concept-advantage">读这一节 ↓</a></li>
+    <li>为什么说主干 B 里的 max 是“万恶之源”？ <a class="reading-goto" href="#concept-overestimation">读这一节 ↓</a></li>
+  </ol>
+</div>
+
 
   <!-- ==================== 0. 同一个问题 ==================== -->
   <div class="tape"></div>
   <section class="sheet tilt">
     <span class="plate">§0 · 拆之前：它们在抢同一份工作</span>
-    <h2>两台机器的输入输出完全一样</h2>
+    <h2 id="rq-1">两台机器的输入输出完全一样</h2>
     <p class="lead">不管哪条主干，最终交付的产品都只有一个：<em>一个策略 π —— 看到状态 s，输出该做什么动作 a</em>，使长期回报最大。区别在于「怎么造出这个 π」。</p>
 
     <div class="flow">
@@ -527,6 +537,24 @@ STEAM  → 集成取 <span class="r">worst-of-N</span>        <span class="c">�
     </div>
   </section>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>两条主干最终交付的产品是什么？</b></p><p>都是一个策略 π：看到状态 s，输出动作 a，使长期回报最大。区别只在“怎么造出这个 π”。 <a class="reading-goto" href="#rq-1">回到原文 ↑</a></p></li>
+        <li><p><b>“力度”为什么不能直接用总回报 R？</b></p><p>三个动作回报是 10、11、12 时，全是正数，三个动作的概率都会被推高，只是多少不同；减去基线（平均 11）变成 −1、0、+1，才真正分出好坏，这就是优势。 <a class="reading-goto" href="#concept-advantage">回到原文 ↑</a></p></li>
+        <li><p><b>为什么说主干 B 里的 max 是“万恶之源”？</b></p><p>价目表是估出来的、带噪声；max 在一堆带噪数字里挑最大，挑中的往往是运气最好的误差，于是系统性高估。 <a class="reading-goto" href="#concept-overestimation">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>为什么主干 B 的数据可以永久复用？</p><details><summary>看答案</summary><p>自洽式右边 r + γ·max Q(s′, a′) 只用到 (s, a, r, s′)，完全不在乎这条经验是哪个策略采的。</p></details></li>
+    <li><p>看到一篇新算法里有 clip、KL、ratio π_new/π_old，它属于哪条主干？看到 target 网络、双 Q 呢？</p><details><summary>看答案</summary><p>前者是主干 A（策略梯度），在操心“步子别迈太大”；后者是主干 B（Bellman），在和 max 的高估搏斗。</p></details></li>
+    <li><p>原理页的五个家族各是哪条主干的后代？</p><details><summary>看答案</summary><p>① 和 ④ 来自主干 A，② 和 ⑤ 来自主干 B，③ 是让扩散策略能接上两条主干的转接头。</p></details></li>
+  </ol>
+</div>
   <aside class="concept-related" aria-label="相关概念">
     <strong>相关概念</strong>
     <a href="为什么取log.html#concept-log-trick">策略梯度为什么取 log</a>

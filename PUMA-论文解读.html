@@ -176,6 +176,16 @@
       <div class="m"><span class="k">主题</span><span class="v">VLA · 动态操作</span></div>
     </div>
   </section>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>SOTA VLA 一到动态环境就崩，根因是什么？ <a class="reading-goto" href="#rq-1">读这一节 ↓</a></li>
+    <li>PUMA 给模型补了哪两种信息？ <a class="reading-goto" href="#rq-2">读这一节 ↓</a></li>
+    <li>训练目标是什么？ <a class="reading-goto" href="#rq-3">读这一节 ↓</a></li>
+  </ol>
+</div>
+
 
   <section>
     <h2>它解决的问题</h2>
@@ -205,7 +215,7 @@
   </section>
 
   <section>
-    <h2>输入、输出与数据流</h2>
+    <h2 id="rq-2">输入、输出与数据流</h2>
     <p id="concept-optical-flow" class="concept-anchor"><strong>光流（optical flow）</strong>描述图像中像素在相邻帧间的二维位移，给出图像平面上的运动方向与幅度。PUMA 用历史帧的 Farneback 光流生成 HSV/RGB 图，再与当前观测一起编码；要恢复随时间变化的三维位置，可对照 <a class="concept-link" href="D4RT_study_cards.html#concept-4d-reconstruction">D4RT 的 4D 重建</a>。</p>
     <p>PUMA 的输入由三部分组成，输出是「<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块</a> + 未来表征」两路，训练时额外用冻结的 Grounding 模块提供目标级监督。</p>
 
@@ -284,7 +294,7 @@
   </section>
 
   <section>
-    <h2>训练或运行方式</h2>
+    <h2 id="rq-3">训练或运行方式</h2>
     <p>PUMA 是<strong>端到端监督学习</strong>，目标函数是「<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-behavior-cloning">行为克隆</a> + 辅助未来预测」的加权和：</p>
     <blockquote>
       <p><code>L_total = L_action + λ · L_world</code>，其中 <code>L_action</code> 是对动作块的 L1 回归，<code>L_world</code> 是预测表征 <code>z</code> 与目标未来特征 <code>f</code> 的余弦距离；<code>λ = 0.05</code>，平衡因子。</p>
@@ -359,7 +369,7 @@
   </section>
 
   <section>
-    <h2>我真正学到的内容</h2>
+    <h2 id="rq-1">我真正学到的内容</h2>
     <ul>
       <li><strong>单帧是动态操作的天花板</strong>：SOTA VLA 之所以在动态环境崩，不是数据不够，而是「只看得见当前一帧」的架构根本拿不到运动信息。补数据（微调）只涨不到 3%，说明先得改架构。</li>
       <li><strong>光流是「最便宜的显式运动先验」</strong>：同样是历史信息，喂原始帧（让网络自己推运动）反而比 baseline 差（8.15% vs 10.86%），喂光流则稳定上升。把「运动」显式算好再喂进去，性价比极高。</li>
@@ -400,6 +410,25 @@
     </ul>
   </section>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>SOTA VLA 一到动态环境就崩，根因是什么？</b></p><p>架构只看得见当前一帧，拿不到运动信息；补数据微调只涨一点，单帧是动态操作的天花板。 <a class="reading-goto" href="#rq-1">回到原文 ↑</a></p></li>
+        <li><p><b>PUMA 给模型补了哪两种信息？</b></p><p>场景级的历史光流（显式运动先验），以及目标级的未来预测（world queries，训练时由冻结的 Grounding 模块提供监督）。 <a class="reading-goto" href="#rq-2">回到原文 ↑</a></p></li>
+        <li><p><b>训练目标是什么？</b></p><p>L_total = L_action + λ·L_world：动作块的 L1 回归，加上对未来表征的辅助预测。 <a class="reading-goto" href="#rq-3">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>同样是历史信息，为什么喂原始历史帧反而比基线差？</p><details><summary>看答案</summary><p>让网络自己从原始帧推运动太难（8.15% 对 10.86%）；光流直接给出像素位移，是最便宜的显式运动先验。</p></details></li>
+    <li><p>两阶段时空同步数据生成是怎么做的？</p><details><summary>看答案</summary><p>先在静态环境里 dry-run，记录机器人执行耗时；再按耗时反推目标的初始位姿，让目标恰好在那时到达，最后以运动学刚体实例化目标。</p></details></li>
+    <li><p>评估时，夹爪接触到动态物体后会发生什么？目标移出视野呢？</p><details><summary>看答案</summary><p>接触后目标停止自主运动，模拟“被抓住”；移出相机视野立即判失败并终止。</p></details></li>
+    <li><p>思考：PUMA 的 35 任务平均成功率只有 17.20%，这说明什么？</p><details><summary>看答案</summary><p>动态操作本身极难，加了运动信息也远未解决；而且实验全在仿真，sim-to-real 尚未验证。</p></details></li>
+  </ol>
+</div>
   <aside class="concept-related" aria-label="相关概念">
     <strong>相关概念</strong>
     <a href="DynamicVLA-论文解读.html#concept-latency">动态操作的另一个瓶颈：时延</a>

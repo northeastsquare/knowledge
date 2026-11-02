@@ -435,11 +435,21 @@ footer a:hover {
   <h1>网页数学公式显示原理</h1>
   <p class="subtitle">深入理解 KaTeX、MathJax、预渲染三种方案：工作原理、性能对比、如何选择</p>
 </header>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>浏览器为什么不能直接显示 LaTeX 公式？ <a class="reading-goto" href="#rq-1">读这一节 ↓</a></li>
+    <li>有哪三种解决方案？ <a class="reading-goto" href="#rq-2">读这一节 ↓</a></li>
+    <li>为什么要把 KaTeX 本地化？ <a class="reading-goto" href="#rq-3">读这一节 ↓</a></li>
+  </ol>
+</div>
+
 
 <div class="wrap">
 
 <div class="section">
-  <h2>核心问题</h2>
+  <h2 id="rq-1">核心问题</h2>
   <div class="highlight">
     <p><strong>浏览器只认 HTML/CSS/JavaScript</strong>，但数学公式通常用 LaTeX 写成（如 <code>\frac{1}{2}</code>）。如何让浏览器显示出标准数学书籍里的样式？</p>
     <div class="formula-demo">
@@ -450,7 +460,7 @@ footer a:hover {
 </div>
 
 <div class="section">
-  <h2>三种解决方案</h2>
+  <h2 id="rq-2">三种解决方案</h2>
 
   <div class="comparison">
     <div class="card">
@@ -1171,7 +1181,7 @@ git add -f assets/katex/katex.min.js</code></pre>
 <div class="section">
   <h2>进阶：本地化 KaTeX（不依赖 CDN）</h2>
 
-  <h3>为什么本地化？</h3>
+  <h3 id="rq-3">为什么本地化？</h3>
   <ul>
     <li>完全离线可用（不需要网络）</li>
     <li>加载速度更可控（不依赖 CDN）</li>
@@ -1213,6 +1223,25 @@ cp -r node_modules/katex/dist assets/katex/</code></pre>
   <a class="concept-link" href="Beta分布-球星卡.html#concept-beta-distribution">Beta 分布</a>
 </div>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>浏览器为什么不能直接显示 LaTeX 公式？</b></p><p>浏览器只认 HTML/CSS/JavaScript，LaTeX 必须先被转换成 HTML 才能显示成书上的样子。 <a class="reading-goto" href="#rq-1">回到原文 ↑</a></p></li>
+        <li><p><b>有哪三种解决方案？</b></p><p>预渲染（生成页面时就转成 HTML）、KaTeX 自动渲染、MathJax（后两者都在浏览器里实时渲染）。 <a class="reading-goto" href="#rq-2">回到原文 ↑</a></p></li>
+        <li><p><b>为什么要把 KaTeX 本地化？</b></p><p>完全离线可用，不依赖 CDN，在 CDN 慢或被墙时公式照样能显示。 <a class="reading-goto" href="#rq-3">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>页面加载时公式会“闪一下”，原因是什么？</p><details><summary>看答案</summary><p>自动渲染时页面先显示原始 LaTeX 文本，JS 加载完成后才替换成渲染好的公式。</p></details></li>
+    <li><p>什么情况下该选 MathJax 而不是 KaTeX？</p><details><summary>看答案</summary><p>需要极复杂的 LaTeX 命令时，如自定义宏、复杂多行公式；其余情况 KaTeX 更快。</p></details></li>
+    <li><p>能在同一个页面同时用 KaTeX 和 MathJax 吗？</p><details><summary>看答案</summary><p>不推荐，会冲突；不同页面可以用不同的库。</p></details></li>
+    <li><p>思考：为什么预渲染方案打开最快？</p><details><summary>看答案</summary><p>公式在生成 HTML 时已转换完毕，浏览器不需要下载和运行渲染 JS。</p></details></li>
+  </ol>
+</div>
 <footer>
   <p>网页数学公式显示原理 · <a href="index.html">返回知识库</a></p>
   <p style="margin-top:12px;font-size:13px;">理解原理，选对方案，让数学公式在网页上优雅呈现</p>

@@ -176,9 +176,19 @@
       <div class="m"><span class="k">主题</span><span class="v">合成数据 · 预训练</span></div>
     </div>
   </section>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>已有的合成机器人数据集有哪些硬伤？ <a class="reading-goto" href="#rq-1">读这一节 ↓</a></li>
+    <li>这篇论文改了模型结构吗？ <a class="reading-goto" href="#rq-2">读这一节 ↓</a></li>
+    <li>纯合成数据预训练效果到底如何？ <a class="reading-goto" href="#rq-3">读这一节 ↓</a></li>
+  </ol>
+</div>
+
 
   <section>
-    <h2>它解决的问题</h2>
+    <h2 id="rq-1">它解决的问题</h2>
     <p><a class="concept-link" href="VLA-发展历程.html#concept-vla">VLA（视觉-语言-动作）</a>模型的泛化能力，主要来自预训练数据的<strong>规模、多样性与来源</strong>。真实机器人数据效果好，但采集成本极高——遥操作需要熟练操作员、专用硬件和大量人力，大规模、多样化的真实数据集对多数研究组来说「不可负担」，整个社区也因此缺乏系统研究「预训练到底需要什么数据」的能力。</p>
     <p>仿真本是一条互补路径：资产库丰富、场景可控、生成可自动化。但已有的合成数据集普遍有四个硬伤：</p>
     <ul>
@@ -234,7 +244,7 @@ flowchart LR
   </section>
 
   <section>
-    <h2>训练或运行方式</h2>
+    <h2 id="rq-2">训练或运行方式</h2>
     <p>论文<strong>不改模型、只换数据</strong>：直接采用 π0 的架构——视觉语言模型 Paligemma（约 3B）+ 基于 <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">flow matching</a> 的<a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a>，从 Paligemma 权重 + 随机初始化的动作专家开始预训练（与官方 π0 用闭源 π 数据集的 700k 步对齐，本文训 680k 步）。</p>
     <div class="tbl-wrap">
     <table>
@@ -251,7 +261,7 @@ flowchart LR
   </section>
 
   <section>
-    <h2>关键结果</h2>
+    <h2 id="rq-3">关键结果</h2>
     <p>一句话：<span class="hl">纯合成数据预训练的 π0，在仿真上反超官方 π0，在真实世界与之打平，并显著优于所有开源数据集。</span></p>
 
     <div class="card">
@@ -360,6 +370,25 @@ flowchart LR
     </ul>
   </section>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>已有的合成机器人数据集有哪些硬伤？</b></p><p>四个：技能面窄（多是抓放）、物体单一（几乎只有刚体）、仍需人工遥操作或标注、缺乏大规模预训练的验证。 <a class="reading-goto" href="#rq-1">回到原文 ↑</a></p></li>
+        <li><p><b>这篇论文改了模型结构吗？</b></p><p>没有。直接用 π0 的架构（PaliGemma + flow matching 动作专家），只把预训练数据换成纯合成数据。 <a class="reading-goto" href="#rq-2">回到原文 ↑</a></p></li>
+        <li><p><b>纯合成数据预训练效果到底如何？</b></p><p>在 49 个仿真任务上反超官方 π0（Easy/Hard 60.0%/26.5% 对 55.0%/20.0%），在真实世界与官方 π0 打平，并明显优于所有开源数据集。 <a class="reading-goto" href="#rq-3">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>为什么“不改模型、只换数据”是这篇论文最关键的实验设计？</p><details><summary>看答案</summary><p>架构和训练配方都和 π0 一样，结果差异就只能归因于数据，结论才有说服力。</p></details></li>
+    <li><p>零样本 sim-to-real 时，仿真数据和真实数据的“等效比”大约是多少？</p><details><summary>看答案</summary><p>代表任务上 ≤1,600 条仿真数据约等于 200 条真实数据，等效比在 8:1 以内，部分接近 1:1。</p></details></li>
+    <li><p>真实任务上它比同为仿真数据的 RoboCasa 平均高约 57.7 个点，作者归因于什么？</p><details><summary>看答案</summary><p>更逼真的渲染和更大的数据量。</p></details></li>
+    <li><p>思考：流水线为什么经物理仿真校验后“只渲染成功轨迹”？</p><details><summary>看答案</summary><p>渲染是最贵的一步；先用物理仿真筛掉失败轨迹再渲染，既省算力，又保证存下的每条都是有效示范。</p></details></li>
+  </ol>
+</div>
   <aside class="concept-related" aria-label="相关概念">
     <strong>相关概念</strong>
     <a href="ObjectCentric-RL-论文解读.html#concept-sim-to-real">Sim-to-Real：从仿真到真机</a>

@@ -194,6 +194,16 @@ td.num{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
     <span>15 分钟 ~ 5 小时数据</span>
   </div>
 </header>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>VLA 的痛点为什么在“最后一毫米”？ <a class="reading-goto" href="#rq-1">读这一节 ↓</a></li>
+    <li>“复述考试”指什么？ <a class="reading-goto" href="#rq-2">读这一节 ↓</a></li>
+    <li>为什么非要 actor 和 critic 两个网络？ <a class="reading-goto" href="#rq-3">读这一节 ↓</a></li>
+  </ol>
+</div>
+
 
 <div class="toc">
   <strong>这一话的分镜顺序</strong>
@@ -211,7 +221,7 @@ td.num{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
 
 <section class="strip" id="s1">
   <div class="chap"><div class="no">1</div>
-    <h2>痛点：会干活，但"最后一毫米"在磨蹭<small>Introduction</small></h2></div>
+    <h2 id="rq-1">痛点：会干活，但"最后一毫米"在磨蹭<small>Introduction</small></h2></div>
 
   <div class="panel tilt-l">
     <h3>一句话版本</h3>
@@ -260,7 +270,7 @@ td.num{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
   <div class="panel tilt-r">
     <h3>问题：VLA 内部的特征太多太杂</h3>
     <p>一个 transformer VLA 每层都有几百个 token、每个 2048 维。你不知道该喂哪些给 RL。全喂进去，小网络会被维度淹死；随便挑几个，又可能丢掉关键信息。</p>
-    <h3>解法：加一个"复述考试"</h3>
+    <h3 id="rq-2">解法：加一个"复述考试"</h3>
     <p>在 VLA 最后一层的 token 序列 <kbd>z₁..z_M</kbd> 后面追加一个可学习的特殊 token <kbd>&lt;rl&gt;</kbd>，一起过一个<b class="hot">小的 encoder transformer</b>。取 <kbd>&lt;rl&gt;</kbd> 那个位置的输出，就是 <mark>RL Token（1×2048）</mark>。</p>
     <p>关键在于怎么训它：再接一个 decoder，<b class="hot">只给它这一颗 RL Token，要求它把原来所有 token 全部重建出来</b>（自回归、L2 损失、对原特征 <a class="concept-link" href="KI-知识隔离-论文解读.html#concept-stop-gradient">stop-gradient</a>）。</p>
     <p id="concept-information-bottleneck" class="concept-anchor">这就是经典的<mark>信息瓶颈</mark>：想通过考试，这颗 token 就必须把任务相关的信息尽量塞进去。训练时 VLA 本体是冻的（可选同时做一点监督微调），训完 VLA 和这个编解码器一起冻住。</p>
@@ -303,7 +313,7 @@ td.num{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
         <tr><td>本体</td><td>2 层 MLP（隐层 256）</td><td>2 层 MLP ×2（双 Q）</td></tr>
       </tbody>
     </table>
-    <h3>为什么非要两个网络？因为 +1 没有方向感</h3>
+    <h3 id="rq-3">为什么非要两个网络？因为 +1 没有方向感</h3>
     <p>人类说"这次成了"，给你一个 <kbd>+1</kbd>。它告诉你结果好，但<b>没告诉你该往哪调</b>——手腕该多转 2 度还是少转 2 度？而且 99% 的时刻根本没奖励，梯度处处为 0，连爬都没法爬。</p>
     <p>critic 就是干这个的：<mark>把稀疏离散的分数，插值成一片光滑的、处处可求导的地形。</mark>关键在于它是个<b class="hot">可微的</b>评委——你可以问它 <kbd>∂Q/∂a</kbd>：「动作往哪改你会给更高分？」这就拿到了方向。actor 顺着挪一步就行。所以 actor 的损失里直接写着 Q：<kbd>L(π) = −Q(x,a) + λ‖a−ã‖²</kbd>，前半项就是"让评委给的分高一点"。</p>
     <h3>三件最容易忽略的事</h3>
@@ -786,6 +796,25 @@ td.num{font-family:ui-monospace,Consolas,monospace;white-space:nowrap}
   <p style="margin-bottom:0">原文：<a href="https://arxiv.org/abs/2604.23073">arXiv:2604.23073</a> · 项目页 <a href="https://pi.website/research/rlt">pi.website/research/rlt</a></p>
 </div>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>VLA 的痛点为什么在“最后一毫米”？</b></p><p>真正决定成败的是插进去那一下：网线口对正、螺丝刀尖卡进螺丝头。VLA 什么都会一点，但这一步慢、犹豫、反复试。 <a class="reading-goto" href="#rq-1">回到原文 ↑</a></p></li>
+        <li><p><b>“复述考试”指什么？</b></p><p>在 VLA 最后一层 token 后面追加一个可学习的 &lt;rl&gt; token，过一个小 encoder，取它的输出当瓶颈向量，再要求它能把原始特征复述（重建）出来——复述得出，说明关键信息都压进去了。 <a class="reading-goto" href="#rq-2">回到原文 ↑</a></p></li>
+        <li><p><b>为什么非要 actor 和 critic 两个网络？</b></p><p>+1 奖励只说“这次成了”，没说该往哪调；critic 学出每个动作值多少，它的梯度才给 actor 指方向。 <a class="reading-goto" href="#rq-3">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>50Hz 控制下关键阶段有 250~1000 步，为什么说这是 RL 的噩梦？</p><details><summary>看答案</summary><p>奖励只在最后给一个 +1，要把功劳传回几百步之前，信用分配极难；以 10 步动作块为单位后，距离缩短约 10 倍。</p></details></li>
+    <li><p>actor 的损失里有没有奖励 r？</p><details><summary>看答案</summary><p>没有。r 只进 critic 的目标；actor 只是沿着 critic 给出的 Q 值梯度改进动作。</p></details></li>
+    <li><p>路线 B（像 HIL-SERL 那样从零训小模型）的代价是什么？</p><details><summary>看答案</summary><p>几小时能学会，但丢掉了 VLA 的泛化与常识，等于这个任务从零开始学。</p></details></li>
+    <li><p>思考：瓶颈越窄越好吗？</p><details><summary>看答案</summary><p>不是。太窄会复述不出原始特征、丢失关键信息；太宽小网络又会被维度淹没。要在重建误差可接受的前提下尽量窄。</p></details></li>
+  </ol>
+</div>
 <aside class="concept-related" aria-label="相关概念">
   <strong>相关概念</strong>
   <a href="两条主干-拆机手册.html#concept-bellman">Bellman 方程与价值传播</a>
