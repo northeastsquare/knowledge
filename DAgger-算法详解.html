@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DAgger 数据聚合 · 论文算法与 LeRobot 实现全图解</title>
+<link rel="stylesheet" href="concepts.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#f1f4f6;--surface:#fbfcfd;--surface-2:#eaf0f4;--ink:#16222e;--ink-2:#51626f;--ink-3:#83919c;
+ --train:#c4572a;--train-bg:#fbeee7;--infer:#0e6e8a;--infer-bg:#e3f1f5;--human:#7a4fb0;--human-bg:#f1eafa;--ok:#2f7d4f;--ok-bg:#e6f4ec;
+ --line:#d8e1e7;--line-strong:#c3d0d9;--shadow:0 1px 2px rgba(22,34,46,.04),0 14px 34px rgba(22,34,46,.07)}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans",-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;font-size:16px;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background-image:linear-gradient(rgba(22,34,46,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(22,34,46,.05) 1px,transparent 1px);background-size:28px 28px}
+.wrap{max-width:980px;margin:0 auto;padding:0 22px 100px}
+.wide{max-width:1120px;margin:0 auto;padding:0 16px}
+header.hero{padding:56px 0 28px}
+.kicker{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-2)}
+.kicker b{color:var(--infer)}
+h1{font-family:"Noto Serif SC",serif;font-size:38px;line-height:1.3;margin:10px 0 12px}
+.lede{font-size:17.5px;color:var(--ink-2);max-width:780px}
+.lede b{color:var(--ink)}
+.facts{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:24px 0 0}
+.fact{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.fact .n{font-family:"IBM Plex Mono",monospace;font-size:22px;font-weight:600;color:var(--infer)}
+.fact .l{font-size:13px;color:var(--ink-2);line-height:1.5}
+h2{font-family:"Noto Serif SC",serif;font-size:27px;margin:64px 0 6px;padding-top:10px}
+h2 .no{font-family:"IBM Plex Mono",monospace;font-size:14px;color:var(--ink-3);display:block;letter-spacing:.12em}
+h3{font-size:19px;margin:34px 0 8px}
+p{margin:10px 0}
+a{color:var(--infer)}
+code,.mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.88em}
+p code,li code,td code{background:var(--surface-2);padding:1px 5px;border-radius:4px}
+pre{background:#14202b;color:#dbe6ee;padding:14px 16px;border-radius:10px;overflow-x:auto;font-size:13px;line-height:1.6}
+pre .c{color:#7f97a8}
+pre .k{color:#f0b37e}
+pre .h{color:#9fd8a8}
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14.5px;background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+th,td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{background:var(--surface-2);font-weight:600;font-size:13.5px}
+tr:last-child td{border-bottom:none}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin:16px 0;box-shadow:var(--shadow)}
+.box.warn{border-left:4px solid var(--train)}
+.box.note{border-left:4px solid var(--infer)}
+.box h4{margin:0 0 6px;font-size:15.5px}
+.src{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:22px 0 0}
+.src .box{margin:0}
+.src b{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.1em;color:var(--ink-2)}
+.pill{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:12px;padding:0 8px;border-radius:999px;border:1px solid}
+.pill.a{color:var(--infer);background:var(--infer-bg);border-color:#b9dbe5}
+.pill.p{color:var(--ink-2);background:var(--surface-2);border-color:var(--line-strong)}
+.pill.c{color:var(--human);background:var(--human-bg);border-color:#d8c6ef}
+.steps{counter-reset:s;list-style:none;padding:0;margin:14px 0}
+.steps>li{counter-increment:s;position:relative;padding:12px 16px 12px 58px;background:var(--surface);border:1px solid var(--line);border-radius:10px;margin:10px 0}
+.steps>li::before{content:counter(s);position:absolute;left:16px;top:12px;width:30px;height:30px;border-radius:50%;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:14px}
+.steps pre{margin:8px 0 2px}
+
+/* ---------- 代码 / 论文链接芯片 ---------- */
+a.cl,a.pl{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:11.5px;line-height:1.5;text-decoration:none;padding:0 6px;margin:1px 2px 1px 0;border-radius:5px;border:1px solid #b9dbe5;background:var(--infer-bg);color:var(--infer);white-space:nowrap}
+a.pl{border-color:#efc9b8;background:var(--train-bg);color:var(--train)}
+a.cl:hover,a.pl:hover{filter:brightness(.95);text-decoration:underline}
+a.cl::before{content:"⌗ "}
+a.pl::before{content:"¶ "}
+
+/* ---------- 架构图 ---------- */
+.dg-scroll{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);margin:16px 0}
+.dg{position:relative;width:1060px;height:720px;margin:0 auto}
+.dg svg.wires{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.wires path{fill:none;stroke:#6f8291;stroke-width:1.8}
+.wires path.loop{stroke:var(--train);stroke-width:2.4}
+.wires path.dash{stroke-dasharray:5 5;stroke:#9aa9b4}
+.wires path.h{stroke:var(--human)}
+.nd{position:absolute;background:#fff;border:1.5px solid var(--line-strong);border-radius:10px;padding:8px 11px;font-size:13px;line-height:1.5;box-shadow:0 1px 2px rgba(22,34,46,.05)}
+.nd .nt{font-weight:700;font-size:14px;margin-bottom:3px}
+.nd .nb{color:var(--ink-2)}
+.nd .nb b{color:var(--ink)}
+.nd .nl{margin-top:6px}
+.nd.data{border-color:#b9dbe5;background:#f6fbfd}
+.nd.train{border-color:#efc9b8;background:#fff8f4}
+.nd.human{border-color:#d8c6ef;background:#faf7fe}
+.nd.paper{border-style:dashed;background:var(--surface-2)}
+.nd.st{border-width:2px}
+.nd.st.a{border-color:var(--infer)}
+.nd.st.p{border-color:var(--ink-3)}
+.nd.st.c{border-color:var(--human)}
+.frame{position:absolute;border:1.5px dashed var(--line-strong);border-radius:14px;background:rgba(234,240,244,.45)}
+.frame .ft{position:absolute;left:14px;top:6px;font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.06em;color:var(--ink-2)}
+.wl{position:absolute;font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink-2);background:var(--surface);padding:0 4px;border-radius:4px;white-space:nowrap}
+.wl.loop{color:var(--train);font-weight:600}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13px;color:var(--ink-2);margin:8px 2px}
+.legend i{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-2px;margin-right:5px;border:1.5px solid}
+
+/* ---------- 编辑模式 ---------- */
+.kb-tools{position:fixed;right:18px;bottom:18px;z-index:50;display:flex;gap:8px;align-items:center;background:var(--surface);border:1px solid var(--line-strong);border-radius:12px;padding:8px 10px;box-shadow:var(--shadow);font-size:13px}
+.kb-tools button,.kb-tools select{font:inherit;font-size:13px;border:1px solid var(--line-strong);background:#fff;color:var(--ink);border-radius:8px;padding:4px 10px;cursor:pointer}
+.kb-tools button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.kb-tools .st{color:var(--ink-3);min-width:64px}
+body.editing #doc [contenteditable]{outline:none}
+body.editing #doc .nd,body.editing #doc .wl,body.editing #doc p,body.editing #doc td,body.editing #doc li{outline:1px dashed rgba(14,110,138,.35);outline-offset:1px}
+body.editing a.cl,body.editing a.pl{cursor:context-menu}
+.hint{font-size:13px;color:var(--ink-3)}
+.qs{counter-reset:q;list-style:none;padding:0;margin:12px 0}
+.qs>li{counter-increment:q;position:relative;padding:8px 14px 8px 52px;background:var(--surface);border:1px solid var(--line);border-radius:10px;margin:8px 0}
+.qs>li::before{content:"Q" counter(q);position:absolute;left:12px;top:8px;font-family:"IBM Plex Mono",monospace;font-weight:600;color:var(--train)}
+.qs .go{font-size:12.5px;margin-left:6px}
+.ans{margin:12px 0;padding:10px 14px;border-radius:10px;background:var(--train-bg);border:1px solid #efc9b8;font-size:14.5px}
+.ans b.q{font-family:"IBM Plex Mono",monospace;color:var(--train);margin-right:6px}
+.quiz{counter-reset:z;list-style:none;padding:0;margin:12px 0}
+.quiz>li{counter-increment:z;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 16px;margin:10px 0}
+.quiz>li>p:first-child::before{content:"题 " counter(z) "　";font-family:"IBM Plex Mono",monospace;font-weight:600;color:var(--infer)}
+.quiz details{margin-top:4px;font-size:14.5px}
+.quiz summary{cursor:pointer;color:var(--infer);font-size:13.5px}
+.quiz details>div{margin-top:6px;padding:8px 12px;background:var(--surface-2);border-radius:8px}
+footer{margin-top:70px;font-size:13px;color:var(--ink-3)}
+@media (max-width:760px){.facts{grid-template-columns:repeat(2,1fr)}.src{grid-template-columns:1fr}h1{font-size:30px}}
+@media print{.kb-tools{display:none}}
+</style>
+</head>
+<body>
+<div id="doc">
+<div class="wrap">
+
+<header class="hero">
+  <div class="kicker">Imitation Learning · <b>DAgger</b> · 论文算法 + LeRobot 实现</div>
+  <h1>DAgger：让机器人去它自己会走到的地方学</h1>
+  <p class="lede">行为克隆（BC）只学专家走过的路。机器人一走偏，就到了训练里没见过的地方，然后越错越远。<b>DAgger 的办法：让当前策略自己去跑，在它跑到的状态上要专家给出正确动作，把这些数据并进训练集，再重训。</b>重复几轮，训练数据就越来越像策略真正会遇到的情况。</p>
+  <div class="facts">
+    <div class="fact"><div class="n">2011</div><div class="l">AISTATS · Ross、Gordon、Bagnell（CMU）</div></div>
+    <div class="fact"><div class="n">T²ε → Tε</div><div class="l">误差随任务步数 T 的增长：BC 是平方，DAgger 是线性</div></div>
+    <div class="fact"><div class="n">3 个状态</div><div class="l">LeRobot：AUTONOMOUS / PAUSED / CORRECTING</div></div>
+    <div class="fact"><div class="n">808 行</div><div class="l"><code>rollout/strategies/dagger.py</code></div></div>
+  </div>
+
+  <div class="src">
+    <div class="box">
+      <b>原始论文</b>
+      <p style="margin:4px 0"><i>A Reduction of Imitation Learning and Structured Prediction to No-Regret Online Learning</i></p>
+      <a class="pl" href="pdfs/DAgger-1011.0686v3.pdf">本地 PDF：pdfs/DAgger-1011.0686v3.pdf</a>
+      <a class="pl" href="https://arxiv.org/abs/1011.0686">arXiv:1011.0686</a>
+    </div>
+    <div class="box">
+      <b>代码</b>
+      <p style="margin:4px 0">论文没有附官方代码。这里对照的是 LeRobot 里的实现（commit <code>b6ec006</code>），它走的是 HG-DAgger / RaC 这种“人在环接管”路线。</p>
+      <a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="15">dagger.py:15</a>
+      <a class="cl" data-path="docs/source/hil_data_collection.mdx" data-line="1">hil_data_collection.mdx</a>
+    </div>
+  </div>
+</header>
+
+<h2 id="s0"><span class="no">00</span>带着问题读</h2>
+<p>先想一想这几个问题。每个问题的答案，都在正文里用 <span class="ans" style="display:inline;padding:1px 6px;margin:0"><b class="q">Q</b>答</span> 标出来了。</p>
+<ol class="qs">
+<li>行为克隆训练得很好，为什么上真机还会越跑越偏？<a class="go" href="#a1">→ 答案</a></li>
+<li>DAgger 在哪些状态上收数据？动作标签又是谁给的？<a class="go" href="#a2">→ 答案</a></li>
+<li>论文里的 β 是干什么的？LeRobot 里为什么看不到它？<a class="go" href="#a3">→ 答案</a></li>
+<li>真机上为什么不能照搬论文的采集方式？LeRobot 怎么改的？<a class="go" href="#a4">→ 答案</a></li>
+<li>每一轮模型怎么更新？为什么要把新旧数据合在一起训？<a class="go" href="#a5">→ 答案</a></li>
+<li>如果第二轮起 β 都是 0，策略是不是就不再变了？<a class="go" href="#a6">→ 答案</a></li>
+</ol>
+
+<h2 id="s1"><span class="no">01</span>问题：行为克隆为什么越错越远</h2>
+<p>BC 把模仿学习当成普通的监督学习：拿专家轨迹里的 (状态, 动作) 对训练一个分类/回归器。问题在于训练和测试的状态分布不一样。</p>
+<p>训练时，输入全是专家走到的状态。测试时，输入是<b>策略自己</b>走到的状态。策略在第 t 步犯一点小错，第 t+1 步的状态就偏离了专家分布。在这个陌生状态上它更容易错，错误一路累积。论文把这个结论写成：BC 每步错误率是 ε 时，T 步任务的总代价最多比专家多 <b>T²ε</b>。</p>
+<div class="ans" id="a1"><b class="q">Q1 答</b>训练只见过专家走到的状态，上真机时输入是策略自己走到的状态。一步小错把它带到没见过的地方，在那里更容易错，错误一路叠加，代价按 T² 增长。</div>
+<table>
+<tr><th></th><th>行为克隆 BC</th><th>DAgger</th></tr>
+<tr><td>训练状态来自</td><td>专家自己的轨迹</td><td>当前策略（或专家与策略的混合）跑出来的轨迹</td></tr>
+<tr><td>动作标签来自</td><td>专家</td><td>专家（在策略访问到的状态上补标）</td></tr>
+<tr><td>数据集</td><td>一次采完</td><td>每轮新增 Dᵢ，并入总集 D</td></tr>
+<tr><td>误差上界</td><td>T²ε</td><td>uTε<sub>N</sub> + O(1)（线性）</td></tr>
+</table>
+
+<h2 id="s2"><span class="no">02</span>论文里的算法</h2>
+<p>论文第 3 节给出的 DAgger（Dataset Aggregation）伪代码，逐行如下：</p>
+<pre><span class="k">Initialize</span> D ← ∅
+<span class="k">Initialize</span> π̂₁ 为策略类 Π 里任意一个策略
+<span class="k">for</span> i = 1 <span class="k">to</span> N <span class="k">do</span>
+    πᵢ = βᵢ·π* + (1 − βᵢ)·π̂ᵢ          <span class="c"># ① 混合策略：以 βᵢ 的概率让专家执行</span>
+    用 πᵢ 采样若干条 T 步轨迹            <span class="c"># ② 数据采集：跑出“会被访问到”的状态</span>
+    Dᵢ = {(s, π*(s))}                    <span class="c"># ③ 在这些状态上要专家给动作标签</span>
+    D ← D ∪ Dᵢ                           <span class="c"># ④ 聚合：新旧数据全部保留</span>
+    在 D 上训练分类器 π̂ᵢ₊₁                <span class="c"># ⑤ 模型迭代：在全部数据上重训</span>
+<span class="k">end for</span>
+<span class="k">return</span> 在验证集上最好的 π̂ᵢ             <span class="c"># ⑥ 不一定是最后一轮</span></pre>
+
+<table>
+<tr><th>行</th><th>做什么</th><th>要点</th></tr>
+<tr><td>① β 混合</td><td>每一步以概率 βᵢ 执行专家动作，否则执行学习器动作</td><td>β₁ = 1 时第一轮就是纯 BC。常用 βᵢ = p<sup>i−1</sup> 逐轮衰减；论文也提到只在第一轮用专家（βᵢ = 𝟙[i=1]）实际效果就不错</td></tr>
+<tr><td>② 采样</td><td>让 πᵢ 真实地跑</td><td>这一步决定了“在哪里收数据”：在策略自己会到的状态</td></tr>
+<tr><td>③ 专家标注</td><td>不管谁在执行，所有访问到的状态都问专家“这里该怎么做”</td><td>专家<b>只给标签，不一定在开车</b>。这一点对真人很难，见第 03 节</td></tr>
+<tr><td>④ 聚合</td><td>D 只增不删</td><td>这就是名字里的 Aggregation。它对应在线学习里的 Follow-the-Leader，是一种无悔（no-regret）算法</td></tr>
+<tr><td>⑤ 训练</td><td>在累积的 D 上训练</td><td>论文的理论保证来自“在所有历史数据上训练”，而不是只用最新一批</td></tr>
+<tr><td>⑥ 返回</td><td>挑验证表现最好的一版</td><td>理论只保证序列里<b>存在</b>一个好策略</td></tr>
+</table>
+<div class="box note"><h4>为什么能从 T² 降到 T</h4>
+<p style="margin:0">关键是 ③：训练数据来自策略自己诱导的状态分布。这样训练误差 ε<sub>N</sub> 衡量的就是“策略在自己会遇到的状态上犯错的概率”，测试时不再有分布错位。论文证明迭代 N = Õ(uT) 轮后，存在一个 π̂ᵢ 满足 J(π̂) ≤ J(π*) + uTε<sub>N</sub> + O(1)，其中 u 是“犯一次错最多多付出多少代价”。论文用 Super Tux Kart（看图转方向）、Super Mario Bros 和手写识别（结构化预测）做了实验。</p></div>
+<div class="ans" id="a2"><b class="q">Q2 答</b>在<b>当前策略（混合策略 πᵢ）自己跑到的状态</b>上收数据，动作标签由<b>专家</b>给（第 ③ 行 Dᵢ = {(s, π*(s))}）。数据位置跟着策略走，标签跟着专家走。</div>
+<div class="ans" id="a3"><b class="q">Q3 答</b>β 是“每一步让专家执行”的概率：β₁ = 1 时第一轮就是 BC，之后逐轮变小，让策略越来越多地自己开。LeRobot 没有这个参数，换成了人按键接管，接管多频繁就相当于 β 多大（见 3.5 表格）。</div>
+
+<h2 id="s3"><span class="no">03</span>数据采集方式</h2>
+<h3 id="s3-1">3.1 论文：专家给每个访问到的状态打标签</h3>
+<p>执行者是混合策略 πᵢ，标注者是专家 π*。在游戏和仿真里，专家可以是一个规划器或人类玩家，它能对任意状态即时给出动作。所以策略开车、专家在旁边“同步报答案”是可行的。</p>
+<p>真机上这件事很难。人看着机器人自己动，很难同时用遥操作臂报出每一帧的正确动作，因为人的手和机器人的状态没有连在一起。所以机器人领域通常改成“人觉得要出事了就接管”的做法：HG-DAgger（Kelly 等，2019）。LeRobot 再加上 RaC（Hu 等，2025）的规矩：接管后先<b>恢复</b>（把机器人带回好状态），再<b>纠正</b>（示范正确做法）。</p>
+<div class="ans" id="a4"><b class="q">Q4 答</b>论文要专家在策略开车时给每一帧报动作，真人用遥操作臂做不到，因为手和机器人状态不同步。LeRobot 改成 HG-DAgger / RaC：平时策略开，快出错时人按键接管，先把机器人带回好状态再示范，只有接管段带标签。</div>
+
+<h3>3.2 LeRobot：人在环接管（<code>--strategy.type=dagger</code>）</h3>
+<p>入口是 <code>lerobot-rollout</code>。<code>factory.py</code> 看到 <code>type == "dagger"</code> 就创建 <code>DAggerStrategy</code>。它把一次部署变成一个三状态的状态机，由键盘或脚踏板切换。</p>
+<p><a class="cl" data-path="src/lerobot/rollout/strategies/factory.py" data-line="48">factory.py:48</a><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="88">DAggerPhase:88</a><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="97">_DAGGER_TRANSITIONS:97</a></p>
+<table>
+<tr><th>状态</th><th>谁在控制</th><th>每帧做什么</th><th>代码</th></tr>
+<tr><td><span class="pill a">AUTONOMOUS</span></td><td>策略</td><td>取观测 → 推理 → <code>send_next_action</code> 发动作</td><td><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="447">dagger.py:447</a></td></tr>
+<tr><td><span class="pill p">PAUSED</span></td><td>没人</td><td>反复发送上一个动作，原地停住，等人决定</td><td><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="441">dagger.py:441</a></td></tr>
+<tr><td><span class="pill c">CORRECTING</span></td><td>人（遥操作臂）</td><td><code>teleop.get_action()</code> → 发给机器人 → 记一帧 <code>intervention=True</code></td><td><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="413">dagger.py:413</a></td></tr>
+</table>
+<p>合法的切换只有四条，写死在 <code>_DAGGER_TRANSITIONS</code> 里。按键线程只调用 <code>request_transition</code> 登记请求，主循环每帧开头用 <code>consume_transition</code> 取走，所以状态只在主循环里改。</p>
+<table>
+<tr><th>动作</th><th>键盘默认</th><th>踏板默认</th><th>效果</th></tr>
+<tr><td>pause_resume</td><td><code>space</code></td><td><code>KEY_A</code></td><td>AUTONOMOUS ⇄ PAUSED</td></tr>
+<tr><td>correction</td><td><code>tab</code></td><td><code>KEY_B</code></td><td>PAUSED ⇄ CORRECTING</td></tr>
+<tr><td>upload</td><td><code>enter</code></td><td><code>KEY_C</code></td><td>后台推送数据集到 Hub</td></tr>
+<tr><td>停止</td><td><code>esc</code></td><td>—</td><td>结束整个会话</td></tr>
+</table>
+<p><a class="cl" data-path="src/lerobot/rollout/configs.py" data-line="142">DAggerKeyboardConfig:142</a><a class="cl" data-path="src/lerobot/rollout/configs.py" data-line="155">DAggerPedalConfig:155</a><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="171">_init_dagger_keyboard:171</a><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="134">request_transition:134</a><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="144">consume_transition:144</a></p>
+
+<h3>3.3 两种记录模式</h3>
+<table>
+<tr><th></th><th><code>record_autonomous=False</code>（默认）</th><th><code>record_autonomous=True</code></th></tr>
+<tr><td>记什么</td><td>只记人纠正的那一段</td><td>策略段和纠正段都记</td></tr>
+<tr><td>一个 episode 是</td><td>一次纠正（按 tab 开始到按 tab 结束）</td><td>按时间切：时长由视频文件大小目标估算</td></tr>
+<tr><td>标签</td><td>全部 <code>intervention=True</code></td><td>策略帧 <code>False</code>，纠正帧 <code>True</code></td></tr>
+<tr><td>何时保存</td><td>CORRECTING → PAUSED 时 <code>save_episode()</code></td><td>到时长且不在纠正中时保存</td></tr>
+<tr><td>上传</td><td>按 upload 键</td><td>每 <code>upload_every_n_episodes</code>（默认 5）个自动后台上传</td></tr>
+<tr><td>代码</td><td><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="514">_run_corrections_only:514</a><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="585">保存:585</a></td><td><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="337">_run_continuous:337</a><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="474">轮换:474</a></td></tr>
+</table>
+<p>纠正段里，动作标签用的是<b>人的遥操作动作</b> <code>processed_teleop</code>，不是发给机器人的动作。录制步长是 <code>correction_stride = interpolator.multiplier</code>，每次纠正开始时 <code>correction_tick</code> 归零，保证纠正段每秒正好 fps 帧。<a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="427">dagger.py:427</a></p>
+
+<h3>3.4 交接：让人和机器人不“抢手”</h3>
+<p><code>_apply_transition</code> 处理切换时的副作用。默认 <code>smooth_handover=True</code>。</p>
+<table>
+<tr><th>切换</th><th>做什么</th><th>代码</th></tr>
+<tr><td>AUTONOMOUS → PAUSED</td><td>暂停推理引擎。主臂能被驱动（SO-101、OpenArmMini 这类）时，把主臂慢慢移到从臂的位置</td><td><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="716">dagger.py:716</a></td></tr>
+<tr><td>PAUSED → CORRECTING</td><td>主臂不能被驱动时，反过来把从臂慢慢移到主臂姿态。然后关掉主臂力矩，交给人</td><td><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="729">dagger.py:729</a></td></tr>
+<tr><td>CORRECTING → PAUSED</td><td>重新上主臂力矩，保持位置</td><td><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="747">dagger.py:747</a></td></tr>
+<tr><td>→ AUTONOMOUS</td><td>重置插值器和引擎，恢复推理，松开主臂</td><td><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="751">dagger.py:751</a></td></tr>
+</table>
+
+<h3 id="s3-5">3.5 论文 vs LeRobot</h3>
+<table>
+<tr><th></th><th>论文 DAgger</th><th>LeRobot DAgger 策略</th></tr>
+<tr><td>谁开车</td><td>混合策略 πᵢ，按概率 βᵢ 随机选</td><td>人按键决定：平时策略开，危险时人开</td></tr>
+<tr><td>谁标注</td><td>专家给<b>所有</b>访问到的状态打标签</td><td>只有人接管的那段有专家标签</td></tr>
+<tr><td>β 的角色</td><td>显式超参数，逐轮衰减</td><td>没有 β；“接管频率”就是隐式的 β</td></tr>
+<tr><td>恢复数据</td><td>标签自然覆盖偏离状态</td><td>RaC：先手动带回好状态，这段恢复动作也是训练数据</td></tr>
+<tr><td>对应方法</td><td>DAgger（2011）</td><td>HG-DAgger（2019）+ RaC（2025）</td></tr>
+</table>
+
+<h2 id="s4"><span class="no">04</span>模型迭代方式</h2>
+<p>LeRobot 没有把“采集 → 训练 → 再采集”写成一个自动循环。每一轮是几条命令，人来串起来。官方文档的流程（<a class="cl" data-path="docs/source/hil_data_collection.mdx" data-line="83">Step 1:83</a><a class="cl" data-path="docs/source/hil_data_collection.mdx" data-line="96">Step 2:96</a><a class="cl" data-path="docs/source/hil_data_collection.mdx" data-line="186">Step 3:186</a>）对应到论文的 for 循环：</p>
+<ol class="steps">
+<li><b>第 0 轮：BC 预训练（论文 β₁ = 1）。</b>用专家示教 D₀ 训练 π̂₁。
+<pre>lerobot-train --dataset.repo_id=&lt;user&gt;/demo-dataset --policy.type=pi0 \
+  --output_dir=outputs/pretrain</pre></li>
+<li><b>部署并采集 Dᵢ（论文 ②③）。</b>
+<pre>lerobot-rollout --strategy.type=dagger --strategy.num_episodes=20 \
+  --policy.path=outputs/pretrain/checkpoints/last/pretrained_model \
+  --robot.type=bi_openarm_follower --teleop.type=openarm_mini \
+  --dataset.repo_id=&lt;user&gt;/rollout_hil_data --dataset.single_task="Fold the T-shirt"</pre>
+<a class="cl" data-path="src/lerobot/scripts/lerobot_rollout.py" data-line="93">lerobot_rollout.py:93</a></li>
+<li><b>聚合 D ← D ∪ Dᵢ（论文 ④）。</b>把示教集和本轮纠正集合并。
+<pre>lerobot-edit-dataset --new_repo_id &lt;user&gt;/demo_plus_hil_r1 \
+  --operation.type merge \
+  --operation.repo_ids "['&lt;user&gt;/demo-dataset', '&lt;user&gt;/rollout_hil_data']"</pre>
+<a class="cl" data-path="src/lerobot/scripts/lerobot_edit_dataset.py" data-line="294">MergeConfig:294</a><a class="cl" data-path="src/lerobot/datasets/aggregate.py" data-line="352">aggregate_datasets:352</a></li>
+<li><b>重训 π̂ᵢ₊₁（论文 ⑤）。</b>文档做法是从上一轮的权重接着微调。
+<pre>lerobot-train --dataset.repo_id=&lt;user&gt;/demo_plus_hil_r1 --policy.type=pi0 \
+  --policy.pretrained_path=outputs/pretrain/checkpoints/last/pretrained_model \
+  --output_dir=outputs/hil_finetune --steps=20000</pre>
+<a class="cl" data-path="src/lerobot/scripts/lerobot_train.py" data-line="385">train:385</a></li>
+<li><b>回到第 2 步。</b>新策略的失败点不同，下一轮接管的位置也会变。挑真机成功率最高的一版（论文 ⑥）。</li>
+</ol>
+
+<div class="ans" id="a5"><b class="q">Q5 答</b>每轮：部署当前策略 → 采纠正数据 Dᵢ → 和之前所有数据合并成 D → 在 D 上训练（LeRobot 从上一轮权重接着微调）。合并是因为论文的理论保证来自在<b>全部</b>累积数据上训练；只用新数据会忘掉 D₀ 里的正常操作。</div>
+
+<div class="box warn"><h4>几个容易踩的坑</h4>
+<p><b>1. 别只用新数据训。</b>论文的保证来自在<b>全部</b>累积数据上训练。只用 Dᵢ 微调，模型会忘掉 D₀ 里的正常操作。文档 Step 3 的示例命令只写了 <code>hil-dataset</code>，但正文要求先合并，以合并后的数据集为准。</p>
+<p><b>2. <code>intervention</code> 列训练时没被用到。</b><code>lerobot-train</code> 和策略代码都不读这个列，所有帧一视同仁地做 BC。用 <code>record_autonomous=True</code> 时，接管前那几秒“策略正在犯错”的帧也会被当成正确示范。要么用默认的只记纠正模式，要么自己按 <code>intervention</code> 过滤或加权。</p>
+<p><b>3. 从上一轮接着训 vs 从头训。</b>论文每轮在 D 上重新训练。微调更省算力，但几轮后可能偏向最近的数据。轮数多了可以隔几轮从 D 上整体重训一次。</p>
+<p style="margin-bottom:0"><b>4. 纠正段要干净。</b>纠正动作就是标签。犹豫、抖动都会被学进去。</p></div>
+
+<h2 id="s4x"><span class="no">04+</span>几个容易混淆的地方</h2>
+<p>读公式、上真机时，最容易在下面这几处想岔。</p>
+
+<h3 id="s4x-1">① 公式里的符号</h3>
+<table>
+<tr><th>符号</th><th>读法</th><th>意思</th><th>在机器人里是</th></tr>
+<tr><td>π</td><td>派</td><td>策略：看到状态，给出动作</td><td>控制机械臂的“大脑”</td></tr>
+<tr><td>π*</td><td>派星</td><td>专家策略，星号表示“标准答案”</td><td>人遥操作</td></tr>
+<tr><td>π̂ᵢ</td><td>派帽 i</td><td>学到的策略，帽子表示“从数据里估出来的”</td><td>第 i 轮训出的模型</td></tr>
+<tr><td>πᵢ</td><td>派 i</td><td>两者按 β 混合后的策略</td><td>第 i 轮采数据时真正在开的</td></tr>
+<tr><td>a | s</td><td>a 给定 s</td><td>在状态 s 下选动作 a 的概率</td><td>s 是相机图和关节角，a 是下一步动作</td></tr>
+</table>
+<p>专家每轮都一样，所以 π* 没有下标。模型每轮重训，所以 π̂ 带下标 i。</p>
+<div class="box note"><h4>“混合策略”是有好几个策略吗？</h4>
+<p>不是。只有两个：<b>一个专家 π*</b>，<b>一个模型 π̂ᵢ</b>。专家也只有一个，不是好几套规则。“混合”就是每一步抛硬币选一个来开：概率 βᵢ 让专家开，概率 1−βᵢ 让模型开。混合策略 πᵢ 不是第三个策略，只是“这一步让谁开”的规矩。</p>
+<table style="margin-bottom:0">
+<tr><th>论文实验</th><th>专家是谁</th></tr>
+<tr><td>Super Tux Kart 赛车</td><td>人用手柄</td></tr>
+<tr><td>Super Mario</td><td>能看到游戏内部的规划程序</td></tr>
+<tr><td>手写识别</td><td>正确答案</td></tr>
+</table></div>
+
+<h3 id="s4x-2">② 公式里的加法，加的是概率，不是动作</h3>
+<pre>πᵢ(a|s) = βᵢ·π*(a|s) + (1 − βᵢ)·π̂ᵢ(a|s)</pre>
+<table>
+<tr><th>读法</th><th>写出来</th><th>对不对</th></tr>
+<tr><td>加概率（混合分布）</td><td>上面这行</td><td>✅ 论文的意思</td></tr>
+<tr><td>加动作（取平均）</td><td>a = β·a* + (1 − β)·â</td><td>❌</td></tr>
+</table>
+<p>例子：β = 0.5，专家要往左，模型要往右。加概率：50% 往左，50% 往右，每一步只走一边。加动作：左右平均成“直走”，两边都没选，可能直接撞上。</p>
+<p>所以 β = 0.5 的意思是：<b>每走一步抛一次硬币</b>，正面执行专家的动作，反面执行模型的动作。这里不是两个专家，是一个专家加一个正在学的模型。不管这一步谁在开，<b>标签永远记专家的动作</b>。</p>
+
+<h3 id="s4x-3">③ β 怎么取：每轮都变</h3>
+<table>
+<tr><th>取法</th><th>公式</th><th>各轮的 β</th></tr>
+<tr><td>逐轮变小</td><td>βᵢ = p<sup>i−1</sup></td><td>p = 0.5 时：1, 0.5, 0.25, …</td></tr>
+<tr><td>只用一轮专家</td><td>βᵢ = 𝟙[i=1]</td><td>1, 0, 0, …（不用调 p，论文说实际效果常常很好）</td></tr>
+</table>
+<p>论文没有固定的默认值。理论只要求 β 的平均值随轮数趋近 0。</p>
+<div class="ans" id="a6"><b class="q">Q6 答</b>不会不变。β = 0 只表示采数据时由模型自己开。专家照样给每个走到的状态打标签，数据合并后每轮重训，所以 π̂ᵢ 每轮都在变。β 只管“谁来开”，不管“学不学”。β = 0 收到的全是模型自己会走到的状态，反而最有用。</div>
+
+<h3 id="s4x-4">④ 真机上：只有人接管的那段有标签</h3>
+<table>
+<tr><th>场景</th><th>专家是谁</th><th>能不能给每一步打标签</th></tr>
+<tr><td>论文的游戏实验</td><td>程序或玩手柄的人</td><td>能：模型在开，专家同时给动作，只记录不执行</td></tr>
+<tr><td>真机</td><td>遥操作的人</td><td>不能：人不动手，机械臂不会照他走，他没法边看边给</td></tr>
+</table>
+<table>
+<tr><th>片段</th><th>谁在开</th><th>有没有标签</th></tr>
+<tr><td>模型自己开</td><td>模型</td><td>没有</td></tr>
+<tr><td>人接管</td><td>人</td><td>有，人的动作就是标签</td></tr>
+</table>
+<p>接管段里每一帧都是训练样本，不只接管那一帧。训练时每帧往后取一段人的动作，凑成动作块（π0 / π0.5 默认 50 步）。接管段越长，样本越多。</p>
+
+<h3 id="s4x-5">⑤ 真机 DAgger 是不是效率太低</h3>
+<table>
+<tr><th></th><th>普通遥操作示教</th><th>接管段</th></tr>
+<tr><td>起点</td><td>人摆好的干净状态</td><td>模型自己走歪的状态</td></tr>
+<tr><td>教的是</td><td>正常怎么做</td><td>歪了怎么救回来</td></tr>
+<tr><td>模型缺不缺</td><td>已经有很多</td><td>正好缺这个</td></tr>
+</table>
+<p>接管段确实是人造的，但标签本来就该人给。值钱的是起点：这种“歪掉的状态”，人自己示教时几乎走不到。模型自己开时，人只是看着不用动手，比全程遥操作省力得多。</p>
+<table>
+<tr><th>模型自己开的那段</th><th>怎么用</th></tr>
+<tr><td>整条做成了</td><td>当好数据留下</td></tr>
+<tr><td>接管前的几帧</td><td>按 <code>intervention</code> 筛掉（见上面坑 2）</td></tr>
+<tr><td>成功和失败都有</td><td>可以做强化学习，例如 π*0.6 的 RECAP 就用了模型自己跑的数据</td></tr>
+</table>
+<p>真正低效的情况：模型太差，几步就要接管。这时先多采普通示教，等成功率到一半左右再开始 DAgger。</p>
+
+<h3 id="s4x-6">⑥ 进阶做法：人给终点，规则补标签</h3>
+<p>思路：出错时人把末端遥操作到正确的终点。接管前走过的状态都记下来了，终点也知道了，就能用规则（规划器）算出每个状态该怎么走。这就和仿真里“专家给每一步打标签”很像了。</p>
+<table>
+<tr><th></th><th>纯人接管（HG-DAgger）</th><th>人给终点 + 规则补标签</th></tr>
+<tr><td>人做什么</td><td>遥操作整段</td><td>只把末端拉到终点</td></tr>
+<tr><td>哪些帧有标签</td><td>只有接管段</td><td>走过的每一帧都能补</td></tr>
+<tr><td>模型自己开的那段</td><td>用不上</td><td>重新打标签，能用上</td></tr>
+<tr><td>标签质量</td><td>人手会抖、不一致</td><td>平滑、一致</td></tr>
+</table>
+<div class="box warn"><h4>要小心</h4>
+<p><b>1. 接触动作规则写不好。</b>空中移动好写，夹取、放下、插入要看力和时机。</p>
+<p><b>2. 两种风格会打架。</b>规则走直线、匀速，人示教有弯有快慢。同一状态两种答案，模型会学成中间值。让一种风格占主导，或初始示教也用规则生成。</p>
+<p><b>3. 终点会变。</b>物体每次位置不同，每条都要重新给终点，或用检测给。</p>
+<p style="margin-bottom:0"><b>4. 想想还要不要学。</b>如果规则拿到终点就能做好，用“检测 + 规划器”可能比端到端学习更简单。</p></div>
+<table>
+<tr><th>阶段</th><th>谁给标签</th></tr>
+<tr><td>空中靠近、移开</td><td>规则</td></tr>
+<tr><td>给出终点</td><td>人遥操作一下，或检测</td></tr>
+<tr><td>夹取、放下这类接触</td><td>人遥操作</td></tr>
+</table>
+<p>一句话：<b>移动交给规则，接触留给人。</b></p>
+
+<h3 id="s4x-7">⑦ 每轮从预训练权重重训，还是接着上一轮微调</h3>
+<p>论文每轮从头训，LeRobot 文档是接着上一轮微调。两种都要用<b>合并后的全部数据</b>。“从头”指从预训练权重（如 <code>pi05_base</code>）开始，不是随机初始化。</p>
+<table>
+<tr><th></th><th>从预训练权重重训</th><th>接着上一轮微调</th></tr>
+<tr><td>速度</td><td>慢，数据越多越慢</td><td>快，几千步就够</td></tr>
+<tr><td>旧数据</td><td>每轮只看几遍</td><td>越看越多遍，容易背答案</td></tr>
+<tr><td>结果稳不稳</td><td>稳，每轮可比</td><td>偏差会一轮轮累积</td></tr>
+<tr><td>学习率</td><td>正常热身、衰减</td><td>要调小，再热身一次</td></tr>
+<tr><td>和论文理论</td><td>一致</td><td>不完全一致</td></tr>
+</table>
+<p>建议混着用：中间轮接着微调；每隔几轮或最后一轮，从预训练权重重训一次当正式版本。最后用真机成功率挑。接管段只占数据一小部分，训练时可以多抽几次，让模型多看“歪了怎么救”。</p>
+
+<h3 id="s4x-8">⑧ DAgger、HG-DAgger、RaC 有什么区别</h3>
+<p>后两篇都是在 DAgger 上改的，方向一样：让真人当专家时也能用。</p>
+<table>
+<tr><th></th><th>DAgger（2011）</th><th>HG-DAgger（2019）</th><th>RaC（2025）</th></tr>
+<tr><td>作者</td><td>Ross 等</td><td>Kelly 等</td><td>Hu 等</td></tr>
+<tr><td>场景</td><td>游戏、仿真</td><td>真车自动驾驶</td><td>真机长任务（如叠衣服）</td></tr>
+<tr><td>谁决定专家上场</td><td>β 抛硬币</td><td>人觉得要出事就接管</td><td>同 HG-DAgger</td></tr>
+<tr><td>哪些帧有标签</td><td>走过的每一帧</td><td>只有接管段</td><td>只有接管段</td></tr>
+<tr><td>接管后怎么做</td><td>—</td><td>直接纠正</td><td>先<b>恢复</b>到好状态，再<b>纠正</b></td></tr>
+<tr><td>解决的问题</td><td>BC 越错越远</td><td>真人没法边看边打标签</td><td>长任务里纠正数据不够干净、不够多</td></tr>
+</table>
+<pre>DAgger：专家给每一步打标签（真人做不到）
+  → HG-DAgger：人按需接管，只标接管段（真人能做了）
+    → RaC：接管后先救回来，再示范怎么做（数据更好用）</pre>
+<p>RaC 要先恢复，是因为只纠正不恢复，模型学不会“从错误里退出来”。LeRobot 把两者合在一起：HG-DAgger 的按键接管，加 RaC 的“先恢复再纠正”（见 <a href="#s3-1">3.1</a>）。同一家族还有 SafeDAgger、EnsembleDAgger 等，它们让模型自己判断何时该叫人。</p>
+
+<h2 id="s5"><span class="no">05</span>架构图</h2>
+<p class="hint">图里文字可选中、复制。点右下角「✎ 编辑」后可直接改字，按「保存」或 ⌘/Ctrl+S 写回这个 HTML 文件（Chrome / Edge 第一次保存时选中本文件即可覆盖；其他浏览器会下载一份新文件）。编辑模式下点击 ⌗ 代码芯片可以改它指向的文件和行号。右下角可切换代码链接打开 GitHub 还是本地 VS Code。</p>
+</div><!-- /wrap -->
+
+<div class="wide">
+<div class="legend">
+  <span><i style="background:#f6fbfd;border-color:#b9dbe5"></i>数据</span>
+  <span><i style="background:#fff8f4;border-color:#efc9b8"></i>训练</span>
+  <span><i style="background:#faf7fe;border-color:#d8c6ef"></i>人</span>
+  <span><i style="background:var(--surface-2);border-color:var(--line-strong);border-style:dashed"></i>论文对照</span>
+  <span style="color:var(--train)">━ 红线：DAgger 外层迭代</span>
+</div>
+<div class="dg-scroll">
+<div class="dg" id="dagger-diagram">
+<svg class="wires" viewBox="0 0 1060 720" aria-hidden="true">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6f8291"/></marker>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c4572a"/></marker>
+    <marker id="arh" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#7a4fb0"/></marker>
+  </defs>
+  <!-- 外层循环 -->
+  <path class="loop" d="M222 92 L296 92" marker-end="url(#arr)"/>
+  <path class="loop" d="M526 92 L592 92" marker-end="url(#arr)"/>
+  <path class="loop" d="M706 172 L706 226" marker-end="url(#arr)"/>
+  <path class="loop" d="M900 480 L900 536" marker-end="url(#arr)"/>
+  <path class="loop" d="M774 612 L712 612" marker-end="url(#arr)"/>
+  <path class="loop" d="M456 612 L398 612" marker-end="url(#arr)"/>
+  <path class="loop" d="M262 536 L262 148 L294 148" marker-end="url(#arr)"/>
+  <!-- 输入设备 -->
+  <path class="h" d="M968 172 L968 226" marker-end="url(#arh)"/>
+  <!-- 状态机 -->
+  <path d="M528 322 L590 322" marker-end="url(#ar)"/>
+  <path d="M590 382 L528 382" marker-end="url(#ar)"/>
+  <path class="h" d="M778 322 L836 322" marker-end="url(#arh)"/>
+  <path class="h" d="M836 382 L778 382" marker-end="url(#arh)"/>
+  <!-- 论文对照 -->
+  <path class="dash" d="M224 350 L296 350"/>
+</svg>
+
+<!-- 第一行 -->
+<div class="nd data" style="left:20px;top:28px;width:202px;min-height:144px">
+  <div class="nt">① 专家示教 D₀</div>
+  <div class="nb">人用遥操作采几十到几百条成功轨迹。论文里这一轮就是 β₁ = 1。</div>
+  <div class="nl"><a class="cl" data-path="docs/source/hil_data_collection.mdx" data-line="83">Step 1:83</a></div>
+</div>
+<div class="nd train" style="left:298px;top:28px;width:228px;min-height:144px">
+  <div class="nt">② 训练 π̂ᵢ（在 D 上做 BC）</div>
+  <div class="nb">第 0 轮从头训；之后用 <b>pretrained_path</b> 接上一轮权重微调。</div>
+  <div class="nl"><a class="cl" data-path="src/lerobot/scripts/lerobot_train.py" data-line="385">lerobot_train.py:385</a><a class="pl" href="pdfs/DAgger-1011.0686v3.pdf">论文 ⑤</a></div>
+</div>
+<div class="nd" style="left:594px;top:28px;width:226px;min-height:144px">
+  <div class="nt">③ 部署 lerobot-rollout</div>
+  <div class="nb"><b>--strategy.type=dagger</b> → factory 创建 DAggerStrategy → setup() → run()</div>
+  <div class="nl"><a class="cl" data-path="src/lerobot/rollout/strategies/factory.py" data-line="48">factory.py:48</a><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="256">setup:256</a><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="291">run:291</a></div>
+</div>
+<div class="nd human" style="left:850px;top:28px;width:190px;min-height:144px">
+  <div class="nt">④ 输入设备</div>
+  <div class="nb">键盘 space / tab / enter / esc，或脚踏板 A / B / C。另开线程监听。</div>
+  <div class="nl"><a class="cl" data-path="src/lerobot/rollout/configs.py" data-line="142">configs.py:142</a><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="171">dagger.py:171</a></div>
+</div>
+
+<!-- 状态机 -->
+<div class="frame" style="left:298px;top:228px;width:742px;height:252px"><div class="ft">⑤ DAggerStrategy 主循环（每帧）· 状态机</div></div>
+<div class="nd st a" style="left:318px;top:262px;width:210px;min-height:190px">
+  <div class="nt">AUTONOMOUS · 策略开</div>
+  <div class="nb">观测 → 推理 → send_next_action 发动作。只记纠正模式下<b>不记帧</b>。</div>
+  <div class="nl"><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="447">dagger.py:447</a><a class="cl" data-path="src/lerobot/rollout/strategies/core.py" data-line="329">send_next_action:329</a></div>
+</div>
+<div class="nd st p" style="left:592px;top:262px;width:186px;min-height:190px">
+  <div class="nt">PAUSED · 停住</div>
+  <div class="nb">重复发上一个动作。进入时暂停引擎，并把主臂平滑移到从臂位置。</div>
+  <div class="nl"><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="441">dagger.py:441</a><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="716">交接:716</a></div>
+</div>
+<div class="nd st c human" style="left:838px;top:262px;width:186px;min-height:190px">
+  <div class="nt">CORRECTING · 人开</div>
+  <div class="nb">teleop.get_action() → 发给机器人。标签用人的动作，intervention=True。</div>
+  <div class="nl"><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="413">dagger.py:413</a><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="729">交接:729</a></div>
+</div>
+
+<!-- 论文对照 -->
+<div class="nd paper" style="left:20px;top:228px;width:204px;min-height:252px">
+  <div class="nt">论文 ①②③ 对照</div>
+  <div class="nb">πᵢ = βᵢπ* + (1−βᵢ)π̂ᵢ，按概率选谁执行；专家给<b>所有</b>访问到的状态打标签。<br>LeRobot 去掉了 β：人按键决定何时接管，只有接管段有标签（HG-DAgger / RaC）。</div>
+  <div class="nl"><a class="pl" href="pdfs/DAgger-1011.0686v3.pdf">论文 第 3 节</a></div>
+</div>
+
+<!-- 底部数据流 -->
+<div class="nd data" style="left:776px;top:538px;width:264px;min-height:150px">
+  <div class="nt">⑥ 写帧 add_frame</div>
+  <div class="nb">纠正帧 intervention=<b>True</b>；record_autonomous=true 时策略帧也记，标 <b>False</b>。</div>
+  <div class="nl"><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="427">纠正:427</a><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="459">策略:459</a><a class="cl" data-path="src/lerobot/rollout/configs.py" data-line="237">record_autonomous:237</a></div>
+</div>
+<div class="nd data" style="left:458px;top:538px;width:254px;min-height:150px">
+  <div class="nt">⑦ 新数据集 Dᵢ</div>
+  <div class="nb">纠正结束或到时长 → save_episode()；单线程后台 push_to_hub，纠正中不推。</div>
+  <div class="nl"><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="585">save:585</a><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="776">_background_push:776</a></div>
+</div>
+<div class="nd data" style="left:130px;top:538px;width:268px;min-height:150px">
+  <div class="nt">⑧ 聚合 D ← D ∪ Dᵢ</div>
+  <div class="nb">lerobot-edit-dataset merge 把 D₀ 和各轮 Dᵢ 合成一个数据集，再回到 ②。</div>
+  <div class="nl"><a class="cl" data-path="src/lerobot/scripts/lerobot_edit_dataset.py" data-line="294">MergeConfig:294</a><a class="cl" data-path="src/lerobot/datasets/aggregate.py" data-line="352">aggregate.py:352</a><a class="pl" href="pdfs/DAgger-1011.0686v3.pdf">论文 ④</a></div>
+</div>
+
+<!-- 连线标签 -->
+<div class="wl loop" style="left:232px;top:68px">D = D₀</div>
+<div class="wl loop" style="left:536px;top:68px">π̂ᵢ 权重</div>
+<div class="wl loop" style="left:716px;top:188px">上真机跑</div>
+<div class="wl" style="left:978px;top:188px">按键事件</div>
+<div class="wl" style="left:536px;top:298px">space</div>
+<div class="wl" style="left:536px;top:388px">space</div>
+<div class="wl" style="left:788px;top:298px">tab</div>
+<div class="wl" style="left:788px;top:388px">tab</div>
+<div class="wl loop" style="left:910px;top:496px">每一帧</div>
+<div class="wl loop" style="left:718px;top:588px">episode</div>
+<div class="wl loop" style="left:404px;top:588px">Dᵢ</div>
+<div class="wl loop" style="left:270px;top:500px">下一轮 i+1</div>
+</div>
+</div>
+</div><!-- /wide -->
+
+<div class="wrap">
+<h2 id="s6"><span class="no">06</span>代码索引</h2>
+<table>
+<tr><th>功能</th><th>位置</th></tr>
+<tr><td>模块说明（RaC、两种记录模式、交接）</td><td><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="15">dagger.py:15</a></td></tr>
+<tr><td>三状态与合法切换表</td><td><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="88">dagger.py:88</a><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="97">dagger.py:97</a></td></tr>
+<tr><td>线程安全的事件容器</td><td><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="105">DAggerEvents:105</a></td></tr>
+<tr><td>键盘 / 踏板监听</td><td><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="171">dagger.py:171</a><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="204">dagger.py:204</a></td></tr>
+<tr><td>策略类、setup / run / teardown</td><td><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="229">dagger.py:229</a><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="298">teardown:298</a></td></tr>
+<tr><td>连续记录模式主循环</td><td><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="337">dagger.py:337</a></td></tr>
+<tr><td>只记纠正模式主循环</td><td><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="514">dagger.py:514</a></td></tr>
+<tr><td>切换副作用（平滑交接、力矩）</td><td><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="681">dagger.py:681</a></td></tr>
+<tr><td>后台上传</td><td><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="776">dagger.py:776</a></td></tr>
+<tr><td>配置项</td><td><a class="cl" data-path="src/lerobot/rollout/configs.py" data-line="209">DAggerStrategyConfig:209</a></td></tr>
+<tr><td>命令示例</td><td><a class="cl" data-path="src/lerobot/scripts/lerobot_rollout.py" data-line="93">lerobot_rollout.py:93</a></td></tr>
+<tr><td>数据集合并</td><td><a class="cl" data-path="src/lerobot/scripts/lerobot_edit_dataset.py" data-line="294">lerobot_edit_dataset.py:294</a><a class="cl" data-path="src/lerobot/datasets/aggregate.py" data-line="352">aggregate.py:352</a></td></tr>
+<tr><td>训练入口</td><td><a class="cl" data-path="src/lerobot/scripts/lerobot_train.py" data-line="385">lerobot_train.py:385</a></td></tr>
+<tr><td>文档：流程与相关工作</td><td><a class="cl" data-path="docs/source/hil_data_collection.mdx" data-line="186">mdx:186</a><a class="cl" data-path="docs/source/hil_data_collection.mdx" data-line="231">mdx:231</a></td></tr>
+</table>
+
+<h2 id="s7"><span class="no">07</span>读完做几道题</h2>
+<p class="hint">先自己想，再点开看答案。</p>
+<ol class="quiz">
+<li><p>取 β₁ = 1，之后 βᵢ = 0。第一轮 DAgger 等价于什么？</p>
+<details><summary>看答案</summary><div>等价于纯行为克隆：第一轮完全由专家执行，收到的就是专家示教。从第二轮起才是策略自己跑。见 <a href="#s2">第 02 节</a> 表格第 ① 行。</div></details></li>
+<li><p>论文为什么返回“验证集上最好的 π̂ᵢ”，而不是最后一轮的策略？</p>
+<details><summary>看答案</summary><div>理论只保证 N 轮里<b>存在</b>一个足够好的策略，没保证最后一个最好。真机上对应的是：每轮都测成功率，留最高的那版。</div></details></li>
+<li><p>默认的只记纠正模式下，一个 episode 从哪里开始，到哪里结束？</p>
+<details><summary>看答案</summary><div>按 tab 从 PAUSED 进入 CORRECTING 开始记，再按 tab 回到 PAUSED 时调用 <code>save_episode()</code> 结束。策略自己开的时候不记帧。<a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="585">dagger.py:585</a></div></details></li>
+<li><p>纠正段里写进数据集的动作标签，是人的遥操作动作，还是发给机器人的动作？</p>
+<details><summary>看答案</summary><div>人的遥操作动作 <code>processed_teleop</code>（经过 <code>teleop_action_processor</code>）。发给机器人的是再经过 <code>robot_action_processor</code> 的 <code>robot_action_to_send</code>，它不进数据集。<a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="430">dagger.py:430</a></div></details></li>
+<li><p>开了 <code>record_autonomous=true</code>，再直接拿全部帧训练，会有什么问题？</p>
+<details><summary>看答案</summary><div>人接管前那几秒，策略正在犯错，这些帧标着 <code>intervention=False</code> 也被记下来了。训练代码不读 <code>intervention</code> 列，会把错误动作当成正确示范学。要过滤或加权，或者用只记纠正模式。见 <a href="#s4">第 04 节</a> 坑 2。</div></details></li>
+<li><p>主臂能被电机驱动（如 SO-101）和不能被驱动时，交接有什么不同？</p>
+<details><summary>看答案</summary><div>能驱动：AUTONOMOUS → PAUSED 时，把<b>主臂</b>慢慢移到从臂位置，人接手不跳。不能驱动：PAUSED → CORRECTING 时，反过来把<b>从臂</b>慢慢移到主臂姿态。<a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="716">dagger.py:716</a><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="729">dagger.py:729</a></div></details></li>
+<li><p>按键线程为什么不直接改状态，而要先 <code>request_transition</code>，再由主循环 <code>consume_transition</code>？</p>
+<details><summary>看答案</summary><div>两个原因：一是只登记合法切换，非法按键直接忽略；二是状态只在主循环每帧开头改，不会在一帧处理到一半时被别的线程改掉。<a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="134">dagger.py:134</a></div></details></li>
+<li><p>β = 0.5 时，专家要往左、模型要往右。这一步机械臂会往哪走？标签记谁的？</p>
+<details><summary>看答案</summary><div>抛硬币：一半概率往左（专家），一半概率往右（模型），不会平均成“直走”。公式加的是选动作的概率，不是动作本身。不管谁在开，标签都记专家的“往左”。见 <a href="#s4x-2">04+ 第 ② 条</a>。</div></details></li>
+</ol>
+
+<footer>论文：Ross, Gordon, Bagnell. AISTATS 2011，arXiv:1011.0686。代码：huggingface/lerobot @ b6ec006（本地 /Users/jianweizhang/src/lerobot）。</footer>
+</div>
+</div><!-- /doc -->
+
+<div class="kb-tools" id="kb-tools">
+  <button type="button" id="btn-edit">✎ 编辑</button>
+  <button type="button" id="btn-save">保存</button>
+  <select id="sel-link" title="代码链接打开方式">
+    <option value="github">GitHub @b6ec006</option>
+    <option value="vscode">本地 VS Code</option>
+  </select>
+  <span class="st" id="kb-st"></span>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  var COMMIT='b6ec0060779550c0a157ae34feb89e0cf86012a8';
+  var GH='https://github.com/huggingface/lerobot/blob/'+COMMIT+'/';
+  var LOCAL='/Users/jianweizhang/src/lerobot/';
+  var doc=document.getElementById('doc'), body=document.body;
+  var st=document.getElementById('kb-st'), btnEdit=document.getElementById('btn-edit'), sel=document.getElementById('sel-link');
+  var headSnap=new Set(Array.prototype.slice.call(document.head.children));
+  var bodyClass=body.getAttribute('class'), dirty=false, handle=null;
+
+  /* ---------- 代码链接 ---------- */
+  function hrefOf(a,mode){
+    var p=a.getAttribute('data-path'), l=a.getAttribute('data-line')||'1';
+    if(mode==='vscode') return 'vscode://file'+LOCAL+p+':'+l;
+    return GH+p+(/\.mdx?$/.test(p)?'?plain=1':'')+'#L'+l;
+  }
+  function applyLinks(){
+    var mode=sel.value;
+    document.querySelectorAll('a.cl').forEach(function(a){a.href=hrefOf(a,mode);a.target=mode==='github'?'_blank':'';a.title=a.getAttribute('data-path')+':'+a.getAttribute('data-line');});
+    document.querySelectorAll('a.pl').forEach(function(a){a.target='_blank';});
+  }
+  try{sel.value=localStorage.getItem('dagger-link-mode')||'github';}catch(e){}
+  sel.addEventListener('change',function(){try{localStorage.setItem('dagger-link-mode',sel.value);}catch(e){}applyLinks();});
+  applyLinks();
+
+  /* ---------- 编辑 ---------- */
+  function setEdit(on){
+    body.classList.toggle('editing',on);
+    btnEdit.classList.toggle('on',on);
+    btnEdit.textContent=on?'✓ 完成编辑':'✎ 编辑';
+    if(on) doc.setAttribute('contenteditable','true'); else doc.removeAttribute('contenteditable');
+  }
+  btnEdit.addEventListener('click',function(){setEdit(!body.classList.contains('editing'));});
+  doc.addEventListener('input',function(){dirty=true;st.textContent='未保存';});
+  doc.addEventListener('click',function(e){
+    if(!body.classList.contains('editing')) return;
+    var a=e.target.closest('a.cl,a.pl'); if(!a) return;
+    e.preventDefault();
+    if(a.classList.contains('cl')){
+      var cur=a.getAttribute('data-path')+':'+a.getAttribute('data-line');
+      var v=prompt('代码位置（仓库内路径:行号）',cur); if(!v||v===cur) return;
+      var m=v.trim().match(/^(.+?):(\d+)$/); if(!m){alert('格式应为 path/to/file.py:123');return;}
+      a.setAttribute('data-path',m[1]); a.setAttribute('data-line',m[2]);
+    }else{
+      var h=prompt('链接地址',a.getAttribute('href')); if(!h) return; a.setAttribute('href',h);
+    }
+    applyLinks(); dirty=true; st.textContent='未保存';
+  });
+  /* 粘贴只保留纯文本，避免带进别处样式 */
+  doc.addEventListener('paste',function(e){
+    if(!body.classList.contains('editing')) return;
+    e.preventDefault();
+    document.execCommand('insertText',false,(e.clipboardData||window.clipboardData).getData('text/plain'));
+  });
+
+  /* ---------- 保存 ---------- */
+  function serialize(){
+    var live=document.documentElement, c=live.cloneNode(true);
+    var lh=document.head.children, ch=c.querySelector('head').children;
+    for(var i=lh.length-1;i>=0;i--){ if(!headSnap.has(lh[i])) ch[i].remove(); }
+    c.querySelectorAll('.kb-root').forEach(function(n){n.remove();});
+    var cb=c.querySelector('body');
+    if(bodyClass===null) cb.removeAttribute('class'); else cb.setAttribute('class',bodyClass);
+    c.querySelectorAll('[contenteditable]').forEach(function(n){n.removeAttribute('contenteditable');});
+    var cs=c.querySelector('#kb-st'); if(cs) cs.textContent='';
+    var ce=c.querySelector('#btn-edit'); if(ce){ce.textContent='✎ 编辑';ce.classList.remove('on');}
+    c.querySelectorAll('a.cl').forEach(function(a){a.setAttribute('href',hrefOf(a,'github'));a.removeAttribute('target');a.removeAttribute('title');});
+    return '<!DOCTYPE html>\n'+c.outerHTML+'\n';
+  }
+  /* 文件句柄存进 IndexedDB，刷新后仍能直接覆盖原文件 */
+  function idb(mode,val){
+    return new Promise(function(res){
+      try{
+        var r=indexedDB.open('dagger-page',1);
+        r.onupgradeneeded=function(){r.result.createObjectStore('h');};
+        r.onsuccess=function(){
+          var tx=r.result.transaction('h',mode), s=tx.objectStore('h');
+          var q=mode==='readonly'?s.get(location.pathname):s.put(val,location.pathname);
+          q.onsuccess=function(){res(q.result);}; q.onerror=function(){res(null);};
+        };
+        r.onerror=function(){res(null);};
+      }catch(e){res(null);}
+    });
+  }
+  async function save(){
+    var html=serialize(), name=decodeURIComponent(location.pathname.split('/').pop()||'DAgger-算法详解.html');
+    if(window.showSaveFilePicker){
+      try{
+        if(!handle) handle=await idb('readonly');
+        if(handle && handle.requestPermission){
+          var ok=await handle.queryPermission({mode:'readwrite'});
+          if(ok!=='granted') ok=await handle.requestPermission({mode:'readwrite'});
+          if(ok!=='granted') handle=null;
+        }
+        if(!handle){
+          handle=await window.showSaveFilePicker({suggestedName:name,types:[{description:'HTML',accept:{'text/html':['.html']}}]});
+          idb('readwrite',handle);
+        }
+        var w=await handle.createWritable(); await w.write(html); await w.close();
+        dirty=false; st.textContent='已保存 '+new Date().toLocaleTimeString(); return;
+      }catch(e){ if(e&&e.name==='AbortError'){st.textContent='已取消';return;} console.warn(e); }
+    }
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([html],{type:'text/html'})); a.download=name;
+    document.body.appendChild(a); a.click(); a.remove();
+    dirty=false; st.textContent='已下载，替换原文件即可';
+  }
+  document.getElementById('btn-save').addEventListener('click',save);
+  document.addEventListener('keydown',function(e){ if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='s'){e.preventDefault();save();} });
+  window.addEventListener('beforeunload',function(e){ if(dirty){e.preventDefault();e.returnValue='';} });
+})();
+</script>
+<script src="nav.js"></script>
+</body>
+</html>
