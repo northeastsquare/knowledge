@@ -16,10 +16,10 @@ a{color:var(--accent)}a:focus-visible,button:focus-visible,input:focus-visible{o
 </head>
 <body>
 <main>
-  <header><div class="eyebrow">ROBOTIC LEARNING / CONCEPT INDEX</div><h1>从一个概念，读懂另一篇。<small>97 个关键概念 · 28 篇研读网页</small></h1><p class="intro">正文里的虚线下划线可以点击，直达相关讲解。这里按问题收录概念：点击标题阅读原文，沿“接着理解”继续串读。</p></header>
+  <header><div class="eyebrow">ROBOTIC LEARNING / CONCEPT INDEX</div><h1>从一个概念，读懂另一篇。<small>98 个关键概念 · 29 篇研读网页</small></h1><p class="intro">正文里的虚线下划线可以点击，直达相关讲解。这里按问题收录概念：点击标题阅读原文，沿“接着理解”继续串读。</p></header>
   <aside class="route" aria-label="概念阅读路线"><strong>从你正在问的问题出发</strong><p>“target 和双 Q 是一回事吗？” <a href="#q-value">Q 值</a> → <a href="#target-network">target 副本</a> → <a href="#twin-q">双 Q</a></p><p>“VLA 怎么用 RL 变好？” <a href="#flow-matching">流匹配</a> → <a href="#denoising-mdp">去噪链 MDP</a> / <a href="#rl-token">RL Token</a> → <a href="#recap">RECAP</a></p><p>“知识隔离是什么？为什么梯度要切一半？” <a href="#knowledge-insulation">知识隔离</a> → <a href="#stop-gradient">Stop-gradient</a> → <a href="#co-training">VLM co-training</a></p><p>“Beta 为什么出现在 π0 训练里？” <a href="#probability-density">密度与面积</a> → <a href="#beta-distribution">Beta 分布</a> → <a href="#noise-schedule">噪声采样</a> → <a href="#flow-matching">流匹配</a></p><p>“生成动作后怎样接上实时控制？” <a href="#diffusion-policy">扩散策略</a> → <a href="#receding-horizon">滚动执行</a> → <a href="#inpainting">动作补全</a> → <a href="#rtc">RTC</a></p></aside>
   <div class="search-area"><div class="search-field"><label for="concept-search">查找概念或相关问题</label><input id="concept-search" type="search" placeholder="例如：target、双 Q、奖励、动作块" autocomplete="off"></div><button id="clear-search" type="button">清空搜索</button></div>
-  <p class="count" id="result-count" role="status" aria-live="polite">共 97 个概念</p>
+  <p class="count" id="result-count" role="status" aria-live="polite">共 98 个概念</p>
   <p class="empty" id="empty-state" hidden>没有找到匹配概念。试试中文名称、英文缩写，或清空搜索查看全部。</p>
   <section class="term-group" aria-labelledby="group-0">
     <div class="group-heading"><span>01</span><h2 id="group-0">价值如何学出来</h2></div>
@@ -224,6 +224,12 @@ a{color:var(--accent)}a:focus-visible,button:focus-visible,input:focus-visible{o
   <section class="term-group" aria-labelledby="group-2">
     <div class="group-heading"><span>03</span><h2 id="group-2">VLA 如何生成动作</h2></div>
     <div class="term-grid">
+      <article class="term-card" id="world-action-model">
+        <h3><a href="具身世界模型-发展历程.html#concept-world-model">世界模型 · World Action Model<span aria-hidden="true"> ↗</span></a></h3>
+        <p>以动作为条件预测未来（潜状态、特征、视频或 3D）；WAM 把未来预测和动作生成放进同一个模型。</p>
+        <div class="term-source">讲解位置：具身世界模型-发展历程</div>
+        <div class="term-related"><span>接着理解</span> <a href="#flow-matching">流匹配</a> <a href="#action-chunk">Action chunk</a> <a href="#synthetic-data">合成数据</a></div>
+      </article>
       <article class="term-card" id="vla">
         <h3><a href="VLA-发展历程.html#concept-vla">VLA · 视觉—语言—动作<span aria-hidden="true"> ↗</span></a></h3>
         <p>把视觉观测与语言目标连接到机器人动作；用发展历程页定位数据、动作生成和反馈各自解决的问题。</p>

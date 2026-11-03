@@ -278,7 +278,7 @@
           <div class="cell"><b>符号与模块化机器人</b><span>Shakey、经典 TAMP。感知、规划、控制逐个手工搭建。</span></div>
           <div class="cell"><b>视觉运动策略</b><span>端到端 visuomotor、Diffusion Policy、ACT。动作能力很强，但没有互联网语义先验。</span></div>
         </div>
-        <p class="def-note"><a class="concept-link" href="pi0.7_问答学习卡.html#concept-world-model">世界模型</a>（视频预测、V-JEPA 2 等）不属于这四格中的任何一格，它回答的是“动作会带来什么后果”，可以给 VLA 提供想象、规划或奖励。RT-1 落在右下格向右上格过渡的位置：端到端输出动作，但语言只是一个编码向量，没有 VLM 骨干。</p>
+        <p class="def-note"><a class="concept-link" href="pi0.7_问答学习卡.html#concept-world-model">世界模型</a>（视频预测、V-JEPA 2 等）不属于这四格中的任何一格，它回答的是“动作会带来什么后果”，可以给 VLA 提供想象、规划或奖励（完整脉络见<a class="concept-link" href="具身世界模型-发展历程.html#concept-world-model">具身世界模型发展史</a>）。RT-1 落在右下格向右上格过渡的位置：端到端输出动作，但语言只是一个编码向量，没有 VLM 骨干。</p>
       </div>
     </div>
   </section>
@@ -535,7 +535,7 @@
       <div class="debate"><h3>端到端还是分层 / 双系统？</h3><dl><dt>A</dt><dd>端到端没有手工接口，信息损失最少（RT-2、π0）。</dd><dt>B</dt><dd>分层能把慢推理和快控制解耦，可解释，长时程任务也更好做（Hi Robot、Helix、GR00T）。</dd><dt class="op">现状</dt><dd><span class="opinion">观点</span>“双系统 + 联合训练”是目前工业界的主流折中。高层输出语言子任务还是隐变量，仍未定论。</dd></dl></div>
       <div class="debate"><h3>机器人领域存在 scaling law 吗？</h3><dl><dt>A</dt><dd>数据量和多样性增加时，泛化稳定提升（OXE / RT-X 的正迁移、π 系列的数据配比实验）。</dd><dt>B</dt><dd>机器人数据比互联网数据少好几个数量级，又存在构型差异，目前看到的是“数据多样性的规律”，未必是参数量的规律。</dd><dt class="op">现状</dt><dd><span class="opinion">观点</span>多样性（场景、物体、本体）的作用比数据总量更明确；参数量的 scaling 还缺少严格的对照实验。</dd></dl></div>
       <div class="debate"><h3>真机、合成还是人类视频？</h3><dl><dt>A</dt><dd>真机遥操作数据质量最高，但最贵（DROID、π 系列）。</dd><dt>B</dt><dd>合成数据和仿真成本低、规模大（InternData-A1）；人类视频的数量几乎无限（GR-1、LAPA）。</dd><dt class="op">现状</dt><dd><span class="opinion">观点</span>多源联合训练是共识，分歧在配比和对齐方式上：sim-to-real 的差距要靠残差 RL 或少量真机数据来弥补。</dd></dl><p class="rel">本库：<a href="InternData-A1-论文解读.html">InternData-A1</a>、<a href="ObjectCentric-RL-论文解读.html">残差 RL</a></p></div>
-      <div class="debate"><h3>需要显式的世界模型吗？</h3><dl><dt>A</dt><dd>能预测后果才能规划、才能安全地探索；世界模型还可以用来评测和产生奖励（V-JEPA 2）。</dd><dt>B</dt><dd>隐式的策略已经足够好用，像素级的预测代价高，而且未必有用。</dd><dt class="op">现状</dt><dd><span class="opinion">观点</span>世界模型最先落地的用途很可能是评测和数据生成，而不是在线规划。</dd></dl></div>
+      <div class="debate"><h3>需要显式的世界模型吗？</h3><dl><dt>A</dt><dd>能预测后果才能规划、才能安全地探索；世界模型还可以用来评测和产生奖励（V-JEPA 2）。</dd><dt>B</dt><dd>隐式的策略已经足够好用，像素级的预测代价高，而且未必有用。</dd><dt class="op">现状</dt><dd><span class="opinion">观点</span>世界模型最先落地的用途很可能是评测和数据生成，而不是在线规划。详见<a class="concept-link" href="具身世界模型-发展历程.html#e6">世界模型的三种用途</a>。</dd></dl></div>
       <div class="debate"><h3>RL 应该更新模型的哪一部分？</h3><dl><dt>A</dt><dd>更新整个模型，上限最高（πRL 用 PPO 微调 flow VLA）。</dd><dt>B</dt><dd>只更新轻量部件，样本效率高、更安全（RL Token、残差 RL、噪声空间 RL）；或者不直接做 RL，用优势作为条件做策略提取（RECAP）。</dd><dt class="op">现状</dt><dd><span class="opinion">观点</span>真机场景偏向轻量部件或离线策略提取，仿真场景偏向更新整个模型。<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-actor-critic">Actor–Critic</a> 框架是这些方法的共同骨架。</dd></dl><p class="rel">本库：<a href="VLA-RL-方法全景对比.html">VLA-RL 全景</a>、<a href="RL-Token-论文解读.html">RL Token</a></p></div>
       <div class="debate"><h3>怎样评测才可信？</h3><dl><dt>A</dt><dd>仿真基准（LIBERO、SimplerEnv、CALVIN）可以复现、成本低。</dd><dt>B</dt><dd>这些基准已经接近饱和，仿真分数和真机表现的相关性也有限；而真机评测各家场景不同，结果无法横向比较。</dd><dt class="op">现状</dt><dd><span class="opinion">观点</span>评测是当前最被低估的瓶颈。读论文时，优先看真机实验的设置、试验次数和失败案例。</dd></dl></div>
       <div class="debate"><h3>“会做一次”到“可靠地做一小时”</h3><dl><dt>A</dt><dd>靠更多数据和更大模型就能逐步提高可靠性。</dd><dt>B</dt><dd>需要新的机制：失败检测、恢复、持续学习、记忆。</dd><dt class="op">现状</dt><dd><span class="opinion">观点</span>从 P7 的趋势看，从部署经验中学习（RECAP）是目前最有说服力的路径，但安全约束和奖励来源仍然没有解决。</dd></dl></div>
