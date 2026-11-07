@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>大规模 GPU 训练加速：一图看懂</title>
+<style>
+:root{
+  --bg:#f7f8fa;--card:#fff;--fg:#1f2430;--mut:#6b7280;--line:#d6dae1;--soft:#eef0f4;--acc:#ef4444;
+  --g0:#3b82f6;--g1:#10b981;--g2:#f59e0b;--g3:#8b5cf6;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#14161b;--card:#1d2027;--fg:#e8eaf0;--mut:#9aa3b2;--line:#363b47;--soft:#2a2e38}
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.6 -apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+.wrap{max-width:1100px;margin:0 auto;padding:28px 18px 60px}
+h1{font-size:28px;margin:0 0 6px}
+h2{font-size:20px;margin:42px 0 14px;padding-left:10px;border-left:5px solid var(--g0)}
+.sub{color:var(--mut);margin:0}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(440px,1fr));gap:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.card h3{margin:0 0 2px;font-size:17px}
+.tag{display:inline-block;font-size:12px;padding:1px 8px;border-radius:99px;background:var(--soft);color:var(--mut);margin-left:6px;vertical-align:middle}
+.one{margin:0 0 8px;color:var(--mut);font-size:13.5px}
+.cap{margin:8px 0 0;font-size:13.5px}
+.cap b{color:var(--fg)}
+.cost{margin:4px 0 0;font-size:12.5px;color:var(--mut)}
+svg{width:100%;height:auto;display:block}
+svg text{fill:var(--fg);font-family:inherit;font-size:12px}
+svg .m{fill:var(--mut);font-size:11px}
+svg .w{fill:#fff;font-weight:600}
+svg .bx{fill:var(--soft);stroke:var(--line)}
+svg .ln{stroke:var(--mut);stroke-width:1.5;fill:none}
+table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden;font-size:14px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{background:var(--soft);font-weight:600}
+tr:last-child td{border-bottom:0}
+td.c,th.c{text-align:center}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
+.fw{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px}
+.fw .card{padding:12px 14px}
+.fw h3{font-size:16px}
+.fw p{margin:4px 0 0;font-size:13.5px;color:var(--mut)}
+.pick{display:grid;gap:8px}
+.pick div{display:flex;gap:10px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px}
+.pick .q{flex:1}
+.pick .arrow{color:var(--mut)}
+.pick .a{font-weight:700;min-width:200px}
+.note{font-size:12.5px;color:var(--mut);margin-top:10px}
+.leg span{margin-right:14px;font-size:13px}
+a{color:var(--g0)}
+.qa{margin-bottom:16px}
+.qa h3{font-size:18px;margin-bottom:6px}
+.ans{background:var(--soft);border-left:4px solid var(--acc);padding:8px 12px;border-radius:6px;margin:6px 0 10px}
+.qa ol{margin:10px 0 0;padding-left:20px;font-size:14px}
+.qa li{margin:4px 0}
+.eg{font-size:13.5px;background:var(--soft);border-radius:8px;padding:8px 12px;margin-top:8px}
+</style>
+<link rel="stylesheet" href="concepts.css">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0L10 5L0 10z" fill="#6b7280"/>
+    </marker>
+    <pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+      <rect width="6" height="6" fill="none"/><line x1="0" y1="0" x2="0" y2="6" stroke="#9aa3b2" stroke-width="2"/>
+    </pattern>
+  </defs>
+</svg>
+
+<div class="wrap">
+  <h1>大规模 GPU 训练加速：一图看懂</h1>
+  <p class="sub">模型太大、数据太多，一张卡装不下、算不完。办法就一个：<b>把东西切开，分给很多张卡。</b>区别只在「切什么」。</p>
+  <p class="leg" style="margin-top:10px">
+    <span><i class="dot" style="background:var(--g0)"></i>GPU 0</span>
+    <span><i class="dot" style="background:var(--g1)"></i>GPU 1</span>
+    <span><i class="dot" style="background:var(--g2)"></i>GPU 2</span>
+    <span><i class="dot" style="background:var(--g3)"></i>GPU 3</span>
+  </p>
+
+  <!-- ===== 总览 ===== -->
+  <h2>① 先看全局：往哪里切？</h2>
+  <div class="card">
+    <svg viewBox="0 0 900 300" role="img" aria-label="模型切法总览">
+      <!-- 模型 -->
+      <text x="40" y="22">一个模型（4 层）</text>
+      <g>
+        <rect class="bx" x="40" y="35" width="300" height="46" rx="6"/><text x="190" y="63" text-anchor="middle">第 1 层</text>
+        <rect class="bx" x="40" y="87" width="300" height="46" rx="6"/><text x="190" y="115" text-anchor="middle">第 2 层</text>
+        <rect class="bx" x="40" y="139" width="300" height="46" rx="6"/><text x="190" y="167" text-anchor="middle">第 3 层</text>
+        <rect class="bx" x="40" y="191" width="300" height="46" rx="6"/><text x="190" y="219" text-anchor="middle">第 4 层</text>
+      </g>
+      <!-- 横切 PP -->
+      <line x1="25" y1="136" x2="355" y2="136" stroke="var(--g2)" stroke-width="3" stroke-dasharray="7 5"/>
+      <text x="40" y="262" style="fill:var(--g2);font-weight:700">横着切（按层）= 流水线并行 PP</text>
+      <!-- 竖切 TP -->
+      <line x1="190" y1="28" x2="190" y2="244" stroke="var(--g1)" stroke-width="3" stroke-dasharray="7 5"/>
+      <text x="40" y="282" style="fill:var(--g1);font-weight:700">竖着切（层内的大矩阵）= 张量并行 TP</text>
+
+      <!-- 复制 DP -->
+      <text x="450" y="22">复制多份，各吃不同数据</text>
+      <g>
+        <rect class="bx" x="450" y="35" width="90" height="80" rx="6"/><rect class="bx" x="560" y="35" width="90" height="80" rx="6"/><rect class="bx" x="670" y="35" width="90" height="80" rx="6"/>
+        <rect x="458" y="75" width="74" height="30" rx="4" fill="var(--g0)"/><text class="w" x="495" y="94" text-anchor="middle">数据 1</text>
+        <rect x="568" y="75" width="74" height="30" rx="4" fill="var(--g1)"/><text class="w" x="605" y="94" text-anchor="middle">数据 2</text>
+        <rect x="678" y="75" width="74" height="30" rx="4" fill="var(--g2)"/><text class="w" x="715" y="94" text-anchor="middle">数据 3</text>
+        <text x="495" y="60" text-anchor="middle" class="m">整个模型</text><text x="605" y="60" text-anchor="middle" class="m">整个模型</text><text x="715" y="60" text-anchor="middle" class="m">整个模型</text>
+      </g>
+      <text x="450" y="140" style="fill:var(--g0);font-weight:700">复制 = 数据并行 DP</text>
+
+      <!-- ZeRO -->
+      <text x="450" y="172">模型的「账本」也能分着放</text>
+      <g>
+        <rect x="450" y="182" width="75" height="30" fill="var(--g0)" rx="4"/><rect x="530" y="182" width="75" height="30" fill="var(--g1)" rx="4"/><rect x="610" y="182" width="75" height="30" fill="var(--g2)" rx="4"/><rect x="690" y="182" width="75" height="30" fill="var(--g3)" rx="4"/>
+        <text class="w" x="487" y="202" text-anchor="middle">参数1/4</text><text class="w" x="567" y="202" text-anchor="middle">参数2/4</text><text class="w" x="647" y="202" text-anchor="middle">参数3/4</text><text class="w" x="727" y="202" text-anchor="middle">参数4/4</text>
+      </g>
+      <text x="450" y="236" style="fill:var(--g3);font-weight:700">参数/梯度/优化器分片 = ZeRO / FSDP</text>
+      <text x="450" y="262" style="fill:var(--mut)">另外还有：按句子长度切 = 序列/上下文并行 CP</text>
+      <text x="450" y="282" style="fill:var(--mut)">按「专家」切（MoE 模型）= 专家并行 EP</text>
+    </svg>
+  </div>
+
+  <!-- ===== 原理 ===== -->
+  <h2>② 每种加速方式的原理</h2>
+  <div class="grid">
+
+    <!-- DP -->
+    <div class="card">
+      <h3>数据并行 DP <span class="tag">DDP · Horovod</span></h3>
+      <p class="one">切「数据」。每张卡都有一整份模型。</p>
+      <svg viewBox="0 0 440 240">
+        <g id="dpg"></g>
+        <rect x="10" y="176" width="420" height="40" rx="8" fill="var(--acc)"/>
+        <text class="w" x="220" y="201" text-anchor="middle">All-Reduce：4 份梯度求平均，大家同步</text>
+        <text class="m" x="220" y="234" text-anchor="middle">每步都要通信一次梯度</text>
+      </svg>
+      <p class="cap"><b>好处：</b>最简单，几乎线性变快。</p>
+      <p class="cost"><b>All-Reduce 谁做：</b>每张卡都做，没有主卡。<a href="#q-dp">细讲 ↓</a></p>
+      <p class="cost"><b>代价：</b>每张卡都放整个模型，模型大了就爆显存。</p>
+    </div>
+
+    <!-- ZeRO -->
+    <div class="card">
+      <h3>ZeRO / FSDP <span class="tag">DeepSpeed · PyTorch FSDP</span></h3>
+      <p class="one">还是数据并行，但参数、梯度、优化器状态（训练时占显存的三样）每卡只存 1/4。</p>
+      <svg viewBox="0 0 440 250">
+        <line class="ln" x1="40" y1="200" x2="430" y2="200"/>
+        <text class="m" x="2" y="14">每卡显存（Ψ = 参数量）</text>
+        <g id="zg"></g>
+        <rect x="262" y="8" width="10" height="10" fill="var(--g0)"/><text class="m" x="276" y="17">参数</text>
+        <rect x="312" y="8" width="10" height="10" fill="var(--g2)"/><text class="m" x="326" y="17">梯度</text>
+        <rect x="362" y="8" width="10" height="10" fill="var(--g3)"/><text class="m" x="376" y="17">优化器</text>
+      </svg>
+      <p class="cap"><b>好处：</b>4 卡时，每卡显存从 16Ψ 降到 4Ψ，卡越多越省。</p>
+      <p class="cost"><b>怎么做：</b>参数、梯度、优化器每卡只存 1/4，用时借，用完还。<a href="#q-zero">细讲 ↓</a></p>
+      <p class="cost"><b>代价：</b>要用的时候，得先向别的卡「借」回来（All-Gather），多了通信。</p>
+    </div>
+
+    <!-- TP -->
+    <div class="card">
+      <h3>张量并行 TP <span class="tag">Megatron-LM</span></h3>
+      <p class="one">切「层里面的大矩阵」。每张卡算一小条。</p>
+      <svg viewBox="0 0 440 240">
+        <rect class="bx" x="10" y="80" width="56" height="70" rx="6"/><text x="38" y="120" text-anchor="middle">输入 X</text>
+        <g id="tpg"></g>
+        <text class="m" x="205" y="30" text-anchor="middle">大矩阵 W 竖着切成 4 条</text>
+        <path class="ln" d="M312 115H328" marker-end="url(#ar)"/>
+        <rect x="332" y="80" width="100" height="70" rx="8" fill="var(--acc)"/>
+        <text class="w" x="382" y="112" text-anchor="middle">拼起来 /</text><text class="w" x="382" y="130" text-anchor="middle">All-Reduce</text>
+        <text class="m" x="220" y="232" text-anchor="middle">每一层都要通信，所以只放在同一台机器内（NVLink 快）</text>
+      </svg>
+      <p class="cap"><b>好处：</b>单层再大也装得下，每卡显存和计算都变小。</p>
+      <p class="cost"><b>最后一步：</b>各卡的部分结果相加（All-Reduce）。<a href="#q-tp">细讲 ↓</a></p>
+      <p class="cost"><b>代价：</b>通信最频繁，跨机器会很慢。</p>
+    </div>
+
+    <!-- PP -->
+    <div class="card">
+      <h3>流水线并行 PP <span class="tag">Megatron-LM · DeepSpeed</span></h3>
+      <p class="one">切「层」。像工厂流水线，每张卡管几层。</p>
+      <svg viewBox="0 0 440 240">
+        <g id="ppg"></g>
+        <text class="m" x="60" y="196">时间 →</text>
+        <rect x="140" y="184" width="14" height="14" fill="url(#hatch)" stroke="var(--line)"/>
+        <text class="m" x="160" y="196">灰条纹 = 空等（气泡）</text>
+        <text class="m" x="10" y="226">数字 = 第几个小批次。小批次越多，空等越少。</text>
+      </svg>
+      <p class="cap"><b>好处：</b>只传层与层之间的数据，通信少，能跨机器。</p>
+      <p class="cost"><b>代价：</b>开头和结尾有卡闲着（气泡）。</p>
+    </div>
+
+    <!-- CP -->
+    <div class="card">
+      <h3>序列 / 上下文并行 SP·CP <span class="tag">Megatron-LM · DeepSpeed Ulysses</span></h3>
+      <p class="one">切「一句话的长度」。长文本一张卡放不下。</p>
+      <svg viewBox="0 0 440 240">
+        <text class="m" x="10" y="20">一条很长的文本（每格 = 一个词）</text>
+        <g id="cpg"></g>
+        <g id="cpc"></g>
+        <text class="m" x="220" y="232" text-anchor="middle">每个词要看所有词，所以大家轮流传 K/V（环形）</text>
+      </svg>
+      <p class="cap"><b>好处：</b>能训练超长上下文（如 128K）。</p>
+      <p class="cost"><b>代价：</b>注意力要在卡之间传数据。</p>
+    </div>
+
+    <!-- EP -->
+    <div class="card">
+      <h3>专家并行 EP <span class="tag">Megatron-LM · DeepSpeed-MoE</span></h3>
+      <p class="one">只用于 MoE 模型。每张卡放几个「专家」。</p>
+      <svg viewBox="0 0 440 240">
+        <g id="epg"></g>
+        <rect class="bx" x="96" y="60" width="70" height="120" rx="8"/><text x="131" y="116" text-anchor="middle">路由器</text><text class="m" x="131" y="134" text-anchor="middle">选专家</text>
+        <text class="m" x="220" y="232" text-anchor="middle">All-to-All：每个词被送到它的专家那张卡</text>
+      </svg>
+      <p class="cap"><b>好处：</b>参数总量很大，但每个词只算几个专家，算得省。</p>
+      <p class="cost"><b>代价：</b>All-to-All 通信重；专家忙闲不均。</p>
+    </div>
+  </div>
+
+  <!-- ===== 细讲 ===== -->
+  <h2>③ 三个常问的问题，拆开讲</h2>
+
+  <!-- Q1 DP -->
+  <div class="card qa" id="q-dp">
+    <h3>Q1　数据并行：All-Reduce 在哪张卡做？</h3>
+    <p class="ans"><b>每张卡都做，没有「主卡」。</b>大家同时交换、同时相加。最后每张卡拿到的结果一模一样。</p>
+    <svg viewBox="0 0 900 290" id="arsvg"></svg>
+    <div class="eg"><b>数字例子：</b>某个梯度，4 张卡各算出 1、2、3、4。相加 = 10，再除以 4 = <b>2.5</b>（平均）。All-Reduce 后 4 张卡都得到 2.5。大家用同一个梯度更新，4 份模型就一直一模一样。</div>
+    <ol>
+      <li><b>Reduce = 相加。</b>All = 结果发给所有卡。</li>
+      <li><b>怎么走：环形。</b>每一步，每张卡把一块发给右邻居，同时收左邻居的一块，并加到自己那块上。</li>
+      <li>走 3 步（N−1）后，每张卡手里有一块「4 卡之和」。这叫 Reduce-Scatter。</li>
+      <li>再走 3 步，把这些和传给所有人。这叫 All-Gather。</li>
+      <li>每张卡发出的总量约 2 份梯度，几乎和卡数无关。所以卡再多也不会堵在某一张卡上。</li>
+      <li>真实实现是 NCCL 库，走 NVLink 或 InfiniBand。DDP 还会边反向传播边分桶发送，通信和计算同时进行。</li>
+    </ol>
+  </div>
+
+  <!-- Q2 TP -->
+  <div class="card qa" id="q-tp">
+    <h3>Q2　张量并行：最后的 Reduce 是相加吗？在哪做？</h3>
+    <p class="ans"><b>是相加。</b>每张卡都参与（All-Reduce），在每个 Transformer 层的 MLP 末尾和注意力末尾各做一次。</p>
+    <svg viewBox="0 0 900 215" id="tpsvg"></svg>
+    <div class="eg"><b>数字例子：</b>中间结果 Y 被切成 [1, 2] 和 [3, 4]，第二个矩阵 B = [1, 1, 1, 1]ᵀ（按行切成两半）。GPU0 算 1+2 = <b>3</b>，GPU1 算 3+4 = <b>7</b>。相加 3+7 = <b>10</b>，和不切时算出的一样。</div>
+    <ol>
+      <li><b>第 1 个矩阵按「列」切。</b>每张卡算出完整结果的「一部分列」。后面的 GeLU 是逐个数字算的，不用通信。</li>
+      <li><b>第 2 个矩阵按「行」切。</b>它正好吃上一步的那部分列。每张卡算出的是「部分和」，形状和最终结果一样大。</li>
+      <li><b>所以必须相加一次。</b>用 All-Reduce：求和，并把和发回每张卡，下一层才能继续。</li>
+      <li>注意力同理：按「头」分给各卡，最后的输出矩阵按行切，末尾相加。</li>
+      <li>反向传播里还有对称的一次相加（算输入的梯度）。每层合计：前向 2 次 + 反向 2 次。</li>
+      <li>这些相加在关键路径上，没法躲。所以 TP 只放在同一台机器内（NVLink 快）。</li>
+    </ol>
+  </div>
+
+  <!-- Q3 ZeRO -->
+  <div class="card qa" id="q-zero">
+    <h3>Q3　ZeRO / FSDP：「账本分给大家」到底怎么做？</h3>
+    <p class="ans"><b>训练时占显存的三样东西（参数、梯度、优化器状态）不再每卡一整份，而是每卡只存 1/4。</b>要用时向别人借，用完就还。数据还是各算各的，和数据并行一样。</p>
+    <p class="cap" style="margin:0 0 8px"><b>比喻：</b>4 个人合看一套书，每人只带 1/4。要读某一章，先向别人借来，读完立刻还回去。</p>
+    <svg viewBox="0 0 900 490" id="zsvg"></svg>
+    <ol>
+      <li><b>为什么普通 DP 浪费？</b>4 张卡存 4 份一样的优化器状态，更新时也重复算 4 遍。ZeRO 让每张卡只管自己那 1/4。</li>
+      <li><b>每个参数占 16 字节：</b>参数 2 + 梯度 2 + fp32 参数副本 4 + Adam 的 m 4 + v 4。优化器那 12 字节占大头。</li>
+      <li><b>All-Gather：</b>每张卡把自己那块发给所有人，借齐后拼成完整的一层。</li>
+      <li><b>Reduce-Scatter：</b>同一块的 4 份梯度相加，结果只发给这块的主人（不是发给所有人）。</li>
+      <li><b>更新不用通信：</b>每张卡手上有自己那 1/4 参数、1/4 梯度、1/4 优化器状态，刚好够更新自己那块。</li>
+      <li>FSDP 是 PyTorch 自带的同一思路（等于 ZeRO-3）。是一层一层地借和还，所以同一时刻只有「一层」是完整的。</li>
+    </ol>
+    <table style="margin-top:8px">
+      <tr><th>阶段</th><th>分片的是什么</th><th>每卡显存（4 卡）</th><th>通信量（普通 DP = 1）</th></tr>
+      <tr><td>ZeRO-1</td><td>优化器状态</td><td>7Ψ</td><td>1×</td></tr>
+      <tr><td>ZeRO-2</td><td>+ 梯度</td><td>5.5Ψ</td><td>1×</td></tr>
+      <tr><td>ZeRO-3 / FSDP</td><td>+ 参数</td><td>4Ψ</td><td>1.5×</td></tr>
+    </table>
+    <p class="note">普通 DP 每卡 16Ψ。Ψ = 参数量。ZeRO-3 多出的 0.5× 来自反向时要再借一次参数。</p>
+  </div>
+
+  <h2>④ 单卡内的加速（和上面可以叠加）</h2>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
+    <div class="card">
+      <h3>低精度 <span class="tag">AMP · Transformer Engine</span></h3>
+      <p class="one">数字用更少的位来存。</p>
+      <svg viewBox="0 0 320 130">
+        <rect x="70" y="14" width="240" height="22" rx="4" fill="var(--g0)"/><text class="m" x="64" y="30" text-anchor="end">FP32</text><text class="w" x="190" y="30" text-anchor="middle">32 位</text>
+        <rect x="70" y="46" width="120" height="22" rx="4" fill="var(--g1)"/><text class="m" x="64" y="62" text-anchor="end">BF16</text><text class="w" x="130" y="62" text-anchor="middle">16 位</text>
+        <rect x="70" y="78" width="60" height="22" rx="4" fill="var(--g2)"/><text class="m" x="64" y="94" text-anchor="end">FP8</text><text class="w" x="100" y="94" text-anchor="middle">8 位</text>
+        <text class="m" x="10" y="122">位越少：越省显存，算得越快</text>
+      </svg>
+    </div>
+    <div class="card">
+      <h3>FlashAttention <span class="tag">算子优化</span></h3>
+      <p class="one">不把巨大的 N×N 表写回慢显存，在小而快的缓存里分块算。</p>
+      <svg viewBox="0 0 320 130">
+        <rect x="14" y="14" width="80" height="80" fill="url(#hatch)" stroke="var(--line)" stroke-dasharray="4 3"/>
+        <text class="m" x="54" y="108" text-anchor="middle">普通：存整张 N×N</text>
+        <path class="ln" d="M110 54h50" marker-end="url(#ar)"/>
+        <g fill="var(--g1)"><rect x="180" y="34" width="26" height="26" rx="3"/><rect x="210" y="34" width="26" height="26" rx="3" opacity=".6"/><rect x="180" y="64" width="26" height="26" rx="3" opacity=".6"/><rect x="210" y="64" width="26" height="26" rx="3" opacity=".35"/></g>
+        <text class="m" x="208" y="108" text-anchor="middle">Flash：一小块一小块</text>
+        <text class="m" x="250" y="55">不占大</text><text class="m" x="250" y="70">显存</text>
+      </svg>
+    </div>
+    <div class="card">
+      <h3>激活重算 <span class="tag">Checkpointing</span></h3>
+      <p class="one">中间结果不全存，要用时再算一遍。</p>
+      <svg viewBox="0 0 320 130">
+        <g>
+          <rect x="10" y="20" width="40" height="30" rx="4" fill="var(--g0)"/><rect x="58" y="20" width="40" height="30" rx="4" fill="none" stroke="var(--line)" stroke-dasharray="4 3"/>
+          <rect x="106" y="20" width="40" height="30" rx="4" fill="var(--g0)"/><rect x="154" y="20" width="40" height="30" rx="4" fill="none" stroke="var(--line)" stroke-dasharray="4 3"/>
+          <rect x="202" y="20" width="40" height="30" rx="4" fill="var(--g0)"/><rect x="250" y="20" width="40" height="30" rx="4" fill="none" stroke="var(--line)" stroke-dasharray="4 3"/>
+        </g>
+        <text class="m" x="10" y="68">实线 = 存下来　虚线 = 扔掉，反向时重算</text>
+        <text class="m" x="10" y="100">用多一点算力，换少很多显存</text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- ===== 对比表 ===== -->
+  <h2>⑤ 并排对比</h2>
+  <table>
+    <tr><th>方式</th><th>切什么</th><th>通信</th><th>省显存？</th><th>放哪里</th></tr>
+    <tr><td><i class="dot" style="background:var(--g0)"></i>数据并行 DP</td><td>数据</td><td>每步一次（梯度）</td><td>不省</td><td>可跨机器</td></tr>
+    <tr><td><i class="dot" style="background:var(--g3)"></i>ZeRO / FSDP</td><td>参数、梯度、优化器</td><td>较多（借参数）</td><td>很省</td><td>可跨机器</td></tr>
+    <tr><td><i class="dot" style="background:var(--g1)"></i>张量并行 TP</td><td>层内矩阵</td><td>最多、每层都有</td><td>省</td><td>机器内</td></tr>
+    <tr><td><i class="dot" style="background:var(--g2)"></i>流水线并行 PP</td><td>按层</td><td>少（层间）</td><td>省</td><td>可跨机器</td></tr>
+    <tr><td><i class="dot" style="background:#ec4899"></i>序列/上下文 CP</td><td>文本长度</td><td>中（传 K/V）</td><td>省激活</td><td>看情况</td></tr>
+    <tr><td><i class="dot" style="background:#14b8a6"></i>专家并行 EP</td><td>MoE 专家</td><td>多（All-to-All）</td><td>省</td><td>看情况</td></tr>
+  </table>
+
+  <!-- ===== 框架 ===== -->
+  <h2>⑥ 专门做这件事的框架</h2>
+  <div class="fw">
+    <div class="card"><h3>Megatron-LM / Megatron-Core</h3><p>NVIDIA。TP、PP、CP、EP 齐全，千卡以上训练的主力。外层有 NeMo。</p></div>
+    <div class="card"><h3>DeepSpeed</h3><p>微软。以 ZeRO 出名，还有卸载到内存/硬盘、MoE，上手快。</p></div>
+    <div class="card"><h3>PyTorch FSDP / torchtitan</h3><p>Meta。PyTorch 自带的 ZeRO-3，加上 TP、PP、CP，不用装额外库。</p></div>
+    <div class="card"><h3>Colossal-AI</h3><p>一站式，多种张量并行（1D/2D/3D），自带 Gemini 显存管理。</p></div>
+    <div class="card"><h3>JAX / XLA (GSPMD)</h3><p>Google。写好「怎么切」的标注，编译器自动生成通信。TPU 常用，GPU 也行。</p></div>
+    <div class="card"><h3>DDP / Horovod</h3><p>最基础的数据并行。模型装得下一张卡时，用它就够了。</p></div>
+  </div>
+
+  <h3 style="margin:26px 0 8px;font-size:16px">谁支持哪种切法</h3>
+  <table>
+    <tr><th>框架</th><th class="c">DP</th><th class="c">ZeRO/FSDP</th><th class="c">TP</th><th class="c">PP</th><th class="c">CP/SP</th><th class="c">EP</th><th class="c">FP8</th></tr>
+    <tr><td>DDP / Horovod</td><td class="c">●</td><td class="c">–</td><td class="c">–</td><td class="c">–</td><td class="c">–</td><td class="c">–</td><td class="c">–</td></tr>
+    <tr><td>DeepSpeed</td><td class="c">●</td><td class="c">●</td><td class="c">◐</td><td class="c">●</td><td class="c">●</td><td class="c">●</td><td class="c">◐</td></tr>
+    <tr><td>PyTorch FSDP / torchtitan</td><td class="c">●</td><td class="c">●</td><td class="c">●</td><td class="c">●</td><td class="c">●</td><td class="c">◐</td><td class="c">●</td></tr>
+    <tr><td>Megatron-LM</td><td class="c">●</td><td class="c">◐</td><td class="c">●</td><td class="c">●</td><td class="c">●</td><td class="c">●</td><td class="c">●</td></tr>
+    <tr><td>Colossal-AI</td><td class="c">●</td><td class="c">●</td><td class="c">●</td><td class="c">●</td><td class="c">●</td><td class="c">●</td><td class="c">◐</td></tr>
+    <tr><td>JAX / XLA</td><td class="c">●</td><td class="c">●</td><td class="c">●</td><td class="c">●</td><td class="c">●</td><td class="c">●</td><td class="c">◐</td></tr>
+  </table>
+  <p class="note">● 支持　◐ 部分支持或较弱　– 不支持。这是按我已有的知识整理的，版本更新很快，选型前请对照各项目最新文档。</p>
+
+  <!-- ===== 怎么选 ===== -->
+  <h2>⑦ 怎么选？</h2>
+  <div class="pick">
+    <div><span class="q">模型一张卡装得下</span><span class="arrow">→</span><span class="a">DDP</span></div>
+    <div><span class="q">装不下，几张到几十张卡</span><span class="arrow">→</span><span class="a">FSDP 或 DeepSpeed ZeRO</span></div>
+    <div><span class="q">百亿以上、成百上千张卡</span><span class="arrow">→</span><span class="a">Megatron：DP + TP + PP（3D 并行）</span></div>
+    <div><span class="q">超长文本</span><span class="arrow">→</span><span class="a">再加 CP / SP</span></div>
+    <div><span class="q">MoE 模型</span><span class="arrow">→</span><span class="a">再加 EP（Megatron / DeepSpeed）</span></div>
+  </div>
+  <p class="note">真实大模型训练常把它们叠在一起：同一台机器内用 TP（通信快），跨机器用 PP 和 DP。</p>
+
+  <h2>⑧ 放回 VLA 训练</h2>
+  <p>openpi 训练 <a class="concept-link" href="VLA-发展历程.html#concept-vla">VLA</a>（π0、π0-FAST、π0.5）时只用了两种切法：DP，再加上可选的 FSDP。配置项是 <code>fsdp_devices</code>，默认为 1，即不切。比如一共 4 张卡、<code>fsdp_devices=2</code> 时，每 2 张卡合放一份模型，两组之间再做数据并行（见 openpi <code>src/openpi/training/config.py</code>）。π0 的模型约 3B（VLM）加 300M <a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a>，用不上 TP、PP。</p>
+
+  <aside class="concept-related" aria-label="相关概念">
+    <strong>相关概念</strong>
+    <a class="concept-link" href="VLA-发展历程.html#concept-vla">VLA：视觉-语言-动作模型</a>
+    <a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a>
+    <a class="concept-link" href="concepts.html">全部概念 →</a>
+  </aside>
+</div>
+
+<script>
+const C=['#3b82f6','#10b981','#f59e0b','#8b5cf6'];
+const NS='http://www.w3.org/2000/svg';
+function put(id,html){document.getElementById(id).innerHTML=html}
+
+// DP
+(function(){
+  let s='';
+  for(let i=0;i<4;i++){
+    const x=10+i*108;
+    s+=`<rect x="${x}" y="30" width="96" height="116" rx="8" fill="${C[i]}" fill-opacity=".1" stroke="${C[i]}"/>
+        <text x="${x+48}" y="22" text-anchor="middle" class="m">GPU ${i}</text>
+        <rect x="${x+8}" y="40" width="80" height="44" rx="5" class="bx"/><text x="${x+48}" y="67" text-anchor="middle">完整模型</text>
+        <rect x="${x+8}" y="96" width="80" height="38" rx="5" fill="${C[i]}"/><text class="w" x="${x+48}" y="120" text-anchor="middle">数据 ${i+1}</text>
+        <path class="ln" d="M${x+48} 148V172" marker-end="url(#ar)"/>`;
+  }
+  put('dpg',s);
+})();
+
+// ZeRO: stacked bars, unit=10px per Ψ
+(function(){
+  const rows=[['普通 DP',[2,2,12]],['ZeRO-1',[2,2,3]],['ZeRO-2',[2,0.5,3]],['ZeRO-3',[0.5,0.5,3]]];
+  const col=['var(--g0)','var(--g2)','var(--g3)'];
+  let s='';
+  rows.forEach((r,i)=>{
+    const x=60+i*92, u=10; let y=200;
+    const tot=r[1].reduce((a,b)=>a+b,0);
+    r[1].forEach((v,k)=>{
+      const h=v*u; y-=h;
+      s+=`<rect x="${x}" y="${y}" width="60" height="${h}" fill="${col[k]}" stroke="var(--card)"/>`;
+    });
+    s+=`<text x="${x+30}" y="${200-tot*u-6}" text-anchor="middle" style="font-weight:700">${tot}Ψ</text>
+        <text x="${x+30}" y="218" text-anchor="middle">${r[0]}</text>`;
+  });
+  s+=`<text class="m" x="60" y="238">以 4 张卡、Adam + 混合精度计算</text>`;
+  put('zg',s);
+})();
+
+// TP
+(function(){
+  let s='';
+  for(let i=0;i<4;i++){
+    const x=110+i*52;
+    s+=`<rect x="${x}" y="40" width="46" height="130" rx="5" fill="${C[i]}"/>
+        <text class="w" x="${x+23}" y="110" text-anchor="middle">W${i+1}</text>
+        <text x="${x+23}" y="190" text-anchor="middle" class="m">GPU ${i}</text>`;
+  }
+  s+=`<path class="ln" d="M68 115H104" marker-end="url(#ar)"/>`;
+  put('tpg',s);
+})();
+
+// PP
+(function(){
+  const M=4,S=4,cw=50,ch=30;
+  let s='';
+  for(let r=0;r<S;r++){
+    const y=14+r*38;
+    s+=`<text x="2" y="${y+19}" class="m">GPU ${r}</text>`;
+    for(let c=0;c<M+S-1;c++){
+      const x=52+c*(cw+2), m=c-r;
+      if(m>=0&&m<M) s+=`<rect x="${x}" y="${y}" width="${cw}" height="${ch}" rx="4" fill="${C[r]}"/><text class="w" x="${x+cw/2}" y="${y+20}" text-anchor="middle">${m+1}</text>`;
+      else s+=`<rect x="${x}" y="${y}" width="${cw}" height="${ch}" rx="4" fill="url(#hatch)" stroke="var(--line)" opacity=".7"/>`;
+    }
+  }
+  put('ppg',s);
+})();
+
+// CP
+(function(){
+  let s='',c='';
+  for(let i=0;i<16;i++){
+    const g=Math.floor(i/4);
+    s+=`<rect x="${10+i*26}" y="30" width="24" height="24" rx="4" fill="${C[g]}"/>`;
+  }
+  const cx=[60,165,270,375];
+  for(let g=0;g<4;g++){
+    s+=`<path class="ln" d="M${10+g*104+50} 58V104"/>`;
+    s+=`<circle cx="${cx[g]}" cy="130" r="26" fill="${C[g]}" fill-opacity=".15" stroke="${C[g]}" stroke-width="2"/>
+        <text x="${cx[g]}" y="134" text-anchor="middle">GPU ${g}</text>
+        <text class="m" x="${cx[g]}" y="176" text-anchor="middle">4 个词</text>`;
+    if(g<3) c+=`<path class="ln" d="M${cx[g]+30} 130H${cx[g+1]-30}" marker-end="url(#ar)"/>`;
+  }
+  c+=`<path class="ln" d="M${cx[3]} 160V196H${cx[0]}V160" marker-end="url(#ar)"/><text class="m" x="220" y="210" text-anchor="middle">K/V 绕一圈</text>`;
+  put('cpg',s);put('cpc',c);
+})();
+
+// EP
+(function(){
+  let s='';
+  const ty=[80,120,160];
+  ty.forEach((y,i)=>{
+    s+=`<circle cx="40" cy="${y}" r="12" fill="${C[i%3]}"/><text class="w" x="40" y="${y+4}" text-anchor="middle">词</text>
+        <path class="ln" d="M54 ${y}H94" marker-end="url(#ar)"/>`;
+  });
+  const map=[[0,2],[1,0],[2,3]];
+  for(let e=0;e<4;e++){
+    const y=20+e*50;
+    s+=`<rect x="300" y="${y}" width="128" height="40" rx="8" fill="${C[e]}" fill-opacity=".15" stroke="${C[e]}"/>
+        <text x="364" y="${y+25}" text-anchor="middle">专家 ${e+1} · GPU ${e}</text>`;
+  }
+  map.forEach(([t,e])=>{
+    s+=`<path d="M166 ${ty[t]}C240 ${ty[t]} 230 ${40+e*50} 296 ${40+e*50}" stroke="${C[t%3]}" stroke-width="2" fill="none" marker-end="url(#ar)"/>`;
+  });
+  put('epg',s);
+})();
+// ===== 细讲图 =====
+const ACC='var(--acc)', L4='ABCD';
+function gbox(x,y,g,cells){
+  let s=`<rect x="${x}" y="${y}" width="200" height="56" rx="8" fill="${C[g]}" fill-opacity=".08" stroke="${C[g]}"/><text class="m" x="${x+8}" y="${y+13}">GPU ${g}</text>`;
+  cells.forEach((c,k)=>{
+    const cx=x+8+k*48, cy=y+20;
+    if(c) s+=`<rect x="${cx}" y="${cy}" width="42" height="28" rx="4" fill="${c.f}"/><text class="w" x="${cx+21}" y="${cy+18}" text-anchor="middle">${c.t}</text>`;
+    else s+=`<rect x="${cx}" y="${cy}" width="42" height="28" rx="4" fill="none" stroke="var(--line)" stroke-dasharray="3 3"/>`;
+  });
+  return s;
+}
+function rows(id,defs){
+  let s='';
+  defs.forEach((r,i)=>{
+    const y=i*100;
+    s+=`<text x="20" y="${y+16}" style="font-weight:700;font-size:13px">${r[0]}</text>`;
+    for(let g=0;g<4;g++) s+=gbox(20+g*220,y+26,g,r[1](g));
+  });
+  put(id,s);
+}
+const K=[0,1,2,3];
+
+// Q1: All-Reduce
+(function(){
+  const el=document.getElementById('arsvg'); el.innerHTML='<g id="arg"></g>';
+  rows('arg',[
+    ['① 开始：每张卡有自己的梯度，切成 4 块（颜色 = 哪张卡算的）',g=>K.map(k=>({t:L4[k],f:C[g]}))],
+    ['② Reduce-Scatter：转 3 步，每张卡得到一块「4 卡之和」',g=>K.map(k=>k==g?{t:'Σ'+L4[k],f:ACC}:null)],
+    ['③ All-Gather：再转 3 步，把各块的和发给所有人',g=>K.map(k=>({t:'Σ'+L4[k],f:ACC}))]
+  ]);
+})();
+
+// Q3: ZeRO
+(function(){
+  const el=document.getElementById('zsvg'); el.innerHTML='<g id="zg2"></g>';
+  rows('zg2',[
+    ['① 平时：每张卡只存自己那 1/4 参数（颜色 = 谁的）',g=>K.map(k=>k==g?{t:'块'+(k+1),f:C[g]}:null)],
+    ['② 算这一层前 All-Gather：向别人借齐，拼成完整一层',g=>K.map(k=>({t:'块'+(k+1),f:C[k]}))],
+    ['③ 反向算完：每张卡手上有一整份梯度（来自自己的数据）',g=>K.map(k=>({t:'梯'+(k+1),f:C[g]}))],
+    ['④ Reduce-Scatter：同一块的 4 份梯度相加，只发给这块的主人',g=>K.map(k=>k==g?{t:'Σ'+(k+1),f:ACC}:null)],
+    ['⑤ 更新：每张卡只更新自己那 1/4，不用通信（借来的块已还回去）',g=>K.map(k=>k==g?{t:'新'+(k+1),f:C[g]}:null)]
+  ]);
+})();
+
+// Q2: TP MLP
+(function(){
+  const el=document.getElementById('tpsvg');
+  const lane=(y,g)=>{
+    const c=C[g], i=g+1;
+    const b=(x,w,t,fill)=>`<rect x="${x}" y="${y}" width="${w}" height="44" rx="6" fill="${fill}"/><text class="w" x="${x+w/2}" y="${y+27}" text-anchor="middle">${t}</text>`;
+    const a=(x1,x2)=>`<path class="ln" d="M${x1} ${y+22}H${x2}" marker-end="url(#ar)"/>`;
+    return b(10,64,'X (整份)',c)+a(76,98)+b(100,120,'A'+i+'（列）',c)+a(222,248)+b(250,80,'GeLU',c)+a(332,358)+b(360,120,'B'+i+'（行）',c)+a(482,508)+b(510,120,'Z'+i+' 部分和',c)
+      +`<text class="m" x="2" y="${y-5}">GPU ${g}</text>`;
+  };
+  let s=`<text class="m" x="10" y="20">输入每卡一份</text><text class="m" x="100" y="20">按列切：无需通信</text><text class="m" x="250" y="20">逐数字算</text><text class="m" x="360" y="20">按行切</text><text class="m" x="510" y="20">各卡只有部分和</text><text style="font-weight:700;fill:var(--acc)" x="640" y="20">All-Reduce：相加</text>`;
+  s+=lane(48,0)+lane(138,1);
+  s+=`<path class="ln" d="M632 70C660 70 665 100 690 108" marker-end="url(#ar)"/><path class="ln" d="M632 160C660 160 665 130 690 122" marker-end="url(#ar)"/>`;
+  s+=`<circle cx="706" cy="115" r="18" fill="var(--acc)"/><text class="w" x="706" y="123" text-anchor="middle" style="font-size:22px">+</text>`;
+  s+=`<path class="ln" d="M726 115H748" marker-end="url(#ar)"/><rect x="750" y="88" width="140" height="54" rx="8" fill="var(--acc)"/><text class="w" x="820" y="111" text-anchor="middle">Z = Z1 + Z2</text><text class="w" x="820" y="129" text-anchor="middle">两张卡都拿到</text>`;
+  s+=`<text class="m" x="10" y="208">B 的每一行只在一张卡上，所以每张卡只能算出「一部分」。把部分加起来，才等于不切时的结果。</text>`;
+  el.innerHTML=s;
+})();
+
+</script>
+<script src="nav.js"></script>
+</body>
+</html>

@@ -422,6 +422,27 @@ encoder 输入 (1202, B, 512)
 <tr><td>KL 正则</td><td>把 z 的分布拉向 N(0, I)，限制它携带的信息量</td><td>编码器会把整段动作"抄"进 z，推理时 z=0，策略就什么都不会了</td></tr>
 </table>
 <p>β = 10 在这里算比较大。它换来的是：z 只保留"风格"这类低维信息，绝大部分信息必须由策略从图像里自己读。这也是推理时敢把 z 置零的底气。</p>
+<details><summary>β = 10 怎么就换来"z 只保留风格"？</summary>
+<p><b>β 是 z 每带一点信息要付的价钱。</b>价钱高了，z 只留下非带不可的东西。</p>
+<pre><code>训练损失 = L1(动作重建误差) + β × KL(z 的分布 ‖ N(0, I))
+                                   ↑
+                    z 里每多装 1 点信息，这一项就涨一点</code></pre>
+<p>编码器看到"真实动作序列 + 关节状态"，把它压成 z。解码器（策略）看到的是 z + 图像 + 关节状态。</p>
+<ol>
+<li>KL 衡量 z 离标准正态有多远。z 装的信息越多，KL 越大。</li>
+<li>β = 10 时，每 1 点 KL 按 10 倍计入总损失。</li>
+<li>图像和关节里能看出来的信息（物体在哪、手臂在哪），放进 z 降不了多少 L1，却要多付 KL。优化器会把它们从 z 里扔掉。</li>
+<li>看图看不出来的信息只能靠 z 带：这次示范先左后右还是先右后左、操作员手快还是手慢。不放进 z，L1 降不下去，所以值得付钱。</li>
+<li>第 4 条留下的信息很少、维度很低，就是这里说的"风格"。</li>
+</ol>
+<table>
+<tr><th>原因</th><th>结果</th></tr>
+<tr><td>KL 把 z 往 N(0, I) 拉</td><td>z 的平均值就是 0</td></tr>
+<tr><td>z 里只有一点风格信息</td><td>去掉它，策略照样能从图像读出该做什么</td></tr>
+<tr><td>推理时 z = 0</td><td>相当于选了"平均风格"</td></tr>
+</table>
+<p>β 大不大，要看它和 L1 的量级比。动作归一化后 L1 很小，β = 10 已让 KL 分量很重。β 再大，z 可能什么都不装（后验坍塌），CVAE 就退化成普通回归。</p>
+</details>
 <div class="note warn"><b>一处原文的不一致：</b>论文 Algorithm 1 的伪代码写的是 <code>L_reconst = MSE</code>，但正文明确说"我们用 L1 而非常见的 L2，L1 对动作序列的建模更精确"，消融实验也证明换不回来。LeRobot 的实现按正文用 L1。另外论文把 KL 权重记作 β，代码里叫 <code>kl_weight</code>，默认 <code>10.0</code>。</div>
 <p>Adam，学习率 <code>1e-5</code>，batch size 8，dropout 0.1。LeRobot 里 ResNet 主干被单独分到一个参数组（<code>optimizer_lr_backbone</code>，默认也是 1e-5），整体约 80M 参数，单卡 2080 Ti 约 5 小时。</p>
 <div class="code-ref"><b>LEROBOT</b><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/modeling_act.py#L140-L167">modeling_act.py#L140-L167 损失计算</a><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/modeling_act.py#L75-L94">#L75-L94 主干单独的学习率</a><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/configuration_act.py#L123-L128">configuration_act.py#L123 kl_weight / lr 默认值</a></div>

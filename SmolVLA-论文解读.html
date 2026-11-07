@@ -1,0 +1,2031 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SmolVLA：小而快的开源 VLA · 精读</title>
+<meta name="description" content="Hugging Face 的 0.45B 小型 VLA：只用 SmolVLM2 前一半层，配交替交叉注意力与因果自注意力的流匹配动作专家，并给出异步推理。结合论文与 LeRobot 代码精读。">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Serif:wght@500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#f1f4f6;
+    --surface:#fbfcfd;
+    --surface-2:#eaf0f4;
+    --ink:#16222e;
+    --ink-2:#51626f;
+    --ink-3:#83919c;
+    --accent:#0e6e8a;
+    --accent-strong:#0a4c60;
+    --signal:#c4572a;
+    --line:#d8e1e7;
+    --line-strong:#c3d0d9;
+    --grid-line:rgba(22,34,46,.05);
+    --shadow:0 1px 2px rgba(22,34,46,.04),0 14px 34px rgba(22,34,46,.07);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+      --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+      --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+      --line:#1e2d3a; --line-strong:#2b3d4b;
+      --grid-line:rgba(231,238,244,.045);
+      --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+    }
+  }
+  :root[data-theme="dark"]{
+    --paper:#0b141c; --surface:#111c26; --surface-2:#15212c;
+    --ink:#e7eef4; --ink-2:#9db0bd; --ink-3:#6c8090;
+    --accent:#3fb0d0; --accent-strong:#8fd3e6; --signal:#e08a5a;
+    --line:#1e2d3a; --line-strong:#2b3d4b;
+    --grid-line:rgba(231,238,244,.045);
+    --shadow:0 1px 2px rgba(0,0,0,.4),0 14px 34px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:"IBM Plex Sans",-apple-system,"Segoe UI","Microsoft YaHei","PingFang SC",sans-serif;
+    line-height:1.78; font-size:16px; -webkit-font-smoothing:antialiased;
+  }
+  .grid{
+    position:fixed; inset:0; z-index:-1; pointer-events:none;
+    background-image:linear-gradient(var(--grid-line) 1px,transparent 1px),linear-gradient(90deg,var(--grid-line) 1px,transparent 1px);
+    background-size:28px 28px;
+  }
+  .wrap{max-width:860px; margin:0 auto; padding:0 24px 96px;}
+
+  .masthead{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:22px 24px 0; max-width:860px; margin:0 auto;
+  }
+  .back{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:13px; color:var(--accent); text-decoration:none; letter-spacing:.03em;
+  }
+  .back:hover{text-decoration:underline;}
+  .masthead .ref{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12.5px; color:var(--ink-3); letter-spacing:.04em;
+  }
+
+  .hero{padding:52px 0 34px; border-bottom:1px solid var(--line-strong);}
+  .eyebrow{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+    font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent);
+    margin-bottom:16px;
+  }
+  .hero h1{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:clamp(28px,4.6vw,42px); font-weight:700; line-height:1.2;
+    margin:0 0 16px; color:var(--ink); text-wrap:balance;
+  }
+  .hero .summary{
+    font-size:17px; color:var(--ink-2); max-width:680px; margin:0 0 22px;
+  }
+  .meta{
+    border:1px solid var(--line); border-radius:12px; background:var(--surface);
+    padding:14px 18px; font-size:13.5px; display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:8px 24px;
+    box-shadow:var(--shadow);
+  }
+  .meta .m{display:flex; flex-direction:column; gap:1px;}
+  .meta .m .k{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:11px;
+    color:var(--ink-3); letter-spacing:.08em; text-transform:uppercase;
+  }
+  .meta .m .v{color:var(--ink); font-weight:500;}
+
+  section{margin-top:40px;}
+  h2{
+    font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;
+    font-size:21px; font-weight:600; margin:0 0 14px; color:var(--ink);
+    display:flex; align-items:center; gap:12px;
+  }
+  h2::before{
+    content:""; width:10px; height:10px; flex:none;
+    background:var(--accent); border-radius:2px; transform:rotate(45deg);
+  }
+  h3{font-size:16px; font-weight:700; margin:22px 0 8px;}
+  p{margin:0 0 12px;}
+  strong{font-weight:700;}
+  .hl{color:var(--accent); font-weight:600;}
+  a{color:var(--accent);}
+
+  ul,ol{margin:0 0 14px; padding-left:22px;}
+  li{margin-bottom:7px;}
+  li::marker{color:var(--accent);}
+
+  blockquote{
+    margin:16px 0; padding:14px 18px; border-left:3px solid var(--accent);
+    background:var(--surface-2); border-radius:0 10px 10px 0; color:var(--ink);
+  }
+  blockquote p{margin:0 0 8px;}
+  blockquote p:last-child{margin:0;}
+
+  .card{
+    background:var(--surface); border:1px solid var(--line); border-radius:14px;
+    padding:20px 22px; box-shadow:var(--shadow); margin:14px 0;
+  }
+  .card h3{font-size:16px; font-weight:700; margin:0 0 10px;}
+
+  table{width:100%; border-collapse:collapse; font-size:14px; margin:12px 0;}
+  th,td{padding:9px 12px; text-align:left; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:12.5px;
+    color:var(--accent-strong); background:var(--surface-2); letter-spacing:.03em; font-weight:600;
+  }
+  tr:last-child td{border-bottom:none;}
+  td.num,th.num{text-align:right; font-variant-numeric:tabular-nums;}
+  tr.me td{background:var(--surface-2); font-weight:600;}
+  .tbl-wrap{overflow-x:auto;}
+
+  code{
+    font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace; font-size:13.5px;
+    background:var(--surface-2); border:1px solid var(--line); border-radius:5px; padding:1px 6px;
+  }
+  pre{overflow-x:auto; background:var(--surface-2); border:1px solid var(--line); border-radius:10px; padding:16px; font-size:13px; line-height:1.6;}
+  pre code{border:none; background:none; padding:0;}
+
+  .diagram{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:16px; margin:16px 0 6px; box-shadow:var(--shadow); overflow-x:auto;}
+  .diagram svg{width:100%; min-width:640px; height:auto; display:block;}
+  .figcap{font-size:13px; color:var(--ink-3); margin:0 0 18px; padding:0 4px;}
+
+  /* 图中配色：灰=冻结，青=训练，橙=缓存/传递 */
+  .dg text{font-family:inherit; fill:var(--ink);}
+  .diagram svg text{user-select:text; -webkit-user-select:text; cursor:text;}
+  .diagram svg a{-webkit-user-drag:none; user-drag:none;}
+  .dg .h{font-size:13px; font-weight:600;}
+  .dg .s{font-size:11.5px; fill:var(--ink-2);}
+  .dg .c{text-anchor:middle;}
+  .dg .b{fill:var(--surface-2); stroke:var(--line-strong); stroke-width:1.2;}
+  .dg .fz{fill:var(--ink-3); fill-opacity:.14; stroke:var(--ink-3); stroke-width:1.2;}
+  .dg .tr{fill:var(--accent); fill-opacity:.14; stroke:var(--accent); stroke-width:1.4;}
+  .dg .sg{fill:var(--signal); fill-opacity:.14; stroke:var(--signal); stroke-width:1.4;}
+  .dg .ln{fill:none; stroke:var(--ink-2); stroke-width:1.5; marker-end:url(#sv-arr);}
+  .dg .la{fill:none; stroke:var(--accent); stroke-width:1.6; marker-end:url(#sv-arra);}
+  .dg .lk{fill:none; stroke:var(--signal); stroke-width:2; marker-end:url(#sv-arrs);}
+  .dg .lp{fill:none; stroke:var(--ink-3); stroke-width:1.3; stroke-dasharray:5 4; marker-end:url(#sv-arr);}
+  .dg .ax{stroke:var(--ink-3); stroke-width:1.2; fill:none; marker-end:url(#sv-arr);}
+  .dg .gl{stroke:var(--ink-3); stroke-width:1; stroke-dasharray:3 4;}
+  .dg a.mod{cursor:pointer; text-decoration:none;}
+  .dg a.mod:hover rect{stroke:var(--accent); stroke-width:2.6;}
+  .dg a.mod:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+  .dg .hit{fill:transparent; stroke:none;}
+  .dg .loop{fill:none; stroke:var(--ink-3); stroke-width:1.3; stroke-dasharray:6 4;}
+  .msec{margin-top:34px; padding-top:22px; border-top:1px dashed var(--line-strong);}
+  .msec h3{margin-top:0;}
+  .modnav{font-size:13.5px; color:var(--ink-3);}
+  .modnav a{margin-right:6px;}
+  section,.msec,#fig-arch,#fig-mask{scroll-margin-top:64px;}
+
+  /* PANO-CSS-START */
+  .pano{position:relative; width:min(96vw,1500px); margin:16px 0 8px calc(50% - min(96vw,1500px) / 2); background:var(--surface); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); overflow:hidden; display:flex; flex-direction:column; outline:none;}
+  .pano:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
+  .pano-bar{display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding:8px 12px; border-bottom:1px solid var(--line); font-size:13px;}
+  .pano-bar button{font:inherit; color:var(--ink); background:var(--surface-2); border:1px solid var(--line-strong); border-radius:8px; padding:4px 12px; cursor:pointer;}
+  .pano-bar button:hover{border-color:var(--accent); color:var(--accent);}
+  .pano-hint{margin-left:auto; color:var(--ink-3);}
+  .pano-chips{display:flex; flex-wrap:wrap; gap:2px 12px; padding:6px 12px; border-bottom:1px solid var(--line); font-size:12.5px; line-height:2;}
+  .pano-chips a{text-decoration:none; white-space:nowrap;}
+  .pano-chips a:hover{text-decoration:underline;}
+  .pano-svg{width:100%; height:min(72vh,820px); min-height:420px; display:block; cursor:grab; touch-action:none;}
+.pano-svg text{cursor:text; user-select:text; -webkit-user-select:text;}
+.pano-svg a{-webkit-user-drag:none; user-drag:none;}
+  .pano-svg.dragging{cursor:grabbing;}
+  .pano:fullscreen{width:100vw; height:100vh; margin:0; border-radius:0; border:none;}
+  .pano:fullscreen .pano-svg{height:auto; flex:1; min-height:0;}
+  .dg .pf{fill:var(--surface); stroke:var(--line-strong); stroke-width:2;}
+  .dg .pk{fill:var(--ink-3); fill-opacity:.2; stroke:none;}
+  .dg .ptl{font-size:28px; font-weight:700;}
+  .dg .pds{font-size:16px; fill:var(--ink-2);}
+  .dg .bdg{fill:var(--accent);}
+  .dg text.bdt{fill:#fff; font-size:14px; font-weight:700; text-anchor:middle;}
+  .dg text.bdt2{font-size:12px;}
+  .dg text.bdt-l{font-size:20px;}
+  .dg text.bdt-l.bdt2{font-size:17px;}
+  .dg .lane{fill:var(--accent); fill-opacity:.1; stroke:var(--accent); stroke-width:2;}
+  .dg .lt{font-size:38px; font-weight:700; fill:var(--accent-strong);}
+  .dg .p-big{font-size:76px; font-weight:700; font-family:"IBM Plex Serif","Noto Serif SC","Songti SC",serif;}
+  .dg .p-sub{font-size:24px; fill:var(--ink-2);}
+  .dg .p-leg{font-size:22px; fill:var(--ink-2);}
+  .dg .fl{fill:none; stroke:var(--accent); stroke-width:4; marker-end:url(#sv-arra);}
+  .dg .ft{font-size:18px; fill:var(--accent-strong); font-weight:600;}
+  /* PANO-CSS-END */
+  footer{
+    margin-top:56px; padding-top:20px; border-top:1px solid var(--line-strong);
+    display:flex; justify-content:space-between; gap:12px; font-size:13px; color:var(--ink-3);
+  }
+  footer a{color:var(--accent); text-decoration:none;}
+  footer a:hover{text-decoration:underline;}
+</style>
+<link rel="stylesheet" href="concepts.css">
+</head>
+<body>
+<div class="grid" aria-hidden="true"></div>
+
+<!-- 共享箭头标记：各图通过 url(#sv-arr*) 引用 -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <marker id="sv-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--ink-2)"/></marker>
+    <marker id="sv-arra" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--accent)"/></marker>
+    <marker id="sv-arrs" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:var(--signal)"/></marker>
+  </defs>
+</svg>
+
+<header class="masthead">
+  <a class="back" href="index.html">← 返回知识库</a>
+  <span class="ref">arXiv 2506.01844</span>
+</header>
+
+<div class="wrap">
+
+  <section class="hero">
+    <div class="eyebrow">精读笔记 · 轻量 VLA</div>
+    <h1>SmolVLA：小而快的开源 VLA</h1>
+    <p class="summary">一个 0.45B 参数的 <a class="concept-link" href="VLA-发展历程.html#concept-vla">VLA</a>：只取 SmolVLM2 的前一半层做感知，后面接一个窄而浅的<a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">流匹配</a>动作专家。它用社区采集的数据预训练，单卡能训，消费级 GPU 就能跑，还配了一套异步推理。</p>
+    <div class="meta">
+      <div class="m"><span class="k">论文</span><span class="v">SmolVLA: A Vision-Language-Action Model for Affordable and Efficient Robotics</span></div>
+      <div class="m"><span class="k">机构</span><span class="v">Hugging Face（LeRobot 团队）等</span></div>
+      <div class="m"><span class="k">arXiv</span><span class="v">2506.01844</span></div>
+      <div class="m"><span class="k">规模</span><span class="v">0.45B（另有 0.24B / 2.25B 对照）</span></div>
+      <div class="m"><span class="k">代码</span><span class="v">lerobot/policies/smolvla</span></div>
+      <div class="m"><span class="k">主题</span><span class="v">轻量化 · 流匹配 · 异步推理</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>它解决的问题</h2>
+    <p>主流 VLA（OpenVLA 7B、π0 3.3B）都有十亿级参数。训练贵，部署也难，在 SO-100 这类几百美元的机械臂旁边几乎跑不起来。另一头，社区里有大量用低成本机械臂采的小数据集，却没人拿来预训练。</p>
+    <p>SmolVLA 同时回答两件事：</p>
+    <ul>
+      <li><strong>模型能不能小？</strong>砍掉 VLM 一半层、压缩视觉 token、把动作专家做窄，换来更低的训练与推理成本。</li>
+      <li><strong>数据能不能散？</strong>只用 481 个社区数据集（22.9K 条轨迹，10.6M 帧）预训练，比同类工作小一个数量级。</li>
+    </ul>
+    <p>另外它把“算动作”和“执行动作”拆开，提出<strong>异步推理</strong>，让机器人在等下一块动作时不用停下。</p>
+  </section>
+
+  <section>
+    <h2>整体架构</h2>
+    <p>一句话：<span class="hl">VLM 读一遍场景并把每层的 K/V 存起来，动作专家反复读这份缓存，把噪声一步步去成一整块动作。</span></p>
+
+    <div class="diagram" id="fig-arch">
+      <svg class="dg" viewBox="0 0 900 650" role="img" aria-label="SmolVLA 整体架构图：图像、语言、状态进入 VLM 前 16 层并缓存 K/V，动作专家读取缓存并对噪声动作去噪，欧拉积分 10 步得到动作块">
+        <!-- 输入 -->
+        <a class="mod" href="#m-image" aria-label="跳到图像预处理">
+        <rect class="b" x="20" y="40" width="170" height="58" rx="8"/>
+        <text class="h c" x="105" y="66">相机图像 ×1~3</text><text class="s c" x="105" y="85">缩放补边到 512×512</text>
+        </a>
+        <a class="mod" href="#m-lang" aria-label="跳到语言编码">
+        <rect class="b" x="20" y="130" width="170" height="58" rx="8"/>
+        <text class="h c" x="105" y="156">语言指令</text><text class="s c" x="105" y="175">任务文本，末尾补换行</text>
+        </a>
+        <a class="mod" href="#m-state" aria-label="跳到状态编码">
+        <rect class="b" x="20" y="220" width="170" height="58" rx="8"/>
+        <text class="h c" x="105" y="246">机器人状态（现在）</text><text class="s c" x="105" y="265">当前关节角，补零到 32 维</text>
+        </a>
+        <text class="s c" x="105" y="302">状态：现在的关节角（输入）</text><text class="s c" x="105" y="320">动作：未来的目标角（输出）</text><text class="s c" x="105" y="338">同种数，时间不同</text><text class="s c" x="105" y="366">真实未来动作不输入</text>
+        <a class="mod" href="#m-noise" aria-label="跳到噪声与时间">
+        <rect class="b" x="20" y="380" width="170" height="70" rx="8"/>
+        <text class="h c" x="105" y="404">噪声动作块 x_τ</text><text class="s c" x="105" y="423">未来 50 步 × 32 维</text><text class="s c" x="105" y="440">时间 τ ∈ (0, 1]</text>
+        </a>
+        <text class="s c" x="105" y="518">训练：加噪真值 · 推理：纯噪声</text>
+
+        <!-- 编码 -->
+        <a class="mod" href="#m-vision" aria-label="跳到视觉编码">
+        <rect class="fz" x="230" y="40" width="170" height="58" rx="8"/>
+        <text class="h c" x="315" y="66">SigLIP + 像素重排</text><text class="s c" x="315" y="85">每张图 64 个 token</text>
+        </a>
+        <a class="mod" href="#m-lang" aria-label="跳到语言编码">
+        <rect class="fz" x="230" y="130" width="170" height="58" rx="8"/>
+        <text class="h c" x="315" y="156">词嵌入</text><text class="s c" x="315" y="175">最多 48 个 token</text>
+        </a>
+        <a class="mod" href="#m-state" aria-label="跳到状态编码">
+        <rect class="tr" x="230" y="220" width="170" height="58" rx="8"/>
+        <text class="h c" x="315" y="246">state_proj（线性层）</text><text class="s c" x="315" y="265">1 个 token · 可训练</text>
+        </a>
+        <a class="mod" href="#m-actin" aria-label="跳到动作入口">
+        <rect class="tr" x="230" y="380" width="170" height="70" rx="8"/>
+        <text class="h c" x="315" y="404">action_in_proj + 时间 MLP</text><text class="s c" x="315" y="423">50 个 720 维 token</text><text class="s c" x="315" y="440">τ 用正余弦编码</text>
+        </a>
+
+        <!-- VLM -->
+        <a class="mod" href="#m-vlm" aria-label="跳到 VLM 文本层">
+        <rect class="fz" x="440" y="30" width="190" height="262" rx="10"/>
+        <text class="h c" x="535" y="58">SmolVLM2 文本模型</text>
+        <text class="s c" x="535" y="80">只取前 16 层（共 32 层）</text>
+        <text class="s c" x="535" y="98">宽度 960 · 冻结</text>
+        </a>
+        <a class="mod" href="#m-prefix" aria-label="跳到 prefix 拼接">
+          <rect class="hit" x="446" y="114" width="178" height="82"/>
+        <text class="s c" x="535" y="130">prefix = 图像 + 语言 + 状态</text>
+        <text class="s c" x="535" y="150">图像、语言：互相可见</text>
+        <text class="s c" x="535" y="168">状态：看得到图像、语言、自己</text>
+        <text class="s c" x="535" y="186">三者都看不到动作 token</text>
+        </a>
+        <a class="mod" href="#m-kv" aria-label="跳到 KV cache">
+        <rect class="sg" x="452" y="222" width="166" height="54" rx="8"/>
+        <text class="h c" x="535" y="245">KV cache</text><text class="s c" x="535" y="264">每层 K / V，只算一次</text>
+        </a>
+
+        <!-- 动作专家 -->
+        <a class="mod" href="#m-expert" aria-label="跳到动作专家">
+        <rect class="tr" x="690" y="330" width="190" height="190" rx="10"/>
+        <text class="h c" x="785" y="358">动作专家</text>
+        <text class="s c" x="785" y="380">16 层 · 宽度 720（= 0.75×960）</text>
+        <text class="h c" x="785" y="412" style="font-size:12px">偶数层：自注意力</text>
+        <text class="s c" x="785" y="429">看 prefix，动作之间因果</text>
+        <text class="h c" x="785" y="456" style="font-size:12px">奇数层：交叉注意力</text>
+        <text class="s c" x="785" y="473">只读 VLM 缓存的 K / V</text>
+        <text class="s c" x="785" y="504">动作 token 之间用因果掩码</text>
+        </a>
+
+        <!-- 输出链 -->
+        <a class="mod" href="#m-euler" aria-label="跳到输出头与欧拉积分">
+        <rect class="b" x="690" y="545" width="190" height="48" rx="8"/>
+        <text class="h c" x="785" y="566">action_out_proj</text><text class="s c" x="785" y="583">720 → 32，得到速度 v</text>
+        </a>
+        <a class="mod" href="#m-euler" aria-label="跳到输出头与欧拉积分">
+        <rect class="b" x="440" y="545" width="190" height="48" rx="8"/>
+        <text class="h c" x="535" y="566">欧拉积分 × 10 步</text><text class="s c" x="535" y="583">τ 从 1 走到 0</text>
+        </a>
+        <a class="mod" href="#m-post" aria-label="跳到后处理与动作队列">
+        <rect class="b" x="230" y="545" width="170" height="48" rx="8"/>
+        <text class="h c" x="315" y="566">动作块 50 步</text><text class="s c" x="315" y="583">裁掉补零维</text>
+        </a>
+        <a class="mod" href="#m-post" aria-label="跳到后处理与动作队列">
+        <rect class="b" x="20" y="545" width="170" height="48" rx="8"/>
+        <text class="h c" x="105" y="566">动作队列</text><text class="s c" x="105" y="583">取 1 个 · 反归一化</text>
+        </a>
+
+        <!-- 箭头 -->
+        <path class="ln" d="M190,69 H228"/><path class="ln" d="M190,159 H228"/><path class="ln" d="M190,249 H228"/>
+        <path class="ln" d="M400,69 H438"/><path class="ln" d="M400,159 H438"/><path class="ln" d="M400,249 H438"/>
+        <path class="ln" d="M190,415 H228"/>
+        <path class="ln" d="M400,415 H688"/>
+        <path class="lk" d="M630,250 H660 V372 H688"/>
+        <text class="s" x="640" y="232">prefix 的 K / V</text>
+        <path class="ln" d="M785,520 V543"/>
+        <path class="ln" d="M690,569 H632"/><path class="ln" d="M440,569 H402"/><path class="ln" d="M230,569 H192"/>
+        <path class="lp" d="M535,545 V505 H105 V452"/>
+        <text class="s c" x="320" y="498">x ← x + dt · v，重复 10 次</text>
+
+        <!-- 图例 -->
+        <rect class="fz" x="20" y="618" width="16" height="16" rx="3"/><text class="s" x="42" y="631">冻结</text>
+        <rect class="tr" x="90" y="618" width="16" height="16" rx="3"/><text class="s" x="112" y="631">训练</text>
+        <rect class="sg" x="160" y="618" width="16" height="16" rx="3"/><text class="s" x="182" y="631">缓存 / 传递</text>
+      </svg>
+    </div>
+    <p class="figcap">图 1 · SmolVLA 的推理路径。左半边只跑 1 次，右半边的专家与欧拉循环跑 10 次。形状和默认值取自 <code>configuration_smolvla.py</code> 与 <code>modeling_smolvla.py</code>。<strong>点击任一方块，跳到它的子架构图</strong>（<a href="#modules">模块目录</a>）。想把所有图放在一起看，见<a href="#panorama">全景图</a>。</p>
+
+    <blockquote>
+      <p><strong>和 π0 的关键区别：</strong>π0 里动作专家与 PaliGemma 逐层做联合注意力，两边层数相同；SmolVLA 只取 VLM 的前一半层，专家还把联合注意力换成“一层自注意力、一层交叉注意力”交替。两处改动都是为了省算力。</p>
+    </blockquote>
+  </section>
+
+  <section id="panorama">
+    <h2>全景图：所有架构图合在一张图里</h2>
+    <p>下面这一张大图把总图、14 张子架构图和 3 张补充图合在一起，按数据流分成 6 条泳道：A 总览，B 感知输入，C 前缀与缓存，D 动作入口与专家，E 专家层内部，F 输出与执行。橙青灰三种颜色的含义不变。</p>
+    <p>鼠标滚轮缩放，拖动平移，双击放大。点图里的方块或上方的小标签，会缩放到对应的那张子图。点“全屏”看得更清楚。</p>
+    <div class="pano" id="pano" tabindex="0" aria-label="SmolVLA 全景图，可缩放和平移">
+      <div class="pano-bar">
+        <button type="button" data-act="in" aria-label="放大">＋ 放大</button>
+        <button type="button" data-act="out" aria-label="缩小">－ 缩小</button>
+        <button type="button" data-act="fit" aria-label="适应窗口">适应窗口</button>
+        <button type="button" data-act="full" aria-label="全屏">全屏</button>
+        <span class="pano-hint">滚轮缩放 · 拖动平移 · 双击放大 · 键盘 + − 0 与方向键</span>
+      </div>
+      <div class="pano-chips">
+        <a href="#pan-main">总图</a>
+        <a href="#pan-m-image">①图像</a>
+        <a href="#pan-m-vision">②视觉</a>
+        <a href="#pan-m-lang">③语言</a>
+        <a href="#pan-m-state">④状态</a>
+        <a href="#pan-m-prefix">⑤prefix</a>
+        <a href="#pan-m-vlm">⑥VLM层</a>
+        <a href="#pan-m-kv">⑦缓存</a>
+        <a href="#pan-m-noise">⑧噪声</a>
+        <a href="#pan-m-actin">⑨入口</a>
+        <a href="#pan-m-expert">⑩专家</a>
+        <a href="#pan-m-sa">⑪SA</a>
+        <a href="#pan-m-ca">⑫CA</a>
+        <a href="#pan-m-euler">⑬欧拉</a>
+        <a href="#pan-m-post">⑭后处理</a>
+        <a href="#pan-mask">掩码</a>
+        <a href="#pan-layers">层排布</a>
+        <a href="#pan-async">异步</a>
+      </div>
+      <svg class="dg pano-svg" id="pano-svg" viewBox="0 0 5940 2020" data-w="5940" data-h="2020" role="img" aria-label="SmolVLA 全景图：总图、十四张子架构图和三张补充图按数据流排成六条泳道">
+<text class="p-big" x="0" y="78">SmolVLA 全景图</text>
+<text class="p-sub" x="0" y="124">总图 + 14 张子架构图 + 3 张补充图，按数据流排成 6 条泳道。滚轮缩放，拖动平移，点方块跳到对应子图。</text>
+<rect class="fz" x="3560" y="52" width="30" height="30" rx="5"/><text class="p-leg" x="3602" y="76">冻结</text>
+<rect class="tr" x="3700" y="52" width="30" height="30" rx="5"/><text class="p-leg" x="3742" y="76">训练</text>
+<rect class="sg" x="3840" y="52" width="30" height="30" rx="5"/><text class="p-leg" x="3882" y="76">缓存 / 下游入口</text>
+<text class="p-leg" x="3560" y="124">箭头 = 数据流向；虚线框和灰线 = 子图内部</text>
+<rect class="lane" x="0" y="170" width="940" height="80" rx="14"/><text class="lt" x="30" y="224">A · 总览与补充图</text>
+<rect class="lane" x="1040" y="170" width="900" height="80" rx="14"/><text class="lt" x="1070" y="224">B · 感知输入</text>
+<path class="fl" d="M1948,210 H2028"/>
+<rect class="lane" x="2040" y="170" width="900" height="80" rx="14"/><text class="lt" x="2070" y="224">C · 前缀与 KV 缓存</text>
+<path class="fl" d="M2948,210 H3028"/>
+<rect class="lane" x="3040" y="170" width="900" height="80" rx="14"/><text class="lt" x="3070" y="224">D · 动作入口与专家</text>
+<path class="fl" d="M3948,210 H4028"/>
+<rect class="lane" x="4040" y="170" width="900" height="80" rx="14"/><text class="lt" x="4070" y="224">E · 专家层内部</text>
+<rect class="lane" x="5040" y="170" width="900" height="80" rx="14"/><text class="lt" x="5070" y="224">F · 输出与执行</text>
+<g id="pan-main" data-box="0 290 940 734" transform="translate(0,290)"><rect class="pf" x="0" y="0" width="940" height="734" rx="18"/><rect class="pk" x="18" y="16" width="36" height="36" rx="8"/><text class="ptl" x="68" y="34">总图 · SmolVLA 推理路径</text><text class="pds" x="68" y="56">点方块跳到子图；方块角上的数字就是子图编号</text><g transform="translate(20,64)">
+        <!-- 输入 -->
+        <a class="mod" href="#pan-m-image" aria-label="跳到图像预处理">
+        <rect class="b" x="20" y="40" width="170" height="58" rx="8"/>
+        <text class="h c" x="105" y="66">相机图像 ×1~3</text><text class="s c" x="105" y="85">缩放补边到 512×512</text>
+        </a>
+        <a class="mod" href="#pan-m-lang" aria-label="跳到语言编码">
+        <rect class="b" x="20" y="130" width="170" height="58" rx="8"/>
+        <text class="h c" x="105" y="156">语言指令</text><text class="s c" x="105" y="175">任务文本，末尾补换行</text>
+        </a>
+        <a class="mod" href="#pan-m-state" aria-label="跳到状态编码">
+        <rect class="b" x="20" y="220" width="170" height="58" rx="8"/>
+        <text class="h c" x="105" y="246">机器人状态（现在）</text><text class="s c" x="105" y="265">当前关节角，补零到 32 维</text>
+        </a>
+        <text class="s c" x="105" y="302">状态：现在的关节角（输入）</text><text class="s c" x="105" y="320">动作：未来的目标角（输出）</text><text class="s c" x="105" y="338">同种数，时间不同</text><text class="s c" x="105" y="366">真实未来动作不输入</text>
+        <a class="mod" href="#pan-m-noise" aria-label="跳到噪声与时间">
+        <rect class="b" x="20" y="380" width="170" height="70" rx="8"/>
+        <text class="h c" x="105" y="404">噪声动作块 x_τ</text><text class="s c" x="105" y="423">未来 50 步 × 32 维</text><text class="s c" x="105" y="440">时间 τ ∈ (0, 1]</text>
+        </a>
+        <text class="s c" x="105" y="518">训练：加噪真值 · 推理：纯噪声</text>
+
+        <!-- 编码 -->
+        <a class="mod" href="#pan-m-vision" aria-label="跳到视觉编码">
+        <rect class="fz" x="230" y="40" width="170" height="58" rx="8"/>
+        <text class="h c" x="315" y="66">SigLIP + 像素重排</text><text class="s c" x="315" y="85">每张图 64 个 token</text>
+        </a>
+        <a class="mod" href="#pan-m-lang" aria-label="跳到语言编码">
+        <rect class="fz" x="230" y="130" width="170" height="58" rx="8"/>
+        <text class="h c" x="315" y="156">词嵌入</text><text class="s c" x="315" y="175">最多 48 个 token</text>
+        </a>
+        <a class="mod" href="#pan-m-state" aria-label="跳到状态编码">
+        <rect class="tr" x="230" y="220" width="170" height="58" rx="8"/>
+        <text class="h c" x="315" y="246">state_proj（线性层）</text><text class="s c" x="315" y="265">1 个 token · 可训练</text>
+        </a>
+        <a class="mod" href="#pan-m-actin" aria-label="跳到动作入口">
+        <rect class="tr" x="230" y="380" width="170" height="70" rx="8"/>
+        <text class="h c" x="315" y="404">action_in_proj + 时间 MLP</text><text class="s c" x="315" y="423">50 个 720 维 token</text><text class="s c" x="315" y="440">τ 用正余弦编码</text>
+        </a>
+
+        <!-- VLM -->
+        <a class="mod" href="#pan-m-vlm" aria-label="跳到 VLM 文本层">
+        <rect class="fz" x="440" y="30" width="190" height="262" rx="10"/>
+        <text class="h c" x="535" y="58">SmolVLM2 文本模型</text>
+        <text class="s c" x="535" y="80">只取前 16 层（共 32 层）</text>
+        <text class="s c" x="535" y="98">宽度 960 · 冻结</text>
+        </a>
+        <a class="mod" href="#pan-m-prefix" aria-label="跳到 prefix 拼接">
+          <rect class="hit" x="446" y="114" width="178" height="82"/>
+        <text class="s c" x="535" y="130">prefix = 图像 + 语言 + 状态</text>
+        <text class="s c" x="535" y="150">图像、语言：互相可见</text>
+        <text class="s c" x="535" y="168">状态：看得到图像、语言、自己</text>
+        <text class="s c" x="535" y="186">三者都看不到动作 token</text>
+        </a>
+        <a class="mod" href="#pan-m-kv" aria-label="跳到 KV cache">
+        <rect class="sg" x="452" y="222" width="166" height="54" rx="8"/>
+        <text class="h c" x="535" y="245">KV cache</text><text class="s c" x="535" y="264">每层 K / V，只算一次</text>
+        </a>
+
+        <!-- 动作专家 -->
+        <a class="mod" href="#pan-m-expert" aria-label="跳到动作专家">
+        <rect class="tr" x="690" y="330" width="190" height="190" rx="10"/>
+        <text class="h c" x="785" y="358">动作专家</text>
+        <text class="s c" x="785" y="380">16 层 · 宽度 720（= 0.75×960）</text>
+        <text class="h c" x="785" y="412" style="font-size:12px">偶数层：自注意力</text>
+        <text class="s c" x="785" y="429">看 prefix，动作之间因果</text>
+        <text class="h c" x="785" y="456" style="font-size:12px">奇数层：交叉注意力</text>
+        <text class="s c" x="785" y="473">只读 VLM 缓存的 K / V</text>
+        <text class="s c" x="785" y="504">动作 token 之间用因果掩码</text>
+        </a>
+
+        <!-- 输出链 -->
+        <a class="mod" href="#pan-m-euler" aria-label="跳到输出头与欧拉积分">
+        <rect class="b" x="690" y="545" width="190" height="48" rx="8"/>
+        <text class="h c" x="785" y="566">action_out_proj</text><text class="s c" x="785" y="583">720 → 32，得到速度 v</text>
+        </a>
+        <a class="mod" href="#pan-m-euler" aria-label="跳到输出头与欧拉积分">
+        <rect class="b" x="440" y="545" width="190" height="48" rx="8"/>
+        <text class="h c" x="535" y="566">欧拉积分 × 10 步</text><text class="s c" x="535" y="583">τ 从 1 走到 0</text>
+        </a>
+        <a class="mod" href="#pan-m-post" aria-label="跳到后处理与动作队列">
+        <rect class="b" x="230" y="545" width="170" height="48" rx="8"/>
+        <text class="h c" x="315" y="566">动作块 50 步</text><text class="s c" x="315" y="583">裁掉补零维</text>
+        </a>
+        <a class="mod" href="#pan-m-post" aria-label="跳到后处理与动作队列">
+        <rect class="b" x="20" y="545" width="170" height="48" rx="8"/>
+        <text class="h c" x="105" y="566">动作队列</text><text class="s c" x="105" y="583">取 1 个 · 反归一化</text>
+        </a>
+
+        <!-- 箭头 -->
+        <path class="ln" d="M190,69 H228"/><path class="ln" d="M190,159 H228"/><path class="ln" d="M190,249 H228"/>
+        <path class="ln" d="M400,69 H438"/><path class="ln" d="M400,159 H438"/><path class="ln" d="M400,249 H438"/>
+        <path class="ln" d="M190,415 H228"/>
+        <path class="ln" d="M400,415 H688"/>
+        <path class="lk" d="M630,250 H660 V372 H688"/>
+        <text class="s" x="640" y="232">prefix 的 K / V</text>
+        <path class="ln" d="M785,520 V543"/>
+        <path class="ln" d="M690,569 H632"/><path class="ln" d="M440,569 H402"/><path class="ln" d="M230,569 H192"/>
+        <path class="lp" d="M535,545 V505 H105 V452"/>
+        <text class="s c" x="320" y="498">x ← x + dt · v，重复 10 次</text>
+
+        <!-- 图例 -->
+        <rect class="fz" x="20" y="618" width="16" height="16" rx="3"/><text class="s" x="42" y="631">冻结</text>
+        <rect class="tr" x="90" y="618" width="16" height="16" rx="3"/><text class="s" x="112" y="631">训练</text>
+        <rect class="sg" x="160" y="618" width="16" height="16" rx="3"/><text class="s" x="182" y="631">缓存 / 传递</text>
+      <g><circle class="bdg" cx="20" cy="40" r="13"/><text class="bdt" x="20" y="45">1</text></g><g><circle class="bdg" cx="230" cy="40" r="13"/><text class="bdt" x="230" y="45">2</text></g><g><circle class="bdg" cx="20" cy="130" r="13"/><text class="bdt" x="20" y="135">3</text></g><g><circle class="bdg" cx="230" cy="130" r="13"/><text class="bdt" x="230" y="135">3</text></g><g><circle class="bdg" cx="20" cy="220" r="13"/><text class="bdt" x="20" y="225">4</text></g><g><circle class="bdg" cx="230" cy="220" r="13"/><text class="bdt" x="230" y="225">4</text></g><g><circle class="bdg" cx="446" cy="114" r="13"/><text class="bdt" x="446" y="119">5</text></g><g><circle class="bdg" cx="440" cy="30" r="13"/><text class="bdt" x="440" y="35">6</text></g><g><circle class="bdg" cx="452" cy="222" r="13"/><text class="bdt" x="452" y="227">7</text></g><g><circle class="bdg" cx="20" cy="380" r="13"/><text class="bdt" x="20" y="385">8</text></g><g><circle class="bdg" cx="230" cy="380" r="13"/><text class="bdt" x="230" y="385">9</text></g><g><circle class="bdg" cx="690" cy="330" r="13"/><text class="bdt bdt2" x="690" y="335">10</text></g><g><circle class="bdg" cx="880" cy="412" r="13"/><text class="bdt bdt2" x="880" y="417">11</text></g><g><circle class="bdg" cx="880" cy="456" r="13"/><text class="bdt bdt2" x="880" y="461">12</text></g><g><circle class="bdg" cx="690" cy="545" r="13"/><text class="bdt bdt2" x="690" y="550">13</text></g><g><circle class="bdg" cx="440" cy="545" r="13"/><text class="bdt bdt2" x="440" y="550">13</text></g><g><circle class="bdg" cx="230" cy="545" r="13"/><text class="bdt bdt2" x="230" y="550">14</text></g><g><circle class="bdg" cx="20" cy="545" r="13"/><text class="bdt bdt2" x="20" y="550">14</text></g></g></g>
+<g id="pan-layers" data-box="0 1100 940 380" transform="translate(0,1100)"><rect class="pf" x="0" y="0" width="940" height="380" rx="18"/><rect class="pk" x="18" y="16" width="36" height="36" rx="8"/><text class="ptl" x="68" y="34">补充 · 专家 16 层的排布</text><text class="pds" x="68" y="56">偶数层自注意力 SA，奇数层交叉注意力 CA</text><g transform="translate(20,64)">
+        <text class="s" x="30" y="26">VLM 前 16 层（只处理 prefix，K/V 进入缓存）</text>
+        <!-- VLM 行 -->
+        <rect class="fz" x="30"  y="40" width="43" height="34" rx="5"/><text class="s c" x="51.5"  y="62">0</text>
+        <rect class="fz" x="79"  y="40" width="43" height="34" rx="5"/><text class="s c" x="100.5" y="62">1</text>
+        <rect class="fz" x="128" y="40" width="43" height="34" rx="5"/><text class="s c" x="149.5" y="62">2</text>
+        <rect class="fz" x="177" y="40" width="43" height="34" rx="5"/><text class="s c" x="198.5" y="62">3</text>
+        <rect class="fz" x="226" y="40" width="43" height="34" rx="5"/><text class="s c" x="247.5" y="62">4</text>
+        <rect class="fz" x="275" y="40" width="43" height="34" rx="5"/><text class="s c" x="296.5" y="62">5</text>
+        <rect class="fz" x="324" y="40" width="43" height="34" rx="5"/><text class="s c" x="345.5" y="62">6</text>
+        <rect class="fz" x="373" y="40" width="43" height="34" rx="5"/><text class="s c" x="394.5" y="62">7</text>
+        <rect class="fz" x="422" y="40" width="43" height="34" rx="5"/><text class="s c" x="443.5" y="62">8</text>
+        <rect class="fz" x="471" y="40" width="43" height="34" rx="5"/><text class="s c" x="492.5" y="62">9</text>
+        <rect class="fz" x="520" y="40" width="43" height="34" rx="5"/><text class="s c" x="541.5" y="62">10</text>
+        <rect class="fz" x="569" y="40" width="43" height="34" rx="5"/><text class="s c" x="590.5" y="62">11</text>
+        <rect class="fz" x="618" y="40" width="43" height="34" rx="5"/><text class="s c" x="639.5" y="62">12</text>
+        <rect class="fz" x="667" y="40" width="43" height="34" rx="5"/><text class="s c" x="688.5" y="62">13</text>
+        <rect class="fz" x="716" y="40" width="43" height="34" rx="5"/><text class="s c" x="737.5" y="62">14</text>
+        <rect class="fz" x="765" y="40" width="43" height="34" rx="5"/><text class="s c" x="786.5" y="62">15</text>
+
+        <!-- 连线 -->
+        <path class="la" d="M51.5,76 V176"/><path class="lk" d="M100.5,76 V176"/>
+        <path class="la" d="M149.5,76 V176"/><path class="lk" d="M198.5,76 V176"/>
+        <path class="la" d="M247.5,76 V176"/><path class="lk" d="M296.5,76 V176"/>
+        <path class="la" d="M345.5,76 V176"/><path class="lk" d="M394.5,76 V176"/>
+        <path class="la" d="M443.5,76 V176"/><path class="lk" d="M492.5,76 V176"/>
+        <path class="la" d="M541.5,76 V176"/><path class="lk" d="M590.5,76 V176"/>
+        <path class="la" d="M639.5,76 V176"/><path class="lk" d="M688.5,76 V176"/>
+        <path class="la" d="M737.5,76 V176"/><path class="lk" d="M786.5,76 V176"/>
+
+
+        <!-- 专家行 -->
+        <text class="s" x="30" y="246">动作专家 16 层（宽度 720）；每层读同序号的缓存</text>
+        <rect class="tr" x="30"  y="180" width="43" height="44" rx="5"/><text class="h c" x="51.5"  y="198" style="font-size:12px">SA</text><text class="s c" x="51.5"  y="215">0</text>
+        <rect class="sg" x="79"  y="180" width="43" height="44" rx="5"/><text class="h c" x="100.5" y="198" style="font-size:12px">CA</text><text class="s c" x="100.5" y="215">1</text>
+        <rect class="tr" x="128" y="180" width="43" height="44" rx="5"/><text class="h c" x="149.5" y="198" style="font-size:12px">SA</text><text class="s c" x="149.5" y="215">2</text>
+        <rect class="sg" x="177" y="180" width="43" height="44" rx="5"/><text class="h c" x="198.5" y="198" style="font-size:12px">CA</text><text class="s c" x="198.5" y="215">3</text>
+        <rect class="tr" x="226" y="180" width="43" height="44" rx="5"/><text class="h c" x="247.5" y="198" style="font-size:12px">SA</text><text class="s c" x="247.5" y="215">4</text>
+        <rect class="sg" x="275" y="180" width="43" height="44" rx="5"/><text class="h c" x="296.5" y="198" style="font-size:12px">CA</text><text class="s c" x="296.5" y="215">5</text>
+        <rect class="tr" x="324" y="180" width="43" height="44" rx="5"/><text class="h c" x="345.5" y="198" style="font-size:12px">SA</text><text class="s c" x="345.5" y="215">6</text>
+        <rect class="sg" x="373" y="180" width="43" height="44" rx="5"/><text class="h c" x="394.5" y="198" style="font-size:12px">CA</text><text class="s c" x="394.5" y="215">7</text>
+        <rect class="tr" x="422" y="180" width="43" height="44" rx="5"/><text class="h c" x="443.5" y="198" style="font-size:12px">SA</text><text class="s c" x="443.5" y="215">8</text>
+        <rect class="sg" x="471" y="180" width="43" height="44" rx="5"/><text class="h c" x="492.5" y="198" style="font-size:12px">CA</text><text class="s c" x="492.5" y="215">9</text>
+        <rect class="tr" x="520" y="180" width="43" height="44" rx="5"/><text class="h c" x="541.5" y="198" style="font-size:12px">SA</text><text class="s c" x="541.5" y="215">10</text>
+        <rect class="sg" x="569" y="180" width="43" height="44" rx="5"/><text class="h c" x="590.5" y="198" style="font-size:12px">CA</text><text class="s c" x="590.5" y="215">11</text>
+        <rect class="tr" x="618" y="180" width="43" height="44" rx="5"/><text class="h c" x="639.5" y="198" style="font-size:12px">SA</text><text class="s c" x="639.5" y="215">12</text>
+        <rect class="sg" x="667" y="180" width="43" height="44" rx="5"/><text class="h c" x="688.5" y="198" style="font-size:12px">CA</text><text class="s c" x="688.5" y="215">13</text>
+        <rect class="tr" x="716" y="180" width="43" height="44" rx="5"/><text class="h c" x="737.5" y="198" style="font-size:12px">SA</text><text class="s c" x="737.5" y="215">14</text>
+        <rect class="sg" x="765" y="180" width="43" height="44" rx="5"/><text class="h c" x="786.5" y="198" style="font-size:12px">CA</text><text class="s c" x="786.5" y="215">15</text>
+
+        <!-- 图例 -->
+        <rect class="tr" x="30" y="266" width="16" height="16" rx="3"/><text class="s" x="52" y="279">SA 自注意力层（序号 % 2 == 0）</text>
+        <rect class="sg" x="290" y="266" width="16" height="16" rx="3"/><text class="s" x="312" y="279">CA 交叉注意力层（其余层）</text>
+      </g></g>
+<g id="pan-mask" data-box="0 1556 940 414" transform="translate(0,1556)"><rect class="pf" x="0" y="0" width="940" height="414" rx="18"/><rect class="pk" x="18" y="16" width="36" height="36" rx="8"/><text class="ptl" x="68" y="34">补充 · 注意力掩码</text><text class="pds" x="68" y="56">行是提问方，列是被看方</text><g transform="translate(20,64)">
+        <text class="s c" x="265" y="46">被看的 token（Key）</text>
+        <text class="h c" x="265" y="72">图像 + 语言</text>
+        <text class="h c" x="435" y="72">状态（1）</text>
+        <text class="h c" x="605" y="72">动作（50）</text>
+        <text class="s" x="14" y="150" transform="rotate(-90 14 150)" style="text-anchor:middle">提问的 token（Query）</text>
+
+        <text class="h" x="168" y="130" style="text-anchor:end">图像 + 语言</text>
+        <text class="h" x="168" y="200" style="text-anchor:end">状态</text>
+        <text class="h" x="168" y="270" style="text-anchor:end">动作</text>
+
+        <!-- 行1 -->
+        <rect class="tr" x="180" y="90" width="170" height="70"/><text class="s c" x="265" y="130">可见 · 双向</text>
+        <rect class="b" x="350" y="90" width="170" height="70"/><text class="s c" x="435" y="130">不可见</text>
+        <rect class="b" x="520" y="90" width="170" height="70"/><text class="s c" x="605" y="130">不可见</text>
+        <!-- 行2 -->
+        <rect class="tr" x="180" y="160" width="170" height="70"/><text class="s c" x="265" y="200">可见</text>
+        <rect class="tr" x="350" y="160" width="170" height="70"/><text class="s c" x="435" y="200">可见（自己）</text>
+        <rect class="b" x="520" y="160" width="170" height="70"/><text class="s c" x="605" y="200">不可见</text>
+        <!-- 行3 -->
+        <rect class="tr" x="180" y="230" width="170" height="70"/><text class="s c" x="265" y="270">可见</text>
+        <rect class="tr" x="350" y="230" width="170" height="70"/><text class="s c" x="435" y="270">可见</text>
+        <rect class="b" x="520" y="230" width="170" height="70"/>
+        <polygon class="tr" points="520,230 520,300 690,300"/>
+        <text class="s" x="528" y="291">因果（下三角）</text>
+      </g></g>
+<g id="pan-m-image" data-box="1040 290 900 314" transform="translate(1040,290)"><rect class="pf" x="0" y="0" width="900" height="314" rx="18"/><circle class="bdg" cx="36" cy="34" r="19"/><text class="bdt bdt-l" x="36" y="41">1</text><text class="ptl" x="68" y="34">图像预处理</text><text class="pds" x="68" y="56">转浮点 → 等比缩放并左上补边 → 归一化到 [−1, 1]</text><g transform="translate(20,64)">
+          <rect class="b" x="20" y="40" width="140" height="74" rx="8"/><text class="h c" x="90" y="64">原始帧</text><text class="s c" x="90" y="83">(B, 3, H, W)</text><text class="s c" x="90" y="100">uint8 或 float</text>
+          <rect class="b" x="185" y="40" width="140" height="74" rx="8"/><text class="h c" x="255" y="64">转浮点</text><text class="s c" x="255" y="83">uint8 ÷ 255</text><text class="s c" x="255" y="100">→ [0, 1]</text>
+          <rect class="b" x="350" y="40" width="140" height="74" rx="8"/><text class="h c" x="420" y="64">resize_with_pad</text><text class="s c" x="420" y="83">等比缩放到 512×512</text><text class="s c" x="420" y="100">左、上补 0</text>
+          <rect class="b" x="515" y="40" width="140" height="74" rx="8"/><text class="h c" x="585" y="64">× 2 − 1</text><text class="s c" x="585" y="83">[0,1] → [−1,1]</text><text class="s c" x="585" y="100">SigLIP 的要求</text>
+          <a class="mod" href="#pan-m-vision" aria-label="跳到视觉编码"><rect class="sg" x="680" y="40" width="140" height="74" rx="8"/><text class="h c" x="750" y="64">图像 + 掩码</text><text class="s c" x="750" y="83">(B, 3, 512, 512)</text><text class="s c" x="750" y="100">→ 视觉编码</text></a>
+          <path class="ln" d="M160,77 H183"/><path class="ln" d="M325,77 H348"/><path class="ln" d="M490,77 H513"/><path class="ln" d="M655,77 H678"/>
+          <rect class="b" x="20" y="150" width="400" height="58" rx="8"/><text class="h c" x="220" y="174">带历史帧的 5 维输入</text><text class="s c" x="220" y="193">只取最后一帧</text>
+          <rect class="b" x="440" y="150" width="380" height="58" rx="8"/><text class="h c" x="630" y="174">相机缺失</text><text class="s c" x="630" y="193">按 empty_cameras 补全 −1 图，掩码为 0</text>
+        </g></g>
+<g id="pan-m-vision" data-box="1040 680 900 404" transform="translate(1040,680)"><rect class="pf" x="0" y="0" width="900" height="404" rx="18"/><circle class="bdg" cx="36" cy="34" r="19"/><text class="bdt bdt-l" x="36" y="41">2</text><text class="ptl" x="68" y="34">视觉编码</text><text class="pds" x="68" y="56">SigLIP + 像素重排：每张图压成 64 个 token</text><g transform="translate(20,64)">
+          <text class="s c" x="750" y="26">SmolVLM 的 connector</text><path class="gl" d="M515,32 H820"/>
+          <rect class="b" x="20" y="40" width="140" height="74" rx="8"/><text class="h c" x="90" y="64">输入</text><text class="s c" x="90" y="83">(B, 3, 512, 512)</text><text class="s c" x="90" y="100">每个相机各一次</text>
+          <rect class="fz" x="185" y="40" width="140" height="74" rx="8"/><text class="h c" x="255" y="64">补丁嵌入</text><text class="s c" x="255" y="83">16×16 切块</text><text class="s c" x="255" y="100">→ (B, 1024, 768)</text>
+          <rect class="fz" x="350" y="40" width="140" height="74" rx="8"/><text class="h c" x="420" y="64">SigLIP 编码器</text><text class="s c" x="420" y="83">宽 768 · 12 头</text><text class="s c" x="420" y="100">冻结</text>
+          <rect class="fz" x="515" y="40" width="140" height="74" rx="8"/><text class="h c" x="585" y="64">像素重排 ×4</text><text class="s c" x="585" y="83">4×4 并成 1 个</text><text class="s c" x="585" y="100">→ (B, 64, 12288)</text>
+          <rect class="fz" x="680" y="40" width="140" height="74" rx="8"/><text class="h c" x="750" y="64">线性投影</text><text class="s c" x="750" y="83">12288 → 960</text><text class="s c" x="750" y="100">→ (B, 64, 960)</text>
+          <path class="ln" d="M160,77 H183"/><path class="ln" d="M325,77 H348"/><path class="ln" d="M490,77 H513"/><path class="ln" d="M655,77 H678"/>
+          <path class="ln" d="M750,114 V148"/>
+          <rect class="b" x="680" y="150" width="140" height="60" rx="8"/><text class="h c" x="750" y="175">× √960（≈ 31）</text><text class="s c" x="750" y="194">与词嵌入同量级</text>
+          <a class="mod" href="#pan-m-prefix" aria-label="跳到 prefix 拼接"><rect class="sg" x="515" y="150" width="140" height="60" rx="8"/><text class="h c" x="585" y="175">进入 prefix</text><text class="s c" x="585" y="194">→ 拼接与掩码</text></a>
+          <path class="ln" d="M680,180 H657"/>
+          <rect class="b" x="20" y="150" width="470" height="60" rx="8"/><text class="h c" x="255" y="175">为什么每张图只有 64 个 token</text><text class="s c" x="255" y="194">1024 个 patch 排成 32×32，每 4×4 并一个 → 8×8 = 64</text>
+          <rect class="b" x="20" y="232" width="800" height="70" rx="8"/><text class="h c" x="420" y="256">为什么要乘 √960</text><text class="s c" x="420" y="276">语言词嵌入在代码里也乘 √960（图像第 638 行，语言第 664 行）</text><text class="s c" x="420" y="293">两边数值大小相近，拼进同一个 prefix 时，模型不会偏向其中一边</text>
+        </g></g>
+<g id="pan-m-lang" data-box="1040 1160 900 314" transform="translate(1040,1160)"><rect class="pf" x="0" y="0" width="900" height="314" rx="18"/><circle class="bdg" cx="36" cy="34" r="19"/><text class="bdt bdt-l" x="36" y="41">3</text><text class="ptl" x="68" y="34">语言编码</text><text class="pds" x="68" y="56">补换行 → 分词 → 词嵌入</text><g transform="translate(20,64)">
+          <rect class="b" x="20" y="40" width="140" height="74" rx="8"/><text class="h c" x="90" y="64">任务文本</text><text class="s c" x="90" y="83">例：抓起乐高</text><text class="s c" x="90" y="100">放进盒子</text>
+          <rect class="b" x="185" y="40" width="140" height="74" rx="8"/><text class="h c" x="255" y="64">补换行</text><text class="s c" x="255" y="83">末尾加换行符</text><text class="s c" x="255" y="100">与预训练一致</text>
+          <rect class="b" x="350" y="40" width="140" height="74" rx="8"/><text class="h c" x="420" y="64">分词</text><text class="s c" x="420" y="83">SmolVLM2 分词器</text><text class="s c" x="420" y="100">右补齐 · 最长 48</text>
+          <rect class="fz" x="515" y="40" width="140" height="74" rx="8"/><text class="h c" x="585" y="64">词嵌入</text><text class="s c" x="585" y="83">embed_tokens</text><text class="s c" x="585" y="100">(B, L, 960) · 冻结</text>
+          <a class="mod" href="#pan-m-prefix" aria-label="跳到 prefix 拼接"><rect class="sg" x="680" y="40" width="140" height="74" rx="8"/><text class="h c" x="750" y="64">× √960</text><text class="s c" x="750" y="83">(B, L, 960) + 掩码</text><text class="s c" x="750" y="100">→ prefix 拼接</text></a>
+          <path class="ln" d="M160,77 H183"/><path class="ln" d="M325,77 H348"/><path class="ln" d="M490,77 H513"/><path class="ln" d="M655,77 H678"/>
+          <rect class="b" x="20" y="150" width="400" height="58" rx="8"/><text class="h c" x="220" y="174">padding = longest</text><text class="s c" x="220" y="193">只补到这一批里最长的一句，不是固定 48</text>
+          <rect class="b" x="440" y="150" width="380" height="58" rx="8"/><text class="h c" x="630" y="174">语言 token 之间不做因果</text><text class="s c" x="630" y="193">和图像 token 互相可见</text>
+        </g></g>
+<g id="pan-m-state" data-box="1040 1550 900 414" transform="translate(1040,1550)"><rect class="pf" x="0" y="0" width="900" height="414" rx="18"/><circle class="bdg" cx="36" cy="34" r="19"/><text class="bdt bdt-l" x="36" y="41">4</text><text class="ptl" x="68" y="34">状态编码</text><text class="pds" x="68" y="56">归一化 → 补零到 32 维 → state_proj</text><g transform="translate(20,64)">
+          <rect class="b" x="20" y="40" width="140" height="74" rx="8"/><text class="h c" x="90" y="64">原始状态</text><text class="s c" x="90" y="83">(B, D) 关节角</text><text class="s c" x="90" y="100">D 为真实自由度</text>
+          <rect class="b" x="185" y="40" width="140" height="74" rx="8"/><text class="h c" x="255" y="64">归一化</text><text class="s c" x="255" y="83">MEAN_STD</text><text class="s c" x="255" y="100">用数据集统计量</text>
+          <rect class="b" x="350" y="40" width="140" height="74" rx="8"/><text class="h c" x="420" y="64">补零到 32 维</text><text class="s c" x="420" y="83">pad_vector</text><text class="s c" x="420" y="100">(B, 32)</text>
+          <rect class="tr" x="515" y="40" width="140" height="74" rx="8"/><text class="h c" x="585" y="64">state_proj</text><text class="s c" x="585" y="83">Linear 32 → 960</text><text class="s c" x="585" y="100">可训练</text>
+          <a class="mod" href="#pan-m-prefix" aria-label="跳到 prefix 拼接"><rect class="sg" x="680" y="40" width="140" height="74" rx="8"/><text class="h c" x="750" y="64">state token</text><text class="s c" x="750" y="83">(B, 1, 960)</text><text class="s c" x="750" y="100">→ prefix 拼接</text></a>
+          <path class="ln" d="M160,77 H183"/><path class="ln" d="M325,77 H348"/><path class="ln" d="M490,77 H513"/><path class="ln" d="M655,77 H678"/>
+          <rect class="b" x="20" y="150" width="400" height="58" rx="8"/><text class="h c" x="220" y="174">只用当前这一步</text><text class="s c" x="220" y="193">n_obs_steps = 1；有历史时取最后一步</text>
+          <rect class="b" x="440" y="150" width="380" height="58" rx="8"/><text class="h c" x="630" y="174">掩码标记为 1</text><text class="s c" x="630" y="193">图像、语言看不到它；动作能看到它</text>
+          <rect class="b" x="20" y="232" width="400" height="76" rx="8"/><text class="h c" x="220" y="256">状态 s = 现在的关节角</text><text class="s c" x="220" y="276">传感器测得 · 输入 · 1 个 token</text><text class="s c" x="220" y="294">手臂被挡住时，实际角度 ≠ 命令</text>
+          <rect class="b" x="440" y="232" width="380" height="76" rx="8"/><text class="h c" x="630" y="256">动作 a = 接下来要去的目标关节角</text><text class="s c" x="630" y="276">模型预测 · 输出 · 50 个 token</text><text class="s c" x="630" y="294">同一种数、同一种归一化，只是时间不同</text>
+        </g></g>
+<g id="pan-m-prefix" data-box="2040 290 900 394" transform="translate(2040,290)"><rect class="pf" x="0" y="0" width="900" height="394" rx="18"/><circle class="bdg" cx="36" cy="34" r="19"/><text class="bdt bdt-l" x="36" y="41">5</text><text class="ptl" x="68" y="34">prefix 拼接与掩码</text><text class="pds" x="68" y="56">图像 + 语言 + 状态拼成 prefix，并生成掩码与位置编号</text><g transform="translate(20,64)">
+          <rect class="fz" x="20" y="40" width="150" height="54" rx="6"/><text class="h c" x="95" y="62">相机 1</text><text class="s c" x="95" y="80">64 个 token</text>
+          <rect class="fz" x="176" y="40" width="150" height="54" rx="6"/><text class="h c" x="251" y="62">相机 2</text><text class="s c" x="251" y="80">64 个 token</text>
+          <rect class="fz" x="332" y="40" width="150" height="54" rx="6"/><text class="h c" x="407" y="62">相机 3</text><text class="s c" x="407" y="80">64 个 token</text>
+          <rect class="fz" x="488" y="40" width="150" height="54" rx="6"/><text class="h c" x="563" y="62">语言</text><text class="s c" x="563" y="80">L ≤ 48 个 token</text>
+          <rect class="tr" x="644" y="40" width="80" height="54" rx="6"/><text class="h c" x="684" y="62">状态</text><text class="s c" x="684" y="80">1 个</text>
+          <text class="s c" x="95" y="114">att = 0</text><text class="s c" x="251" y="114">att = 0</text><text class="s c" x="407" y="114">att = 0</text><text class="s c" x="563" y="114">att = 0</text><text class="s c" x="684" y="114">att = 1</text>
+          <path class="gl" d="M20,128 H724"/>
+          <path class="ln" d="M145,128 V158"/><path class="ln" d="M430,128 V158"/><path class="ln" d="M715,128 V158"/>
+          <rect class="b" x="20" y="160" width="250" height="74" rx="8"/><text class="h c" x="145" y="184">嵌入 embs</text><text class="s c" x="145" y="203">(B, P, 960)</text><text class="s c" x="145" y="220">P = 64×相机数 + L + 1</text>
+          <rect class="b" x="305" y="160" width="250" height="74" rx="8"/><text class="h c" x="430" y="184">二维掩码</text><text class="s c" x="430" y="203">make_att_2d_masks → (B, P, P)</text><text class="s c" x="430" y="220">累计 att 值 ≤ 自己的才可见</text>
+          <rect class="b" x="590" y="160" width="250" height="74" rx="8"/><text class="h c" x="715" y="184">位置编号 position_ids</text><text class="s c" x="715" y="203">cumsum(pad_masks) − 1</text><text class="s c" x="715" y="220">只数有效的 token</text>
+          <path class="ln" d="M715,234 V258"/>
+          <a class="mod" href="#pan-m-vlm" aria-label="跳到 VLM 文本层"><rect class="sg" x="590" y="260" width="250" height="36" rx="8"/><text class="h c" x="715" y="283">三者一起送入 VLM →</text></a>
+        </g></g>
+<g id="pan-m-vlm" data-box="2040 760 900 380" transform="translate(2040,760)"><rect class="pf" x="0" y="0" width="900" height="380" rx="18"/><circle class="bdg" cx="36" cy="34" r="19"/><text class="bdt bdt-l" x="36" y="41">6</text><text class="ptl" x="68" y="34">VLM 文本层</text><text class="pds" x="68" y="56">前 16 层之一，冻结；预填充时把 K、V 写进缓存</text><g transform="translate(20,64)">
+          <rect class="b" x="20" y="30" width="118" height="70" rx="8"/><text class="h c" x="79" y="56">输入 x</text><text class="s c" x="79" y="76">(B, P, 960)</text>
+          <rect class="fz" x="160" y="30" width="118" height="70" rx="8"/><text class="h c" x="219" y="56">RMSNorm</text><text class="s c" x="219" y="76">input_layernorm</text>
+          <rect class="fz" x="300" y="30" width="118" height="70" rx="8"/><text class="h c" x="359" y="52">q / k / v 投影</text><text class="s c" x="359" y="71">960 → 960</text><text class="s c" x="359" y="86">/ 320 / 320</text>
+          <rect class="fz" x="440" y="30" width="118" height="70" rx="8"/><text class="h c" x="499" y="56">RoPE</text><text class="s c" x="499" y="76">只作用于 q、k</text>
+          <a class="mod" href="#pan-m-kv" aria-label="跳到 KV cache"><rect class="sg" x="580" y="30" width="118" height="70" rx="8"/><text class="h c" x="639" y="52">分组注意力</text><text class="s c" x="639" y="71">15 个 Q 头</text><text class="s c" x="639" y="86">5 组 K/V → 缓存</text></a>
+          <rect class="fz" x="720" y="30" width="118" height="70" rx="8"/><text class="h c" x="779" y="56">o_proj</text><text class="s c" x="779" y="76">960 → 960</text>
+          <path class="ln" d="M138,65 H158"/><path class="ln" d="M278,65 H298"/><path class="ln" d="M418,65 H438"/><path class="ln" d="M558,65 H578"/><path class="ln" d="M698,65 H718"/>
+          <rect class="b" x="720" y="170" width="118" height="70" rx="8"/><text class="h c" x="779" y="196">+ 残差</text><text class="s c" x="779" y="216">x + 注意力输出</text>
+          <rect class="fz" x="580" y="170" width="118" height="70" rx="8"/><text class="h c" x="639" y="196">RMSNorm</text><text class="s c" x="639" y="216">post_attention</text>
+          <rect class="fz" x="440" y="170" width="118" height="70" rx="8"/><text class="h c" x="499" y="192">MLP · SwiGLU</text><text class="s c" x="499" y="211">960 → 2560</text><text class="s c" x="499" y="226">→ 960</text>
+          <rect class="b" x="300" y="170" width="118" height="70" rx="8"/><text class="h c" x="359" y="192">+ 残差 = 输出</text><text class="s c" x="359" y="216">(B, P, 960)</text>
+          <path class="ln" d="M805,100 V168"/><path class="ln" d="M720,205 H700"/><path class="ln" d="M580,205 H560"/><path class="ln" d="M440,205 H420"/>
+          <path class="lp" d="M79,100 V134 H745 V168"/><text class="s c" x="400" y="128">残差旁路</text>
+          <path class="lp" d="M779,240 V268 H359 V242"/><text class="s c" x="570" y="262">残差旁路</text>
+          <path class="ln" d="M300,205 H264"/><text class="s" x="20" y="209">进入下一层</text><text class="s" x="20" y="226">共 16 层</text>
+        </g></g>
+<g id="pan-m-kv" data-box="2040 1216 900 314" transform="translate(2040,1216)"><rect class="pf" x="0" y="0" width="900" height="314" rx="18"/><circle class="bdg" cx="36" cy="34" r="19"/><text class="bdt bdt-l" x="36" y="41">7</text><text class="ptl" x="68" y="34">KV cache</text><text class="pds" x="68" y="56">写一次，读十次</text><g transform="translate(20,64)">
+          <rect class="b" x="20" y="50" width="190" height="120" rx="8"/><text class="h c" x="115" y="82">预填充（1 次）</text><text class="s c" x="115" y="108">VLM 前 16 层处理 prefix</text><text class="s c" x="115" y="127">每层把 K、V 存下来</text>
+          <path class="ln" d="M210,110 H238"/>
+          <rect class="sg" x="240" y="30" width="300" height="160" rx="10"/><text class="h c" x="390" y="54">KV cache（DynamicCache）</text>
+          <rect class="b" x="262" y="68" width="25" height="25" rx="4"/><text class="s c" x="274.5" y="85">0</text>
+          <rect class="b" x="293" y="68" width="25" height="25" rx="4"/><text class="s c" x="305.5" y="85">1</text>
+          <rect class="b" x="324" y="68" width="25" height="25" rx="4"/><text class="s c" x="336.5" y="85">2</text>
+          <rect class="b" x="355" y="68" width="25" height="25" rx="4"/><text class="s c" x="367.5" y="85">3</text>
+          <rect class="b" x="386" y="68" width="25" height="25" rx="4"/><text class="s c" x="398.5" y="85">4</text>
+          <rect class="b" x="417" y="68" width="25" height="25" rx="4"/><text class="s c" x="429.5" y="85">5</text>
+          <rect class="b" x="448" y="68" width="25" height="25" rx="4"/><text class="s c" x="460.5" y="85">6</text>
+          <rect class="b" x="479" y="68" width="25" height="25" rx="4"/><text class="s c" x="491.5" y="85">7</text>
+          <rect class="b" x="262" y="99" width="25" height="25" rx="4"/><text class="s c" x="274.5" y="116">8</text>
+          <rect class="b" x="293" y="99" width="25" height="25" rx="4"/><text class="s c" x="305.5" y="116">9</text>
+          <rect class="b" x="324" y="99" width="25" height="25" rx="4"/><text class="s c" x="336.5" y="116">10</text>
+          <rect class="b" x="355" y="99" width="25" height="25" rx="4"/><text class="s c" x="367.5" y="116">11</text>
+          <rect class="b" x="386" y="99" width="25" height="25" rx="4"/><text class="s c" x="398.5" y="116">12</text>
+          <rect class="b" x="417" y="99" width="25" height="25" rx="4"/><text class="s c" x="429.5" y="116">13</text>
+          <rect class="b" x="448" y="99" width="25" height="25" rx="4"/><text class="s c" x="460.5" y="116">14</text>
+          <rect class="b" x="479" y="99" width="25" height="25" rx="4"/><text class="s c" x="491.5" y="116">15</text>
+          <text class="s c" x="390" y="150">每格 = 一层的 K、V，形状 (B, 5, P, 64)</text><text class="s c" x="390" y="168">K 已经加过 RoPE</text>
+          <a class="mod" href="#pan-m-sa" aria-label="跳到自注意力层"><rect class="tr" x="580" y="24" width="260" height="52" rx="8"/><text class="h c" x="710" y="46">偶数层 SA</text><text class="s c" x="710" y="64">读 prefix K/V，并追加 50 个 K/V</text></a>
+          <a class="mod" href="#pan-m-ca" aria-label="跳到交叉注意力层"><rect class="tr" x="580" y="88" width="260" height="52" rx="8"/><text class="h c" x="710" y="110">奇数层 CA</text><text class="s c" x="710" y="128">只读，不写</text></a>
+          <rect class="b" x="580" y="152" width="260" height="52" rx="8"/><text class="h c" x="710" y="174">每步结束 crop(P)</text><text class="s c" x="710" y="192">裁掉追加的动作 K/V，下一步重来</text>
+          <path class="ln" d="M540,70 L578,52"/><path class="ln" d="M540,114 H578"/><path class="ln" d="M540,158 L578,178"/>
+        </g></g>
+<g id="pan-m-noise" data-box="3040 290 900 494" transform="translate(3040,290)"><rect class="pf" x="0" y="0" width="900" height="494" rx="18"/><circle class="bdg" cx="36" cy="34" r="19"/><text class="bdt bdt-l" x="36" y="41">8</text><text class="ptl" x="68" y="34">噪声动作与时间 τ</text><text class="pds" x="68" y="56">训练时插值；推理时从纯噪声出发</text><g transform="translate(20,64)">
+          <text class="h" x="20" y="22">训练</text>
+          <rect class="b" x="20" y="34" width="190" height="50" rx="8"/><text class="h c" x="115" y="55">真实动作块 a</text><text class="s c" x="115" y="73">(B, 50, 32)</text>
+          <rect class="b" x="20" y="92" width="190" height="50" rx="8"/><text class="h c" x="115" y="113">噪声 ε ~ N(0, I)</text><text class="s c" x="115" y="131">(B, 50, 32)</text>
+          <rect class="b" x="20" y="150" width="190" height="50" rx="8"/><text class="h c" x="115" y="171">τ ~ Beta(1.5, 1)</text><text class="s c" x="115" y="189">× 0.999 + 0.001，偏向 τ 大</text>
+          <rect class="b" x="250" y="60" width="230" height="110" rx="8"/><text class="h c" x="365" y="92">插值</text><text class="s c" x="365" y="114">x_τ = τ·ε + (1 − τ)·a</text><text class="s c" x="365" y="132">噪声在 τ = 1</text><text class="s c" x="365" y="150">目标 u = ε − a</text>
+          <path class="ln" d="M210,59 L248,90"/><path class="ln" d="M210,117 H248"/><path class="ln" d="M210,175 L248,146"/>
+          <a class="mod" href="#pan-m-actin" aria-label="跳到动作入口"><rect class="sg" x="530" y="50" width="190" height="56" rx="8"/><text class="h c" x="625" y="74">x_τ 与 τ</text><text class="s c" x="625" y="93">→ 动作入口</text></a>
+          <rect class="b" x="530" y="124" width="190" height="56" rx="8"/><text class="h c" x="625" y="148">目标 u</text><text class="s c" x="625" y="167">→ 损失 MSE(v, u)</text>
+          <path class="ln" d="M480,95 L528,80"/><path class="ln" d="M480,135 L528,152"/>
+          <text class="h" x="20" y="238">推理</text>
+          <rect class="b" x="20" y="250" width="190" height="52" rx="8"/><text class="h c" x="115" y="272">ε ~ N(0, I)</text><text class="s c" x="115" y="290">作为 x 的起点（τ = 1）</text>
+          <rect class="b" x="250" y="250" width="230" height="52" rx="8"/><text class="h c" x="365" y="272">τ_k = 1 − k / 10</text><text class="s c" x="365" y="290">k = 0, 1, …, 9</text>
+          <a class="mod" href="#pan-m-euler" aria-label="跳到欧拉积分"><rect class="sg" x="530" y="250" width="190" height="52" rx="8"/><text class="h c" x="625" y="272">每步的 x 与 τ</text><text class="s c" x="625" y="290">→ 欧拉循环</text></a>
+          <path class="ln" d="M210,276 H248"/><path class="ln" d="M480,276 H528"/>
+          <rect class="b" x="20" y="326" width="400" height="66" rx="8"/><text class="h c" x="220" y="348">训练：输入的是加噪后的真值</text><text class="s c" x="220" y="366">x_τ 里含真实动作 a</text><text class="s c" x="220" y="382">a 同时用来算目标 u，不直接输入</text>
+          <rect class="b" x="440" y="326" width="398" height="66" rx="8"/><text class="h c" x="639" y="348">推理：输入的是纯噪声起步的 x</text><text class="s c" x="639" y="366">每步的 x 是上一步更新后的结果</text><text class="s c" x="639" y="382">真实未来动作不存在，它是要预测的</text>
+        </g></g>
+<g id="pan-m-actin" data-box="3040 860 900 324" transform="translate(3040,860)"><rect class="pf" x="0" y="0" width="900" height="324" rx="18"/><circle class="bdg" cx="36" cy="34" r="19"/><text class="bdt bdt-l" x="36" y="41">9</text><text class="ptl" x="68" y="34">动作入口</text><text class="pds" x="68" y="56">x_τ 嵌入 + 时间正余弦编码 → MLP → suffix</text><g transform="translate(20,64)">
+          <rect class="b" x="20" y="36" width="120" height="60" rx="8"/><text class="h c" x="80" y="61">x_τ</text><text class="s c" x="80" y="80">(B, 50, 32)</text>
+          <rect class="tr" x="170" y="36" width="150" height="60" rx="8"/><text class="h c" x="245" y="61">action_in_proj</text><text class="s c" x="245" y="80">32 → 720</text>
+          <rect class="b" x="20" y="146" width="120" height="60" rx="8"/><text class="h c" x="80" y="171">τ</text><text class="s c" x="80" y="190">(B,)</text>
+          <rect class="b" x="170" y="146" width="150" height="60" rx="8"/><text class="h c" x="245" y="171">正余弦编码</text><text class="s c" x="245" y="190">720 维 · 周期 4e-3 ~ 4</text>
+          <path class="ln" d="M140,66 H168"/><path class="ln" d="M140,176 H168"/>
+          <rect class="b" x="355" y="86" width="120" height="70" rx="8"/><text class="h c" x="415" y="110">拼接</text><text class="s c" x="415" y="128">(B, 50, 1440)</text><text class="s c" x="415" y="144">τ 复制 50 份</text>
+          <path class="ln" d="M320,66 L353,104"/><path class="ln" d="M320,176 L353,138"/>
+          <rect class="tr" x="510" y="86" width="120" height="70" rx="8"/><text class="h c" x="570" y="110">Linear</text><text class="s c" x="570" y="128">1440 → 720</text><text class="s c" x="570" y="144">+ SiLU</text>
+          <rect class="tr" x="655" y="86" width="90" height="70" rx="8"/><text class="h c" x="700" y="110">Linear</text><text class="s c" x="700" y="130">720 → 720</text>
+          <a class="mod" href="#pan-m-expert" aria-label="跳到动作专家"><rect class="sg" x="772" y="86" width="82" height="70" rx="8"/><text class="h c" x="813" y="110">suffix</text><text class="s c" x="813" y="128">(B,50,720)</text><text class="s c" x="813" y="144">→ 专家</text></a>
+          <path class="ln" d="M475,121 H508"/><path class="ln" d="M630,121 H653"/><path class="ln" d="M745,121 H770"/>
+        </g></g>
+<g id="pan-m-expert" data-box="3040 1260 900 414" transform="translate(3040,1260)"><rect class="pf" x="0" y="0" width="900" height="414" rx="18"/><circle class="bdg" cx="36" cy="34" r="19"/><text class="bdt bdt-l bdt2" x="36" y="41">10</text><text class="ptl" x="68" y="34">动作专家</text><text class="pds" x="68" y="56">16 层，偶数层 SA，奇数层 CA，每层读缓存</text><g transform="translate(20,64)">
+          <rect class="b" x="20" y="140" width="120" height="60" rx="8"/><text class="h c" x="80" y="165">suffix</text><text class="s c" x="80" y="184">(B, 50, 720)</text>
+          <path class="ln" d="M140,160 H162 V60 H188"/>
+          <a class="mod" href="#pan-m-sa" aria-label="跳到自注意力层"><rect class="tr" x="190" y="40" width="190" height="40" rx="8"/><text class="h c" x="285" y="65">层 0 · 自注意力 SA</text></a>
+          <a class="mod" href="#pan-m-ca" aria-label="跳到交叉注意力层"><rect class="sg" x="190" y="96" width="190" height="40" rx="8"/><text class="h c" x="285" y="121">层 1 · 交叉注意力 CA</text></a>
+          <rect class="b" x="190" y="152" width="190" height="40" rx="8"/><text class="s c" x="285" y="177">… 再重复 7 组（层 2 ~ 13）…</text>
+          <a class="mod" href="#pan-m-sa" aria-label="跳到自注意力层"><rect class="tr" x="190" y="208" width="190" height="40" rx="8"/><text class="h c" x="285" y="233">层 14 · 自注意力 SA</text></a>
+          <a class="mod" href="#pan-m-ca" aria-label="跳到交叉注意力层"><rect class="sg" x="190" y="264" width="190" height="40" rx="8"/><text class="h c" x="285" y="289">层 15 · 交叉注意力 CA</text></a>
+          <path class="ln" d="M285,80 V94"/><path class="ln" d="M285,136 V150"/><path class="ln" d="M285,192 V206"/><path class="ln" d="M285,248 V262"/>
+          <rect class="b" x="430" y="264" width="110" height="40" rx="8"/><text class="h c" x="485" y="288">RMSNorm</text>
+          <path class="ln" d="M380,284 H428"/>
+          <a class="mod" href="#pan-m-euler" aria-label="跳到输出头与欧拉积分"><rect class="sg" x="570" y="258" width="150" height="52" rx="8"/><text class="h c" x="645" y="281">专家输出</text><text class="s c" x="645" y="299">(B,50,720) → 输出头</text></a>
+          <path class="ln" d="M540,284 H568"/>
+          <a class="mod" href="#pan-m-kv" aria-label="跳到 KV cache"><rect class="sg" x="700" y="40" width="140" height="110" rx="8"/><text class="h c" x="770" y="70">KV cache</text><text class="s c" x="770" y="92">每层读同序号</text><text class="s c" x="770" y="110">那一层的缓存</text><text class="s c" x="770" y="128">16 层 × (K, V)</text></a>
+          <path class="ln" d="M700,60 H382"/><path class="ln" d="M700,116 H382"/><text class="s c" x="541" y="100">各层同理</text>
+        </g></g>
+<g id="pan-m-sa" data-box="4040 290 900 414" transform="translate(4040,290)"><rect class="pf" x="0" y="0" width="900" height="414" rx="18"/><circle class="bdg" cx="36" cy="34" r="19"/><text class="bdt bdt-l bdt2" x="36" y="41">11</text><text class="ptl" x="68" y="34">专家自注意力层（SA）</text><text class="pds" x="68" y="56">看 prefix 缓存和自己的 K/V，动作之间因果</text><g transform="translate(20,64)">
+          <a class="mod" href="#pan-m-kv" aria-label="跳到 KV cache"><rect class="sg" x="440" y="6" width="260" height="46" rx="8"/><text class="h c" x="570" y="26">KV cache 中的 prefix K/V</text><text class="s c" x="570" y="43">(B, 5, P, 64)，已加 RoPE</text></a>
+          <path class="ln" d="M639,52 V74"/>
+          <rect class="b" x="20" y="76" width="118" height="70" rx="8"/><text class="h c" x="79" y="102">输入 h</text><text class="s c" x="79" y="122">(B, 50, 720)</text>
+          <rect class="b" x="160" y="76" width="118" height="70" rx="8"/><text class="h c" x="219" y="102">RMSNorm</text><text class="s c" x="219" y="122">input_layernorm</text>
+          <rect class="tr" x="300" y="76" width="118" height="70" rx="8"/><text class="h c" x="359" y="98">q / k / v 投影</text><text class="s c" x="359" y="117">720 → 960</text><text class="s c" x="359" y="132">/ 320 / 320</text>
+          <rect class="b" x="440" y="76" width="118" height="70" rx="8"/><text class="h c" x="499" y="98">RoPE</text><text class="s c" x="499" y="117">位置接在</text><text class="s c" x="499" y="132">prefix 之后</text>
+          <rect class="b" x="580" y="76" width="118" height="70" rx="8"/><text class="h c" x="639" y="98">注意力</text><text class="s c" x="639" y="117">K/V = 缓存 + 自己</text><text class="s c" x="639" y="132">动作之间因果</text>
+          <rect class="tr" x="720" y="76" width="118" height="70" rx="8"/><text class="h c" x="779" y="102">o_proj</text><text class="s c" x="779" y="122">960 → 720</text>
+          <path class="ln" d="M138,111 H158"/><path class="ln" d="M278,111 H298"/><path class="ln" d="M418,111 H438"/><path class="ln" d="M558,111 H578"/><path class="ln" d="M698,111 H718"/>
+          <rect class="b" x="720" y="206" width="118" height="70" rx="8"/><text class="h c" x="779" y="232">+ 残差</text><text class="s c" x="779" y="252">h + 注意力输出</text>
+          <rect class="b" x="580" y="206" width="118" height="70" rx="8"/><text class="h c" x="639" y="232">RMSNorm</text><text class="s c" x="639" y="252">post_attention</text>
+          <rect class="tr" x="440" y="206" width="118" height="70" rx="8"/><text class="h c" x="499" y="228">MLP · SwiGLU</text><text class="s c" x="499" y="247">720 → 2048</text><text class="s c" x="499" y="262">→ 720</text>
+          <rect class="b" x="300" y="206" width="118" height="70" rx="8"/><text class="h c" x="359" y="228">+ 残差 = 输出</text><text class="s c" x="359" y="252">(B, 50, 720)</text>
+          <path class="ln" d="M805,146 V204"/><path class="ln" d="M720,241 H700"/><path class="ln" d="M580,241 H560"/><path class="ln" d="M440,241 H420"/>
+          <path class="lp" d="M79,146 V176 H745 V204"/><text class="s c" x="400" y="170">残差旁路</text>
+          <path class="lp" d="M779,276 V304 H359 V278"/><text class="s c" x="570" y="298">残差旁路</text>
+        </g></g>
+<g id="pan-m-ca" data-box="4040 780 900 414" transform="translate(4040,780)"><rect class="pf" x="0" y="0" width="900" height="414" rx="18"/><circle class="bdg" cx="36" cy="34" r="19"/><text class="bdt bdt-l bdt2" x="36" y="41">12</text><text class="ptl" x="68" y="34">专家交叉注意力层（CA）</text><text class="pds" x="68" y="56">只读 VLM 缓存的 K/V，经专家自己的投影</text><g transform="translate(20,64)">
+          <a class="mod" href="#pan-m-kv" aria-label="跳到 KV cache"><rect class="sg" x="380" y="6" width="210" height="46" rx="8"/><text class="h c" x="485" y="26">KV cache 的 K、V</text><text class="s c" x="485" y="43">(B, 5, P, 64)，已含 RoPE</text></a>
+          <rect class="tr" x="630" y="6" width="208" height="46" rx="8"/><text class="h c" x="734" y="26">k_proj / v_proj</text><text class="s c" x="734" y="43">320 → 320，专家自己的参数</text>
+          <path class="ln" d="M590,29 H628"/><path class="ln" d="M700,52 V62 H639 V74"/>
+          <rect class="b" x="20" y="76" width="118" height="70" rx="8"/><text class="h c" x="79" y="102">输入 h</text><text class="s c" x="79" y="122">(B, 50, 720)</text>
+          <rect class="b" x="160" y="76" width="118" height="70" rx="8"/><text class="h c" x="219" y="102">RMSNorm</text><text class="s c" x="219" y="122">input_layernorm</text>
+          <rect class="tr" x="300" y="76" width="118" height="70" rx="8"/><text class="h c" x="359" y="102">q 投影</text><text class="s c" x="359" y="122">720 → 960</text>
+          <rect class="b" x="440" y="76" width="118" height="70" rx="8"/><text class="h c" x="499" y="98">RoPE（仅 q）</text><text class="s c" x="499" y="117">位置从 0 起</text><text class="s c" x="499" y="132">K 不再加</text>
+          <rect class="b" x="580" y="76" width="118" height="70" rx="8"/><text class="h c" x="639" y="98">交叉注意力</text><text class="s c" x="639" y="117">只看 prefix</text><text class="s c" x="639" y="132">不看其他动作</text>
+          <rect class="tr" x="720" y="76" width="118" height="70" rx="8"/><text class="h c" x="779" y="102">o_proj</text><text class="s c" x="779" y="122">960 → 720</text>
+          <path class="ln" d="M138,111 H158"/><path class="ln" d="M278,111 H298"/><path class="ln" d="M418,111 H438"/><path class="ln" d="M558,111 H578"/><path class="ln" d="M698,111 H718"/>
+          <rect class="b" x="720" y="206" width="118" height="70" rx="8"/><text class="h c" x="779" y="232">+ 残差</text><text class="s c" x="779" y="252">h + 注意力输出</text>
+          <rect class="b" x="580" y="206" width="118" height="70" rx="8"/><text class="h c" x="639" y="232">RMSNorm</text><text class="s c" x="639" y="252">post_attention</text>
+          <rect class="tr" x="440" y="206" width="118" height="70" rx="8"/><text class="h c" x="499" y="228">MLP · SwiGLU</text><text class="s c" x="499" y="247">720 → 2048</text><text class="s c" x="499" y="262">→ 720</text>
+          <rect class="b" x="300" y="206" width="118" height="70" rx="8"/><text class="h c" x="359" y="228">+ 残差 = 输出</text><text class="s c" x="359" y="252">(B, 50, 720)</text>
+          <path class="ln" d="M805,146 V204"/><path class="ln" d="M720,241 H700"/><path class="ln" d="M580,241 H560"/><path class="ln" d="M440,241 H420"/>
+          <path class="lp" d="M79,146 V176 H745 V204"/><text class="s c" x="400" y="170">残差旁路</text>
+          <path class="lp" d="M779,276 V304 H359 V278"/><text class="s c" x="570" y="298">残差旁路</text>
+        </g></g>
+<g id="pan-m-euler" data-box="5040 290 900 430" transform="translate(5040,290)"><rect class="pf" x="0" y="0" width="900" height="430" rx="18"/><circle class="bdg" cx="36" cy="34" r="19"/><text class="bdt bdt-l bdt2" x="36" y="41">13</text><text class="ptl" x="68" y="34">输出头与欧拉积分</text><text class="pds" x="68" y="56">10 步：算速度 v，再 x ← x + dt·v</text><g transform="translate(20,64)">
+          <rect class="b" x="20" y="110" width="120" height="64" rx="8"/><text class="h c" x="80" y="136">x ← ε</text><text class="s c" x="80" y="155">(B, 50, 32)</text>
+          <path class="ln" d="M140,142 H168"/>
+          <rect class="loop" x="170" y="36" width="610" height="216" rx="12"/><text class="s" x="186" y="58">第 k 步（k = 0 … 9）</text>
+          <rect class="b" x="185" y="90" width="108" height="74" rx="8"/><text class="h c" x="239" y="114">τ_k</text><text class="s c" x="239" y="133">= 1 − 0.1·k</text><text class="s c" x="239" y="149">时间标量</text>
+          <a class="mod" href="#pan-m-actin" aria-label="跳到动作入口"><rect class="tr" x="305" y="90" width="108" height="74" rx="8"/><text class="h c" x="359" y="114">动作入口</text><text class="s c" x="359" y="133">x、τ → suffix</text><text class="s c" x="359" y="149">(B, 50, 720)</text></a>
+          <a class="mod" href="#pan-m-expert" aria-label="跳到动作专家"><rect class="tr" x="425" y="90" width="108" height="74" rx="8"/><text class="h c" x="479" y="114">专家 16 层</text><text class="s c" x="479" y="133">取后 50 个 token</text><text class="s c" x="479" y="149">转 float32</text></a>
+          <rect class="tr" x="545" y="90" width="108" height="74" rx="8"/><text class="h c" x="599" y="112">输出投影</text><text class="s c" x="599" y="130">action_out_proj</text><text class="s c" x="599" y="146">720 → 32 = v</text>
+          <rect class="b" x="665" y="90" width="108" height="74" rx="8"/><text class="h c" x="719" y="114">更新</text><text class="s c" x="719" y="133">x ← x + dt·v</text><text class="s c" x="719" y="149">dt = −0.1</text>
+          <path class="ln" d="M293,127 H303"/><path class="ln" d="M413,127 H423"/><path class="ln" d="M533,127 H543"/><path class="ln" d="M653,127 H663"/>
+          <a class="mod" href="#pan-m-kv" aria-label="跳到 KV cache"><rect class="sg" x="415" y="196" width="128" height="40" rx="8"/><text class="h c" x="479" y="214">KV cache</text><text class="s c" x="479" y="229">10 步共用</text></a>
+          <path class="ln" d="M479,196 V166"/>
+          <path class="lp" d="M719,90 V68 H239 V88"/><text class="s c" x="479" y="62">重复 10 次</text>
+          <path class="ln" d="M725,252 V282"/>
+          <a class="mod" href="#pan-m-post" aria-label="跳到后处理与动作队列"><rect class="sg" x="610" y="284" width="230" height="48" rx="8"/><text class="h c" x="725" y="306">x₀ = 动作块</text><text class="s c" x="725" y="324">(B, 50, 32) → 后处理</text></a>
+        </g></g>
+<g id="pan-m-post" data-box="5040 796 900 314" transform="translate(5040,796)"><rect class="pf" x="0" y="0" width="900" height="314" rx="18"/><circle class="bdg" cx="36" cy="34" r="19"/><text class="bdt bdt-l bdt2" x="36" y="41">14</text><text class="ptl" x="68" y="34">后处理与动作队列</text><text class="pds" x="68" y="56">入队 → 每周期取 1 个 → 反归一化 → 机器人</text><g transform="translate(20,64)">
+          <rect class="b" x="20" y="40" width="118" height="74" rx="8"/><text class="h c" x="79" y="66">动作块 x₀</text><text class="s c" x="79" y="86">(B, 50, 32)</text>
+          <rect class="b" x="160" y="40" width="118" height="74" rx="8"/><text class="h c" x="219" y="66">裁掉补零维</text><text class="s c" x="219" y="86">[:, :, :真实维度]</text>
+          <rect class="b" x="300" y="40" width="118" height="74" rx="8"/><text class="h c" x="359" y="66">入队列</text><text class="s c" x="359" y="86">deque</text><text class="s c" x="359" y="102">maxlen = 50</text>
+          <rect class="b" x="440" y="40" width="118" height="74" rx="8"/><text class="h c" x="499" y="66">取队首 1 个</text><text class="s c" x="499" y="86">popleft</text><text class="s c" x="499" y="102">每个控制周期</text>
+          <rect class="b" x="580" y="40" width="118" height="74" rx="8"/><text class="h c" x="639" y="66">反归一化</text><text class="s c" x="639" y="86">MEAN_STD</text><text class="s c" x="639" y="102">后处理器</text>
+          <rect class="sg" x="720" y="40" width="118" height="74" rx="8"/><text class="h c" x="779" y="66">发给机器人</text><text class="s c" x="779" y="86">移到 CPU</text>
+          <path class="ln" d="M138,77 H158"/><path class="ln" d="M278,77 H298"/><path class="ln" d="M418,77 H438"/><path class="ln" d="M558,77 H578"/><path class="ln" d="M698,77 H718"/>
+          <rect class="b" x="20" y="150" width="400" height="58" rx="8"/><text class="h c" x="220" y="174">队列空了才再推理</text><text class="s c" x="220" y="193">否则一直消耗队列，不跑模型</text>
+          <rect class="b" x="440" y="150" width="398" height="58" rx="8"/><text class="h c" x="639" y="174">打开 RTC 时</text><text class="s c" x="639" y="193">select_action 会断言失败，改走 predict_action_chunk</text>
+        </g></g>
+<g id="pan-async" data-box="5040 1186 900 384" transform="translate(5040,1186)"><rect class="pf" x="0" y="0" width="900" height="384" rx="18"/><rect class="pk" x="18" y="16" width="36" height="36" rx="8"/><text class="ptl" x="68" y="34">补充 · 同步与异步推理</text><text class="pds" x="68" y="56">队列低于阈值就提前触发下一次推理</text><g transform="translate(20,64)">
+        <text class="h" x="20" y="64">同步</text>
+        <rect class="sg" x="110" y="46" width="90" height="30" rx="4"/><text class="s c" x="155" y="66">推理</text>
+        <rect class="tr" x="200" y="46" width="250" height="30" rx="4"/><text class="s c" x="325" y="66">执行整块动作</text>
+        <rect class="sg" x="450" y="46" width="90" height="30" rx="4"/><text class="s c" x="495" y="66">推理</text>
+        <rect class="tr" x="540" y="46" width="250" height="30" rx="4"/><text class="s c" x="665" y="66">执行整块动作</text>
+        <text class="s c" x="155" y="96">机器人停顿</text>
+        <text class="s c" x="495" y="96">机器人停顿</text>
+
+        <text class="h" x="20" y="184">异步</text>
+        <line class="gl" x1="400" y1="128" x2="400" y2="244"/>
+        <text class="s" x="408" y="142">队列低于阈值 g，触发推理</text>
+        <rect class="tr" x="110" y="160" width="680" height="30" rx="4"/><text class="s c" x="450" y="180">机器人持续执行动作队列</text>
+        <rect class="sg" x="400" y="212" width="90" height="30" rx="4"/><text class="s c" x="445" y="232">推理</text>
+        <path class="lk" d="M490,227 H520 V192"/>
+        <text class="s" x="528" y="226">新块与旧队列重叠处合并</text>
+
+        <path class="ax" d="M110,280 H830"/>
+        <text class="s" x="835" y="284">时间</text>
+      </g></g>
+<path class="fl" d="M1490,608 V674"/>
+<path class="fl" d="M2490,688 V754"/>
+<path class="fl" d="M2490,1144 V1210"/>
+<path class="fl" d="M3490,788 V854"/>
+<path class="fl" d="M3490,1188 V1254"/>
+<path class="fl" d="M5490,724 V790"/>
+<path class="fl" d="M1944,882 H1990 V410 H2034"/>
+<text class="ft" x="1948" y="870">64 个 token / 相机</text>
+<path class="fl" d="M1944,1317 H1990 V410 H2034"/>
+<text class="ft" x="1948" y="1305">L ≤ 48 个 token</text>
+<path class="fl" d="M1944,1757 H1990 V410 H2034"/>
+<text class="ft" x="1948" y="1745">1 个 token</text>
+<path class="fl" d="M2944,1373 H2990 V1467 H3034"/>
+<text class="ft" x="2948" y="1361">每层 K / V</text>
+<path class="fl" d="M3944,1437 H3990 V497 H4034"/>
+<path class="fl" d="M3944,1437 H3990 V987 H4034"/>
+<text class="ft" x="3948" y="1425">展开两种层</text>
+<path class="fl" d="M3944,1507 H4990 V505 H5034"/>
+<text class="ft" x="3948" y="1495">专家输出 → 输出头</text>
+</svg>
+    </div>
+    <p class="figcap">全景图 · 内容是上面各图的副本。以后改动某张子图时，要重新生成这张大图，否则两处会不一致。</p>
+  </section>
+
+  <section id="modules">
+    <h2>模块详解：每个方块的子架构图</h2>
+    <p>总图（<a href="#fig-arch">图 1</a>）里的每个方块都能点进来，看它内部怎么搭。子图里带色的方块也能继续点，跳到下一层的细节或下游模块。每节末尾有“回总图 / 上一个 / 下一个”。</p>
+    <p>配色沿用总图：灰是冻结，青是训练，橙是缓存或下游入口。</p>
+    <ol>
+      <li><a href="#m-image">图像预处理</a> → <a href="#m-vision">视觉编码</a></li>
+      <li><a href="#m-lang">语言编码</a> · <a href="#m-state">状态编码</a> → <a href="#m-prefix">prefix 拼接与掩码</a></li>
+      <li><a href="#m-vlm">VLM 文本层</a> → <a href="#m-kv">KV cache</a></li>
+      <li><a href="#m-noise">噪声与时间</a> → <a href="#m-actin">动作入口</a></li>
+      <li><a href="#m-expert">动作专家</a>（<a href="#m-sa">自注意力层</a> · <a href="#m-ca">交叉注意力层</a>）</li>
+      <li><a href="#m-euler">输出头与欧拉积分</a> → <a href="#m-post">后处理与动作队列</a></li>
+    </ol>
+
+    <!-- ============ 1 图像预处理 ============ -->
+    <div class="msec" id="m-image">
+      <h3>1 · 图像预处理</h3>
+      <p>每个相机单独处理，对应 <code>SmolVLAPolicy.prepare_images</code>。补边补在<strong>左侧和上侧</strong>（<code>resize_with_pad</code>，smolvla 的约定，代码文档说明 openpi 用的是居中补边）。补的值是 0，乘 2 减 1 之后变成 −1。</p>
+      <div class="diagram">
+        <svg class="dg" viewBox="0 0 860 230" role="img" aria-label="图像预处理子图：转浮点、等比缩放补边、归一化到负一到一，输出图像与掩码">
+          <rect class="b" x="20" y="40" width="140" height="74" rx="8"/><text class="h c" x="90" y="64">原始帧</text><text class="s c" x="90" y="83">(B, 3, H, W)</text><text class="s c" x="90" y="100">uint8 或 float</text>
+          <rect class="b" x="185" y="40" width="140" height="74" rx="8"/><text class="h c" x="255" y="64">转浮点</text><text class="s c" x="255" y="83">uint8 ÷ 255</text><text class="s c" x="255" y="100">→ [0, 1]</text>
+          <rect class="b" x="350" y="40" width="140" height="74" rx="8"/><text class="h c" x="420" y="64">resize_with_pad</text><text class="s c" x="420" y="83">等比缩放到 512×512</text><text class="s c" x="420" y="100">左、上补 0</text>
+          <rect class="b" x="515" y="40" width="140" height="74" rx="8"/><text class="h c" x="585" y="64">× 2 − 1</text><text class="s c" x="585" y="83">[0,1] → [−1,1]</text><text class="s c" x="585" y="100">SigLIP 的要求</text>
+          <a class="mod" href="#m-vision" aria-label="跳到视觉编码"><rect class="sg" x="680" y="40" width="140" height="74" rx="8"/><text class="h c" x="750" y="64">图像 + 掩码</text><text class="s c" x="750" y="83">(B, 3, 512, 512)</text><text class="s c" x="750" y="100">→ 视觉编码</text></a>
+          <path class="ln" d="M160,77 H183"/><path class="ln" d="M325,77 H348"/><path class="ln" d="M490,77 H513"/><path class="ln" d="M655,77 H678"/>
+          <rect class="b" x="20" y="150" width="400" height="58" rx="8"/><text class="h c" x="220" y="174">带历史帧的 5 维输入</text><text class="s c" x="220" y="193">只取最后一帧</text>
+          <rect class="b" x="440" y="150" width="380" height="58" rx="8"/><text class="h c" x="630" y="174">相机缺失</text><text class="s c" x="630" y="193">按 empty_cameras 补全 −1 图，掩码为 0</text>
+        </svg>
+      </div>
+      <p>掩码来自 <code>{相机名}_padding_mask</code>，没有就全真。<code>empty_cameras</code> 默认是 0，也就是缺哪个相机就少哪个，不补假图。一个相机都没有会直接报错。</p>
+      <p class="modnav"><a href="#fig-arch">↑ 回总图</a> · <a href="#m-vision">下一个：视觉编码 →</a></p>
+    </div>
+
+    <!-- ============ 2 视觉编码 ============ -->
+    <div class="msec" id="m-vision">
+      <h3>2 · 视觉编码：SigLIP + 像素重排</h3>
+      <p>视觉部分整体冻结（<code>freeze_vision_encoder=True</code>）。每个相机各过一次。后两步是 SmolVLM 自带的 connector：把相邻的 4×4 个 patch 拼成一个 token，再线性投影到文本宽度 960。</p>
+      <div class="diagram">
+        <svg class="dg" viewBox="0 0 860 320" role="img" aria-label="视觉编码子图：补丁嵌入、SigLIP、像素重排、线性投影、乘根号 960">
+          <text class="s c" x="750" y="26">SmolVLM 的 connector</text><path class="gl" d="M515,32 H820"/>
+          <rect class="b" x="20" y="40" width="140" height="74" rx="8"/><text class="h c" x="90" y="64">输入</text><text class="s c" x="90" y="83">(B, 3, 512, 512)</text><text class="s c" x="90" y="100">每个相机各一次</text>
+          <rect class="fz" x="185" y="40" width="140" height="74" rx="8"/><text class="h c" x="255" y="64">补丁嵌入</text><text class="s c" x="255" y="83">16×16 切块</text><text class="s c" x="255" y="100">→ (B, 1024, 768)</text>
+          <rect class="fz" x="350" y="40" width="140" height="74" rx="8"/><text class="h c" x="420" y="64">SigLIP 编码器</text><text class="s c" x="420" y="83">宽 768 · 12 头</text><text class="s c" x="420" y="100">冻结</text>
+          <rect class="fz" x="515" y="40" width="140" height="74" rx="8"/><text class="h c" x="585" y="64">像素重排 ×4</text><text class="s c" x="585" y="83">4×4 并成 1 个</text><text class="s c" x="585" y="100">→ (B, 64, 12288)</text>
+          <rect class="fz" x="680" y="40" width="140" height="74" rx="8"/><text class="h c" x="750" y="64">线性投影</text><text class="s c" x="750" y="83">12288 → 960</text><text class="s c" x="750" y="100">→ (B, 64, 960)</text>
+          <path class="ln" d="M160,77 H183"/><path class="ln" d="M325,77 H348"/><path class="ln" d="M490,77 H513"/><path class="ln" d="M655,77 H678"/>
+          <path class="ln" d="M750,114 V148"/>
+          <rect class="b" x="680" y="150" width="140" height="60" rx="8"/><text class="h c" x="750" y="175">× √960（≈ 31）</text><text class="s c" x="750" y="194">与词嵌入同量级</text>
+          <a class="mod" href="#m-prefix" aria-label="跳到 prefix 拼接"><rect class="sg" x="515" y="150" width="140" height="60" rx="8"/><text class="h c" x="585" y="175">进入 prefix</text><text class="s c" x="585" y="194">→ 拼接与掩码</text></a>
+          <path class="ln" d="M680,180 H657"/>
+          <rect class="b" x="20" y="150" width="470" height="60" rx="8"/><text class="h c" x="255" y="175">为什么每张图只有 64 个 token</text><text class="s c" x="255" y="194">1024 个 patch 排成 32×32，每 4×4 并一个 → 8×8 = 64</text>
+          <rect class="b" x="20" y="232" width="800" height="70" rx="8"/><text class="h c" x="420" y="256">为什么要乘 √960</text><text class="s c" x="420" y="276">语言词嵌入在代码里也乘 √960（图像第 638 行，语言第 664 行）</text><text class="s c" x="420" y="293">两边数值大小相近，拼进同一个 prefix 时，模型不会偏向其中一边</text>
+        </svg>
+      </div>
+      <p>乘 √960 是把图像 token 放大约 31 倍。语言词嵌入在代码里也乘同一个数（<code>modeling_smolvla.py</code> 的 <code>embed_image</code> 和 <code>embed_language_tokens</code>），所以图像和语言的数值大小相近。这是 Gemma 一类模型的惯例。论文里我没找到对图像这一步的解释，“为了和语言同量级”是我对照代码的读法。</p>
+      <p>SmolVLM 默认还会把大图切成多块再加一张全局图。SmolVLA 不切块，只用全局图，所以 3 个相机总共 192 个视觉 token。</p>
+      <p class="modnav"><a href="#fig-arch">↑ 回总图</a> · <a href="#m-image">← 上一个：图像预处理</a> · <a href="#m-lang">下一个：语言编码 →</a></p>
+    </div>
+
+    <!-- ============ 3 语言编码 ============ -->
+    <div class="msec" id="m-lang">
+      <h3>3 · 语言编码</h3>
+      <p>预处理流水线先给任务文本补换行，再用 SmolVLM2 的分词器切成 token，最后查词嵌入表。词嵌入属于冻结的 VLM。</p>
+      <div class="diagram">
+        <svg class="dg" viewBox="0 0 860 230" role="img" aria-label="语言编码子图：任务文本、补换行、分词、词嵌入、乘根号 960">
+          <rect class="b" x="20" y="40" width="140" height="74" rx="8"/><text class="h c" x="90" y="64">任务文本</text><text class="s c" x="90" y="83">例：抓起乐高</text><text class="s c" x="90" y="100">放进盒子</text>
+          <rect class="b" x="185" y="40" width="140" height="74" rx="8"/><text class="h c" x="255" y="64">补换行</text><text class="s c" x="255" y="83">末尾加换行符</text><text class="s c" x="255" y="100">与预训练一致</text>
+          <rect class="b" x="350" y="40" width="140" height="74" rx="8"/><text class="h c" x="420" y="64">分词</text><text class="s c" x="420" y="83">SmolVLM2 分词器</text><text class="s c" x="420" y="100">右补齐 · 最长 48</text>
+          <rect class="fz" x="515" y="40" width="140" height="74" rx="8"/><text class="h c" x="585" y="64">词嵌入</text><text class="s c" x="585" y="83">embed_tokens</text><text class="s c" x="585" y="100">(B, L, 960) · 冻结</text>
+          <a class="mod" href="#m-prefix" aria-label="跳到 prefix 拼接"><rect class="sg" x="680" y="40" width="140" height="74" rx="8"/><text class="h c" x="750" y="64">× √960</text><text class="s c" x="750" y="83">(B, L, 960) + 掩码</text><text class="s c" x="750" y="100">→ prefix 拼接</text></a>
+          <path class="ln" d="M160,77 H183"/><path class="ln" d="M325,77 H348"/><path class="ln" d="M490,77 H513"/><path class="ln" d="M655,77 H678"/>
+          <rect class="b" x="20" y="150" width="400" height="58" rx="8"/><text class="h c" x="220" y="174">padding = longest</text><text class="s c" x="220" y="193">只补到这一批里最长的一句，不是固定 48</text>
+          <rect class="b" x="440" y="150" width="380" height="58" rx="8"/><text class="h c" x="630" y="174">语言 token 之间不做因果</text><text class="s c" x="630" y="193">和图像 token 互相可见</text>
+        </svg>
+      </div>
+      <p class="modnav"><a href="#fig-arch">↑ 回总图</a> · <a href="#m-vision">← 上一个：视觉编码</a> · <a href="#m-state">下一个：状态编码 →</a></p>
+    </div>
+
+    <!-- ============ 4 状态编码 ============ -->
+    <div class="msec" id="m-state">
+      <h3>4 · 状态编码：state_proj</h3>
+      <p>机器人关节状态先按数据集统计量做 MEAN_STD 归一化（在预处理流水线里），进模型后补零到 32 维，再用一层线性映射成 1 个 token。这一层是可训练的。状态是传感器读到的“现在”，动作是模型预测的“接下来”。两者是同一种数（同单位、同归一化），含义不同。</p>
+      <div class="diagram">
+        <svg class="dg" viewBox="0 0 860 330" role="img" aria-label="状态编码子图：归一化、补零到 32 维、线性映射成一个 token">
+          <rect class="b" x="20" y="40" width="140" height="74" rx="8"/><text class="h c" x="90" y="64">原始状态</text><text class="s c" x="90" y="83">(B, D) 关节角</text><text class="s c" x="90" y="100">D 为真实自由度</text>
+          <rect class="b" x="185" y="40" width="140" height="74" rx="8"/><text class="h c" x="255" y="64">归一化</text><text class="s c" x="255" y="83">MEAN_STD</text><text class="s c" x="255" y="100">用数据集统计量</text>
+          <rect class="b" x="350" y="40" width="140" height="74" rx="8"/><text class="h c" x="420" y="64">补零到 32 维</text><text class="s c" x="420" y="83">pad_vector</text><text class="s c" x="420" y="100">(B, 32)</text>
+          <rect class="tr" x="515" y="40" width="140" height="74" rx="8"/><text class="h c" x="585" y="64">state_proj</text><text class="s c" x="585" y="83">Linear 32 → 960</text><text class="s c" x="585" y="100">可训练</text>
+          <a class="mod" href="#m-prefix" aria-label="跳到 prefix 拼接"><rect class="sg" x="680" y="40" width="140" height="74" rx="8"/><text class="h c" x="750" y="64">state token</text><text class="s c" x="750" y="83">(B, 1, 960)</text><text class="s c" x="750" y="100">→ prefix 拼接</text></a>
+          <path class="ln" d="M160,77 H183"/><path class="ln" d="M325,77 H348"/><path class="ln" d="M490,77 H513"/><path class="ln" d="M655,77 H678"/>
+          <rect class="b" x="20" y="150" width="400" height="58" rx="8"/><text class="h c" x="220" y="174">只用当前这一步</text><text class="s c" x="220" y="193">n_obs_steps = 1；有历史时取最后一步</text>
+          <rect class="b" x="440" y="150" width="380" height="58" rx="8"/><text class="h c" x="630" y="174">掩码标记为 1</text><text class="s c" x="630" y="193">图像、语言看不到它；动作能看到它</text>
+          <rect class="b" x="20" y="232" width="400" height="76" rx="8"/><text class="h c" x="220" y="256">状态 s = 现在的关节角</text><text class="s c" x="220" y="276">传感器测得 · 输入 · 1 个 token</text><text class="s c" x="220" y="294">手臂被挡住时，实际角度 ≠ 命令</text>
+          <rect class="b" x="440" y="232" width="380" height="76" rx="8"/><text class="h c" x="630" y="256">动作 a = 接下来要去的目标关节角</text><text class="s c" x="630" y="276">模型预测 · 输出 · 50 个 token</text><text class="s c" x="630" y="294">同一种数、同一种归一化，只是时间不同</text>
+        </svg>
+      </div>
+      <p class="modnav"><a href="#fig-arch">↑ 回总图</a> · <a href="#m-lang">← 上一个：语言编码</a> · <a href="#m-prefix">下一个：prefix 拼接 →</a></p>
+    </div>
+
+    <!-- ============ 5 prefix 拼接 ============ -->
+    <div class="msec" id="m-prefix">
+      <h3>5 · prefix 拼接与注意力掩码</h3>
+      <p><code>embed_prefix</code> 把三种 token 按固定顺序拼在一起：各相机的图像 token，语言 token，最后是 1 个状态 token。同时生成两种标记，一种说明哪些位置有效（<code>pad_masks</code>），一种说明谁能看谁（<code>att_masks</code>）。</p>
+      <div class="diagram">
+        <svg class="dg" viewBox="0 0 860 310" role="img" aria-label="prefix 拼接子图：三个相机、语言、状态依次排列，输出嵌入、二维掩码和位置编号">
+          <rect class="fz" x="20" y="40" width="150" height="54" rx="6"/><text class="h c" x="95" y="62">相机 1</text><text class="s c" x="95" y="80">64 个 token</text>
+          <rect class="fz" x="176" y="40" width="150" height="54" rx="6"/><text class="h c" x="251" y="62">相机 2</text><text class="s c" x="251" y="80">64 个 token</text>
+          <rect class="fz" x="332" y="40" width="150" height="54" rx="6"/><text class="h c" x="407" y="62">相机 3</text><text class="s c" x="407" y="80">64 个 token</text>
+          <rect class="fz" x="488" y="40" width="150" height="54" rx="6"/><text class="h c" x="563" y="62">语言</text><text class="s c" x="563" y="80">L ≤ 48 个 token</text>
+          <rect class="tr" x="644" y="40" width="80" height="54" rx="6"/><text class="h c" x="684" y="62">状态</text><text class="s c" x="684" y="80">1 个</text>
+          <text class="s c" x="95" y="114">att = 0</text><text class="s c" x="251" y="114">att = 0</text><text class="s c" x="407" y="114">att = 0</text><text class="s c" x="563" y="114">att = 0</text><text class="s c" x="684" y="114">att = 1</text>
+          <path class="gl" d="M20,128 H724"/>
+          <path class="ln" d="M145,128 V158"/><path class="ln" d="M430,128 V158"/><path class="ln" d="M715,128 V158"/>
+          <rect class="b" x="20" y="160" width="250" height="74" rx="8"/><text class="h c" x="145" y="184">嵌入 embs</text><text class="s c" x="145" y="203">(B, P, 960)</text><text class="s c" x="145" y="220">P = 64×相机数 + L + 1</text>
+          <rect class="b" x="305" y="160" width="250" height="74" rx="8"/><text class="h c" x="430" y="184">二维掩码</text><text class="s c" x="430" y="203">make_att_2d_masks → (B, P, P)</text><text class="s c" x="430" y="220">累计 att 值 ≤ 自己的才可见</text>
+          <rect class="b" x="590" y="160" width="250" height="74" rx="8"/><text class="h c" x="715" y="184">位置编号 position_ids</text><text class="s c" x="715" y="203">cumsum(pad_masks) − 1</text><text class="s c" x="715" y="220">只数有效的 token</text>
+          <path class="ln" d="M715,234 V258"/>
+          <a class="mod" href="#m-vlm" aria-label="跳到 VLM 文本层"><rect class="sg" x="590" y="260" width="250" height="36" rx="8"/><text class="h c" x="715" y="283">三者一起送入 VLM →</text></a>
+        </svg>
+      </div>
+      <p>图像和语言的 att 都是 0，累计值相同，所以彼此双向可见。状态的 att 是 1，累计值更大：它能看到图像和语言，图像和语言看不到它。动作 token（att 全为 1）在后面接上，见<a href="#fig-mask">图 3</a>。<code>prefix_length</code> 默认 −1，不额外补长。</p>
+      <p class="modnav"><a href="#fig-arch">↑ 回总图</a> · <a href="#m-state">← 上一个：状态编码</a> · <a href="#m-vlm">下一个：VLM 文本层 →</a></p>
+    </div>
+
+    <!-- ============ 6 VLM 文本层 ============ -->
+    <div class="msec" id="m-vlm">
+      <h3>6 · VLM 文本层（SmolVLM2，前 16 层之一）</h3>
+      <p>这是一个标准的 Llama 式解码层，宽度 960。预填充时只有 prefix 在这里流动，每层算出的 K、V 被存进缓存。冻结，不参与训练。</p>
+      <div class="diagram">
+        <svg class="dg" viewBox="0 0 860 296" role="img" aria-label="VLM 文本层子图：归一化、qkv 投影、旋转位置编码、分组注意力、输出投影、残差、前馈网络">
+          <rect class="b" x="20" y="30" width="118" height="70" rx="8"/><text class="h c" x="79" y="56">输入 x</text><text class="s c" x="79" y="76">(B, P, 960)</text>
+          <rect class="fz" x="160" y="30" width="118" height="70" rx="8"/><text class="h c" x="219" y="56">RMSNorm</text><text class="s c" x="219" y="76">input_layernorm</text>
+          <rect class="fz" x="300" y="30" width="118" height="70" rx="8"/><text class="h c" x="359" y="52">q / k / v 投影</text><text class="s c" x="359" y="71">960 → 960</text><text class="s c" x="359" y="86">/ 320 / 320</text>
+          <rect class="fz" x="440" y="30" width="118" height="70" rx="8"/><text class="h c" x="499" y="56">RoPE</text><text class="s c" x="499" y="76">只作用于 q、k</text>
+          <a class="mod" href="#m-kv" aria-label="跳到 KV cache"><rect class="sg" x="580" y="30" width="118" height="70" rx="8"/><text class="h c" x="639" y="52">分组注意力</text><text class="s c" x="639" y="71">15 个 Q 头</text><text class="s c" x="639" y="86">5 组 K/V → 缓存</text></a>
+          <rect class="fz" x="720" y="30" width="118" height="70" rx="8"/><text class="h c" x="779" y="56">o_proj</text><text class="s c" x="779" y="76">960 → 960</text>
+          <path class="ln" d="M138,65 H158"/><path class="ln" d="M278,65 H298"/><path class="ln" d="M418,65 H438"/><path class="ln" d="M558,65 H578"/><path class="ln" d="M698,65 H718"/>
+          <rect class="b" x="720" y="170" width="118" height="70" rx="8"/><text class="h c" x="779" y="196">+ 残差</text><text class="s c" x="779" y="216">x + 注意力输出</text>
+          <rect class="fz" x="580" y="170" width="118" height="70" rx="8"/><text class="h c" x="639" y="196">RMSNorm</text><text class="s c" x="639" y="216">post_attention</text>
+          <rect class="fz" x="440" y="170" width="118" height="70" rx="8"/><text class="h c" x="499" y="192">MLP · SwiGLU</text><text class="s c" x="499" y="211">960 → 2560</text><text class="s c" x="499" y="226">→ 960</text>
+          <rect class="b" x="300" y="170" width="118" height="70" rx="8"/><text class="h c" x="359" y="192">+ 残差 = 输出</text><text class="s c" x="359" y="216">(B, P, 960)</text>
+          <path class="ln" d="M805,100 V168"/><path class="ln" d="M720,205 H700"/><path class="ln" d="M580,205 H560"/><path class="ln" d="M440,205 H420"/>
+          <path class="lp" d="M79,100 V134 H745 V168"/><text class="s c" x="400" y="128">残差旁路</text>
+          <path class="lp" d="M779,240 V268 H359 V242"/><text class="s c" x="570" y="262">残差旁路</text>
+          <path class="ln" d="M300,205 H264"/><text class="s" x="20" y="209">进入下一层</text><text class="s" x="20" y="226">共 16 层</text>
+        </svg>
+      </div>
+      <p>注意力是分组式的：15 个 Q 头共用 5 组 K/V，每组 3 个头，头维度 64。预填充时 K、V 在加完 RoPE 之后被写进缓存，见<a href="#m-kv">下一节</a>。训练时 prefix 和动作 token 在同一次前向里一起走，不经缓存。</p>
+      <p class="modnav"><a href="#fig-arch">↑ 回总图</a> · <a href="#m-prefix">← 上一个：prefix 拼接</a> · <a href="#m-kv">下一个：KV cache →</a></p>
+    </div>
+
+    <!-- ============ 7 KV cache ============ -->
+    <div class="msec" id="m-kv">
+      <h3>7 · KV cache：写一次，读十次</h3>
+      <p>缓存用的是 transformers 的 <code>DynamicCache</code>，16 层各有一格，存 K 和 V。预填充时写满，之后 10 步去噪都只读。</p>
+      <div class="diagram">
+        <svg class="dg" viewBox="0 0 860 230" role="img" aria-label="KV cache 子图：预填充写入十六层缓存，奇偶层读取方式不同，每步结束裁回 prefix 长度">
+          <rect class="b" x="20" y="50" width="190" height="120" rx="8"/><text class="h c" x="115" y="82">预填充（1 次）</text><text class="s c" x="115" y="108">VLM 前 16 层处理 prefix</text><text class="s c" x="115" y="127">每层把 K、V 存下来</text>
+          <path class="ln" d="M210,110 H238"/>
+          <rect class="sg" x="240" y="30" width="300" height="160" rx="10"/><text class="h c" x="390" y="54">KV cache（DynamicCache）</text>
+          <rect class="b" x="262" y="68" width="25" height="25" rx="4"/><text class="s c" x="274.5" y="85">0</text>
+          <rect class="b" x="293" y="68" width="25" height="25" rx="4"/><text class="s c" x="305.5" y="85">1</text>
+          <rect class="b" x="324" y="68" width="25" height="25" rx="4"/><text class="s c" x="336.5" y="85">2</text>
+          <rect class="b" x="355" y="68" width="25" height="25" rx="4"/><text class="s c" x="367.5" y="85">3</text>
+          <rect class="b" x="386" y="68" width="25" height="25" rx="4"/><text class="s c" x="398.5" y="85">4</text>
+          <rect class="b" x="417" y="68" width="25" height="25" rx="4"/><text class="s c" x="429.5" y="85">5</text>
+          <rect class="b" x="448" y="68" width="25" height="25" rx="4"/><text class="s c" x="460.5" y="85">6</text>
+          <rect class="b" x="479" y="68" width="25" height="25" rx="4"/><text class="s c" x="491.5" y="85">7</text>
+          <rect class="b" x="262" y="99" width="25" height="25" rx="4"/><text class="s c" x="274.5" y="116">8</text>
+          <rect class="b" x="293" y="99" width="25" height="25" rx="4"/><text class="s c" x="305.5" y="116">9</text>
+          <rect class="b" x="324" y="99" width="25" height="25" rx="4"/><text class="s c" x="336.5" y="116">10</text>
+          <rect class="b" x="355" y="99" width="25" height="25" rx="4"/><text class="s c" x="367.5" y="116">11</text>
+          <rect class="b" x="386" y="99" width="25" height="25" rx="4"/><text class="s c" x="398.5" y="116">12</text>
+          <rect class="b" x="417" y="99" width="25" height="25" rx="4"/><text class="s c" x="429.5" y="116">13</text>
+          <rect class="b" x="448" y="99" width="25" height="25" rx="4"/><text class="s c" x="460.5" y="116">14</text>
+          <rect class="b" x="479" y="99" width="25" height="25" rx="4"/><text class="s c" x="491.5" y="116">15</text>
+          <text class="s c" x="390" y="150">每格 = 一层的 K、V，形状 (B, 5, P, 64)</text><text class="s c" x="390" y="168">K 已经加过 RoPE</text>
+          <a class="mod" href="#m-sa" aria-label="跳到自注意力层"><rect class="tr" x="580" y="24" width="260" height="52" rx="8"/><text class="h c" x="710" y="46">偶数层 SA</text><text class="s c" x="710" y="64">读 prefix K/V，并追加 50 个 K/V</text></a>
+          <a class="mod" href="#m-ca" aria-label="跳到交叉注意力层"><rect class="tr" x="580" y="88" width="260" height="52" rx="8"/><text class="h c" x="710" y="110">奇数层 CA</text><text class="s c" x="710" y="128">只读，不写</text></a>
+          <rect class="b" x="580" y="152" width="260" height="52" rx="8"/><text class="h c" x="710" y="174">每步结束 crop(P)</text><text class="s c" x="710" y="192">裁掉追加的动作 K/V，下一步重来</text>
+          <path class="ln" d="M540,70 L578,52"/><path class="ln" d="M540,114 H578"/><path class="ln" d="M540,158 L578,178"/>
+        </svg>
+      </div>
+      <p>按我的估算（P = 241、bf16），每层 K 加 V 约 0.3 MB，16 层合计约 5 MB 每个样本。这是算式结果，没有实测。</p>
+      <p>SA 层会把动作 token 的 K、V 追加到缓存末尾，所以每个去噪步结束后，代码用 <code>past_key_values.crop(prefix_len)</code> 裁回去，否则下一步缓存里就混进了上一步的动作。</p>
+      <p class="modnav"><a href="#fig-arch">↑ 回总图</a> · <a href="#m-vlm">← 上一个：VLM 文本层</a> · <a href="#m-noise">下一个：噪声与时间 →</a></p>
+    </div>
+
+    <!-- ============ 8 噪声与时间 ============ -->
+    <div class="msec" id="m-noise">
+      <h3>8 · 噪声动作与时间 τ</h3>
+      <p>训练和推理拿到 x_τ 的方式不同。训练时把真实动作和噪声按 τ 混合；推理时从纯噪声出发，τ 从 1 逐步降到 0。模型从不直接拿到“真实的未来动作”当输入：训练时输入的是加噪后的版本，真值只用来算目标 u；推理时真值根本不存在。</p>
+      <div class="diagram">
+        <svg class="dg" viewBox="0 0 860 410" role="img" aria-label="噪声与时间子图：训练时用真实动作、噪声和随机 τ 插值，推理时从纯噪声出发按固定时间表">
+          <text class="h" x="20" y="22">训练</text>
+          <rect class="b" x="20" y="34" width="190" height="50" rx="8"/><text class="h c" x="115" y="55">真实动作块 a</text><text class="s c" x="115" y="73">(B, 50, 32)</text>
+          <rect class="b" x="20" y="92" width="190" height="50" rx="8"/><text class="h c" x="115" y="113">噪声 ε ~ N(0, I)</text><text class="s c" x="115" y="131">(B, 50, 32)</text>
+          <rect class="b" x="20" y="150" width="190" height="50" rx="8"/><text class="h c" x="115" y="171">τ ~ Beta(1.5, 1)</text><text class="s c" x="115" y="189">× 0.999 + 0.001，偏向 τ 大</text>
+          <rect class="b" x="250" y="60" width="230" height="110" rx="8"/><text class="h c" x="365" y="92">插值</text><text class="s c" x="365" y="114">x_τ = τ·ε + (1 − τ)·a</text><text class="s c" x="365" y="132">噪声在 τ = 1</text><text class="s c" x="365" y="150">目标 u = ε − a</text>
+          <path class="ln" d="M210,59 L248,90"/><path class="ln" d="M210,117 H248"/><path class="ln" d="M210,175 L248,146"/>
+          <a class="mod" href="#m-actin" aria-label="跳到动作入口"><rect class="sg" x="530" y="50" width="190" height="56" rx="8"/><text class="h c" x="625" y="74">x_τ 与 τ</text><text class="s c" x="625" y="93">→ 动作入口</text></a>
+          <rect class="b" x="530" y="124" width="190" height="56" rx="8"/><text class="h c" x="625" y="148">目标 u</text><text class="s c" x="625" y="167">→ 损失 MSE(v, u)</text>
+          <path class="ln" d="M480,95 L528,80"/><path class="ln" d="M480,135 L528,152"/>
+          <text class="h" x="20" y="238">推理</text>
+          <rect class="b" x="20" y="250" width="190" height="52" rx="8"/><text class="h c" x="115" y="272">ε ~ N(0, I)</text><text class="s c" x="115" y="290">作为 x 的起点（τ = 1）</text>
+          <rect class="b" x="250" y="250" width="230" height="52" rx="8"/><text class="h c" x="365" y="272">τ_k = 1 − k / 10</text><text class="s c" x="365" y="290">k = 0, 1, …, 9</text>
+          <a class="mod" href="#m-euler" aria-label="跳到欧拉积分"><rect class="sg" x="530" y="250" width="190" height="52" rx="8"/><text class="h c" x="625" y="272">每步的 x 与 τ</text><text class="s c" x="625" y="290">→ 欧拉循环</text></a>
+          <path class="ln" d="M210,276 H248"/><path class="ln" d="M480,276 H528"/>
+          <rect class="b" x="20" y="326" width="400" height="66" rx="8"/><text class="h c" x="220" y="348">训练：输入的是加噪后的真值</text><text class="s c" x="220" y="366">x_τ 里含真实动作 a</text><text class="s c" x="220" y="382">a 同时用来算目标 u，不直接输入</text>
+          <rect class="b" x="440" y="326" width="398" height="66" rx="8"/><text class="h c" x="639" y="348">推理：输入的是纯噪声起步的 x</text><text class="s c" x="639" y="366">每步的 x 是上一步更新后的结果</text><text class="s c" x="639" y="382">真实未来动作不存在，它是要预测的</text>
+        </svg>
+      </div>
+      <p>Beta(1.5, 1) 的密度随 τ 增大而上升，所以训练更常见到噪声多的样本。怎样理解这种时间步采样，见<a class="concept-link" href="Beta分布-球星卡.html#concept-noise-schedule">噪声时间步采样</a>。</p>
+      <p class="modnav"><a href="#fig-arch">↑ 回总图</a> · <a href="#m-kv">← 上一个：KV cache</a> · <a href="#m-actin">下一个：动作入口 →</a></p>
+    </div>
+
+    <!-- ============ 9 动作入口 ============ -->
+    <div class="msec" id="m-actin">
+      <h3>9 · 动作入口：action_in_proj 与时间 MLP</h3>
+      <p>噪声动作先映射到专家宽度 720。时间 τ 用正余弦编码成 720 维向量，复制 50 份，与动作嵌入沿特征维拼起来，再过两层 MLP 融合。这与 π0 的做法一致；π0.5 才改用 <a class="concept-link" href="pi0.5-论文解读.html#concept-adarms">adaRMSNorm</a> 注入时间。</p>
+      <div class="diagram">
+        <svg class="dg" viewBox="0 0 860 240" role="img" aria-label="动作入口子图：动作嵌入与时间正余弦编码拼接后经两层 MLP 得到 50 个 720 维 token">
+          <rect class="b" x="20" y="36" width="120" height="60" rx="8"/><text class="h c" x="80" y="61">x_τ</text><text class="s c" x="80" y="80">(B, 50, 32)</text>
+          <rect class="tr" x="170" y="36" width="150" height="60" rx="8"/><text class="h c" x="245" y="61">action_in_proj</text><text class="s c" x="245" y="80">32 → 720</text>
+          <rect class="b" x="20" y="146" width="120" height="60" rx="8"/><text class="h c" x="80" y="171">τ</text><text class="s c" x="80" y="190">(B,)</text>
+          <rect class="b" x="170" y="146" width="150" height="60" rx="8"/><text class="h c" x="245" y="171">正余弦编码</text><text class="s c" x="245" y="190">720 维 · 周期 4e-3 ~ 4</text>
+          <path class="ln" d="M140,66 H168"/><path class="ln" d="M140,176 H168"/>
+          <rect class="b" x="355" y="86" width="120" height="70" rx="8"/><text class="h c" x="415" y="110">拼接</text><text class="s c" x="415" y="128">(B, 50, 1440)</text><text class="s c" x="415" y="144">τ 复制 50 份</text>
+          <path class="ln" d="M320,66 L353,104"/><path class="ln" d="M320,176 L353,138"/>
+          <rect class="tr" x="510" y="86" width="120" height="70" rx="8"/><text class="h c" x="570" y="110">Linear</text><text class="s c" x="570" y="128">1440 → 720</text><text class="s c" x="570" y="144">+ SiLU</text>
+          <rect class="tr" x="655" y="86" width="90" height="70" rx="8"/><text class="h c" x="700" y="110">Linear</text><text class="s c" x="700" y="130">720 → 720</text>
+          <a class="mod" href="#m-expert" aria-label="跳到动作专家"><rect class="sg" x="772" y="86" width="82" height="70" rx="8"/><text class="h c" x="813" y="110">suffix</text><text class="s c" x="813" y="128">(B,50,720)</text><text class="s c" x="813" y="144">→ 专家</text></a>
+          <path class="ln" d="M475,121 H508"/><path class="ln" d="M630,121 H653"/><path class="ln" d="M745,121 H770"/>
+        </svg>
+      </div>
+      <p>时间编码的周期按几何级数分布在 4e-3 到 4.0 之间（<code>min_period</code>、<code>max_period</code>），τ 的范围是 (0, 1]，所以快慢两种频率都有。</p>
+      <p class="modnav"><a href="#fig-arch">↑ 回总图</a> · <a href="#m-noise">← 上一个：噪声与时间</a> · <a href="#m-expert">下一个：动作专家 →</a></p>
+    </div>
+
+    <!-- ============ 10 动作专家 ============ -->
+    <div class="msec" id="m-expert">
+      <h3>10 · 动作专家：16 层，交替两种注意力</h3>
+      <p>专家是一个窄的 Llama 式模型：宽度 720，MLP 中间宽度 2048，同样 15 个 Q 头、5 组 K/V、头维度 64。它没有词嵌入和输出词表，输入输出都是连续向量。每一层要读 VLM 缓存里同序号那一层。</p>
+      <div class="diagram">
+        <svg class="dg" viewBox="0 0 860 330" role="img" aria-label="动作专家子图：十六层自注意力与交叉注意力交替，读取 KV cache，最后归一化输出">
+          <rect class="b" x="20" y="140" width="120" height="60" rx="8"/><text class="h c" x="80" y="165">suffix</text><text class="s c" x="80" y="184">(B, 50, 720)</text>
+          <path class="ln" d="M140,160 H162 V60 H188"/>
+          <a class="mod" href="#m-sa" aria-label="跳到自注意力层"><rect class="tr" x="190" y="40" width="190" height="40" rx="8"/><text class="h c" x="285" y="65">层 0 · 自注意力 SA</text></a>
+          <a class="mod" href="#m-ca" aria-label="跳到交叉注意力层"><rect class="sg" x="190" y="96" width="190" height="40" rx="8"/><text class="h c" x="285" y="121">层 1 · 交叉注意力 CA</text></a>
+          <rect class="b" x="190" y="152" width="190" height="40" rx="8"/><text class="s c" x="285" y="177">… 再重复 7 组（层 2 ~ 13）…</text>
+          <a class="mod" href="#m-sa" aria-label="跳到自注意力层"><rect class="tr" x="190" y="208" width="190" height="40" rx="8"/><text class="h c" x="285" y="233">层 14 · 自注意力 SA</text></a>
+          <a class="mod" href="#m-ca" aria-label="跳到交叉注意力层"><rect class="sg" x="190" y="264" width="190" height="40" rx="8"/><text class="h c" x="285" y="289">层 15 · 交叉注意力 CA</text></a>
+          <path class="ln" d="M285,80 V94"/><path class="ln" d="M285,136 V150"/><path class="ln" d="M285,192 V206"/><path class="ln" d="M285,248 V262"/>
+          <rect class="b" x="430" y="264" width="110" height="40" rx="8"/><text class="h c" x="485" y="288">RMSNorm</text>
+          <path class="ln" d="M380,284 H428"/>
+          <a class="mod" href="#m-euler" aria-label="跳到输出头与欧拉积分"><rect class="sg" x="570" y="258" width="150" height="52" rx="8"/><text class="h c" x="645" y="281">专家输出</text><text class="s c" x="645" y="299">(B,50,720) → 输出头</text></a>
+          <path class="ln" d="M540,284 H568"/>
+          <a class="mod" href="#m-kv" aria-label="跳到 KV cache"><rect class="sg" x="700" y="40" width="140" height="110" rx="8"/><text class="h c" x="770" y="70">KV cache</text><text class="s c" x="770" y="92">每层读同序号</text><text class="s c" x="770" y="110">那一层的缓存</text><text class="s c" x="770" y="128">16 层 × (K, V)</text></a>
+          <path class="ln" d="M700,60 H382"/><path class="ln" d="M700,116 H382"/><text class="s c" x="541" y="100">各层同理</text>
+        </svg>
+      </div>
+      <p>偶数层（0、2、…、14）是自注意力，奇数层（1、3、…、15）是交叉注意力，由 <code>self_attn_every_n_layers=2</code> 决定。点上图的层，进入对应的内部结构。</p>
+      <p class="modnav"><a href="#fig-arch">↑ 回总图</a> · <a href="#m-actin">← 上一个：动作入口</a> · <a href="#m-sa">下一个：专家自注意力层 →</a></p>
+    </div>
+
+    <!-- ============ 11 专家 SA 层 ============ -->
+    <div class="msec" id="m-sa">
+      <h3>11 · 专家的自注意力层（SA，偶数层）</h3>
+      <p>动作 token 的 Q 去看两部分 K/V：缓存里的 prefix，以及它们自己刚算出的 K/V。位置编号接在 prefix 之后（<code>prefix 有效长度 + 0…49</code>），所以动作像是“续写”在场景后面。</p>
+      <div class="diagram">
+        <svg class="dg" viewBox="0 0 860 330" role="img" aria-label="专家自注意力层子图：动作 token 的 q、k、v，与缓存的 prefix K/V 拼接后做因果注意力，再过 MLP">
+          <a class="mod" href="#m-kv" aria-label="跳到 KV cache"><rect class="sg" x="440" y="6" width="260" height="46" rx="8"/><text class="h c" x="570" y="26">KV cache 中的 prefix K/V</text><text class="s c" x="570" y="43">(B, 5, P, 64)，已加 RoPE</text></a>
+          <path class="ln" d="M639,52 V74"/>
+          <rect class="b" x="20" y="76" width="118" height="70" rx="8"/><text class="h c" x="79" y="102">输入 h</text><text class="s c" x="79" y="122">(B, 50, 720)</text>
+          <rect class="b" x="160" y="76" width="118" height="70" rx="8"/><text class="h c" x="219" y="102">RMSNorm</text><text class="s c" x="219" y="122">input_layernorm</text>
+          <rect class="tr" x="300" y="76" width="118" height="70" rx="8"/><text class="h c" x="359" y="98">q / k / v 投影</text><text class="s c" x="359" y="117">720 → 960</text><text class="s c" x="359" y="132">/ 320 / 320</text>
+          <rect class="b" x="440" y="76" width="118" height="70" rx="8"/><text class="h c" x="499" y="98">RoPE</text><text class="s c" x="499" y="117">位置接在</text><text class="s c" x="499" y="132">prefix 之后</text>
+          <rect class="b" x="580" y="76" width="118" height="70" rx="8"/><text class="h c" x="639" y="98">注意力</text><text class="s c" x="639" y="117">K/V = 缓存 + 自己</text><text class="s c" x="639" y="132">动作之间因果</text>
+          <rect class="tr" x="720" y="76" width="118" height="70" rx="8"/><text class="h c" x="779" y="102">o_proj</text><text class="s c" x="779" y="122">960 → 720</text>
+          <path class="ln" d="M138,111 H158"/><path class="ln" d="M278,111 H298"/><path class="ln" d="M418,111 H438"/><path class="ln" d="M558,111 H578"/><path class="ln" d="M698,111 H718"/>
+          <rect class="b" x="720" y="206" width="118" height="70" rx="8"/><text class="h c" x="779" y="232">+ 残差</text><text class="s c" x="779" y="252">h + 注意力输出</text>
+          <rect class="b" x="580" y="206" width="118" height="70" rx="8"/><text class="h c" x="639" y="232">RMSNorm</text><text class="s c" x="639" y="252">post_attention</text>
+          <rect class="tr" x="440" y="206" width="118" height="70" rx="8"/><text class="h c" x="499" y="228">MLP · SwiGLU</text><text class="s c" x="499" y="247">720 → 2048</text><text class="s c" x="499" y="262">→ 720</text>
+          <rect class="b" x="300" y="206" width="118" height="70" rx="8"/><text class="h c" x="359" y="228">+ 残差 = 输出</text><text class="s c" x="359" y="252">(B, 50, 720)</text>
+          <path class="ln" d="M805,146 V204"/><path class="ln" d="M720,241 H700"/><path class="ln" d="M580,241 H560"/><path class="ln" d="M440,241 H420"/>
+          <path class="lp" d="M79,146 V176 H745 V204"/><text class="s c" x="400" y="170">残差旁路</text>
+          <path class="lp" d="M779,276 V304 H359 V278"/><text class="s c" x="570" y="298">残差旁路</text>
+        </svg>
+      </div>
+      <p>掩码由两块拼成：每个动作 token 对 prefix 全部可见，对动作之间是下三角（因果）。这一层是专家里唯一让动作 token 互相交流的地方，论文认为它让动作块更平滑。</p>
+      <p class="modnav"><a href="#fig-arch">↑ 回总图</a> · <a href="#m-expert">↑ 回动作专家</a> · <a href="#m-ca">下一个：专家交叉注意力层 →</a></p>
+    </div>
+
+    <!-- ============ 12 专家 CA 层 ============ -->
+    <div class="msec" id="m-ca">
+      <h3>12 · 专家的交叉注意力层（CA，奇数层）</h3>
+      <p>Q 来自动作 token，K 和 V 来自 VLM 缓存（每个 token 320 维）。专家用自己的 <code>k_proj</code>、<code>v_proj</code> 把它们再投影一次，仍是 320 维。这两个投影只在 CA 层里存在，是新建并训练的。</p>
+      <div class="diagram">
+        <svg class="dg" viewBox="0 0 860 330" role="img" aria-label="专家交叉注意力层子图：缓存的 K/V 经专家自己的 k_proj 与 v_proj 重投影，动作 token 的 q 只看 prefix">
+          <a class="mod" href="#m-kv" aria-label="跳到 KV cache"><rect class="sg" x="380" y="6" width="210" height="46" rx="8"/><text class="h c" x="485" y="26">KV cache 的 K、V</text><text class="s c" x="485" y="43">(B, 5, P, 64)，已含 RoPE</text></a>
+          <rect class="tr" x="630" y="6" width="208" height="46" rx="8"/><text class="h c" x="734" y="26">k_proj / v_proj</text><text class="s c" x="734" y="43">320 → 320，专家自己的参数</text>
+          <path class="ln" d="M590,29 H628"/><path class="ln" d="M700,52 V62 H639 V74"/>
+          <rect class="b" x="20" y="76" width="118" height="70" rx="8"/><text class="h c" x="79" y="102">输入 h</text><text class="s c" x="79" y="122">(B, 50, 720)</text>
+          <rect class="b" x="160" y="76" width="118" height="70" rx="8"/><text class="h c" x="219" y="102">RMSNorm</text><text class="s c" x="219" y="122">input_layernorm</text>
+          <rect class="tr" x="300" y="76" width="118" height="70" rx="8"/><text class="h c" x="359" y="102">q 投影</text><text class="s c" x="359" y="122">720 → 960</text>
+          <rect class="b" x="440" y="76" width="118" height="70" rx="8"/><text class="h c" x="499" y="98">RoPE（仅 q）</text><text class="s c" x="499" y="117">位置从 0 起</text><text class="s c" x="499" y="132">K 不再加</text>
+          <rect class="b" x="580" y="76" width="118" height="70" rx="8"/><text class="h c" x="639" y="98">交叉注意力</text><text class="s c" x="639" y="117">只看 prefix</text><text class="s c" x="639" y="132">不看其他动作</text>
+          <rect class="tr" x="720" y="76" width="118" height="70" rx="8"/><text class="h c" x="779" y="102">o_proj</text><text class="s c" x="779" y="122">960 → 720</text>
+          <path class="ln" d="M138,111 H158"/><path class="ln" d="M278,111 H298"/><path class="ln" d="M418,111 H438"/><path class="ln" d="M558,111 H578"/><path class="ln" d="M698,111 H718"/>
+          <rect class="b" x="720" y="206" width="118" height="70" rx="8"/><text class="h c" x="779" y="232">+ 残差</text><text class="s c" x="779" y="252">h + 注意力输出</text>
+          <rect class="b" x="580" y="206" width="118" height="70" rx="8"/><text class="h c" x="639" y="232">RMSNorm</text><text class="s c" x="639" y="252">post_attention</text>
+          <rect class="tr" x="440" y="206" width="118" height="70" rx="8"/><text class="h c" x="499" y="228">MLP · SwiGLU</text><text class="s c" x="499" y="247">720 → 2048</text><text class="s c" x="499" y="262">→ 720</text>
+          <rect class="b" x="300" y="206" width="118" height="70" rx="8"/><text class="h c" x="359" y="228">+ 残差 = 输出</text><text class="s c" x="359" y="252">(B, 50, 720)</text>
+          <path class="ln" d="M805,146 V204"/><path class="ln" d="M720,241 H700"/><path class="ln" d="M580,241 H560"/><path class="ln" d="M440,241 H420"/>
+          <path class="lp" d="M79,146 V176 H745 V204"/><text class="s c" x="400" y="170">残差旁路</text>
+          <path class="lp" d="M779,276 V304 H359 V278"/><text class="s c" x="570" y="298">残差旁路</text>
+        </svg>
+      </div>
+      <p>一个值得留意的细节，是我读代码得到的观察：动作 token 的 q 位置从 0 开始（代码里把位置减去最小值），而缓存里的 K 保留着 prefix 里的原始位置。两者的相对位置因此不对应真实的先后关系。我没有在论文里找到对此的说明，是否有影响没有验证。</p>
+      <p class="modnav"><a href="#fig-arch">↑ 回总图</a> · <a href="#m-expert">↑ 回动作专家</a> · <a href="#m-sa">← 上一个：专家自注意力层</a> · <a href="#m-euler">下一个：输出头与欧拉积分 →</a></p>
+    </div>
+
+    <!-- ============ 13 输出头与欧拉积分 ============ -->
+    <div class="msec" id="m-euler">
+      <h3>13 · 输出头与欧拉积分</h3>
+      <p>推理的外层循环。每一步用当前的 x 和 τ 算出速度 v，再向 τ 减小的方向走一小步：<code>x ← x + dt·v</code>，dt = −0.1。10 步走完，τ 从 1 到 0，x 就从噪声变成动作块。实现在 <code>euler_integrate</code>，约定噪声在 τ = 1。</p>
+      <div class="diagram">
+        <svg class="dg" viewBox="0 0 860 346" role="img" aria-label="欧拉积分子图：十步循环，每步嵌入动作、过专家、输出投影得到速度并更新 x，结束后得到动作块">
+          <rect class="b" x="20" y="110" width="120" height="64" rx="8"/><text class="h c" x="80" y="136">x ← ε</text><text class="s c" x="80" y="155">(B, 50, 32)</text>
+          <path class="ln" d="M140,142 H168"/>
+          <rect class="loop" x="170" y="36" width="610" height="216" rx="12"/><text class="s" x="186" y="58">第 k 步（k = 0 … 9）</text>
+          <rect class="b" x="185" y="90" width="108" height="74" rx="8"/><text class="h c" x="239" y="114">τ_k</text><text class="s c" x="239" y="133">= 1 − 0.1·k</text><text class="s c" x="239" y="149">时间标量</text>
+          <a class="mod" href="#m-actin" aria-label="跳到动作入口"><rect class="tr" x="305" y="90" width="108" height="74" rx="8"/><text class="h c" x="359" y="114">动作入口</text><text class="s c" x="359" y="133">x、τ → suffix</text><text class="s c" x="359" y="149">(B, 50, 720)</text></a>
+          <a class="mod" href="#m-expert" aria-label="跳到动作专家"><rect class="tr" x="425" y="90" width="108" height="74" rx="8"/><text class="h c" x="479" y="114">专家 16 层</text><text class="s c" x="479" y="133">取后 50 个 token</text><text class="s c" x="479" y="149">转 float32</text></a>
+          <rect class="tr" x="545" y="90" width="108" height="74" rx="8"/><text class="h c" x="599" y="112">输出投影</text><text class="s c" x="599" y="130">action_out_proj</text><text class="s c" x="599" y="146">720 → 32 = v</text>
+          <rect class="b" x="665" y="90" width="108" height="74" rx="8"/><text class="h c" x="719" y="114">更新</text><text class="s c" x="719" y="133">x ← x + dt·v</text><text class="s c" x="719" y="149">dt = −0.1</text>
+          <path class="ln" d="M293,127 H303"/><path class="ln" d="M413,127 H423"/><path class="ln" d="M533,127 H543"/><path class="ln" d="M653,127 H663"/>
+          <a class="mod" href="#m-kv" aria-label="跳到 KV cache"><rect class="sg" x="415" y="196" width="128" height="40" rx="8"/><text class="h c" x="479" y="214">KV cache</text><text class="s c" x="479" y="229">10 步共用</text></a>
+          <path class="ln" d="M479,196 V166"/>
+          <path class="lp" d="M719,90 V68 H239 V88"/><text class="s c" x="479" y="62">重复 10 次</text>
+          <path class="ln" d="M725,252 V282"/>
+          <a class="mod" href="#m-post" aria-label="跳到后处理与动作队列"><rect class="sg" x="610" y="284" width="230" height="48" rx="8"/><text class="h c" x="725" y="306">x₀ = 动作块</text><text class="s c" x="725" y="324">(B, 50, 32) → 后处理</text></a>
+        </svg>
+      </div>
+      <p>SmolVLA 的 VLM 前缀只在循环之外跑 1 次，循环里只有动作入口、专家和输出投影。想让相邻两块动作衔接平滑，可在这个循环里挂 <a class="concept-link" href="RTC-训练时-论文解读.html#concept-rtc">RTC</a> 的引导（<code>rtc_processor</code>）。</p>
+      <p class="modnav"><a href="#fig-arch">↑ 回总图</a> · <a href="#m-ca">← 上一个：专家交叉注意力层</a> · <a href="#m-post">下一个：后处理与动作队列 →</a></p>
+    </div>
+
+    <!-- ============ 14 后处理与动作队列 ============ -->
+    <div class="msec" id="m-post">
+      <h3>14 · 后处理与动作队列</h3>
+      <p>这是 <code>select_action</code> 的经典路径：整块动作先进队列，每个控制周期取队首一个，取出之后才反归一化（后处理器作用在单个动作上）。</p>
+      <div class="diagram">
+        <svg class="dg" viewBox="0 0 860 230" role="img" aria-label="后处理子图：动作块裁掉补零维后入队，每周期取一个，反归一化后发给机器人">
+          <rect class="b" x="20" y="40" width="118" height="74" rx="8"/><text class="h c" x="79" y="66">动作块 x₀</text><text class="s c" x="79" y="86">(B, 50, 32)</text>
+          <rect class="b" x="160" y="40" width="118" height="74" rx="8"/><text class="h c" x="219" y="66">裁掉补零维</text><text class="s c" x="219" y="86">[:, :, :真实维度]</text>
+          <rect class="b" x="300" y="40" width="118" height="74" rx="8"/><text class="h c" x="359" y="66">入队列</text><text class="s c" x="359" y="86">deque</text><text class="s c" x="359" y="102">maxlen = 50</text>
+          <rect class="b" x="440" y="40" width="118" height="74" rx="8"/><text class="h c" x="499" y="66">取队首 1 个</text><text class="s c" x="499" y="86">popleft</text><text class="s c" x="499" y="102">每个控制周期</text>
+          <rect class="b" x="580" y="40" width="118" height="74" rx="8"/><text class="h c" x="639" y="66">反归一化</text><text class="s c" x="639" y="86">MEAN_STD</text><text class="s c" x="639" y="102">后处理器</text>
+          <rect class="sg" x="720" y="40" width="118" height="74" rx="8"/><text class="h c" x="779" y="66">发给机器人</text><text class="s c" x="779" y="86">移到 CPU</text>
+          <path class="ln" d="M138,77 H158"/><path class="ln" d="M278,77 H298"/><path class="ln" d="M418,77 H438"/><path class="ln" d="M558,77 H578"/><path class="ln" d="M698,77 H718"/>
+          <rect class="b" x="20" y="150" width="400" height="58" rx="8"/><text class="h c" x="220" y="174">队列空了才再推理</text><text class="s c" x="220" y="193">否则一直消耗队列，不跑模型</text>
+          <rect class="b" x="440" y="150" width="398" height="58" rx="8"/><text class="h c" x="639" y="174">打开 RTC 时</text><text class="s c" x="639" y="193">select_action 会断言失败，改走 predict_action_chunk</text>
+        </svg>
+      </div>
+      <p>如果部署用的是 LeRobot 新的 <code>remote_inference</code> 或 RTC 后端，动作块的衔接方式会不同，那条路径我没有逐行读。</p>
+      <p class="modnav"><a href="#fig-arch">↑ 回总图</a> · <a href="#m-euler">← 上一个：输出头与欧拉积分</a> · <a href="#modules">↑ 回模块目录</a></p>
+    </div>
+  </section>
+
+  <section>
+    <h2>数据流与张量形状</h2>
+    <p>以 3 个相机、批大小 B 为例。表中的 960 是 SmolVLM2-500M 文本模型的隐藏宽度，来自它的 <code>config.json</code>：32 层、15 个注意力头、5 个 KV 头、头维度 64。</p>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>步骤</th><th>张量</th><th>形状</th><th>说明</th></tr></thead>
+      <tbody>
+        <tr><td>图像预处理</td><td>每个相机</td><td>(B, 3, 512, 512)</td><td><code>resize_with_pad</code> 补边，再从 [0,1] 变到 [-1,1]（SigLIP 的要求）</td></tr>
+        <tr><td>视觉编码</td><td>SigLIP 输出</td><td>(B, 1024, 768)</td><td>512/16 = 32，32×32 = 1024 个 patch</td></tr>
+        <tr><td>像素重排 + 投影</td><td>图像 token</td><td>(B, 64, 960)</td><td>缩放因子 4，token 数除以 16；不切图块</td></tr>
+        <tr><td>语言</td><td>文本 token</td><td>(B, L≤48, 960)</td><td>词嵌入乘 √960</td></tr>
+        <tr><td>状态</td><td>state token</td><td>(B, 1, 960)</td><td>补零到 32 维后过 <code>state_proj</code></td></tr>
+        <tr><td><strong>prefix</strong></td><td>拼接结果</td><td>(B, 64×3+L+1, 960)</td><td>最多约 241 个 token，每层 K/V 存进缓存</td></tr>
+        <tr><td>噪声动作</td><td>x_τ</td><td>(B, 50, 32)</td><td>动作补零到 32 维</td></tr>
+        <tr><td>动作 token</td><td>suffix</td><td>(B, 50, 720)</td><td>动作嵌入与 τ 嵌入拼接，过两层 MLP（SiLU）</td></tr>
+        <tr><td>输出</td><td>速度 v</td><td>(B, 50, 32)</td><td><code>action_out_proj</code>，之后裁到真实动作维度</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+
+  <section>
+    <h2>四个省算力的设计</h2>
+
+    <h3>① 只用 VLM 的前一半层</h3>
+    <p>论文的依据是：下游任务的最佳特征不一定在最后一层。动作专家只读到第 N 层，取 N = L/2。代码里就是把 <code>text_model.layers</code> 截到前 <code>num_vlm_layers=16</code> 层。专家层数默认与之相同（<code>num_expert_layers=-1</code>），所以 VLM 和专家的计算量一起减半。</p>
+    <p>论文的消融（LIBERO 平均成功率）：N=8 为 75.0，N=16 为 78.5，N=24 为 79.5，N=32 为 80.3。对同一个 500M 的 VLM，保留前 16 层（78.5）比直接换成更小的 256M VLM（75.8）略好。</p>
+
+    <h3>② 每张图只留 64 个 token</h3>
+    <p>SmolVLM 默认会把图切成多块再加一张全局图。SmolVLA 不切块，只用全局图，再用像素重排把 1024 个 patch 压成 64 个。三个相机总共也只有 192 个视觉 token。</p>
+
+    <h3>③ 窄而浅的动作专家，交替两种注意力</h3>
+    <p>专家宽度是 VLM 的 0.75 倍（960 → 720）。每一层专家按序号交替：</p>
+
+    <div class="diagram">
+      <svg class="dg" viewBox="0 0 860 296" role="img" aria-label="16 层中偶数层为自注意力，奇数层为交叉注意力，每层都从 VLM 缓存读取 K/V">
+        <text class="s" x="30" y="26">VLM 前 16 层（只处理 prefix，K/V 进入缓存）</text>
+        <!-- VLM 行 -->
+        <rect class="fz" x="30"  y="40" width="43" height="34" rx="5"/><text class="s c" x="51.5"  y="62">0</text>
+        <rect class="fz" x="79"  y="40" width="43" height="34" rx="5"/><text class="s c" x="100.5" y="62">1</text>
+        <rect class="fz" x="128" y="40" width="43" height="34" rx="5"/><text class="s c" x="149.5" y="62">2</text>
+        <rect class="fz" x="177" y="40" width="43" height="34" rx="5"/><text class="s c" x="198.5" y="62">3</text>
+        <rect class="fz" x="226" y="40" width="43" height="34" rx="5"/><text class="s c" x="247.5" y="62">4</text>
+        <rect class="fz" x="275" y="40" width="43" height="34" rx="5"/><text class="s c" x="296.5" y="62">5</text>
+        <rect class="fz" x="324" y="40" width="43" height="34" rx="5"/><text class="s c" x="345.5" y="62">6</text>
+        <rect class="fz" x="373" y="40" width="43" height="34" rx="5"/><text class="s c" x="394.5" y="62">7</text>
+        <rect class="fz" x="422" y="40" width="43" height="34" rx="5"/><text class="s c" x="443.5" y="62">8</text>
+        <rect class="fz" x="471" y="40" width="43" height="34" rx="5"/><text class="s c" x="492.5" y="62">9</text>
+        <rect class="fz" x="520" y="40" width="43" height="34" rx="5"/><text class="s c" x="541.5" y="62">10</text>
+        <rect class="fz" x="569" y="40" width="43" height="34" rx="5"/><text class="s c" x="590.5" y="62">11</text>
+        <rect class="fz" x="618" y="40" width="43" height="34" rx="5"/><text class="s c" x="639.5" y="62">12</text>
+        <rect class="fz" x="667" y="40" width="43" height="34" rx="5"/><text class="s c" x="688.5" y="62">13</text>
+        <rect class="fz" x="716" y="40" width="43" height="34" rx="5"/><text class="s c" x="737.5" y="62">14</text>
+        <rect class="fz" x="765" y="40" width="43" height="34" rx="5"/><text class="s c" x="786.5" y="62">15</text>
+
+        <!-- 连线 -->
+        <path class="la" d="M51.5,76 V176"/><path class="lk" d="M100.5,76 V176"/>
+        <path class="la" d="M149.5,76 V176"/><path class="lk" d="M198.5,76 V176"/>
+        <path class="la" d="M247.5,76 V176"/><path class="lk" d="M296.5,76 V176"/>
+        <path class="la" d="M345.5,76 V176"/><path class="lk" d="M394.5,76 V176"/>
+        <path class="la" d="M443.5,76 V176"/><path class="lk" d="M492.5,76 V176"/>
+        <path class="la" d="M541.5,76 V176"/><path class="lk" d="M590.5,76 V176"/>
+        <path class="la" d="M639.5,76 V176"/><path class="lk" d="M688.5,76 V176"/>
+        <path class="la" d="M737.5,76 V176"/><path class="lk" d="M786.5,76 V176"/>
+
+
+        <!-- 专家行 -->
+        <text class="s" x="30" y="246">动作专家 16 层（宽度 720）；每层读同序号的缓存</text>
+        <rect class="tr" x="30"  y="180" width="43" height="44" rx="5"/><text class="h c" x="51.5"  y="198" style="font-size:12px">SA</text><text class="s c" x="51.5"  y="215">0</text>
+        <rect class="sg" x="79"  y="180" width="43" height="44" rx="5"/><text class="h c" x="100.5" y="198" style="font-size:12px">CA</text><text class="s c" x="100.5" y="215">1</text>
+        <rect class="tr" x="128" y="180" width="43" height="44" rx="5"/><text class="h c" x="149.5" y="198" style="font-size:12px">SA</text><text class="s c" x="149.5" y="215">2</text>
+        <rect class="sg" x="177" y="180" width="43" height="44" rx="5"/><text class="h c" x="198.5" y="198" style="font-size:12px">CA</text><text class="s c" x="198.5" y="215">3</text>
+        <rect class="tr" x="226" y="180" width="43" height="44" rx="5"/><text class="h c" x="247.5" y="198" style="font-size:12px">SA</text><text class="s c" x="247.5" y="215">4</text>
+        <rect class="sg" x="275" y="180" width="43" height="44" rx="5"/><text class="h c" x="296.5" y="198" style="font-size:12px">CA</text><text class="s c" x="296.5" y="215">5</text>
+        <rect class="tr" x="324" y="180" width="43" height="44" rx="5"/><text class="h c" x="345.5" y="198" style="font-size:12px">SA</text><text class="s c" x="345.5" y="215">6</text>
+        <rect class="sg" x="373" y="180" width="43" height="44" rx="5"/><text class="h c" x="394.5" y="198" style="font-size:12px">CA</text><text class="s c" x="394.5" y="215">7</text>
+        <rect class="tr" x="422" y="180" width="43" height="44" rx="5"/><text class="h c" x="443.5" y="198" style="font-size:12px">SA</text><text class="s c" x="443.5" y="215">8</text>
+        <rect class="sg" x="471" y="180" width="43" height="44" rx="5"/><text class="h c" x="492.5" y="198" style="font-size:12px">CA</text><text class="s c" x="492.5" y="215">9</text>
+        <rect class="tr" x="520" y="180" width="43" height="44" rx="5"/><text class="h c" x="541.5" y="198" style="font-size:12px">SA</text><text class="s c" x="541.5" y="215">10</text>
+        <rect class="sg" x="569" y="180" width="43" height="44" rx="5"/><text class="h c" x="590.5" y="198" style="font-size:12px">CA</text><text class="s c" x="590.5" y="215">11</text>
+        <rect class="tr" x="618" y="180" width="43" height="44" rx="5"/><text class="h c" x="639.5" y="198" style="font-size:12px">SA</text><text class="s c" x="639.5" y="215">12</text>
+        <rect class="sg" x="667" y="180" width="43" height="44" rx="5"/><text class="h c" x="688.5" y="198" style="font-size:12px">CA</text><text class="s c" x="688.5" y="215">13</text>
+        <rect class="tr" x="716" y="180" width="43" height="44" rx="5"/><text class="h c" x="737.5" y="198" style="font-size:12px">SA</text><text class="s c" x="737.5" y="215">14</text>
+        <rect class="sg" x="765" y="180" width="43" height="44" rx="5"/><text class="h c" x="786.5" y="198" style="font-size:12px">CA</text><text class="s c" x="786.5" y="215">15</text>
+
+        <!-- 图例 -->
+        <rect class="tr" x="30" y="266" width="16" height="16" rx="3"/><text class="s" x="52" y="279">SA 自注意力层（序号 % 2 == 0）</text>
+        <rect class="sg" x="290" y="266" width="16" height="16" rx="3"/><text class="s" x="312" y="279">CA 交叉注意力层（其余层）</text>
+      </svg>
+    </div>
+    <p class="figcap">图 2 · 专家 16 层的排布。<code>self_attn_every_n_layers=2</code> 决定了 SA / CA 的交替。</p>
+
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>层类型</th><th>Query</th><th>Key / Value</th><th>可见范围</th></tr></thead>
+      <tbody>
+        <tr><td>SA（偶数层）</td><td>动作 token</td><td>prefix 的 K/V，接上动作 token 自己的 K/V</td><td>看完整 prefix；动作之间因果</td></tr>
+        <tr><td>CA（奇数层）</td><td>动作 token</td><td>只用 VLM 缓存的 K/V，再过专家自己的 <code>k_proj</code> / <code>v_proj</code> 重投影（320→320）</td><td>只看 prefix，不看其他动作 token</td></tr>
+      </tbody>
+    </table></div>
+    <p>论文的结论是：只用 SA 不如只用 CA，两者交替最好。它认为 SA 让动作块更平滑，真机上尤其明显。</p>
+
+    <h3>④ 动作 token 之间用因果掩码</h3>
+    <p>每个动作 token 只能看它前面的动作，不能看后面的。掩码由 <code>make_att_2d_masks</code> 按“累计 1 的个数”生成：图像和语言标 0，状态标 1，50 个动作 token 全标 1。</p>
+
+    <div class="diagram" id="fig-mask">
+      <svg class="dg" viewBox="0 0 760 330" role="img" aria-label="注意力掩码：行是提问方，列是被看方；prefix 只看 prefix，状态看 prefix 与自己，动作看 prefix、状态和更早的动作">
+        <text class="s c" x="265" y="46">被看的 token（Key）</text>
+        <text class="h c" x="265" y="72">图像 + 语言</text>
+        <text class="h c" x="435" y="72">状态（1）</text>
+        <text class="h c" x="605" y="72">动作（50）</text>
+        <text class="s" x="14" y="150" transform="rotate(-90 14 150)" style="text-anchor:middle">提问的 token（Query）</text>
+
+        <text class="h" x="168" y="130" style="text-anchor:end">图像 + 语言</text>
+        <text class="h" x="168" y="200" style="text-anchor:end">状态</text>
+        <text class="h" x="168" y="270" style="text-anchor:end">动作</text>
+
+        <!-- 行1 -->
+        <rect class="tr" x="180" y="90" width="170" height="70"/><text class="s c" x="265" y="130">可见 · 双向</text>
+        <rect class="b" x="350" y="90" width="170" height="70"/><text class="s c" x="435" y="130">不可见</text>
+        <rect class="b" x="520" y="90" width="170" height="70"/><text class="s c" x="605" y="130">不可见</text>
+        <!-- 行2 -->
+        <rect class="tr" x="180" y="160" width="170" height="70"/><text class="s c" x="265" y="200">可见</text>
+        <rect class="tr" x="350" y="160" width="170" height="70"/><text class="s c" x="435" y="200">可见（自己）</text>
+        <rect class="b" x="520" y="160" width="170" height="70"/><text class="s c" x="605" y="200">不可见</text>
+        <!-- 行3 -->
+        <rect class="tr" x="180" y="230" width="170" height="70"/><text class="s c" x="265" y="270">可见</text>
+        <rect class="tr" x="350" y="230" width="170" height="70"/><text class="s c" x="435" y="270">可见</text>
+        <rect class="b" x="520" y="230" width="170" height="70"/>
+        <polygon class="tr" points="520,230 520,300 690,300"/>
+        <text class="s" x="528" y="291">因果（下三角）</text>
+      </svg>
+    </div>
+    <p class="figcap">图 3 · 注意力掩码。图像和语言看不到状态与动作，所以 VLM 的特征不会被动作“污染”，缓存才能复用。论文的消融：因果 74.5，双向 67.5（LIBERO 平均）。</p>
+  </section>
+
+  <section>
+    <h2>训练方式</h2>
+    <p>训练的是一个标准的<a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">条件流匹配</a>目标：给定观测，预测把噪声带回真实动作块的速度。</p>
+<pre><code>τ  ~ Beta(1.5, 1) × 0.999 + 0.001      # 偏向噪声多的一端
+ε  ~ N(0, I)                            # 形状 (B, 50, 32)
+x_τ = τ·ε + (1 − τ)·a                   # 代码约定：噪声在 τ = 1
+u   = ε − a                             # 回归目标
+loss = MSE( v_θ(x_τ, τ, 观测), u )      # 只算真实动作维度，剔除越过回合末尾的步</code></pre>
+    <p>时间采样用的是 π 系列的做法，参见<a class="concept-link" href="Beta分布-球星卡.html#concept-noise-schedule">噪声时间步采样</a>。论文里印的插值式是 A^τ = τA + (1−τ)ε，目标却写成 ε − A，两者方向对不上。这是我的读法：以代码的 <code>NOISE_AT_ONE</code> 约定为准，它前后自洽。</p>
+
+    <h3>哪些参数在训练</h3>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>模块</th><th>默认</th><th>配置项</th></tr></thead>
+      <tbody>
+        <tr><td>视觉编码器（SigLIP）</td><td>冻结</td><td><code>freeze_vision_encoder=True</code></td></tr>
+        <tr><td>VLM 文本层</td><td>冻结</td><td><code>train_expert_only=True</code></td></tr>
+        <tr><td>动作专家、<code>action_in_proj</code>、<code>action_out_proj</code>、时间 MLP</td><td>训练</td><td>始终</td></tr>
+        <tr><td><code>state_proj</code></td><td>训练</td><td><code>train_state_proj=True</code></td></tr>
+      </tbody>
+    </table></div>
+    <p>这和 <a class="concept-link" href="KI-知识隔离-论文解读.html#concept-knowledge-insulation">知识隔离</a> 的出发点相近：保住 VLM 的语义能力。区别是这里直接整体冻结，不再靠 stop-gradient 在联训里隔离。</p>
+
+    <h3>预训练与微调的数字</h3>
+    <ul>
+      <li><strong>预训练：</strong>200k 步，全局批大小 256，481 个社区数据集。学习率 1e-4，预热 100 步，余弦衰减到 2.5e-6，AdamW（β=0.9, 0.95）。</li>
+      <li><strong>社区数据的清洗：</strong>用 Qwen2.5-VL-3B 重写含糊的任务描述；把相机统一重命名为 <code>camera1/2/3</code>（顶部、腕部、侧面）。</li>
+      <li><strong>微调：</strong>官方文档建议先采约 50 条演示，在单张 A100 上训 20k 步约 4 小时。</li>
+      <li><strong>代码里的默认值：</strong>学习率 1e-4，预热 1000 步，衰减 30000 步，梯度裁剪 10，权重衰减 1e-10。与论文预训练设置不同，是微调预设。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>推理：一次缓存，十次去噪</h2>
+    <ol>
+      <li><strong>预填充：</strong>图像、语言、状态拼成 prefix，过 VLM 前 16 层，每层的 K/V 存进 <code>DynamicCache</code>。<a class="concept-link" href="Realtime-VLA-论文解读.html#concept-kv-cache">KV Cache</a> 只在这一步算一次。</li>
+      <li><strong>采噪声：</strong>x 取自标准正态，形状 (B, 50, 32)。</li>
+      <li><strong>去噪 10 次：</strong>每次只让动作专家跑一遍，读缓存里的 prefix K/V，预测速度 v，用<a class="concept-link" href="pi0-论文解读.html#concept-euler-integration">欧拉积分</a>更新 x。SA 层会往缓存里追加动作 K/V，每步结束后用 <code>crop(prefix_len)</code> 裁回去。</li>
+      <li><strong>后处理：</strong>裁掉补零维，反归一化，推入动作队列。队列放满 <code>n_action_steps=50</code> 步，用完才再推理。</li>
+    </ol>
+    <p>代价分布很清楚：厚重的 VLM 前缀只跑 1 次，每步去噪只跑又窄又浅的专家。这也是它在小显卡上能跑的原因。想做平滑衔接可以打开 <a class="concept-link" href="RTC-训练时-论文解读.html#concept-rtc">RTC</a>。代码里 <code>select_action</code> 不支持 RTC，要走 <code>predict_action_chunk</code>。</p>
+  </section>
+
+  <section>
+    <h2>异步推理</h2>
+    <p>同步执行时，机器人要把整块动作做完，才取下一帧观测去推理。推理期间机器人空等，这段时间里世界也在变。<a class="concept-link" href="DynamicVLA-论文解读.html#concept-latency">感知—执行时延</a>就是这样来的。</p>
+    <p>论文的做法是把预测和执行拆开：</p>
+
+    <div class="diagram">
+      <svg class="dg" viewBox="0 0 860 300" role="img" aria-label="同步推理中机器人在推理时停顿；异步推理中队列低于阈值就提前触发推理，机器人持续执行">
+        <text class="h" x="20" y="64">同步</text>
+        <rect class="sg" x="110" y="46" width="90" height="30" rx="4"/><text class="s c" x="155" y="66">推理</text>
+        <rect class="tr" x="200" y="46" width="250" height="30" rx="4"/><text class="s c" x="325" y="66">执行整块动作</text>
+        <rect class="sg" x="450" y="46" width="90" height="30" rx="4"/><text class="s c" x="495" y="66">推理</text>
+        <rect class="tr" x="540" y="46" width="250" height="30" rx="4"/><text class="s c" x="665" y="66">执行整块动作</text>
+        <text class="s c" x="155" y="96">机器人停顿</text>
+        <text class="s c" x="495" y="96">机器人停顿</text>
+
+        <text class="h" x="20" y="184">异步</text>
+        <line class="gl" x1="400" y1="128" x2="400" y2="244"/>
+        <text class="s" x="408" y="142">队列低于阈值 g，触发推理</text>
+        <rect class="tr" x="110" y="160" width="680" height="30" rx="4"/><text class="s c" x="450" y="180">机器人持续执行动作队列</text>
+        <rect class="sg" x="400" y="212" width="90" height="30" rx="4"/><text class="s c" x="445" y="232">推理</text>
+        <path class="lk" d="M490,227 H520 V192"/>
+        <text class="s" x="528" y="226">新块与旧队列重叠处合并</text>
+
+        <path class="ax" d="M110,280 H830"/>
+        <text class="s" x="835" y="284">时间</text>
+      </svg>
+    </div>
+    <p class="figcap">图 4 · 同步与异步。异步时推理不占用控制循环。</p>
+
+    <ul>
+      <li>机器人端（RobotClient）把观测发给策略服务器（PolicyServer）。服务器可以是带 GPU 的远端机器。</li>
+      <li>当本地队列长度与块长度之比低于阈值 g 时，提前触发下一次预测，不阻塞控制循环。</li>
+      <li>新旧队列重叠的部分按函数 f 聚合。观测变化很小时可以跳过推理（相似度过滤）。</li>
+    </ul>
+    <p>LeRobot 现在的实现不专属 SmolVLA：<code>src/lerobot/remote_inference/</code> 放服务器与客户端，<code>src/lerobot/inference/</code> 放引擎，后端有 <code>sync</code>、<code>rtc</code>、<code>remote</code> 三种，传输层是 Zenoh。我只通读了它的设计文档，没有逐行读实现。</p>
+  </section>
+
+  <section>
+    <h2>关键结果</h2>
+    <p>以下数字取自论文表 2–5、7–8。成功率单位为 %。</p>
+
+    <h3>仿真：LIBERO 与 Meta-World（平均成功率）</h3>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>模型</th><th>参数</th><th>机器人预训练</th><th class="num">LIBERO</th><th class="num">Meta-World</th></tr></thead>
+      <tbody>
+        <tr><td>Diffusion Policy</td><td>—</td><td>否</td><td class="num">72.4</td><td class="num">10.5</td></tr>
+        <tr><td>Octo</td><td>0.09B</td><td>是</td><td class="num">75.1</td><td class="num">—</td></tr>
+        <tr><td>OpenVLA</td><td>7B</td><td>是</td><td class="num">76.5</td><td class="num">—</td></tr>
+        <tr><td>TinyVLA</td><td>—</td><td>否</td><td class="num">—</td><td class="num">31.6</td></tr>
+        <tr><td>π0（仅 VLM 初始化）</td><td>3.3–3.5B</td><td>否</td><td class="num">71.8</td><td class="num">50.5</td></tr>
+        <tr><td>π0（机器人预训练）</td><td>3.3–3.5B</td><td>是</td><td class="num">86.0</td><td class="num">47.9</td></tr>
+        <tr><td>SmolVLA</td><td>0.24B</td><td>否</td><td class="num">82.75</td><td class="num">56.95</td></tr>
+        <tr class="me"><td>SmolVLA</td><td>0.45B</td><td>否</td><td class="num">87.3</td><td class="num">57.3</td></tr>
+        <tr><td>SmolVLA</td><td>2.25B</td><td>否</td><td class="num">88.75</td><td class="num">68.24</td></tr>
+      </tbody>
+    </table></div>
+    <p>“机器人预训练”一栏指是否在机器人数据上预训练过。SmolVLA 的仿真实验只从 VLM 初始化。0.45B 版在 LIBERO 的四个子集上分别是 Spatial 90 / Object 96 / Goal 92 / Long 71。论文还说，与 π0 相比训练快约 40%，显存少约 6 倍。</p>
+
+    <h3>真机：SO-100 与 SO-101</h3>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>设置</th><th>策略</th><th class="num">抓放</th><th class="num">堆叠</th><th class="num">分拣</th><th class="num">平均</th></tr></thead>
+      <tbody>
+        <tr><td>SO-100 · 单任务训练</td><td>ACT</td><td class="num">70</td><td class="num">50</td><td class="num">25</td><td class="num">48.3</td></tr>
+        <tr><td>SO-100 · 多任务训练</td><td>π0（3.5B）</td><td class="num">100</td><td class="num">40</td><td class="num">45</td><td class="num">61.7</td></tr>
+        <tr class="me"><td>SO-100 · 多任务训练</td><td>SmolVLA（0.45B）</td><td class="num">75</td><td class="num">90</td><td class="num">70</td><td class="num">78.3</td></tr>
+      </tbody>
+    </table></div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>SO-101 · 抓放乐高</th><th class="num">分布内</th><th class="num">分布外</th></tr></thead>
+      <tbody>
+        <tr><td>ACT（单任务）</td><td class="num">70</td><td class="num">40</td></tr>
+        <tr class="me"><td>SmolVLA（单任务）</td><td class="num">90</td><td class="num">50</td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>预训练与多任务各自值多少（SO-100，SmolVLA 0.45B）</h3>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>设置</th><th class="num">平均</th></tr></thead>
+      <tbody>
+        <tr><td>无社区预训练 · 单任务</td><td class="num">40.0</td></tr>
+        <tr><td>无社区预训练 · 多任务</td><td class="num">51.7</td></tr>
+        <tr class="me"><td>社区预训练 · 多任务</td><td class="num">78.3</td></tr>
+      </tbody>
+    </table></div>
+    <p>这是全文最有说服力的一组：10M 帧、质量参差的社区数据，把真机成功率从 51.7 抬到 78.3。</p>
+
+    <h3>专家宽度（LIBERO 平均）</h3>
+    <p>×1.00 为 82.3，×0.75 为 77.5，×0.50 为 80.3，×0.25 为 73.8。宽度和成功率并不单调，0.75 甚至比 0.50 低。我的判断是这组消融的噪声有 3 个点左右，别把单个数字当结论。</p>
+  </section>
+
+  <section>
+    <h2>代码对照</h2>
+    <p>以下文件都在 <code>D:\src\lerobot\src\lerobot\policies\smolvla\</code> 下（本次对照的提交是 <code>38b975c5</code>）。</p>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>概念</th><th>位置</th></tr></thead>
+      <tbody>
+        <tr><td>所有超参与默认值</td><td><code>configuration_smolvla.py</code> · <code>SmolVLAConfig</code></td></tr>
+        <tr><td>预处理 / 后处理流水线</td><td><code>processor_smolvla.py</code>：重命名相机 → 加批维 → 补换行 → 分词（最长 48）→ 搬设备 → 归一化；输出端反归一化</td></tr>
+        <tr><td>图像预处理、补边</td><td><code>modeling_smolvla.py</code> · <code>SmolVLAPolicy.prepare_images</code>（缺失相机用全 −1 图像并把掩码置 0）</td></tr>
+        <tr><td>拼 prefix（图像 + 语言 + 状态）</td><td><code>VLAFlowMatching.embed_prefix</code></td></tr>
+        <tr><td>拼 suffix（噪声动作 + 时间）</td><td><code>VLAFlowMatching.embed_suffix</code></td></tr>
+        <tr><td>训练损失</td><td><code>VLAFlowMatching.forward</code>，外层 <code>SmolVLAPolicy.forward</code> 负责剔除填充步</td></tr>
+        <tr><td>推理主循环</td><td><code>sample_actions</code>（预填充）+ <code>denoise_step</code>（单步）</td></tr>
+        <tr><td>VLM 加专家的双流模型</td><td><code>smolvlm_with_expert.py</code> · <code>SmolVLMWithExpertModel</code></td></tr>
+        <tr><td>SA 层 / CA 层</td><td><code>forward_attn_layer</code> / <code>forward_cross_attn_layer</code></td></tr>
+        <tr><td>掩码</td><td><code>policies/common/vla_utils.py</code> · <code>make_att_2d_masks</code></td></tr>
+        <tr><td>欧拉积分、时间采样</td><td><code>policies/common/flow_matching.py</code> · <code>euler_integrate</code>、<code>sample_time_beta</code></td></tr>
+      </tbody>
+    </table></div>
+
+    <h3>常用命令（取自官方文档 smolvla.mdx）</h3>
+<pre><code>lerobot-train \
+  --policy.path=lerobot/smolvla_base \
+  --dataset.repo_id=lerobot/svla_so100_pickplace \
+  --rename_map='{"observation.images.top": "observation.images.camera1", "observation.images.wrist": "observation.images.camera2"}' \
+  --batch_size=64 --steps=20000 --policy.device=cuda</code></pre>
+    <p>不加 <code>--rename_map</code> 会因相机名对不上而报特征不匹配。</p>
+  </section>
+
+  <section>
+    <h2>我真正学到的内容</h2>
+    <ul>
+      <li><strong>规模不是唯一杠杆。</strong>0.45B 的模型在 LIBERO 上追平 3.3B 的 π0。省出来的算力来自砍层、压 token、做窄专家。</li>
+      <li><strong>缓存让“多步去噪”变得便宜。</strong>VLM 只跑 1 次，专家跑 10 次。流匹配或扩散类动作头想省推理时间，先看能不能把条件编码缓存起来。</li>
+      <li><strong>SA 和 CA 的分工。</strong>CA 负责“读场景”，SA 负责“让动作块自己连贯”。把二者交替，比选其一都好。</li>
+      <li><strong>数据质量处理很朴素。</strong>重写任务描述、统一相机顺序。论文明确说统一相机顺序对这种数据量的预训练有益；任务描述重写没有给出单独的消融。</li>
+      <li><strong>异步推理是系统层的收益。</strong>它和模型结构无关，别的分块策略（如 <a class="concept-link" href="RTC-实时动作分块-论文解读.html#concept-temporal-ensembling">时序集成</a>）也能用。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>可复用设计</h2>
+    <ul>
+      <li><strong>VLM 取中间层特征。</strong>换别的 VLM 时，先用“截到前 N 层”的小实验定 N，别默认用最后一层。</li>
+      <li><strong>每个动作维度都补零到固定宽度（32）。</strong>一个检查点可以对接不同本体，推理时再裁回真实维度。多构型的思路见 <a class="concept-link" href="Qwen-VLA-论文解读.html#concept-cross-embodiment">跨本体</a>。</li>
+      <li><strong>缺失相机用“全 −1 图像 + 掩码 0”占位。</strong>一个检查点可接受不同数量的相机。</li>
+      <li><strong>专家的 K/V 投影重新训练。</strong>CA 层把 VLM 的 K/V 当输入再投影，这样专家宽度可以和 VLM 不同。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>疑问与风险</h2>
+    <ul>
+      <li><strong>从零训练的陷阱。</strong>配置里 <code>load_vlm_weights</code> 默认是 <code>False</code>。官方的 LIBERO、Meta-World 等文档在从头训时都显式加了 <code>--policy.load_vlm_weights=true</code>，代码在 <code>False</code> 且用 PEFT 时也会告警。用 <code>--policy.type=smolvla</code> 从头开训却漏掉这一项，VLM 就是随机初始化，又被冻结。这是我读代码得到的判断，没有实际跑过。</li>
+      <li><strong>真机样本小。</strong>SO-100 只有三个任务，π0 在抓放上是 100，SmolVLA 是 75。每项任务的试验次数请去原文附录核实，我没有核实。</li>
+      <li><strong>社区数据偏窄。</strong>主要是 SO-100 / SO-101 这类低成本机械臂。能否迁移到高精度、力控的场景，论文没有证据。</li>
+      <li><strong>代码注释与配置不一致。</strong><code>prepare_images</code> 的文档字符串写“缩放到 224×224”，实际按配置缩放到 512×512。以配置为准。</li>
+      <li><strong>异步推理的安全边界。</strong>LeRobot 文档明确说它不是硬实时控制器，相机、执行器调用仍可能拖慢控制周期。</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>后续动作</h2>
+    <ul>
+      <li>对照读 <a href="pi0-论文解读.html">π0 精读</a> 里的动作专家，画一张两者逐层注意力的对比图。</li>
+      <li>在 SO-101 数据上微调一次，记录 <code>--rename_map</code>、<code>load_vlm_weights</code> 的实际效果。</li>
+      <li>读 <code>remote_inference/</code> 的实现，补全异步推理的消息协议与阈值策略。</li>
+      <li>读 <a href="LeRobot-ACT-算法详解.html">LeRobot 中的 ACT</a>，对比两者的动作分块与执行方式。</li>
+      <li>把 SmolVLA 的几个关键概念（交替注意力、跳层、异步推理）补进<a href="concepts.html">概念索引</a>。</li>
+    </ul>
+    <p>原文：<a href="https://arxiv.org/abs/2506.01844" target="_blank" rel="noreferrer">arXiv 2506.01844</a>。官方文档与代码：LeRobot 仓库的 <code>docs/source/smolvla.mdx</code> 和 <code>src/lerobot/policies/smolvla/</code>。</p>
+  </section>
+
+  <footer>
+    <span>精读笔记 · SmolVLA</span>
+    <a href="index.html">返回知识库 →</a>
+  </footer>
+</div>
+<script id="saved-edits" type="application/json">{
+ "d2|语言词嵌入在代码里也乘 √960（图像第 638 行，语言第 664 行）|1": "语言词嵌入在代码里也乘 √960（图像第 638 行，语言第 664 行）img_emb = img_emb * (img_emb_dim ** 0.5)。",
+ "d2|两边数值大小相近，拼进同一个 prefix 时，模型不会偏向其中一边|1": "两边数值大小相近，拼进同一个 prefix 时，模型不会偏向其中一边，lang_emb = lang_emb * math.sqrt(lang_emb_dim)",
+ "d0|动作：未来的目标角（输出）|1": "动作：未来50步 的目标角（输出）"
+}</script>
+<script id="edit-js">
+(function () {
+  'use strict';
+  var KEY = 'smolvla-diagram-edits-v1';
+  // 全景图里每个面板对应第几张原图（与 gen_pano.mjs 的 PANELS 保持一致）
+  var PANEL_IDX = {
+    'pan-main': 0, 'pan-m-image': 1, 'pan-m-vision': 2, 'pan-m-lang': 3, 'pan-m-state': 4, 'pan-m-prefix': 5,
+    'pan-m-vlm': 6, 'pan-m-kv': 7, 'pan-m-noise': 8, 'pan-m-actin': 9, 'pan-m-expert': 10, 'pan-m-sa': 11,
+    'pan-m-ca': 12, 'pan-m-euler': 13, 'pan-m-post': 14, 'pan-layers': 15, 'pan-mask': 16, 'pan-async': 17
+  };
+  // fileEdits：已经写进页面文件的改动（<script id="saved-edits">）。
+  // local：这个浏览器里和文件不同的改动；值为 '' 表示“恢复原文”。
+  var fileEdits = {};
+  try { var se = document.getElementById('saved-edits'); fileEdits = JSON.parse(se ? se.textContent : '{}') || {}; } catch (e) { fileEdits = {}; }
+  var local = {};
+  try { local = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { local = {}; }
+  function saveLocal() { try { localStorage.setItem(KEY, JSON.stringify(local)); } catch (e) {} }
+  function working() {
+    var w = {}, k;
+    for (k in fileEdits) w[k] = fileEdits[k];
+    for (k in local) { if (local[k] === '') delete w[k]; else w[k] = local[k]; }
+    return w;
+  }
+
+  // 拖动链接时不要变成拖拽
+  document.addEventListener('dragstart', function (e) {
+    if (e.target.closest && e.target.closest('svg a')) e.preventDefault();
+  });
+
+  var originals = Array.prototype.filter.call(document.querySelectorAll('svg.dg'), function (s) { return s.id !== 'pano-svg'; });
+  // 返回 [图编号, 容器]：容器用来分别给原图和全景图里的副本数“第几次出现”
+  function scopeOf(el) {
+    var g = el.closest('g[id^="pan-"]');
+    if (g) {
+      var inner = g.lastElementChild;
+      if (inner && inner.contains(el) && PANEL_IDX.hasOwnProperty(g.id)) return ['d' + PANEL_IDX[g.id], g];
+      return ['pano', el.ownerSVGElement];
+    }
+    if (el.closest('#pano-svg')) return ['pano', el.ownerSVGElement];
+    return ['d' + originals.indexOf(el.ownerSVGElement), el.ownerSVGElement];
+  }
+
+  var recs = [], conts = [], counts = {};
+  Array.prototype.forEach.call(document.querySelectorAll('svg.dg text'), function (el) {
+    if (el.classList.contains('bdt')) return;           // 编号徽标不可改
+    var txt = el.textContent;
+    if (!txt || !txt.trim()) return;
+    var so = scopeOf(el), sc = so[0], ci = conts.indexOf(so[1]);
+    if (ci < 0) { conts.push(so[1]); ci = conts.length - 1; }
+    var cc = ci + '|' + txt, ck = sc + '|' + txt;
+    counts[cc] = (counts[cc] || 0) + 1;
+    el._k = ck + '|' + counts[cc];
+    el._o = txt;
+    el._s = sc;
+    el._n = counts[cc];
+    recs.push(el);
+  });
+
+  function apply() {
+    var w = working();
+    recs.forEach(function (el) {
+      var v = w[el._k];
+      var want = (v !== undefined && v !== '') ? v : el._o;
+      if (el.textContent !== want) el.textContent = want;
+    });
+    updateBar();
+  }
+
+  // ---------- 工具条 ----------
+  var css = document.createElement('style');
+  css.textContent =
+    '.ed-bar{position:fixed; right:14px; bottom:14px; z-index:2147483000; display:flex; gap:6px; align-items:center; flex-wrap:wrap; justify-content:flex-end; max-width:min(620px,94vw); padding:8px 10px; background:var(--surface,#fff); border:1px solid var(--line-strong,#9aa); border-radius:12px; box-shadow:0 6px 24px rgba(0,0,0,.18); font-size:13px; line-height:1.4;}' +
+    '.ed-bar button{font:inherit; padding:4px 10px; border:1px solid var(--line-strong,#9aa); border-radius:8px; background:var(--surface,#fff); color:var(--ink,#222); cursor:pointer;}' +
+    '.ed-bar button:hover{border-color:var(--accent,#27a); color:var(--accent,#27a);}' +
+    '.ed-bar button.on{background:var(--accent,#27a); color:#fff; border-color:var(--accent,#27a);}' +
+    '.ed-bar button.dirty{border-color:var(--signal,#c60); color:var(--signal,#c60); font-weight:600;}' +
+    '.ed-bar .ed-hint{flex-basis:100%; text-align:right; color:var(--ink-3,#667); font-size:12px;}' +
+    '.ed-input{position:fixed; z-index:2147483001; box-sizing:border-box; padding:2px 8px; border:2px solid var(--accent,#27a); border-radius:6px; background:#fff; color:#111; font-family:inherit; outline:none; box-shadow:0 4px 16px rgba(0,0,0,.25);}' +
+    'body.edit-on svg.dg text{cursor:text;}' +
+    'body.edit-on svg.dg text:hover{text-decoration:underline; text-decoration-style:dotted;}';
+  document.head.appendChild(css);
+
+  var bar = document.createElement('div');
+  bar.className = 'ed-bar';
+  bar.innerHTML =
+    '<span class="ed-count"></span>' +
+    '<button type="button" data-ed="file">保存到页面文件</button>' +
+    '<button type="button" data-ed="export">导出改动</button>' +
+    '<button type="button" data-ed="reset">恢复原文</button>' +
+    '<button type="button" data-ed="toggle">✎ 编辑图中文字：关</button>' +
+    '<span class="ed-hint" hidden>点图里的文字修改。回车确认，Esc 取消，清空则恢复原文。改完点“保存到页面文件”。</span>';
+  document.body.appendChild(bar);
+  var on = false, flash = '';
+  function updateBar() {
+    var n = Object.keys(working()).length, u = Object.keys(local).length;
+    var msg = flash || (n || u ? '共改 ' + n + ' 处，' + (u ? u + ' 处还没写进页面文件' : '都已写进页面文件') : '');
+    bar.querySelector('.ed-count').textContent = msg;
+    var tg = bar.querySelector('[data-ed=toggle]');
+    tg.textContent = '✎ 编辑图中文字：' + (on ? '开' : '关');
+    tg.className = on ? 'on' : '';
+    bar.querySelector('[data-ed=file]').className = u ? 'dirty' : '';
+    bar.querySelector('.ed-hint').hidden = !on;
+  }
+  function say(s) { flash = s; updateBar(); setTimeout(function () { flash = ''; updateBar(); }, 4000); }
+  function setOn(v) { on = v; document.body.classList.toggle('edit-on', on); if (!on) closeEditor(true); updateBar(); }
+
+  // ---------- 写进页面文件（Edge / Chrome 的文件访问接口） ----------
+  // 只替换文件里 <script id="saved-edits"> 这一块，其余内容原样不动。
+  function buildHtml(text, obj) {
+    var re = /(<script id="saved-edits" type="application\/json">)[\s\S]*?(<\/script>)/;
+    if (!re.test(text)) throw new Error('这个文件里找不到 saved-edits 区块，可能选错了文件。');
+    if (!/<\/html>\s*$/.test(text)) throw new Error('文件结尾不对，可能选错了文件。');
+    var json = JSON.stringify(obj, null, 1).replace(/</g, '\\u003c');
+    return text.replace(re, function (m, a, b) { return a + json + b; });
+  }
+  function idb() {
+    return new Promise(function (res, rej) {
+      var r = indexedDB.open('smolvla-edit', 1);
+      r.onupgradeneeded = function () { r.result.createObjectStore('h'); };
+      r.onsuccess = function () { res(r.result); };
+      r.onerror = function () { rej(r.error); };
+    });
+  }
+  function getHandle() {
+    return idb().then(function (db) {
+      return new Promise(function (res) {
+        var q = db.transaction('h').objectStore('h').get('page');
+        q.onsuccess = function () { res(q.result || null); };
+        q.onerror = function () { res(null); };
+      });
+    }).catch(function () { return null; });
+  }
+  function putHandle(h) {
+    return idb().then(function (db) {
+      return new Promise(function (res) {
+        var tx = db.transaction('h', 'readwrite');
+        tx.objectStore('h').put(h, 'page');
+        tx.oncomplete = function () { res(); };
+        tx.onerror = function () { res(); };
+      });
+    }).catch(function () {});
+  }
+  async function saveToFile() {
+    if (!window.showOpenFilePicker) {
+      window.alert('这个浏览器不能直接写文件。请用 Edge 或 Chrome 打开本页，或者点“导出改动”，把文件交给我来写进页面。');
+      return;
+    }
+    closeEditor(true);
+    try {
+      var h = await getHandle();
+      if (h) {
+        try {
+          var p = await h.queryPermission({ mode: 'readwrite' });
+          if (p !== 'granted') p = await h.requestPermission({ mode: 'readwrite' });
+          if (p !== 'granted') h = null;
+        } catch (e) { h = null; }
+      }
+      if (!h) {
+        var arr = await window.showOpenFilePicker({
+          multiple: false,
+          types: [{ description: '本页面的 HTML 文件', accept: { 'text/html': ['.html', '.htm'] } }]
+        });
+        h = arr[0];
+      }
+      var fname = '';
+      try { fname = decodeURIComponent(location.pathname.split('/').pop() || ''); } catch (e) {}
+      if (fname && h.name !== fname && !window.confirm('选中的文件是“' + h.name + '”，当前页面是“' + fname + '”。仍然写入吗？')) return;
+      var file = await h.getFile();
+      var text = await file.text();
+      var w = working();
+      var out = buildHtml(text, w);
+      var ws = await h.createWritable();
+      await ws.write(out);
+      await ws.close();
+      await putHandle(h);
+      fileEdits = w; local = {}; saveLocal();
+      say('已写进页面文件 ✓');
+    } catch (e) {
+      if (e && e.name === 'AbortError') return;
+      window.alert('没有写成功：' + (e && e.message ? e.message : e));
+    }
+  }
+
+  bar.addEventListener('click', function (e) {
+    var b = e.target.closest('button[data-ed]');
+    if (!b) return;
+    var act = b.getAttribute('data-ed');
+    if (act === 'toggle') setOn(!on);
+    else if (act === 'file') saveToFile();
+    else if (act === 'reset') {
+      if (Object.keys(working()).length && window.confirm('把图里所有改过的文字恢复成原文？\n（要连页面文件里的改动一起清掉，之后还要点“保存到页面文件”。）')) {
+        local = {};
+        Object.keys(fileEdits).forEach(function (k) { local[k] = ''; });
+        saveLocal(); apply();
+      }
+    } else if (act === 'export') {
+      var w = working(), seen = {}, list = [];
+      recs.forEach(function (el) {
+        if (w[el._k] !== undefined && !seen[el._k]) {
+          seen[el._k] = 1;
+          list.push({ diagram: el._s, from: el._o, occurrence: el._n, to: w[el._k] });
+        }
+      });
+      var blob = new Blob([JSON.stringify(list, null, 2)], { type: 'application/json' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = 'smolvla-diagram-edits.json';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+    }
+  });
+  // 全屏时工具条和输入框要跟着进全屏元素，否则看不见
+  document.addEventListener('fullscreenchange', function () {
+    (document.fullscreenElement || document.body).appendChild(bar);
+    closeEditor(true);
+  });
+
+  // ---------- 行内编辑 ----------
+  var cur = null;
+  function closeEditor(commitIt) {
+    if (!cur) return;
+    var c = cur; cur = null;
+    if (commitIt) commit(c.t, c.inp.value);
+    if (c.inp.parentNode) c.inp.parentNode.removeChild(c.inp);
+  }
+  function commit(t, val) {
+    val = val.replace(/\s+/g, ' ').trim();
+    var k = t._k, want = (val === '' || val === t._o) ? undefined : val, base = fileEdits[k];
+    if (want === base) delete local[k];
+    else local[k] = (want === undefined ? '' : want);
+    saveLocal(); apply();
+  }
+  function openEditor(t) {
+    closeEditor(true);
+    var r = t.getBoundingClientRect(), cs = getComputedStyle(t), m = t.getScreenCTM();
+    var fs = (parseFloat(cs.fontSize) || 12) * (m ? Math.abs(m.a) : 1);
+    var size = Math.max(fs, 13), h = Math.max(size * 1.7, 28), w = Math.max(r.width + 60, 180);
+    var left = cs.textAnchor === 'middle' ? r.left + r.width / 2 - w / 2 : r.left - 6;
+    left = Math.max(6, Math.min(left, window.innerWidth - w - 6));
+    var top = Math.max(6, Math.min(r.top + r.height / 2 - h / 2, window.innerHeight - h - 6));
+    var inp = document.createElement('input');
+    inp.type = 'text'; inp.value = t.textContent; inp.className = 'ed-input';
+    inp.setAttribute('aria-label', '编辑图中文字');
+    inp.style.cssText = 'left:' + left + 'px;top:' + top + 'px;width:' + w + 'px;height:' + h + 'px;font-size:' + size + 'px;';
+    ['keypress', 'keyup', 'pointerdown', 'wheel', 'dblclick', 'click'].forEach(function (ev) {
+      inp.addEventListener(ev, function (e) { e.stopPropagation(); });
+    });
+    inp.addEventListener('keydown', function (e) {
+      e.stopPropagation();
+      if (e.key === 'Enter') { e.preventDefault(); closeEditor(true); }
+      else if (e.key === 'Escape') { e.preventDefault(); closeEditor(false); }
+    });
+    inp.addEventListener('blur', function () { if (cur && cur.inp === inp) closeEditor(true); });
+    (document.fullscreenElement || document.body).appendChild(inp);
+    cur = { t: t, inp: inp };
+    inp.focus(); inp.select();
+  }
+
+  // 编辑模式下：点文字就改；点图里的链接不跳转
+  document.addEventListener('click', function (e) {
+    if (!on) return;
+    var el = e.target.closest ? e.target.closest('svg.dg text, svg.dg a') : null;
+    if (!el) return;
+    e.preventDefault(); e.stopPropagation();
+    var t = e.target.closest('text');
+    if (t && t._k) openEditor(t);
+  }, true);
+
+  window.smolvlaDiagramEdit = { build: buildHtml };
+  apply();
+})();
+</script>
+<script id="pano-js">
+(function () {
+  'use strict';
+  var box = document.getElementById('pano');
+  if (!box) return;
+  var svg = document.getElementById('pano-svg');
+  var W = +svg.getAttribute('data-w'), H = +svg.getAttribute('data-h');
+  var vb = { x: 0, y: 0, w: W, h: H };
+  var pts = {}, drag = null, moved = false, pinch = 0, anim = 0;
+
+  function rect() { return svg.getBoundingClientRect(); }
+  function apply() { svg.setAttribute('viewBox', vb.x + ' ' + vb.y + ' ' + vb.w + ' ' + vb.h); }
+  function aspect() { var r = rect(); return r.width ? r.height / r.width : H / W; }
+  function boxView(x, y, w, h, pad) {
+    var a = aspect(), nw = Math.max(w * pad, (h * pad) / a), nh = nw * a;
+    return { x: x + w / 2 - nw / 2, y: y + h / 2 - nh / 2, w: nw, h: nh };
+  }
+  function toSvg(cx, cy) {
+    var r = rect();
+    return { x: vb.x + ((cx - r.left) / r.width) * vb.w, y: vb.y + ((cy - r.top) / r.height) * vb.h };
+  }
+  function zoomAt(f, c) {
+    var nw = Math.min(W * 1.4, Math.max(W / 80, vb.w * f)), k = nw / vb.w;
+    vb = { x: c.x - (c.x - vb.x) * k, y: c.y - (c.y - vb.y) * k, w: nw, h: vb.h * k };
+    apply();
+  }
+  function centre() { return { x: vb.x + vb.w / 2, y: vb.y + vb.h / 2 }; }
+  function animateTo(t) {
+    cancelAnimationFrame(anim);
+    var s = { x: vb.x, y: vb.y, w: vb.w, h: vb.h }, t0 = null, dur = 420;
+    function step(ts) {
+      if (t0 === null) t0 = ts;
+      var p = Math.min(1, (ts - t0) / dur), e = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
+      vb = { x: s.x + (t.x - s.x) * e, y: s.y + (t.y - s.y) * e, w: s.w + (t.w - s.w) * e, h: s.h + (t.h - s.h) * e };
+      apply();
+      if (p < 1) anim = requestAnimationFrame(step);
+    }
+    anim = requestAnimationFrame(step);
+  }
+  function fit() { animateTo(boxView(0, 0, W, H, 1.02)); }
+  function zoomToId(id) {
+    var g = document.getElementById(id);
+    if (!g || !g.getAttribute('data-box')) return false;
+    var b = g.getAttribute('data-box').split(' ').map(Number);
+    animateTo(boxView(b[0], b[1], b[2], b[3], 1.08));
+    return true;
+  }
+
+  svg.addEventListener('wheel', function (e) {
+    e.preventDefault();
+    cancelAnimationFrame(anim);
+    zoomAt(Math.exp(e.deltaY * 0.0016), toSvg(e.clientX, e.clientY));
+  }, { passive: false });
+
+  function onText(e) { return e.pointerType !== 'touch' && e.target.closest && e.target.closest('text'); }
+  svg.addEventListener('dragstart', function (e) { e.preventDefault(); });
+  svg.addEventListener('pointerdown', function (e) {
+    if (e.button !== undefined && e.button > 0) return;
+    if (onText(e)) return;
+    cancelAnimationFrame(anim);
+    pts[e.pointerId] = { x: e.clientX, y: e.clientY };
+    var ids = Object.keys(pts);
+    moved = false;
+    if (ids.length === 1) { drag = { x: e.clientX, y: e.clientY, vx: vb.x, vy: vb.y }; }
+    else if (ids.length === 2) {
+      var a = pts[ids[0]], b = pts[ids[1]];
+      pinch = Math.hypot(a.x - b.x, a.y - b.y); drag = null; moved = true;
+    }
+  });
+  window.addEventListener('pointermove', function (e) {
+    if (!pts[e.pointerId]) return;
+    pts[e.pointerId] = { x: e.clientX, y: e.clientY };
+    var ids = Object.keys(pts);
+    if (ids.length === 2) {
+      var a = pts[ids[0]], b = pts[ids[1]], d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (pinch > 0 && d > 0) { zoomAt(pinch / d, toSvg((a.x + b.x) / 2, (a.y + b.y) / 2)); }
+      pinch = d; return;
+    }
+    if (!drag) return;
+    var dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (!moved && Math.hypot(dx, dy) < 4) return;
+    moved = true; svg.classList.add('dragging');
+    var r = rect();
+    vb.x = drag.vx - (dx / r.width) * vb.w;
+    vb.y = drag.vy - (dy / r.height) * vb.h;
+    apply();
+  });
+  function up(e) {
+    delete pts[e.pointerId];
+    if (Object.keys(pts).length < 2) pinch = 0;
+    if (Object.keys(pts).length === 0) { drag = null; svg.classList.remove('dragging'); setTimeout(function () { moved = false; }, 0); }
+  }
+  window.addEventListener('pointerup', up);
+  window.addEventListener('pointercancel', up);
+
+  svg.addEventListener('click', function (e) {
+    var a = e.target.closest ? e.target.closest('a') : null;
+    if (!a) return;
+    e.preventDefault();
+    if (moved) return;
+    var sel = window.getSelection && window.getSelection().toString();
+    if (sel && sel.length) return;
+    var href = a.getAttribute('href') || '';
+    if (href.indexOf('#pan-') === 0) zoomToId(href.slice(1));
+  });
+  svg.addEventListener('dblclick', function (e) {
+    if (onText(e)) return;
+    cancelAnimationFrame(anim);
+    var c = toSvg(e.clientX, e.clientY), f = 0.45;
+    var nw = Math.max(W / 80, vb.w * f), k = nw / vb.w;
+    animateTo({ x: c.x - (c.x - vb.x) * k, y: c.y - (c.y - vb.y) * k, w: nw, h: vb.h * k });
+  });
+
+  box.addEventListener('click', function (e) {
+    var t = e.target;
+    if (t.closest && t.closest('.pano-chips a')) {
+      var a = t.closest('.pano-chips a');
+      e.preventDefault();
+      zoomToId(a.getAttribute('href').slice(1));
+      return;
+    }
+    var btn = t.closest ? t.closest('button[data-act]') : null;
+    if (!btn) return;
+    var act = btn.getAttribute('data-act');
+    if (act === 'in') animateTo(scaled(0.55));
+    else if (act === 'out') animateTo(scaled(1 / 0.55));
+    else if (act === 'fit') fit();
+    else if (act === 'full') {
+      if (document.fullscreenElement) { document.exitFullscreen(); }
+      else if (box.requestFullscreen) { box.requestFullscreen(); }
+    }
+  });
+  function scaled(f) {
+    var c = centre(), nw = Math.min(W * 1.4, Math.max(W / 80, vb.w * f)), k = nw / vb.w;
+    return { x: c.x - (c.x - vb.x) * k, y: c.y - (c.y - vb.y) * k, w: nw, h: vb.h * k };
+  }
+
+  box.addEventListener('keydown', function (e) {
+    var k = e.key, r = vb.w * 0.1;
+    if (k === '+' || k === '=') animateTo(scaled(0.55));
+    else if (k === '-' || k === '_') animateTo(scaled(1 / 0.55));
+    else if (k === '0') fit();
+    else if (k === 'ArrowLeft') { vb.x -= r; apply(); }
+    else if (k === 'ArrowRight') { vb.x += r; apply(); }
+    else if (k === 'ArrowUp') { vb.y -= r; apply(); }
+    else if (k === 'ArrowDown') { vb.y += r; apply(); }
+    else return;
+    e.preventDefault();
+  });
+
+  function relayout() {
+    var a = aspect(), c = centre();
+    vb.h = vb.w * a; vb.x = c.x - vb.w / 2; vb.y = c.y - vb.h / 2; apply();
+  }
+  window.addEventListener('resize', relayout);
+  document.addEventListener('fullscreenchange', function () { setTimeout(relayout, 60); });
+
+  vb = boxView(0, 0, W, H, 1.02); apply();
+  if (location.hash.indexOf('#pan-') === 0) { setTimeout(function () { zoomToId(location.hash.slice(1)); }, 50); }
+})();
+</script>
+<script src="nav.js"></script>
+</body>
+</html>

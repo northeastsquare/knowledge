@@ -23,6 +23,7 @@
         { t: '指数分布：等待的数学（交互）', h: '指数分布-等待的数学.html' },
         { t: '概率分布博物馆：从赌局到 AI', h: '概率分布博物馆.html' },
         { t: '网页数学公式显示原理', h: '网页数学公式显示原理.html' },
+        { t: '大规模 GPU 训练加速：一图看懂', h: 'gpu-training-frameworks.html' },
         { t: 'RLinf RL 方法：原理视角对比', h: 'RLinf-RL原理对比.html' },
         { t: 'RLinf 里的 RL 方法详细对比', h: 'RLinf-RL方法对比.html' },
         { t: 'VLA 强化学习方法全景对比', h: 'VLA-RL-方法全景对比.html' },
@@ -57,7 +58,8 @@
         { t: 'DynamicVLA', h: 'DynamicVLA-论文解读.html' },
         { t: 'PUMA', h: 'PUMA-论文解读.html' },
         { t: 'Qwen-VLA', h: 'Qwen-VLA-论文解读.html' },
-        { t: 'Realtime-VLA FLASH', h: 'Realtime-VLA-论文解读.html' }
+        { t: 'Realtime-VLA FLASH', h: 'Realtime-VLA-论文解读.html' },
+        { t: 'SmolVLA', h: 'SmolVLA-论文解读.html' }
       ]
     },
     {
