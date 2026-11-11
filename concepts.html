@@ -148,6 +148,13 @@ a{color:var(--accent)}a:focus-visible,button:focus-visible,input:focus-visible{o
         <div class="term-code"><span>代码在哪 · <a href="代码索引.html#behavior-cloning">索引</a></span> <a class="code-link" href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L189-L214" target="_blank" rel="noreferrer" title="openpi · Pi0.compute_loss">openpi · Pi0.compute_loss ↗</a></div>
         <div class="term-related"><span>接着理解</span> <a href="#actor-critic">Actor–Critic</a> <a href="#residual-rl">Residual RL</a> <a href="#recap">RECAP</a></div>
       </article>
+      <article class="term-card" id="dagger">
+        <h3><a href="DAgger-算法详解.html#concept-dagger">DAgger · 数据集聚合<span aria-hidden="true"> ↗</span></a></h3>
+        <p>让当前策略在环境里执行，请专家给它访问到的状态标注动作，并入全部历史数据后重训。用来缓解行为克隆的复合误差。</p>
+        <div class="term-source">讲解位置：DAgger-算法详解</div>
+        <div class="term-code"><span>代码在哪</span> <a class="code-link" href="https://github.com/HumanCompatibleAI/imitation/blob/e5ef18806c449ca47153b494a02471c5e2ae3a14/src/imitation/algorithms/dagger.py#L232-L287" target="_blank" rel="noreferrer" title="imitation · InteractiveTrajectoryCollector">imitation · InteractiveTrajectoryCollector ↗</a> <a class="code-link" href="https://github.com/HumanCompatibleAI/imitation/blob/e5ef18806c449ca47153b494a02471c5e2ae3a14/src/imitation/algorithms/dagger.py#L455-L497" target="_blank" rel="noreferrer" title="imitation · extend_and_update">imitation · extend_and_update ↗</a></div>
+        <div class="term-related"><span>接着理解</span> <a href="#behavior-cloning">BC</a> <a href="#recap">RECAP</a> <a href="#action-chunk">动作块</a></div>
+      </article>
       <article class="term-card" id="ppo">
         <h3><a href="RLinf-RL原理对比.html#concept-ppo">PPO · 裁剪策略更新<span aria-hidden="true"> ↗</span></a></h3>
         <p>用新旧策略概率比和裁剪目标限制更新幅度；在本库中还可接着看 πRL 如何为动作生成链构造概率。</p>
