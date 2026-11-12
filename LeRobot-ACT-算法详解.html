@@ -63,6 +63,8 @@ tr:last-child td{border-bottom:none}
 .step:target{outline:3px solid #f2c14e;outline-offset:3px}
 .shape{font-family:"IBM Plex Mono",monospace;font-size:13px;background:#fff;border:1px dashed var(--line-strong);border-radius:6px;padding:6px 10px;margin:8px 0;white-space:pre-wrap;line-height:1.6}
 .fm{overflow-x:auto;padding:4px 0}
+.ans{border:1px solid #e67e22;border-left:5px solid #e67e22;background:#fff4e8;padding:10px 14px;margin:14px 0;border-radius:6px}
+.ans>b:first-child{color:#c0570f}
 .katex-display{overflow-x:auto;overflow-y:hidden;max-width:100%}
 /* 总图 */
 .figure{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 14px 8px;box-shadow:var(--shadow);margin:20px 0}
@@ -137,7 +139,9 @@ summary{cursor:pointer;font-weight:600}
 ② 训练时有 CVAE 编码器，推理时却令 z = 0。这样做为什么不出问题？<br>
 ③ 1202 个 token 是怎么来的？100 个动作又从哪里"长"出来？<br>
 ④ 时间集成里，旧预测和新预测哪个权重大？<br>
-⑤ LeRobot 默认是"执行完 100 步再看一眼"，还是"每步都看"？</div>
+⑤ LeRobot 默认是"执行完 100 步再看一眼"，还是"每步都看"？<br>
+⑥ <a href="#ans-cls">[CLS] 是什么？它不做分类，为什么还叫这个名字？</a><br>
+⑦ <a href="#ans-kl">KL 公式为什么长成那样？它怎么把 z 拉向标准正态？β 取多大、怎么判断合不合适？</a></div>
 
 <h2 id="history"><span class="no">01 · HISTORY</span>前世今生</h2>
 <p>ACT 本身不复杂，它是几条老路线的交汇点。要解决的问题也很具体：<b>用 2 万美元以内的廉价双臂，做毫米级的精细操作</b>。</p>
@@ -346,6 +350,7 @@ action → Linear 100 个 token（每步 14 → 512）
 ──────────────  共 k + 2 = 102 个 token，加固定的 1D 正弦位置编码
 padding mask：CLS 与 qpos 不屏蔽，动作部分沿用 action_is_pad</div>
 <p>取 [CLS] 位置的输出，经过 <code>Linear(512 → 64)</code>，前 32 维是均值 μ，后 32 维是 <span class="mono">2·log σ</span>（沿用原实现的写法）。然后用重参数化采样：</p>
+<div class="ans" id="ans-cls"><b>问题 ⑥ 的答案：[CLS] 是什么？</b><br>[CLS] 是一个可学习的"汇总向量"。名字借自 BERT，但在 ACT 里它<b>不表示类别，也不做分类</b>。它和 qpos、100 个动作 token 一起进 Transformer，自注意力让它读完整段动作；最后只取它这个位置的输出，投影成 μ 和 log σ²，再采样出 z。换句话说，[CLS] 就是"把整段动作压成一个向量"的出口。</div>
 <div class="fm">$$z = \mu + \sigma \odot \epsilon,\quad \epsilon \sim \mathcal N(0, I),\quad z \in \mathbb R^{32}$$</div>
 <p><b>注意：编码器不看图像。</b>论文说这样做是为了训练更快。所以 z 只能描述"这段动作和当前关节角相比有什么特点"，比如偏快还是偏慢、先动左手还是先动右手。场景信息完全由策略网络自己从图像里读。</p>
 <div class="note train"><b>z 是用来干什么的？</b>人类示范有随机性：同一个画面，这次停顿了 0.5 秒，下次没有停；这次交接位置偏左，下次偏右。如果没有 z，策略只能把这些情况平均起来。z 相当于告诉策略"这一条走的是哪个版本"，让它可以专心学"在这个版本下应该怎么动"，而不会被迫学成平均值。</div>
@@ -412,6 +417,30 @@ encoder 输入 (1202, B, 512)
 <tr><td>KL 正则</td><td>把 z 的分布拉向 N(0, I)，限制它携带的信息量</td><td>编码器会把整段动作"抄"进 z，推理时 z=0，策略就什么都不会了</td></tr>
 </table>
 <p>β = 10 在这里算比较大。它换来的是：z 只保留"风格"这类低维信息，绝大部分信息必须由策略从图像里自己读。这也是推理时敢把 z 置零的底气。</p>
+<div class="ans" id="ans-kl"><b>问题 ⑦ 的答案：KL 怎么做到"给 z 看未来，又不让它记太多"？</b>
+<p><b>1. 公式从哪来。</b>KL 的一般定义是 $D_{\mathrm{KL}}(q\|p)=\int q(z)\log\frac{q(z)}{p(z)}\,dz$。编码器输出 $q=\mathcal N(\mu,\sigma^2)$，先验 $p=\mathcal N(0,1)$，两个都是高斯，积分有闭式解（每一维单独算，再对 32 维求和）：</p>
+<div class="fm">$$D_{\mathrm{KL}}=-\frac12\sum_{j=1}^{32}\big(1+\log\sigma_j^2-\mu_j^2-\sigma_j^2\big)=\frac12\sum_{j}\big(\mu_j^2+\sigma_j^2-\log\sigma_j^2-1\big)$$</div>
+<p>两种写法只差把负号乘进去。LeRobot 用的是第一种：<code>(-0.5 * (1 + log_sigma_x2_hat - mu_hat.pow(2) - log_sigma_x2_hat.exp())).sum(-1).mean()</code>，先对 z 的 32 维求和，再对 batch 求平均（Kingma &amp; Welling 2013，附录 B）。</p>
+<p><b>2. 它怎么把 z 拉向 N(0, I)。</b>看梯度：</p>
+<table>
+<tr><th>量</th><th>KL 对它的梯度</th><th>梯度下降的效果</th></tr>
+<tr><td>$\mu_j$</td><td>$\mu_j$</td><td>$\mu_j$ 被推向 0</td></tr>
+<tr><td>$\sigma_j^2$</td><td>$\frac12\big(1-\frac1{\sigma_j^2}\big)$</td><td>$\sigma_j^2$ 被推向 1</td></tr>
+</table>
+<p>只有 $\mu=0,\ \sigma=1$ 时 KL 才等于 0。如果编码器想让 z 成为"每条示范的编号"，就得给不同示范不同的、远离 0 的 μ，还得把 σ 压得很小，免得采样时互相混淆；这两件事分别让 $\mu^2$ 和 $-\log\sigma^2$ 变大。所以各条示范的 z 被迫挤在 0 附近、彼此重叠，z 只能留下对复原动作最有用的那一点信息（比如快慢、偏左偏右）。</p>
+<p><b>3. 什么时候算。</b>一次前向全部跑完才算损失：未来动作 + [CLS] → 编码器 → μ、σ → 采样 z → 解码器 → 100 步预测。KL 用 μ、σ 算，L1 用预测和真值算，两项相加，<b>只做一次反向传播</b>（<code>loss = l1_loss + mean_kld * kl_weight</code>）。</p>
+<p><b>4. KL 只管 z 吗？</b>是。KL 只看 μ 和 σ，所以它的梯度只进 CVAE 编码器（含 [CLS]、qpos/动作投影、<code>Linear(512→64)</code>），不进图像主干和解码器。L1 的梯度则进解码器，也通过 $z=\mu+\sigma\epsilon$（重参数化让梯度能穿过采样）回到编码器。编码器夹在两股力中间：L1 要 z 多带信息，KL 要 z 少带信息，β 决定谁说了算。</p>
+<p><b>5. β 取多大。</b>论文和 LeRobot 默认都是 <b>β = 10</b>（<code>kl_weight=10.0</code>），一般先用这个值，很少需要改。</p>
+<p><b>6. 怎么判断 β 合不合适。</b>训练日志里同时看 <code>kld_loss</code> 和 <code>l1_loss</code>：</p>
+<table>
+<tr><th>现象</th><th>说明</th><th>处理</th></tr>
+<tr><td><code>kld_loss</code> 接近 0</td><td>z 不带信息（后验塌缩），CVAE 退化成普通回归</td><td>β 调小</td></tr>
+<tr><td><code>kld_loss</code> 很大；训练 L1 很低，但用 z = 0 推理效果差</td><td>z 记住了训练数据，策略依赖它</td><td>β 调大</td></tr>
+<tr><td><code>kld_loss</code> 稳定在一个不为 0 的值</td><td>正常</td><td>不动</td></tr>
+</table>
+<p>最后以真机（或仿真）成功率为准：可以扫 β = 1、10、100，挑成功率最高的。</p>
+<div class="code-ref"><b>LEROBOT</b><a href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/policies/act/modeling_act.py#L152-L162">modeling_act.py#L152-L162 KL 计算与总损失（b6ec006）</a><a href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/policies/act/configuration_act.py#L123">configuration_act.py#L123 kl_weight = 10.0（b6ec006）</a><a class="pl" href="https://arxiv.org/abs/1312.6114">Kingma &amp; Welling 2013，附录 B</a></div>
+</div>
 <div class="note warn"><b>一处原文的不一致：</b>论文 Algorithm 1 的伪代码写的是 <code>L_reconst = MSE</code>，但正文明确说"我们用 L1 而非常见的 L2，L1 对动作序列的建模更精确"，消融实验也证明换不回来。LeRobot 的实现按正文用 L1。另外论文把 KL 权重记作 β，代码里叫 <code>kl_weight</code>，默认 <code>10.0</code>。</div>
 <p>Adam，学习率 <code>1e-5</code>，batch size 8，dropout 0.1。LeRobot 里 ResNet 主干被单独分到一个参数组（<code>optimizer_lr_backbone</code>，默认也是 1e-5），整体约 80M 参数，单卡 2080 Ti 约 5 小时。</p>
 <div class="code-ref"><b>LEROBOT</b><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/modeling_act.py#L140-L167">modeling_act.py#L140-L167 损失计算</a><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/modeling_act.py#L75-L94">#L75-L94 主干单独的学习率</a><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/configuration_act.py#L123-L128">configuration_act.py#L123 kl_weight / lr 默认值</a></div>
