@@ -142,7 +142,8 @@ summary{cursor:pointer;font-weight:600}
 ⑤ LeRobot 默认是"执行完 100 步再看一眼"，还是"每步都看"？<br>
 ⑥ <a href="#ans-cls">[CLS] 是什么？它不做分类，为什么还叫这个名字？</a><br>
 ⑦ <a href="#ans-kl">KL 公式为什么长成那样？它怎么把 z 拉向标准正态？β 取多大、怎么判断合不合适？</a><br>
-⑧ <a href="#ans-bn">ResNet18 训练时更新吗？BatchNorm 为什么冻住？batch 开大了能不能放开？多大算大？</a></div>
+⑧ <a href="#ans-bn">ResNet18 训练时更新吗？BatchNorm 为什么冻住？batch 开大了能不能放开？多大算大？</a><br>
+⑨ <a href="#ans-z">z 是几维？它是真值吗？看的是未来 100 步还是 1 步？32 维的 z 怎么变成"1 个 token"？</a></div>
 
 <h2 id="history"><span class="no">01 · HISTORY</span>前世今生</h2>
 <p>ACT 本身不复杂，它是几条老路线的交汇点。要解决的问题也很具体：<b>用 2 万美元以内的廉价双臂，做毫米级的精细操作</b>。</p>
@@ -393,6 +394,13 @@ token 2…1201 1200 个视觉 token                来自 ④
 encoder 输入 (1202, B, 512)
 位置编码：前 2 个用可学习的 1D Embedding，后 1200 个用 2D 正弦编码</div>
 <p>z 和图像在这里是<b>平等的 token</b>。Transformer 可以通过注意力自己决定 z 的影响有多大：训练时 z 携带了真值信息，策略会参考它；推理时 z = 0，策略只能依赖图像和关节状态。</p>
+<div class="ans" id="ans-z"><b>问题 ⑨ 的答案：z 到底是什么？为什么它只占 1 个 token？</b><br>
+<b>z 不是真值，而是从真值压出来的 32 维向量。</b>维度由 <code>latent_dim = 32</code> 决定，和关节数（14）没有关系。<br>
+<b>它看的是未来 100 步。</b>训练时，CVAE 编码器的输入是 [CLS] + 当前 qpos + 真值动作 (100 × 14)。[CLS] 的输出经线性层得到 μ 和 log σ²（各 32 维），再采样 z = μ + σ·ε。所以 z 是对"这 100 步整段怎么做"的一个概括，可以理解成这段动作的风格。<br>
+<b>1 个 token 就是 1 个 512 维的向量。</b>Transformer 要求每个 token 长度都是 <code>dim_model = 512</code>，所以 z 先过 Linear(32 → 512)。qpos 同理：Linear(14 → 512)，也是 1 个 token。图像特征图上每个格子也是 512 维，各算 1 个 token。<br>
+<b>1202 是格子数，512 是每个格子的长度</b>，合起来 encoder 输入就是 1202 × 512（再加 batch 维）。<br>
+推理时没有真值动作，z 直接填 32 个 0。
+<div class="code-ref"><b>LEROBOT</b><a href="https://github.com/huggingface/lerobot/blob/b6ec006/src/lerobot/policies/act/configuration_act.py#L114">configuration_act.py#L114 latent_dim=32</a> · <a href="https://github.com/huggingface/lerobot/blob/b6ec006/src/lerobot/policies/act/configuration_act.py#L85">#L85 chunk_size=100</a> · <a href="https://github.com/huggingface/lerobot/blob/b6ec006/src/lerobot/policies/act/modeling_act.py#L315">modeling_act.py#L315 512 → μ, logσ²</a> · <a href="https://github.com/huggingface/lerobot/blob/b6ec006/src/lerobot/policies/act/modeling_act.py#L352">#L352 Linear(32 → 512)</a></div></div>
 <p>在 LeRobot 里，如果数据集只有环境状态（比如仿真里物体的坐标）而没有图像，会多一个 <code>env_state</code> token，用来代替视觉 token。</p>
 <div class="code-ref"><b>LEROBOT</b><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/modeling_act.py#L469-L499">modeling_act.py#L469-L499 拼接 encoder 输入</a></div>
 </div>
