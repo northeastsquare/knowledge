@@ -141,7 +141,8 @@ summary{cursor:pointer;font-weight:600}
 ④ 时间集成里，旧预测和新预测哪个权重大？<br>
 ⑤ LeRobot 默认是"执行完 100 步再看一眼"，还是"每步都看"？<br>
 ⑥ <a href="#ans-cls">[CLS] 是什么？它不做分类，为什么还叫这个名字？</a><br>
-⑦ <a href="#ans-kl">KL 公式为什么长成那样？它怎么把 z 拉向标准正态？β 取多大、怎么判断合不合适？</a></div>
+⑦ <a href="#ans-kl">KL 公式为什么长成那样？它怎么把 z 拉向标准正态？β 取多大、怎么判断合不合适？</a><br>
+⑧ <a href="#ans-bn">ResNet18 训练时更新吗？BatchNorm 为什么冻住？batch 开大了能不能放开？多大算大？</a></div>
 
 <h2 id="history"><span class="no">01 · HISTORY</span>前世今生</h2>
 <p>ACT 本身不复杂，它是几条老路线的交汇点。要解决的问题也很具体：<b>用 2 万美元以内的廉价双臂，做毫米级的精细操作</b>。</p>
@@ -366,6 +367,21 @@ padding mask：CLS 与 qpos 不屏蔽，动作部分沿用 action_is_pad</div>
 4 路相机  →  1200 个视觉 token</div>
 <p>2D 位置编码让每个 token 记住自己在图像的哪一格。展平之后，Transformer 仍然知道"左上角"和"右下角"的区别。</p>
 <p>LeRobot 里所有相机<b>共用同一个 ResNet</b>，主干和其余部分的学习率都是 <code>1e-5</code>（通过 <code>optimizer_lr_backbone</code> 单独设置）。</p>
+<div class="ans" id="ans-bn"><b>问题 ⑧ 的答案：ResNet18 更新吗？BatchNorm 为什么冻住？</b><br>
+<b>卷积权重会更新，BatchNorm 是冻住的。</b>主干放在单独的参数组里，学习率 <code>optimizer_lr_backbone = 1e-5</code>，和其余部分一样（<a class="cl" data-path="src/lerobot/policies/act/modeling_act.py" data-line="91" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/policies/act/modeling_act.py#L91">modeling_act.py:91</a>，<a class="cl" data-path="src/lerobot/policies/act/configuration_act.py" data-line="128" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/policies/act/configuration_act.py#L128">configuration_act.py:128</a>）。动作损失的梯度一路传进 ResNet18：它只为出动作服务，没有别的能力要保护。<code>FrozenBatchNorm2d</code>（<a class="cl" data-path="src/lerobot/policies/act/modeling_act.py" data-line="331" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/policies/act/modeling_act.py#L331">modeling_act.py:331</a>）把 running_mean、running_var、weight、bias 全部当成常量，固定在 ImageNet 的值。
+<br><br><b>BN 看到的 batch 有多大？</b>LeRobot 默认 <code>batch_size = 8</code>（<a class="cl" data-path="src/lerobot/configs/train.py" data-line="133" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/configs/train.py#L133">train.py:133</a>，ACT 论文也是 8）。每路相机单独过一次主干（<a class="cl" data-path="src/lerobot/policies/act/modeling_act.py" data-line="476" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/policies/act/modeling_act.py#L476-L477">modeling_act.py:476-477</a>），所以 BN 每次只统计 8 张图。要算的是<b>单卡、单次前向</b>的图片数，多卡不开 SyncBN 时不会合并。
+<br><br><b>为什么冻住？</b>
+<br>① 继承自 DETR：DETR 每卡只放 2 张大图，BN 统计量没法用，只好冻结。ACT 直接沿用了 DETR 的主干代码。
+<br>② batch 本身偏小：8 张 480×640 的图，统计量噪声大，训练和推理（用 running 统计量）对不上。
+<br>③ 机器人数据很同质：同一张桌子、同一个场景，batch 内的图片很像，算出的均值方差偏窄；冻在 ImageNet 统计量上反而稳。
+<br><br><b>batch 开大能放开吗？</b>能。ACT 网络约 80M 参数，显存主要被高分辨率图片吃掉，单卡开到 32～64 一般可行。这时 BN 的统计量够稳，可以换回普通 <code>BatchNorm2d</code> 让它学习。但 LeRobot 没有开关，得改第 331 行；也没人证明放开一定更好，冻结 BN 时卷积权重照样会适应新数据。想试的话，同一份数据跑"冻结 / 放开"两组，比真机成功率。
+<br><br><b>多大算大、多小算小？</b>（单卡每次前向的图片数，参考 Wu &amp; He 2018《Group Normalization》在 ImageNet 上的实验）
+<table><tr><th>每卡 batch</th><th>BN 表现</th></tr>
+<tr><td>≥ 32</td><td>正常，统计量稳</td></tr>
+<tr><td>16</td><td>略差</td></tr>
+<tr><td>8</td><td>明显变差</td></tr>
+<tr><td>≤ 4</td><td>很差，基本别用 BN 统计量</td></tr></table>
+所以 ACT 默认的 8 属于"小"。batch 小又想让归一化层学习，可以换成 GroupNorm，它不依赖 batch 大小。<a class="pl" href="https://arxiv.org/abs/1803.08494">Wu &amp; He 2018</a> · <a class="pl" href="https://arxiv.org/abs/2005.12872">DETR</a></div>
 <div class="code-ref"><b>LEROBOT</b><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/modeling_act.py#L333-L343">modeling_act.py#L333-L343 主干构建</a><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/modeling_act.py#L479-L494">#L479-L494 逐相机提特征</a><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/modeling_act.py#L695">#L695 2D 正弦位置编码</a></div>
 </div>
 <div class="step" id="s5"><div class="badge">5</div>
