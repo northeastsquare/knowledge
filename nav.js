@@ -28,6 +28,7 @@
         { t: 'Diffusion Policy：扩散动作策略', h: 'DiffusionPolicy-论文解读.html' },
         { t: 'ACT 动作分块 Transformer · LeRobot 全图解', h: 'LeRobot-ACT-算法详解.html' },
         { t: 'DAgger 数据聚合 · 论文算法与 LeRobot 实现', h: 'DAgger-算法详解.html' },
+        { t: 'DETR 目标检测 Transformer · ACT 的母体', h: 'DETR-算法详解.html' },
         { t: 'OpenVLA vs π 系列：动作怎么生成', h: 'OpenVLA-vs-pi系列-对比.html' },
         { t: '代码索引：关键概念的官方实现', h: '代码索引.html' }
       ]

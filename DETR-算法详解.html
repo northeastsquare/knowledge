@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DETR 目标检测 Transformer · 论文与官方代码全图解</title>
+<link rel="stylesheet" href="concepts.css">
+<link rel="stylesheet" href="assets/katex/katex.min.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#f1f4f6;--surface:#fbfcfd;--surface-2:#eaf0f4;--ink:#16222e;--ink-2:#51626f;--ink-3:#83919c;
+ --train:#c4572a;--train-bg:#fbeee7;--infer:#0e6e8a;--infer-bg:#e3f1f5;--human:#7a4fb0;--human-bg:#f1eafa;--ok:#2f7d4f;--ok-bg:#e6f4ec;
+ --cnn:#2b5fa8;--cnn-bg:#e8eff9;--tf:#0e7f73;--tf-bg:#e2f4f1;--q:#b0457a;--q-bg:#fbeaf3;
+ --line:#d8e1e7;--line-strong:#c3d0d9;--shadow:0 1px 2px rgba(22,34,46,.04),0 14px 34px rgba(22,34,46,.07)}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans",-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;font-size:16px;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background-image:linear-gradient(rgba(22,34,46,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(22,34,46,.05) 1px,transparent 1px);background-size:28px 28px}
+.wrap{max-width:980px;margin:0 auto;padding:0 22px 100px}
+.wide{max-width:1160px;margin:0 auto;padding:0 16px}
+header.hero{padding:56px 0 28px}
+.kicker{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-2)}
+.kicker b{color:var(--infer)}
+h1{font-family:"Noto Serif SC",serif;font-size:38px;line-height:1.3;margin:10px 0 12px}
+.lede{font-size:17.5px;color:var(--ink-2);max-width:800px}
+.lede b{color:var(--ink)}
+.facts{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:24px 0 0}
+.fact{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.fact .n{font-family:"IBM Plex Mono",monospace;font-size:22px;font-weight:600;color:var(--infer)}
+.fact .l{font-size:13px;color:var(--ink-2);line-height:1.5}
+h2{font-family:"Noto Serif SC",serif;font-size:27px;margin:64px 0 6px;padding-top:10px}
+h2 .no{font-family:"IBM Plex Mono",monospace;font-size:14px;color:var(--ink-3);display:block;letter-spacing:.12em}
+h3{font-size:19px;margin:34px 0 8px}
+p{margin:10px 0}
+a{color:var(--infer)}
+code,.mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.88em}
+p code,li code,td code{background:var(--surface-2);padding:1px 5px;border-radius:4px}
+pre{background:#14202b;color:#dbe6ee;padding:14px 16px;border-radius:10px;overflow-x:auto;font-size:13px;line-height:1.6}
+pre .c{color:#7f97a8}
+pre .k{color:#f0b37e}
+pre .h{color:#9fd8a8}
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14.5px;background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+th,td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{background:var(--surface-2);font-weight:600;font-size:13.5px}
+tr:last-child td{border-bottom:none}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin:16px 0;box-shadow:var(--shadow)}
+.box.warn{border-left:4px solid var(--train)}
+.box.note{border-left:4px solid var(--infer)}
+.box h4{margin:0 0 6px;font-size:15.5px}
+.src{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:22px 0 0}
+.src .box{margin:0}
+.src b{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.1em;color:var(--ink-2)}
+.steps{counter-reset:s;list-style:none;padding:0;margin:14px 0}
+.steps>li{counter-increment:s;position:relative;padding:12px 16px 12px 58px;background:var(--surface);border:1px solid var(--line);border-radius:10px;margin:10px 0}
+.steps>li::before{content:counter(s);position:absolute;left:16px;top:12px;width:30px;height:30px;border-radius:50%;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:14px}
+.steps pre{margin:8px 0 2px}
+.shape{font-family:"IBM Plex Mono",monospace;font-size:13px;background:#fff;border:1px dashed var(--line-strong);border-radius:6px;padding:6px 10px;margin:8px 0;white-space:pre-wrap;line-height:1.6}
+.fm{overflow-x:auto;padding:4px 0}
+.katex-display{overflow-x:auto;overflow-y:hidden;max-width:100%}
+
+/* ---------- 代码 / 论文链接芯片 ---------- */
+a.cl,a.pl{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:11.5px;line-height:1.5;text-decoration:none;padding:0 6px;margin:1px 2px 1px 0;border-radius:5px;border:1px solid #b9dbe5;background:var(--infer-bg);color:var(--infer);white-space:nowrap}
+a.cl[data-repo="lerobot"]{border-color:#d8c6ef;background:var(--human-bg);color:var(--human)}
+a.pl{border-color:#efc9b8;background:var(--train-bg);color:var(--train)}
+a.cl:hover,a.pl:hover{filter:brightness(.95);text-decoration:underline}
+a.cl::before{content:"⌗ "}
+a.pl::before{content:"¶ "}
+
+/* ---------- 架构图 ---------- */
+.dg-scroll{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);margin:16px 0}
+.dg{position:relative;width:1100px;height:780px;margin:0 auto}
+.dg svg.wires{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.wires path{fill:none;stroke:#6f8291;stroke-width:1.8}
+.wires path.main{stroke:var(--tf);stroke-width:2.4}
+.wires path.loss{stroke:var(--train);stroke-width:2.2}
+.wires path.dash{stroke-dasharray:5 5;stroke:var(--train)}
+.wires path.inf{stroke:var(--infer);stroke-dasharray:7 5;stroke-width:2}
+.wires path.q{stroke:var(--q);stroke-width:2.2}
+.nd{position:absolute;background:#fff;border:1.5px solid var(--line-strong);border-radius:12px;padding:0 0 9px;font-size:13px;line-height:1.5;box-shadow:0 1px 2px rgba(22,34,46,.05),0 6px 16px rgba(22,34,46,.05);overflow:hidden}
+.nd .nt{font-weight:700;font-size:14px;padding:6px 11px;margin-bottom:5px;border-bottom:1px solid var(--line)}
+.nd .nb,.nd .nl,.nd .act,.nd .slots{padding:0 11px}
+.nd .nb{color:var(--ink-2)}
+.nd .nb b{color:var(--ink)}
+.nd .nb code{font-size:11.5px;background:var(--surface-2);padding:0 4px;border-radius:3px}
+.nd .nl{margin-top:6px}
+.nd .act{margin-top:6px;font-size:12px;color:var(--human)}
+.nd .act::before{content:"ACT → ";font-family:"IBM Plex Mono",monospace;font-weight:600}
+.nd.data{border-color:#b9c6d3}.nd.data .nt{background:var(--surface-2)}
+.nd.cnn{border-color:#b6c9e6}.nd.cnn .nt{background:var(--cnn-bg);color:var(--cnn)}
+.nd.tf{border-color:#a9d6cf}.nd.tf .nt{background:var(--tf-bg);color:var(--tf)}
+.nd.q{border-color:#e7bcd3}.nd.q .nt{background:var(--q-bg);color:var(--q)}
+.nd.loss{border-color:#efc9b8}.nd.loss .nt{background:var(--train-bg);color:var(--train)}
+.nd.inf{border-color:#b9dbe5;border-style:dashed}.nd.inf .nt{background:var(--infer-bg);color:var(--infer)}
+.nd .stack{position:absolute;right:10px;top:7px;font-family:"IBM Plex Mono",monospace;font-size:11px;font-weight:600;color:#fff;background:var(--tf);border-radius:999px;padding:0 7px}
+.slots{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.slots span{font-family:"IBM Plex Mono",monospace;font-size:11px;border:1px solid var(--line-strong);border-radius:5px;padding:0 5px;background:#fff}
+.slots span.o{border-color:#a9d6cf;background:var(--tf-bg);color:var(--tf)}
+.slots span.e{color:var(--ink-3);border-style:dashed}
+.frame{position:absolute;border:1.5px dashed var(--line-strong);border-radius:16px;background:rgba(234,240,244,.45)}
+.frame.t{border-color:#efc9b8;background:rgba(251,238,231,.35)}
+.frame .ft{position:absolute;left:14px;top:4px;font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.06em;color:var(--ink-2)}
+.frame.t .ft{color:var(--train)}
+.wl{position:absolute;font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink-2);background:var(--surface);padding:0 4px;border-radius:4px;white-space:nowrap}
+.wl.main{color:var(--tf);font-weight:600}
+.wl.loss{color:var(--train);font-weight:600}
+.wl.inf{color:var(--infer);font-weight:600}
+.wl.q{color:var(--q);font-weight:600}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13px;color:var(--ink-2);margin:8px 2px}
+.legend i{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-2px;margin-right:5px;border:1.5px solid}
+
+/* ---------- 编辑模式 ---------- */
+.kb-tools{position:fixed;right:18px;bottom:18px;z-index:50;display:flex;gap:8px;align-items:center;background:var(--surface);border:1px solid var(--line-strong);border-radius:12px;padding:8px 10px;box-shadow:var(--shadow);font-size:13px}
+.kb-tools button,.kb-tools select{font:inherit;font-size:13px;border:1px solid var(--line-strong);background:#fff;color:var(--ink);border-radius:8px;padding:4px 10px;cursor:pointer}
+.kb-tools button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.kb-tools .st{color:var(--ink-3);min-width:64px}
+body.editing #doc [contenteditable]{outline:none}
+body.editing #doc .nd,body.editing #doc .wl,body.editing #doc p,body.editing #doc td,body.editing #doc li{outline:1px dashed rgba(14,110,138,.35);outline-offset:1px}
+body.editing a.cl,body.editing a.pl{cursor:context-menu}
+.hint{font-size:13px;color:var(--ink-3)}
+.qs{counter-reset:q;list-style:none;padding:0;margin:12px 0}
+.qs>li{counter-increment:q;position:relative;padding:8px 14px 8px 52px;background:var(--surface);border:1px solid var(--line);border-radius:10px;margin:8px 0}
+.qs>li::before{content:"Q" counter(q);position:absolute;left:12px;top:8px;font-family:"IBM Plex Mono",monospace;font-weight:600;color:var(--train)}
+.qs .go{font-size:12.5px;margin-left:6px}
+.ans{margin:12px 0;padding:10px 14px;border-radius:10px;background:var(--train-bg);border:1px solid #efc9b8;font-size:14.5px}
+.ans b.q{font-family:"IBM Plex Mono",monospace;color:var(--train);margin-right:6px}
+.ans:target{outline:3px solid #f2c14e;outline-offset:3px}
+.quiz{counter-reset:z;list-style:none;padding:0;margin:12px 0}
+.quiz>li{counter-increment:z;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 16px;margin:10px 0}
+.quiz>li>p:first-child::before{content:"题 " counter(z) "　";font-family:"IBM Plex Mono",monospace;font-weight:600;color:var(--infer)}
+.quiz details{margin-top:4px;font-size:14.5px}
+.quiz summary{cursor:pointer;color:var(--infer);font-size:13.5px}
+.quiz details>div{margin-top:6px;padding:8px 12px;background:var(--surface-2);border-radius:8px}
+footer{margin-top:70px;font-size:13px;color:var(--ink-3)}
+@media (max-width:760px){.facts{grid-template-columns:repeat(2,1fr)}.src{grid-template-columns:1fr}h1{font-size:30px}}
+@media print{.kb-tools{display:none}}
+</style>
+</head>
+<body>
+<div id="doc">
+<div class="wrap">
+
+<header class="hero">
+  <div class="kicker">Object Detection · <b>DETR</b> · 论文 + 官方代码 · ACT 的母体</div>
+  <h1>DETR：把目标检测当成"集合预测"来做</h1>
+  <p class="lede">传统检测器先铺几万个 anchor，再用 NMS 去掉重复框。<b>DETR 去掉了这两样：CNN 抽特征，Transformer 编码，再用 100 个可学习的 object query 一次并行解码出 100 个"槽"，每个槽要么是一个物体，要么是"没有物体"。</b>训练时用匈牙利算法把槽和真值一对一配好，再算损失。ACT 的策略网络几乎就是这套结构，只是把"100 个框"换成了"100 步动作"。</p>
+  <div class="facts">
+    <div class="fact"><div class="n">2020</div><div class="l">ECCV · Carion、Massa 等（Facebook AI）</div></div>
+    <div class="fact"><div class="n">42.0 AP</div><div class="l">COCO val，ResNet-50，41M 参数，28 FPS</div></div>
+    <div class="fact"><div class="n">N = 100</div><div class="l">object query 个数，也是每张图最多出的框数</div></div>
+    <div class="fact"><div class="n">0</div><div class="l">anchor 和 NMS 的数量</div></div>
+  </div>
+
+  <div class="src">
+    <div class="box">
+      <b>原始论文</b>
+      <p style="margin:4px 0"><i>End-to-End Object Detection with Transformers</i></p>
+      <a class="pl" href="pdfs/DETR-2005.12872.pdf">本地 PDF：pdfs/DETR-2005.12872.pdf</a>
+      <a class="pl" href="https://arxiv.org/abs/2005.12872">arXiv:2005.12872</a>
+    </div>
+    <div class="box">
+      <b>代码</b>
+      <p style="margin:4px 0">官方实现 <a href="https://github.com/facebookresearch/detr">facebookresearch/detr</a>，commit <code>29901c5</code>（本地 <code>~/src/detr</code>）。核心只有 5 个文件，约 1000 行。紫色芯片指向 LeRobot ACT（<code>b6ec006</code>）里对应的代码。</p>
+      <a class="cl" data-path="models/detr.py" data-line="21">detr.py:21</a>
+      <a class="cl" data-path="models/matcher.py" data-line="12">matcher.py:12</a>
+      <a class="cl" data-path="models/transformer.py" data-line="18">transformer.py:18</a>
+    </div>
+  </div>
+</header>
+
+<h2 id="s0"><span class="no">00</span>带着问题读</h2>
+<p>先想一想这几个问题。每个问题的答案，都在正文里用 <span class="ans" style="display:inline;padding:1px 6px;margin:0"><b class="q">Q</b>答</span> 标出来了。</p>
+<ol class="qs">
+<li>DETR 为什么不需要 anchor，也不需要 NMS？<a class="go" href="#a1">→ 答案</a></li>
+<li>100 个 object query 到底是什么？解码器的输入为什么全是 0？<a class="go" href="#a2">→ 答案</a></li>
+<li>匈牙利匹配在算什么？匹配代价里为什么用概率，不用 log 概率？<a class="go" href="#a3">→ 答案</a></li>
+<li>没配上真值的 query 怎么监督？"无物体"类为什么权重只有 0.1？<a class="go" href="#a4">→ 答案</a></li>
+<li>位置编码加在哪里？为什么只加在 Q、K 上，V 不加？<a class="go" href="#a5">→ 答案</a></li>
+<li>ACT 从 DETR 搬了什么、改了什么？为什么 ACT 不用匈牙利匹配？<a class="go" href="#a6">→ 答案</a></li>
+</ol>
+
+<h2 id="s1"><span class="no">01</span>问题：检测器里的手工部件</h2>
+<p>一张图里有几个物体，数量不定，顺序也无所谓。所以检测的输出本质上是一个<b>集合</b>。以前的检测器不直接预测集合，而是绕了一圈：</p>
+<table>
+<tr><th></th><th>Faster R-CNN 一类</th><th>DETR</th></tr>
+<tr><td>候选从哪来</td><td>特征图每个位置铺几种尺寸、长宽比的 anchor，几万个</td><td>100 个可学习的 object query</td></tr>
+<tr><td>训练时谁负责哪个真值</td><td>手写规则：IoU 大于阈值的 anchor 算正样本，一个真值配多个 anchor</td><td>匈牙利算法，一个真值只配一个 query</td></tr>
+<tr><td>重复框怎么办</td><td>NMS 后处理，按 IoU 阈值删</td><td>训练时就罚重复，推理不做 NMS</td></tr>
+<tr><td>物体之间的关系</td><td>每个候选各自分类回归</td><td>query 之间做自注意力，互相"商量"谁报哪个</td></tr>
+<tr><td>小物体 / 大物体</td><td>AP<sub>S</sub> 26.6，AP<sub>L</sub> 53.4（FPN+）</td><td>AP<sub>S</sub> 20.5，AP<sub>L</sub> 61.1</td></tr>
+</table>
+<p>DETR 的大物体好很多，因为编码器的自注意力能看全图。小物体差，因为它只用了 1/32 分辨率的一层特征，没有 FPN。后来的 Deformable DETR 主要就是修这两点（小物体和收敛慢）。</p>
+<div class="ans" id="a1"><b class="q">Q1 答</b>不要 anchor：候选换成了 100 个可学习的 query，位置由网络自己学。不要 NMS：训练时用一对一匹配，一个物体只有一个 query 能拿到"框"的监督，其余 query 被要求输出"无物体"；再加上 query 之间的自注意力，网络自己学会了不重复报。论文 Fig.4 显示，最后一层解码器的输出再做 NMS，AP 几乎不变。</div>
+
+<h2 id="s2"><span class="no">02</span>前向过程：一张图怎么变成 100 个框</h2>
+<p>下面按 800×1066 的输入（COCO 常见尺寸）写出每一步的张量形状。代码入口是 <a class="cl" data-path="models/detr.py" data-line="44">DETR.forward:44</a>。</p>
+<ol class="steps">
+<li><b>拼 batch，记下 padding 掩码。</b>每张图大小不同，右下补 0 对齐，同时记一个 <code>mask</code>，标出哪些像素是补的。之后的注意力都不看补的位置。
+<div class="shape">图像 B×3×800×1066  +  mask B×800×1066</div>
+<a class="cl" data-path="models/detr.py" data-line="60">detr.py:60</a><a class="cl" data-path="util/misc.py" data-line="307">nested_tensor_from_tensor_list:307</a></li>
+<li><b>ResNet-50 抽特征，只取最后一层 C5。</b>下采样 32 倍。BatchNorm 全部冻结；stem 和 layer1 的卷积也冻结，只有 layer2–4 参与训练。
+<div class="shape">C5: B×2048×25×34</div>
+<a class="cl" data-path="models/backbone.py" data-line="83">Backbone:83</a><a class="cl" data-path="models/backbone.py" data-line="91">FrozenBN:91</a><a class="cl" data-path="models/backbone.py" data-line="63">冻结规则:63</a></li>
+<li><b>1×1 卷积降到 d = 256。</b>
+<div class="shape">B×256×25×34</div>
+<a class="cl" data-path="models/detr.py" data-line="40">input_proj:40</a></li>
+<li><b>展平成序列，并准备 2D 正弦位置编码。</b>25×34 = 850 个 token。注意 PyTorch 的 <code>nn.MultiheadAttention</code> 是"序列在前"的布局。
+<div class="shape">src: 850×B×256    pos: 850×B×256</div>
+<a class="cl" data-path="models/transformer.py" data-line="50">flatten:50</a><a class="cl" data-path="models/position_encoding.py" data-line="12">PositionEmbeddingSine:12</a></li>
+<li><b>编码器 6 层。</b>每层是自注意力 + FFN，post-norm。位置编码在每一层都重新加到 Q、K 上。输出叫 <code>memory</code>。
+<div class="shape">memory: 850×B×256</div>
+<a class="cl" data-path="models/transformer.py" data-line="56">encoder:56</a><a class="cl" data-path="models/transformer.py" data-line="149">EncoderLayer.forward_post:149</a></li>
+<li><b>解码器 6 层，100 个槽并行。</b>输入 <code>tgt</code> 全是 0；100 个 object query 作为"位置编码"加到 Q、K 上。每层先在 100 个槽之间做自注意力，再对 850 个 memory token 做交叉注意力，最后 FFN。6 层的输出都留着（为了辅助损失）。
+<div class="shape">hs: 6×B×100×256</div>
+<a class="cl" data-path="models/transformer.py" data-line="55">tgt=0:55</a><a class="cl" data-path="models/transformer.py" data-line="212">DecoderLayer.forward_post:212</a><a class="cl" data-path="models/transformer.py" data-line="112">return_intermediate:112</a></li>
+<li><b>预测头，所有槽共享。</b>分类头是一个线性层，输出 91+1 类（最后一类是"无物体" ∅）。框头是 3 层 MLP，sigmoid 后得到归一化的 (cx, cy, w, h)。
+<div class="shape">pred_logits: B×100×92    pred_boxes: B×100×4 ∈ [0,1]</div>
+<a class="cl" data-path="models/detr.py" data-line="37">class_embed:37</a><a class="cl" data-path="models/detr.py" data-line="38">bbox_embed:38</a><a class="cl" data-path="models/detr.py" data-line="68">sigmoid:68</a></li>
+</ol>
+
+<h3 id="s2-pe">2.1 位置编码</h3>
+<p>Transformer 对输入顺序不敏感，必须告诉它每个 token 在图里的位置。DETR 把 x、y 两个方向分开编码，各 128 维，拼成 256 维。坐标先归一化到 [0, 2π]：</p>
+<div class="fm">$$\mathrm{PE}(p,2i)=\sin\!\Big(\frac{p}{10000^{2i/128}}\Big),\quad \mathrm{PE}(p,2i+1)=\cos\!\Big(\frac{p}{10000^{2i/128}}\Big),\qquad \mathrm{pos}_{(y,x)}=\big[\mathrm{PE}(y)\,;\,\mathrm{PE}(x)\big]\in\mathbb R^{256}$$</div>
+<p><a class="cl" data-path="models/position_encoding.py" data-line="41">dim_t:41</a><a class="cl" data-path="models/position_encoding.py" data-line="47">拼 y、x:47</a><a class="cl" data-path="models/position_encoding.py" data-line="83">normalize=True:83</a>。也可以换成可学习的位置编码（<code>--position_embedding learned</code>），论文表 3 里两者差别很小。</p>
+<p>位置编码加在每一层注意力的输入上，而且<b>只加给 Q 和 K</b>：</p>
+<div class="fm">$$\mathrm{Attn}\big(Q{=}X{+}P,\;K{=}X{+}P,\;V{=}X\big)=\mathrm{softmax}\!\Big(\frac{(X{+}P)W_Q\,\big((X{+}P)W_K\big)^{\!\top}}{\sqrt{d_k}}\Big)\,X W_V$$</div>
+<p><a class="cl" data-path="models/transformer.py" data-line="154">编码器 q=k=src+pos:154</a><a class="cl" data-path="models/transformer.py" data-line="224">解码器交叉注意力:224</a></p>
+<div class="ans" id="a5"><b class="q">Q5 答</b>加在每一层的 Q 和 K 上（不只是第一层输入）。Q·K 决定"看哪里"，所以需要位置；V 是"取回来的内容"，保持纯特征，不掺位置。这样每层的残差流里一直是内容，位置每层重新注入。交叉注意力里，query 侧加 object query，key 侧加图像的 2D 正弦编码。</div>
+
+<h3 id="s2-q">2.2 object query 和全 0 的 tgt</h3>
+<p><code>query_embed = nn.Embedding(100, 256)</code> 就是 100 个可学习向量 <a class="cl" data-path="models/detr.py" data-line="39">detr.py:39</a>。它不当作解码器的输入，而是当作解码器的"位置编码"，每层都加到 Q、K 上。真正的输入 <code>tgt</code> 是全 0 <a class="cl" data-path="models/transformer.py" data-line="55">transformer.py:55</a>。</p>
+<p>所以第一层时，100 个槽的内容都是 0，只靠各自的 query 区分彼此。经过交叉注意力，每个槽从图像里取回内容，内容逐层积累。论文的可视化显示，训练后每个 query 会偏好图里某些区域和某些框的大小，像一组学出来的"专长"。</p>
+<div class="ans" id="a2"><b class="q">Q2 答</b>object query 是 100 个可学习的 256 维向量，每个代表一个输出槽的"身份"。它们被当成位置编码，每层加到 Q、K 上；解码器的内容输入 <code>tgt</code> 从 0 开始，内容全靠交叉注意力从图像里取。如果 100 个槽输入相同又没有 query，它们会输出一模一样的结果。ACT 照搬了这一点：<code>decoder_in</code> 也是全 0，<code>decoder_pos_embed</code> 就是 100 个 query。<a class="cl" data-repo="lerobot" data-path="src/lerobot/policies/act/modeling_act.py" data-line="497">ACT decoder_in:497</a><a class="cl" data-repo="lerobot" data-path="src/lerobot/policies/act/modeling_act.py" data-line="369">ACT decoder_pos_embed:369</a></div>
+
+<h2 id="s3"><span class="no">03</span>二分匹配：先配对，再算损失</h2>
+<p>网络输出 100 个预测 $\hat y=\{\hat y_i\}_{i=1}^{N}$。真值只有几个，用 ∅ 补到 100 个，记作 $y$。100 个槽没有固定顺序，所以要先找一个排列 $\sigma$，让总匹配代价最小（论文式 1）：</p>
+<div class="fm">$$\hat\sigma=\mathop{\arg\min}_{\sigma\in\mathfrak S_N}\;\sum_{i=1}^{N}\mathcal L_{\mathrm{match}}\big(y_i,\hat y_{\sigma(i)}\big)$$</div>
+<p>每对的代价看两样：类别对不对，框像不像。真值是 ∅ 的那些不参与匹配（代价恒为 0）：</p>
+<div class="fm">$$\mathcal L_{\mathrm{match}}\big(y_i,\hat y_{\sigma(i)}\big)=-\mathbb 1_{\{c_i\neq\varnothing\}}\,\hat p_{\sigma(i)}(c_i)\;+\;\mathbb 1_{\{c_i\neq\varnothing\}}\,\mathcal L_{\mathrm{box}}\big(b_i,\hat b_{\sigma(i)}\big)$$</div>
+<p>代码里把三项按权重相加，得到一个 100 × (真值个数) 的代价矩阵，交给 <code>scipy</code> 的 <code>linear_sum_assignment</code>（匈牙利算法）求解。每张图单独解。</p>
+<div class="fm">$$C_{ij}=\lambda_{\mathrm{cls}}\cdot\big(-\hat p_i(c_j)\big)+\lambda_{L1}\,\big\|\hat b_i-b_j\big\|_1+\lambda_{\mathrm{iou}}\cdot\big(-\mathrm{GIoU}(\hat b_i,b_j)\big),\qquad \lambda_{\mathrm{cls}}=1,\;\lambda_{L1}=5,\;\lambda_{\mathrm{iou}}=2$$</div>
+<p><a class="cl" data-path="models/matcher.py" data-line="68">cost_class:68</a><a class="cl" data-path="models/matcher.py" data-line="71">cost_bbox:71</a><a class="cl" data-path="models/matcher.py" data-line="74">cost_giou:74</a><a class="cl" data-path="models/matcher.py" data-line="77">C:77</a><a class="cl" data-path="models/matcher.py" data-line="81">linear_sum_assignment:81</a><a class="cl" data-path="main.py" data-line="67">权重 1/5/2:67</a></p>
+<p>匹配整个过程在 <code>torch.no_grad()</code> 下，只给出"谁配谁"，本身不传梯度。</p>
+<div class="ans" id="a3"><b class="q">Q3 答</b>匈牙利匹配在 100 个预测和 M 个真值之间找一对一的配法，让"分类代价 + 框代价"的总和最小。匹配时用概率 $-\hat p(c)$ 而不用 $-\log\hat p(c)$：论文说这样分类项和框损失的量级可比，实验效果更好。代码注释也写了：这里近似的是 $1-\hat p(c)$，常数 1 不影响匹配结果，所以省掉了 <a class="cl" data-path="models/matcher.py" data-line="65">matcher.py:65</a>。</div>
+
+<h2 id="s4"><span class="no">04</span>损失：匈牙利损失 + 辅助损失</h2>
+<p>配好 $\hat\sigma$ 之后，对每一对算损失（论文式 2）。这一步在全部 100 个槽上都算分类，但只在配上真值的槽上算框：</p>
+<div class="fm">$$\mathcal L_{\mathrm{Hungarian}}(y,\hat y)=\sum_{i=1}^{N}\Big[-\log\hat p_{\hat\sigma(i)}(c_i)\;+\;\mathbb 1_{\{c_i\neq\varnothing\}}\,\mathcal L_{\mathrm{box}}\big(b_i,\hat b_{\hat\sigma(i)}\big)\Big]$$</div>
+<p>框损失是 L1 和 GIoU 的组合。L1 对大框、小框的误差尺度不一样；GIoU 与尺度无关，两者互补：</p>
+<div class="fm">$$\mathcal L_{\mathrm{box}}(b,\hat b)=\lambda_{\mathrm{iou}}\big(1-\mathrm{GIoU}(b,\hat b)\big)+\lambda_{L1}\,\|b-\hat b\|_1,\qquad \mathrm{GIoU}(A,B)=\frac{|A\cap B|}{|A\cup B|}-\frac{|C\setminus(A\cup B)|}{|C|}$$</div>
+<p>其中 $C$ 是同时包住 A、B 的最小框。两个框不相交时 IoU 恒为 0、没有梯度；GIoU 的第二项仍会把两个框往一起拉。<a class="cl" data-path="util/box_ops.py" data-line="40">generalized_box_iou:40</a></p>
+
+<table>
+<tr><th>损失项</th><th>算在哪些槽上</th><th>权重</th><th>代码</th></tr>
+<tr><td>交叉熵 <code>loss_ce</code></td><td>全部 100 个；没配上的目标是 ∅</td><td>1；∅ 类再乘 0.1</td><td><a class="cl" data-path="models/detr.py" data-line="121">detr.py:121</a><a class="cl" data-path="models/detr.py" data-line="105">eos_coef:105</a></td></tr>
+<tr><td>L1 <code>loss_bbox</code></td><td>只算配上的</td><td>5</td><td><a class="cl" data-path="models/detr.py" data-line="153">detr.py:153</a></td></tr>
+<tr><td>GIoU <code>loss_giou</code></td><td>只算配上的</td><td>2</td><td><a class="cl" data-path="models/detr.py" data-line="158">detr.py:158</a></td></tr>
+<tr><td><code>cardinality_error</code></td><td>只记日志，不回传梯度</td><td>—</td><td><a class="cl" data-path="models/detr.py" data-line="130">detr.py:130</a></td></tr>
+</table>
+<p>两个细节：</p>
+<ul>
+<li><b>归一化。</b>L1 和 GIoU 都除以整个 batch（多卡时取所有卡平均）的真值框个数 <code>num_boxes</code>，不是除以槽数 <a class="cl" data-path="models/detr.py" data-line="228">num_boxes:228</a>。</li>
+<li><b>辅助损失。</b>解码器 6 层的输出都接同一组预测头，每层都<b>重新做一次匹配</b>、算一遍同样的损失，总共 6 份相加 <a class="cl" data-path="models/detr.py" data-line="239">aux:239</a><a class="cl" data-path="models/detr.py" data-line="340">aux 权重:340</a>。论文说这能帮模型学会每类物体输出正确的个数。</li>
+</ul>
+<div class="fm">$$\mathcal L_{\mathrm{total}}=\sum_{\ell=1}^{6}\Big[\,1\cdot\mathcal L_{\mathrm{ce}}^{(\ell)}+5\cdot\mathcal L_{L1}^{(\ell)}+2\cdot\mathcal L_{\mathrm{GIoU}}^{(\ell)}\Big]$$</div>
+<p><a class="cl" data-path="engine.py" data-line="35">engine.py:35</a></p>
+<div class="ans" id="a4"><b class="q">Q4 答</b>没配上的 query，分类目标设成 ∅（"无物体"），只算交叉熵，不算框损失 <a class="cl" data-path="models/detr.py" data-line="116">target_classes:116</a>。一张 COCO 图平均只有 7 个物体左右，100 个槽里九成以上是 ∅。不降权的话，网络最省事的做法是全报 ∅。所以 ∅ 类的交叉熵权重设成 0.1（<code>eos_coef</code>），类似 Faster R-CNN 里对正负样本做的平衡。</div>
+
+<h2 id="s5"><span class="no">05</span>训练与推理</h2>
+<table>
+<tr><th>项</th><th>论文</th><th>代码默认</th></tr>
+<tr><td>优化器</td><td>AdamW，Transformer lr 1e-4，backbone lr 1e-5，weight decay 1e-4</td><td>同 <a class="cl" data-path="main.py" data-line="22">main.py:22</a><a class="cl" data-path="main.py" data-line="131">param_dicts:131</a></td></tr>
+<tr><td>Batch</td><td>16 张 V100，每卡 4 张图，共 64</td><td><code>--batch_size 2</code>（每卡）<a class="cl" data-path="main.py" data-line="24">main.py:24</a></td></tr>
+<tr><td>训练时长</td><td>消融 300 epoch（200 时 lr ÷10），3 天；对比 Faster R-CNN 用 500 epoch（400 时降），多 1.5 AP</td><td>300 / 200 <a class="cl" data-path="main.py" data-line="26">main.py:26</a></td></tr>
+<tr><td>梯度裁剪</td><td>0.1</td><td><a class="cl" data-path="engine.py" data-line="55">engine.py:55</a></td></tr>
+<tr><td>BatchNorm</td><td>ImageNet 预训练 ResNet，BN 冻结</td><td><a class="cl" data-path="models/backbone.py" data-line="19">FrozenBatchNorm2d:19</a></td></tr>
+<tr><td>数据增强</td><td>多尺度（短边 480–800，长边 ≤ 1333）+ 随机裁剪</td><td><a class="cl" data-path="datasets/coco.py" data-line="122">coco.py:122</a></td></tr>
+<tr><td>Transformer 尺寸</td><td>6 编码 + 6 解码，d=256，8 头，FFN 2048，dropout 0.1</td><td><a class="cl" data-path="main.py" data-line="43">main.py:43</a></td></tr>
+</table>
+<p><b>推理</b>不做匹配也不做 NMS。100 个槽各自 softmax，去掉 ∅ 类取最大的类别和分数，框从 (cx, cy, w, h) 转成 (x0, y0, x1, y1) 再乘图像宽高 <a class="cl" data-path="models/detr.py" data-line="274">PostProcess:274</a>。只用最后一层解码器的输出 <a class="cl" data-path="models/detr.py" data-line="69">detr.py:69</a>。</p>
+<div class="box note"><h4>编码器有多重要</h4>
+<p style="margin:0">论文表 2：编码器 0 层时 36.7 AP，3 层 40.1，6 层 40.6，12 层 41.6。没有编码器，大物体 AP<sub>L</sub> 掉 6 个点。论文的注意力可视化显示，编码器已经把各个物体"分开"了，解码器只需盯住物体的边缘（头、脚）来定框。<a class="pl" href="pdfs/DETR-2005.12872.pdf">论文 §4.2</a></p></div>
+<div class="box warn"><h4>收敛慢</h4>
+<p style="margin:0">DETR 要几百个 epoch，Faster R-CNN 只要 36 个左右。主要原因：一对一匹配让每个真值每步只有一个正样本，且匹配结果在训练早期不稳定；交叉注意力开始时对 850 个位置几乎均匀，要很久才学会聚焦。Deformable DETR、DN-DETR、DINO 等后续工作主要解决这一点。</p></div>
+
+<h2 id="s6"><span class="no">06</span>ACT 照搬了什么，改了什么</h2>
+<p>ACT 的原始代码就是在 DETR 代码上改的（目录结构、<code>detr/</code> 子目录、<code>FrozenBatchNorm2d</code>、位置编码都原样保留）。LeRobot 重写成了一个文件，但结构一一对应。</p>
+<table>
+<tr><th>部件</th><th>DETR</th><th>ACT（LeRobot）</th></tr>
+<tr><td>Backbone</td><td>ResNet-50，取 layer4，冻结 BN</td><td>ResNet-18，取 layer4，冻结 BN <a class="cl" data-repo="lerobot" data-path="src/lerobot/policies/act/modeling_act.py" data-line="336">:336</a></td></tr>
+<tr><td>2D 正弦位置编码</td><td><code>PositionEmbeddingSine</code></td><td>同一算法 <a class="cl" data-repo="lerobot" data-path="src/lerobot/policies/act/modeling_act.py" data-line="688">:688</a></td></tr>
+<tr><td>编码器输入</td><td>850 个图像 token</td><td>z、关节状态各 1 个 token + 每个相机的图像 token</td></tr>
+<tr><td>编码器 / 解码器层数</td><td>6 / 6</td><td>4 / 1（原版写 7，但有 bug 只用了第 1 层）<a class="cl" data-repo="lerobot" data-path="src/lerobot/policies/act/configuration_act.py" data-line="107">:107</a></td></tr>
+<tr><td>d / FFN / 头数</td><td>256 / 2048 / 8</td><td>512 / 3200 / 8 <a class="cl" data-repo="lerobot" data-path="src/lerobot/policies/act/configuration_act.py" data-line="103">:103</a></td></tr>
+<tr><td>Query</td><td>100 个 object query，tgt = 0</td><td>100 个动作 query（chunk_size），decoder_in = 0 <a class="cl" data-repo="lerobot" data-path="src/lerobot/policies/act/modeling_act.py" data-line="497">:497</a></td></tr>
+<tr><td>输出头</td><td>分类 92 类 + 框 MLP + sigmoid</td><td>一个线性层输出关节动作 <a class="cl" data-repo="lerobot" data-path="src/lerobot/policies/act/modeling_act.py" data-line="372">:372</a></td></tr>
+<tr><td>槽和目标怎么对应</td><td>匈牙利匹配，每步重新配</td><td>固定：第 i 个槽 = 第 t+i 步动作</td></tr>
+<tr><td>损失</td><td>CE + 5·L1 + 2·GIoU，6 层辅助损失</td><td>L1 + 10·KL，只用最后一层 <a class="cl" data-repo="lerobot" data-path="src/lerobot/policies/act/modeling_act.py" data-line="147">:147</a></td></tr>
+<tr><td>额外部件</td><td>无</td><td>CVAE 编码器（[CLS] → μ, logσ²），推理时 z = 0</td></tr>
+<tr><td>backbone 学习率</td><td>1e-5</td><td>1e-5</td></tr>
+</table>
+<div class="ans" id="a6"><b class="q">Q6 答</b>搬了：冻结 BN 的 ResNet + 1×1 投影、2D 正弦位置编码只加 Q/K、post-norm 编码器、"全 0 输入 + 可学习 query"的并行解码器。改了：输出从"无序的框集合"变成"有序的动作序列"，再加了 CVAE 的 z。动作序列有天然顺序，第 i 个槽就该预测第 t+i 步，对应关系是固定的，不需要找排列，所以不用匈牙利匹配，直接逐位置算 L1。也没有"无物体"类，不需要分类头。</div>
+
+<h2 id="s7"><span class="no">07</span>架构图</h2>
+<p class="hint">图里文字可选中、复制。点右下角「✎ 编辑」后可直接改字，按「保存」或 ⌘/Ctrl+S 写回这个 HTML 文件（Chrome / Edge 第一次保存时选中本文件即可覆盖；其他浏览器会下载一份新文件）。编辑模式下点击 ⌗ 代码芯片可以改它指向的文件和行号。右下角可切换代码链接打开 GitHub 还是本地 VS Code。</p>
+</div><!-- /wrap -->
+
+<div class="wide">
+<div class="legend">
+  <span><i style="background:var(--cnn-bg);border-color:#b6c9e6"></i>CNN</span>
+  <span><i style="background:var(--tf-bg);border-color:#a9d6cf"></i>Transformer</span>
+  <span><i style="background:var(--q-bg);border-color:#e7bcd3"></i>Object query</span>
+  <span><i style="background:var(--train-bg);border-color:#efc9b8"></i>训练专用</span>
+  <span><i style="background:var(--infer-bg);border-color:#b9dbe5;border-style:dashed"></i>推理专用</span>
+  <span style="color:var(--human)">紫字：ACT 里对应的东西</span>
+</div>
+<div class="dg-scroll">
+<div class="dg" id="detr-diagram">
+<svg class="wires" viewBox="0 0 1100 780" aria-hidden="true">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6f8291"/></marker>
+    <marker id="art" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0e7f73"/></marker>
+    <marker id="arl" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c4572a"/></marker>
+    <marker id="ari" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0e6e8a"/></marker>
+    <marker id="arq" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b0457a"/></marker>
+  </defs>
+  <!-- 第一行：编码 -->
+  <path class="main" d="M180 120 L208 120" marker-end="url(#art)"/>
+  <path class="main" d="M420 120 L448 120" marker-end="url(#art)"/>
+  <path class="main" d="M618 120 L646 120" marker-end="url(#art)"/>
+  <path class="main" d="M838 120 L866 120" marker-end="url(#art)"/>
+  <!-- memory 下到解码器 -->
+  <path class="main" d="M970 212 L970 252 L470 252 L470 318" marker-end="url(#art)"/>
+  <!-- 第二行：解码 -->
+  <path class="q" d="M200 398 L238 398" marker-end="url(#arq)"/>
+  <path class="main" d="M540 398 L578 398" marker-end="url(#art)"/>
+  <path class="main" d="M780 398 L818 398" marker-end="url(#art)"/>
+  <!-- 训练：匹配 + 损失 -->
+  <path class="loss" d="M930 482 L930 520 L690 520 L690 562" marker-end="url(#arl)"/>
+  <path class="loss" d="M860 640 L802 640" marker-end="url(#arl)"/>
+  <path class="loss" d="M580 640 L542 640" marker-end="url(#arl)"/>
+  <path class="dash" d="M390 482 L390 562" marker-end="url(#arl)"/>
+  <!-- 推理 -->
+  <path class="inf" d="M1080 398 L1090 398 L1090 752 L115 752 L115 716" marker-end="url(#ari)"/>
+</svg>
+
+<div class="frame" style="left:10px;top:14px;width:1080px;height:206px"><div class="ft">① 编码：一张图 → 850 个 256 维 token</div></div>
+<div class="frame" style="left:10px;top:282px;width:1060px;height:208px"><div class="ft">② 解码：100 个槽并行，一次前向出全部结果</div></div>
+<div class="frame t" style="left:230px;top:540px;width:840px;height:186px"><div class="ft">③ 训练专用：先匹配，再算损失</div></div>
+
+<!-- 第一行 -->
+<div class="nd data" style="left:24px;top:40px;width:156px;min-height:164px">
+  <div class="nt">图像 + mask</div>
+  <div class="nb">B×3×H×W，右下补 0 对齐；mask 标出补的像素。</div>
+  <div class="nl"><a class="cl" data-path="models/detr.py" data-line="60">detr.py:60</a><a class="cl" data-path="datasets/coco.py" data-line="122">多尺度:122</a></div>
+  <div class="act">多个相机图 + 关节状态</div>
+</div>
+<div class="nd cnn" style="left:210px;top:40px;width:210px;min-height:164px">
+  <div class="nt">ResNet-50（C5）</div>
+  <div class="nb">↓32 → <b>2048×25×34</b>。BN 冻结；stem、layer1 冻结；lr 1e-5。</div>
+  <div class="nl"><a class="cl" data-path="models/backbone.py" data-line="83">Backbone:83</a><a class="cl" data-path="models/backbone.py" data-line="19">FrozenBN:19</a><a class="cl" data-path="models/backbone.py" data-line="63">冻结:63</a></div>
+  <div class="act">ResNet-18，BN 冻结</div>
+</div>
+<div class="nd cnn" style="left:450px;top:40px;width:168px;min-height:164px">
+  <div class="nt">1×1 卷积投影</div>
+  <div class="nb">2048 → <b>d = 256</b></div>
+  <div class="nl"><a class="cl" data-path="models/detr.py" data-line="40">input_proj:40</a></div>
+  <div class="act">512 → d = 512</div>
+</div>
+<div class="nd tf" style="left:648px;top:40px;width:190px;min-height:164px">
+  <div class="nt">展平 + 2D 正弦编码</div>
+  <div class="nb">25×34 → <b>850 个 token</b>；pos = [PE(y); PE(x)]，各 128 维。</div>
+  <div class="nl"><a class="cl" data-path="models/transformer.py" data-line="50">flatten:50</a><a class="cl" data-path="models/position_encoding.py" data-line="12">Sine:12</a></div>
+  <div class="act">同算法；再拼 z、状态 token</div>
+</div>
+<div class="nd tf" style="left:868px;top:40px;width:208px;min-height:172px">
+  <div class="nt">编码器</div><span class="stack">×6</span>
+  <div class="nb">自注意力 + FFN，post-norm。pos 每层加到 Q、K。输出 <b>memory 850×256</b>。</div>
+  <div class="nl"><a class="cl" data-path="models/transformer.py" data-line="127">EncoderLayer:127</a><a class="cl" data-path="models/transformer.py" data-line="154">q=k:154</a></div>
+  <div class="act">×4 层，d=512</div>
+</div>
+
+<!-- 第二行 -->
+<div class="nd q" style="left:24px;top:318px;width:176px;min-height:160px">
+  <div class="nt">Object queries</div>
+  <div class="nb"><b>100×256</b> 可学习向量。当作位置编码加到 Q、K；内容输入 tgt = 0。</div>
+  <div class="nl"><a class="cl" data-path="models/detr.py" data-line="39">query_embed:39</a><a class="cl" data-path="models/transformer.py" data-line="55">tgt=0:55</a></div>
+  <div class="act">100 个动作位置 query</div>
+</div>
+<div class="nd tf" style="left:240px;top:318px;width:300px;min-height:160px">
+  <div class="nt">解码器</div><span class="stack">×6</span>
+  <div class="nb">① 100 个槽之间自注意力（互相避让）<br>② 交叉注意力：Q = 槽 + query，K = memory + pos，V = memory<br>③ FFN。每层输出都留着。</div>
+  <div class="nl"><a class="cl" data-path="models/transformer.py" data-line="212">DecoderLayer:212</a><a class="cl" data-path="models/transformer.py" data-line="224">cross:224</a><a class="cl" data-path="models/transformer.py" data-line="112">intermediate:112</a></div>
+  <div class="act">×1 层，只用最后输出</div>
+</div>
+<div class="nd tf" style="left:580px;top:318px;width:200px;min-height:160px">
+  <div class="nt">共享预测头</div>
+  <div class="nb">分类：Linear → <b>92 类</b>（含 ∅）<br>框：3 层 MLP → sigmoid → (cx, cy, w, h)</div>
+  <div class="nl"><a class="cl" data-path="models/detr.py" data-line="37">class:37</a><a class="cl" data-path="models/detr.py" data-line="38">bbox:38</a><a class="cl" data-path="models/detr.py" data-line="289">MLP:289</a></div>
+  <div class="act">一个 Linear → 关节动作</div>
+</div>
+<div class="nd tf" style="left:820px;top:318px;width:260px;min-height:164px">
+  <div class="nt">100 个预测槽</div>
+  <div class="nb">无序集合，大多数是 ∅。</div>
+  <div class="slots"><span class="o">#1 人 ▭</span><span class="e">#2 ∅</span><span class="o">#3 狗 ▭</span><span class="e">#4 ∅</span><span class="e">#5 ∅</span><span class="o">#6 车 ▭</span><span class="e">… #100 ∅</span></div>
+  <div class="nl"><a class="cl" data-path="models/detr.py" data-line="69">out:69</a><a class="cl" data-path="models/detr.py" data-line="75">aux_outputs:75</a></div>
+  <div class="act">有序：槽 i = 第 t+i 步</div>
+</div>
+
+<!-- 第三行 -->
+<div class="nd inf" style="left:24px;top:556px;width:190px;min-height:158px">
+  <div class="nt">推理 PostProcess</div>
+  <div class="nb">softmax 去掉 ∅ 取最大类；框转 xyxy × 图像宽高。<b>不匹配、不 NMS。</b></div>
+  <div class="nl"><a class="cl" data-path="models/detr.py" data-line="258">PostProcess:258</a><a class="cl" data-path="models/detr.py" data-line="274">softmax:274</a></div>
+  <div class="act">时间集成 / 直接执行</div>
+</div>
+<div class="nd loss" style="left:244px;top:562px;width:296px;min-height:150px">
+  <div class="nt">匈牙利损失</div>
+  <div class="nb">CE（∅ 权重 0.1）+ 5·L1 + 2·GIoU，除以真值框数。6 层各算一份。</div>
+  <div class="nl"><a class="cl" data-path="models/detr.py" data-line="121">ce:121</a><a class="cl" data-path="models/detr.py" data-line="153">l1:153</a><a class="cl" data-path="models/detr.py" data-line="158">giou:158</a><a class="cl" data-path="models/detr.py" data-line="239">aux:239</a></div>
+  <div class="act">L1 + 10·KL，无匹配</div>
+</div>
+<div class="nd loss" style="left:582px;top:562px;width:220px;min-height:150px">
+  <div class="nt">匈牙利匹配</div>
+  <div class="nb">C = −p̂(c) + 5·L1 − 2·GIoU，<b>100×M</b> 矩阵 → linear_sum_assignment → σ̂。no_grad。</div>
+  <div class="nl"><a class="cl" data-path="models/matcher.py" data-line="77">C:77</a><a class="cl" data-path="models/matcher.py" data-line="81">hungarian:81</a></div>
+  <div class="act">不需要</div>
+</div>
+<div class="nd data" style="left:862px;top:562px;width:196px;min-height:150px">
+  <div class="nt">真值集合</div>
+  <div class="nb">M 个 (类别, 框)，框转成归一化 cxcywh；补 ∅ 到 100。</div>
+  <div class="nl"><a class="cl" data-path="datasets/transforms.py" data-line="255">cxcywh:255</a></div>
+  <div class="act">示教动作 a<sub>t:t+k</sub></div>
+</div>
+
+<!-- 连线标签 -->
+<div class="wl main" style="left:876px;top:232px">memory 作 K、V</div>
+<div class="wl q" style="left:198px;top:374px">query_pos</div>
+<div class="wl main" style="left:938px;top:496px">100 个预测</div>
+<div class="wl loss" style="left:806px;top:616px">M 个</div>
+<div class="wl loss" style="left:548px;top:616px">σ̂</div>
+<div class="wl loss" style="left:398px;top:510px">aux：每层重新匹配</div>
+<div class="wl inf" style="left:520px;top:740px">推理：最后一层的 100 个槽直接出结果</div>
+</div>
+</div>
+</div><!-- /wide -->
+
+<div class="wrap">
+<h2 id="s8"><span class="no">08</span>代码索引</h2>
+<table>
+<tr><th>功能</th><th>位置</th></tr>
+<tr><td>模型整体 / 前向</td><td><a class="cl" data-path="models/detr.py" data-line="21">DETR:21</a><a class="cl" data-path="models/detr.py" data-line="44">forward:44</a></td></tr>
+<tr><td>组装（类别数、损失权重、辅助损失）</td><td><a class="cl" data-path="models/detr.py" data-line="304">build:304</a></td></tr>
+<tr><td>Backbone、冻结 BN、冻结规则</td><td><a class="cl" data-path="models/backbone.py" data-line="19">FrozenBatchNorm2d:19</a><a class="cl" data-path="models/backbone.py" data-line="58">BackboneBase:58</a><a class="cl" data-path="models/backbone.py" data-line="96">Joiner:96</a></td></tr>
+<tr><td>位置编码（正弦 / 可学习）</td><td><a class="cl" data-path="models/position_encoding.py" data-line="12">Sine:12</a><a class="cl" data-path="models/position_encoding.py" data-line="51">Learned:51</a></td></tr>
+<tr><td>Transformer 主体</td><td><a class="cl" data-path="models/transformer.py" data-line="47">forward:47</a><a class="cl" data-path="models/transformer.py" data-line="127">EncoderLayer:127</a><a class="cl" data-path="models/transformer.py" data-line="187">DecoderLayer:187</a></td></tr>
+<tr><td>匈牙利匹配</td><td><a class="cl" data-path="models/matcher.py" data-line="35">HungarianMatcher.forward:35</a></td></tr>
+<tr><td>损失</td><td><a class="cl" data-path="models/detr.py" data-line="83">SetCriterion:83</a><a class="cl" data-path="models/detr.py" data-line="215">forward:215</a></td></tr>
+<tr><td>GIoU、框格式转换</td><td><a class="cl" data-path="util/box_ops.py" data-line="9">cxcywh→xyxy:9</a><a class="cl" data-path="util/box_ops.py" data-line="40">GIoU:40</a></td></tr>
+<tr><td>推理后处理</td><td><a class="cl" data-path="models/detr.py" data-line="258">PostProcess:258</a></td></tr>
+<tr><td>超参数、优化器</td><td><a class="cl" data-path="main.py" data-line="22">main.py:22</a><a class="cl" data-path="main.py" data-line="131">param_dicts:131</a></td></tr>
+<tr><td>训练循环</td><td><a class="cl" data-path="engine.py" data-line="33">engine.py:33</a></td></tr>
+</table>
+
+<h2 id="s9"><span class="no">09</span>读完做几道题</h2>
+<p class="hint">先自己想，再点开看答案。</p>
+<ol class="quiz">
+<li><p>一张图有 3 个物体。100 个槽里，有几个槽会算框损失？其余槽的分类目标是什么？</p>
+<details><summary>看答案</summary><div>3 个槽算 L1 和 GIoU。其余 97 个槽只算交叉熵，目标是 ∅，权重乘 0.1。见 <a href="#s4">第 04 节</a>表格。</div></details></li>
+<li><p>把 100 个 object query 全部换成同一个向量，会发生什么？</p>
+<details><summary>看答案</summary><div>tgt 全是 0，query 又一样，100 个槽的输入完全相同，每层算出的结果也完全相同，最后 100 个槽输出同一个框。一对一匹配下只有一个能配上，其余全被罚，网络学不下去。query 不同是槽能"分工"的前提。见 <a href="#a2">Q2 答</a>。</div></details></li>
+<li><p>辅助损失里，第 3 层解码器的匹配结果 σ̂ 是直接用最后一层的吗？</p>
+<details><summary>看答案</summary><div>不是。每层都拿自己的预测重新调用一次 matcher。<a class="cl" data-path="models/detr.py" data-line="241">detr.py:241</a></div></details></li>
+<li><p>为什么框损失除以真值框个数 <code>num_boxes</code>，而不是除以 100？</p>
+<details><summary>看答案</summary><div>框损失只在配上的槽上算，个数就是真值框数。除以 100 会让物体多的图权重更大、物体少的图梯度太小。多卡时还要先 all_reduce 再平均，让每张卡的归一化一致。<a class="cl" data-path="models/detr.py" data-line="228">detr.py:228</a></div></details></li>
+<li><p><code>--lr_backbone 0</code> 时，backbone 会怎样？</p>
+<details><summary>看答案</summary><div><code>train_backbone = lr_backbone &gt; 0</code> 为 False，所有 backbone 参数 <code>requires_grad=False</code>，整个 ResNet 冻结。默认 1e-5 时，只有 layer2–4 的卷积参与训练。<a class="cl" data-path="models/backbone.py" data-line="114">backbone.py:114</a><a class="cl" data-path="models/backbone.py" data-line="63">backbone.py:63</a></div></details></li>
+<li><p>ACT 也有 100 个 query、也是全 0 输入。它为什么可以直接算 L1，不需要匹配？</p>
+<details><summary>看答案</summary><div>动作序列有顺序，第 i 个槽固定对应第 t+i 步，目标和槽一一对应，不需要找排列。DETR 的框没有顺序，必须先匹配才能知道哪个槽该对哪个真值。见 <a href="#a6">Q6 答</a>。</div></details></li>
+<li><p>交叉注意力里，K 加了位置编码，V 没加。如果 V 也加上 pos，最直接的变化是什么？</p>
+<details><summary>看答案</summary><div>取回来的内容里会混进位置向量，解码器残差流里内容和位置就搅在一起了。DETR 的设计是位置每层只用来算"看哪里"，内容保持干净。见 <a href="#a5">Q5 答</a>。</div></details></li>
+</ol>
+
+<footer>论文：Carion, Massa, Synnaeve, Usunier, Kirillov, Zagoruyko. End-to-End Object Detection with Transformers. ECCV 2020，arXiv:2005.12872。代码：facebookresearch/detr @ 29901c5（本地 /Users/jianweizhang/src/detr）；ACT 对照：huggingface/lerobot @ b6ec006（本地 /Users/jianweizhang/src/lerobot）。</footer>
+</div>
+</div><!-- /doc -->
+
+<div class="kb-tools" id="kb-tools">
+  <button type="button" id="btn-edit">✎ 编辑</button>
+  <button type="button" id="btn-save">保存</button>
+  <select id="sel-link" title="代码链接打开方式">
+    <option value="github">GitHub @29901c5</option>
+    <option value="vscode">本地 VS Code</option>
+  </select>
+  <span class="st" id="kb-st"></span>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  var REPOS={
+    detr:{gh:'https://github.com/facebookresearch/detr/blob/29901c51d7fe8712168b8d0d64351170bc0f83e0/',local:'/Users/jianweizhang/src/detr/'},
+    lerobot:{gh:'https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/',local:'/Users/jianweizhang/src/lerobot/'}
+  };
+  var doc=document.getElementById('doc'), body=document.body;
+  var st=document.getElementById('kb-st'), btnEdit=document.getElementById('btn-edit'), sel=document.getElementById('sel-link');
+  var headSnap=new Set(Array.prototype.slice.call(document.head.children));
+  var bodyClass=body.getAttribute('class'), dirty=false, handle=null;
+
+  /* ---------- 代码链接 ---------- */
+  function hrefOf(a,mode){
+    var r=REPOS[a.getAttribute('data-repo')||'detr']||REPOS.detr;
+    var p=a.getAttribute('data-path'), l=a.getAttribute('data-line')||'1';
+    if(mode==='vscode') return 'vscode://file'+r.local+p+':'+l;
+    return r.gh+p+(/\.mdx?$/.test(p)?'?plain=1':'')+'#L'+l;
+  }
+  function applyLinks(){
+    var mode=sel.value;
+    document.querySelectorAll('a.cl').forEach(function(a){a.href=hrefOf(a,mode);a.target=mode==='github'?'_blank':'';a.title=(a.getAttribute('data-repo')||'detr')+'/'+a.getAttribute('data-path')+':'+a.getAttribute('data-line');});
+    document.querySelectorAll('a.pl').forEach(function(a){a.target='_blank';});
+  }
+  try{sel.value=localStorage.getItem('detr-link-mode')||'github';}catch(e){}
+  sel.addEventListener('change',function(){try{localStorage.setItem('detr-link-mode',sel.value);}catch(e){}applyLinks();});
+  applyLinks();
+
+  /* ---------- 编辑 ---------- */
+  function setEdit(on){
+    body.classList.toggle('editing',on);
+    btnEdit.classList.toggle('on',on);
+    btnEdit.textContent=on?'✓ 完成编辑':'✎ 编辑';
+    if(on) doc.setAttribute('contenteditable','true'); else doc.removeAttribute('contenteditable');
+  }
+  btnEdit.addEventListener('click',function(){setEdit(!body.classList.contains('editing'));});
+  doc.addEventListener('input',function(){dirty=true;st.textContent='未保存';});
+  doc.addEventListener('click',function(e){
+    if(!body.classList.contains('editing')) return;
+    var a=e.target.closest('a.cl,a.pl'); if(!a) return;
+    e.preventDefault();
+    if(a.classList.contains('cl')){
+      var cur=a.getAttribute('data-path')+':'+a.getAttribute('data-line');
+      var v=prompt('代码位置（仓库内路径:行号）',cur); if(!v||v===cur) return;
+      var m=v.trim().match(/^(.+?):(\d+)$/); if(!m){alert('格式应为 path/to/file.py:123');return;}
+      a.setAttribute('data-path',m[1]); a.setAttribute('data-line',m[2]);
+    }else{
+      var h=prompt('链接地址',a.getAttribute('href')); if(!h) return; a.setAttribute('href',h);
+    }
+    applyLinks(); dirty=true; st.textContent='未保存';
+  });
+  /* 粘贴只保留纯文本，避免带进别处样式 */
+  doc.addEventListener('paste',function(e){
+    if(!body.classList.contains('editing')) return;
+    e.preventDefault();
+    document.execCommand('insertText',false,(e.clipboardData||window.clipboardData).getData('text/plain'));
+  });
+
+  /* ---------- 保存 ---------- */
+  function texOf(n){var a=n.querySelector('annotation[encoding="application/x-tex"]');return a?a.textContent:'';}
+  function serialize(){
+    var live=document.documentElement, c=live.cloneNode(true);
+    var lh=document.head.children, ch=c.querySelector('head').children;
+    for(var i=lh.length-1;i>=0;i--){ if(!headSnap.has(lh[i])) ch[i].remove(); }
+    c.querySelectorAll('.kb-root').forEach(function(n){n.remove();});
+    /* KaTeX 渲染结果还原成 $…$ 源码，下次打开重新渲染 */
+    c.querySelectorAll('.katex-display').forEach(function(n){n.replaceWith('$$'+texOf(n)+'$$');});
+    c.querySelectorAll('.katex').forEach(function(n){n.replaceWith('$'+texOf(n)+'$');});
+    var cb=c.querySelector('body');
+    if(bodyClass===null) cb.removeAttribute('class'); else cb.setAttribute('class',bodyClass);
+    c.querySelectorAll('[contenteditable]').forEach(function(n){n.removeAttribute('contenteditable');});
+    var cs=c.querySelector('#kb-st'); if(cs) cs.textContent='';
+    var ce=c.querySelector('#btn-edit'); if(ce){ce.textContent='✎ 编辑';ce.classList.remove('on');}
+    c.querySelectorAll('a.cl').forEach(function(a){a.setAttribute('href',hrefOf(a,'github'));a.removeAttribute('target');a.removeAttribute('title');});
+    return '<!DOCTYPE html>\n'+c.outerHTML+'\n';
+  }
+  /* 文件句柄存进 IndexedDB，刷新后仍能直接覆盖原文件 */
+  function idb(mode,val){
+    return new Promise(function(res){
+      try{
+        var r=indexedDB.open('detr-page',1);
+        r.onupgradeneeded=function(){r.result.createObjectStore('h');};
+        r.onsuccess=function(){
+          var tx=r.result.transaction('h',mode), s=tx.objectStore('h');
+          var q=mode==='readonly'?s.get(location.pathname):s.put(val,location.pathname);
+          q.onsuccess=function(){res(q.result);}; q.onerror=function(){res(null);};
+        };
+        r.onerror=function(){res(null);};
+      }catch(e){res(null);}
+    });
+  }
+  async function save(){
+    var html=serialize(), name=decodeURIComponent(location.pathname.split('/').pop()||'DETR-算法详解.html');
+    if(window.showSaveFilePicker){
+      try{
+        if(!handle) handle=await idb('readonly');
+        if(handle && handle.requestPermission){
+          var ok=await handle.queryPermission({mode:'readwrite'});
+          if(ok!=='granted') ok=await handle.requestPermission({mode:'readwrite'});
+          if(ok!=='granted') handle=null;
+        }
+        if(!handle){
+          handle=await window.showSaveFilePicker({suggestedName:name,types:[{description:'HTML',accept:{'text/html':['.html']}}]});
+          idb('readwrite',handle);
+        }
+        var w=await handle.createWritable(); await w.write(html); await w.close();
+        dirty=false; st.textContent='已保存 '+new Date().toLocaleTimeString(); return;
+      }catch(e){ if(e&&e.name==='AbortError'){st.textContent='已取消';return;} console.warn(e); }
+    }
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([html],{type:'text/html'})); a.download=name;
+    document.body.appendChild(a); a.click(); a.remove();
+    dirty=false; st.textContent='已下载，替换原文件即可';
+  }
+  document.getElementById('btn-save').addEventListener('click',save);
+  document.addEventListener('keydown',function(e){ if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='s'){e.preventDefault();save();} });
+  window.addEventListener('beforeunload',function(e){ if(dirty){e.preventDefault();e.returnValue='';} });
+
+  window.KATEX_OPTS={delimiters:[{left:'$$',right:'$$',display:true},{left:'$',right:'$',display:false}],throwOnError:false,strict:'ignore'};
+  window.renderMath=function(el){if(window.renderMathInElement)renderMathInElement(el||document.body,window.KATEX_OPTS);};
+})();
+</script>
+<script defer src="assets/katex/katex.min.js"></script>
+<script defer src="assets/katex/contrib/auto-render.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded',function(){if(window.renderMath)window.renderMath();});
+</script>
+<script src="nav.js"></script>
+</body>
+</html>
