@@ -149,6 +149,7 @@
 <header class="hero">
   <span class="tag">动作 · 实时推理</span>
   <h1>实时动作分块（RTC）</h1>
+<p class="kb-nick" style="margin:6px 0 14px;font-size:15px;line-height:1.6;color:var(--ink-2,#51626f);text-align:inherit"><span style="display:inline-block;padding:1px 10px;margin-right:8px;border:1px dashed var(--signal,#c4572a);border-radius:999px;color:var(--signal,#c4572a);font-weight:700;white-space:nowrap">外号 · 「接龙补画师」</span>把块与块的衔接当成 inpainting 来补画</p>
   <p class="q">机器人边动边想，怎么做到不卡？</p>
   <p class="meta">Real-Time Execution of Action Chunking Flow Policies · Kevin Black, Manuel Y. Galliker, Sergey Levine</p>
   <div class="one"><b>一句话：</b>模型算动作要时间，机器人却不能停。RTC 让下一段动作块在生成时，把“已经注定会发生”的前几步当成已知条件，像补全一张图那样把剩下的部分接上去。它只改推理过程，不用重新训练，任何<a class="concept-link" href="DiffusionPolicy-论文解读.html#concept-diffusion-policy">扩散</a>或 flow 策略都能套。</div>

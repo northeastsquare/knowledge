@@ -295,6 +295,15 @@
     .origin-track{grid-template-columns:1fr 1fr; gap:14px 10px;}
     .origin-track::before{display:none;}
   }
+
+  .nick-board{display:block;}
+  .nick-grid{position:relative;z-index:1;display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:18px 22px;margin-top:16px;}
+  .nick-group h3{margin:0 0 6px;font-size:12px;letter-spacing:.08em;color:var(--ink-3);font-weight:600;}
+  .nick-item{display:grid;grid-template-columns:auto 1fr;column-gap:8px;padding:7px 0;border-top:1px solid var(--line);text-decoration:none;color:inherit;}
+  .nick-item:hover .nk{text-decoration:underline;}
+  .nick-item .nk{color:var(--signal);font-weight:700;white-space:nowrap;}
+  .nick-item .nm{color:var(--ink);font-size:13px;align-self:center;}
+  .nick-item .why{grid-column:1/-1;color:var(--ink-2);font-size:12.5px;line-height:1.5;}
 </style>
 <link rel="stylesheet" href="concepts.css">
 </head>
@@ -360,6 +369,18 @@
       </div>
       <a class="origin-map-link" href="concepts.html">打开概念索引 <span>↗</span></a>
     </div>
+  </section>
+
+
+  <section class="origin-map nick-board" id="nicknames" aria-labelledby="nick-title">
+    <div class="origin-map-head">
+      <div>
+        <div class="origin-map-kicker">记名字 · 36 个算法外号</div>
+        <h2 id="nick-title">算法外号榜</h2>
+        <p>每个外号对应它最核心的那一招，记住外号就记住了它在干什么。点外号跳到讲它的页面。</p>
+      </div>
+    </div>
+    <div class="nick-grid"><div class="nick-group"><h3>VLA 本体</h3><a class="nick-item" href="pi0-论文解读.html"><span class="nk">「流水老大」</span><span class="nm">π0</span><span class="why">π 家老大，靠流匹配出连续动作</span></a><a class="nick-item" href="pi0.5-论文解读.html"><span class="nk">「混训学霸」</span><span class="nm">π0.5</span><span class="why">五类数据混着训，先说子任务再出动作</span></a><a class="nick-item" href="pi0.7_问答学习卡.html"><span class="nk">「百变点单王」</span><span class="nm">π0.7</span><span class="why">在 prompt 里点质量、速度和子目标图，按单出活</span></a><a class="nick-item" href="Qwen-VLA-论文解读.html"><span class="nk">「万能转接头」</span><span class="nm">Qwen-VLA</span><span class="why">一个模型统一任务、环境和机器人构型</span></a><a class="nick-item" href="SmolVLA-论文解读.html"><span class="nk">「半脑小钢炮」</span><span class="nm">SmolVLA</span><span class="why">只用半个 VLM，0.45B，消费级显卡就能跑</span></a><a class="nick-item" href="DynamicVLA-论文解读.html"><span class="nk">「追物快手」</span><span class="nm">DynamicVLA</span><span class="why">0.4B 小模型 + 连续推理，专抓会动的东西</span></a><a class="nick-item" href="PUMA-论文解读.html"><span class="nk">「光流预言家」</span><span class="nm">PUMA</span><span class="why">回看历史光流，预测目标接下来在哪</span></a><a class="nick-item" href="KI-知识隔离-论文解读.html"><span class="nk">「梯度隔音墙」</span><span class="nm">知识隔离 KI</span><span class="why">动作专家的梯度不回传进 VLM 骨干</span></a></div><div class="nick-group"><h3>动作表示与推理</h3><a class="nick-item" href="LeRobot-ACT-算法详解.html"><span class="nk">「一眼百步」</span><span class="nm">ACT</span><span class="why">看一眼画面，一次出 100 步动作</span></a><a class="nick-item" href="DETR-算法详解.html"><span class="nk">「匈牙利点名官」</span><span class="nm">DETR</span><span class="why">100 个 query 一次出框，匈牙利匹配挨个点名</span></a><a class="nick-item" href="DiffusionPolicy-论文解读.html"><span class="nk">「降噪画手」</span><span class="nm">Diffusion Policy</span><span class="why">从一团噪声里一步步描出动作序列</span></a><a class="nick-item" href="FAST-论文解读.html"><span class="nk">「动作压缩包」</span><span class="nm">FAST</span><span class="why">DCT + BPE，把一段动作压成约 30 个 token</span></a><a class="nick-item" href="RTC-实时动作分块-论文解读.html"><span class="nk">「接龙补画师」</span><span class="nm">RTC（推理时）</span><span class="why">把块与块的衔接当成 inpainting 来补画</span></a><a class="nick-item" href="RTC-训练时-论文解读.html"><span class="nk">「彩排接龙王」</span><span class="nm">训练时 RTC</span><span class="why">训练时先模拟延迟，推理时接龙零开销</span></a><a class="nick-item" href="Realtime-VLA-论文解读.html"><span class="nk">「草稿快枪手」</span><span class="nm">Realtime-VLA FLASH</span><span class="why">小模型抢先出草稿，主模型并行验收</span></a></div><div class="nick-group"><h3>模仿与数据</h3><a class="nick-item" href="DAgger-算法详解.html"><span class="nk">「接管教练」</span><span class="nm">DAgger</span><span class="why">机器人自己跑，跑偏了专家来标正解</span></a><a class="nick-item" href="InternData-A1-论文解读.html"><span class="nk">「假数据真功夫」</span><span class="nm">InternData-A1</span><span class="why">纯合成数据预训练，打平真实数据</span></a><a class="nick-item" href="D4RT_study_cards.html"><span class="nk">「时空问答机」</span><span class="nm">D4RT</span><span class="why">视频只编码一次，任意时空点随问随答</span></a></div><div class="nick-group"><h3>强化学习 · 通用</h3><a class="nick-item" href="RLinf-RL原理对比.html#concept-ppo"><span class="nk">「剪刀手」</span><span class="nm">PPO</span><span class="why">新旧策略比值超出 1±ε 就剪掉</span></a><a class="nick-item" href="RLinf-RL原理对比.html#concept-grpo"><span class="nk">「组内排名」</span><span class="nm">GRPO</span><span class="why">不要 critic，同一组回答互相比高低</span></a><a class="nick-item" href="RLinf-RL原理对比.html#concept-dapo"><span class="nk">「GRPO 补丁包」</span><span class="nm">DAPO</span><span class="why">给 GRPO 打了四个补丁</span></a><a class="nick-item" href="RLinf-RL原理对比.html#concept-reinforce-plus-plus"><span class="nk">「罚单入账」</span><span class="nm">Reinforce++</span><span class="why">KL 不进损失，直接从奖励里扣</span></a><a class="nick-item" href="RLinf-RL原理对比.html"><span class="nk">「好奇保守派」</span><span class="nm">SAC</span><span class="why">熵奖励让它多逛，双 Q 取小让它估得保守</span></a><a class="nick-item" href="ObjectCentric-RL-论文解读.html"><span class="nk">「双 Q 慢半拍」</span><span class="nm">TD3</span><span class="why">双 critic 取小，actor 隔几步才更新</span></a><a class="nick-item" href="RLinf-RL原理对比.html#concept-crossq"><span class="nk">「拆靶射手」</span><span class="nm">CrossQ</span><span class="why">删掉 target 网络照样训得稳</span></a><a class="nick-item" href="RLinf-RL原理对比.html#concept-rlpd"><span class="nk">「旧账压舱石」</span><span class="nm">RLPD</span><span class="why">拿离线数据当锚，边跑边学</span></a><a class="nick-item" href="RLinf-RL原理对比.html#concept-iql"><span class="nk">「不贪 max」</span><span class="nm">IQL</span><span class="why">只在数据里出现过的动作上估值</span></a></div><div class="nick-group"><h3>强化学习 · VLA</h3><a class="nick-item" href="piRL-论文解读.html"><span class="nk">「去噪掷骰手」</span><span class="nm">πRL</span><span class="why">ODE 改成 SDE，去噪链变 MDP 再跑 PPO</span></a><a class="nick-item" href="RLinf-RL原理对比.html#concept-sac-flow"><span class="nk">「给流装骰子」</span><span class="nm">SAC-Flow</span><span class="why">确定性流路径改成高斯链，似然能算了</span></a><a class="nick-item" href="RLinf-RL原理对比.html#concept-dsrl"><span class="nk">「噪声遥控器」</span><span class="nm">DSRL</span><span class="why">冻结策略，只挑输入的那团噪声</span></a><a class="nick-item" href="pi0.6-论文解读.html"><span class="nk">「复盘达人」</span><span class="nm">RECAP（π0.6）</span><span class="why">RECAP：把优势当条件，从自己的经验里学</span></a><a class="nick-item" href="RLinf-RL原理对比.html#concept-steam"><span class="nk">「时间判官」</span><span class="nm">STEAM</span><span class="why">用帧的先后顺序自监督出优势</span></a><a class="nick-item" href="RL-Token-论文解读.html"><span class="nk">「练习插口」</span><span class="nm">RL Token</span><span class="why">从 VLA 里抠出一个 token，外挂小 actor-critic 去练</span></a><a class="nick-item" href="RLinf-RL原理对比.html#concept-opd"><span class="nk">「家教批改」</span><span class="nm">OPD</span><span class="why">学生自己做题，老师按 logprob 打分</span></a><a class="nick-item" href="ObjectCentric-RL-论文解读.html"><span class="nk">「位姿副驾」</span><span class="nm">物体中心残差 RL</span><span class="why">只看物体位姿，在冻结的 VLA 上补一把方向盘</span></a><a class="nick-item" href="RL-100-论文解读.html"><span class="nk">「三段满分生」</span><span class="nm">RL-100</span><span class="why">模仿 → 离线 RL → 在线 RL，真机冲到 100%</span></a></div></div>
   </section>
 
   <section class="index">
@@ -524,7 +545,7 @@
       <a class="entry" href="DiffusionPolicy-论文解读.html">
         <span class="ref">DIFFUSION-POLICY</span>
         <span class="body">
-          <span class="title">Diffusion Policy：扩散动作策略<span class="fmt">精读</span></span>
+          <span class="title">Diffusion Policy：扩散动作策略<span class="kb-nick" style="display:inline-block;margin:0 6px;padding:0 8px;font-size:.72em;font-weight:600;vertical-align:.12em;border:1px dashed var(--signal,#c4572a);border-radius:999px;color:var(--signal,#c4572a);white-space:nowrap">「降噪画手」</span><span class="fmt">精读</span></span>
           <span class="thesis">从多峰动作分布、条件去噪到滚动时域执行，理解扩散策略与后续流匹配 VLA 的联系。</span>
         </span>
         <span class="tags"><span class="tag">扩散模型</span><span class="tag">动作块</span></span>
@@ -534,7 +555,7 @@
       <a class="entry" href="LeRobot-ACT-算法详解.html">
         <span class="ref">LEROBOT-ACT</span>
         <span class="body">
-          <span class="title">ACT 动作分块 Transformer · LeRobot 全图解<span class="fmt">精读</span></span>
+          <span class="title">ACT 动作分块 Transformer · LeRobot 全图解<span class="kb-nick" style="display:inline-block;margin:0 6px;padding:0 8px;font-size:.72em;font-weight:600;vertical-align:.12em;border:1px dashed var(--signal,#c4572a);border-radius:999px;color:var(--signal,#c4572a);white-space:nowrap">「一眼百步」</span><span class="fmt">精读</span></span>
           <span class="thesis">从 ALOHA 到 LeRobot：一张总图串起数据采集、CVAE、1202 个 token、100 步并行解码与时间集成，每步对照源码行号。</span>
         </span>
         <span class="tags"><span class="tag">模仿学习</span><span class="tag">动作块</span><span class="tag">LeRobot</span></span>
@@ -544,7 +565,7 @@
       <a class="entry" href="DAgger-算法详解.html">
         <span class="ref">DAGGER</span>
         <span class="body">
-          <span class="title">DAgger 数据聚合 · 论文算法与 LeRobot 实现<span class="fmt">精读</span></span>
+          <span class="title">DAgger 数据聚合 · 论文算法与 LeRobot 实现<span class="kb-nick" style="display:inline-block;margin:0 6px;padding:0 8px;font-size:.72em;font-weight:600;vertical-align:.12em;border:1px dashed var(--signal,#c4572a);border-radius:999px;color:var(--signal,#c4572a);white-space:nowrap">「接管教练」</span><span class="fmt">精读</span></span>
           <span class="thesis">论文 Algorithm 3.1 逐行对照 LeRobot 的人在环接管：三状态机、两种记录模式、合并再训的迭代流程；架构图可编辑、可跳源码。</span>
         </span>
         <span class="tags"><span class="tag">模仿学习</span><span class="tag">人在环</span><span class="tag">LeRobot</span></span>
@@ -554,7 +575,7 @@
       <a class="entry" href="DETR-算法详解.html">
         <span class="ref">DETR</span>
         <span class="body">
-          <span class="title">DETR 目标检测 Transformer · ACT 的母体<span class="fmt">精读</span></span>
+          <span class="title">DETR 目标检测 Transformer · ACT 的母体<span class="kb-nick" style="display:inline-block;margin:0 6px;padding:0 8px;font-size:.72em;font-weight:600;vertical-align:.12em;border:1px dashed var(--signal,#c4572a);border-radius:999px;color:var(--signal,#c4572a);white-space:nowrap">「匈牙利点名官」</span><span class="fmt">精读</span></span>
           <span class="thesis">ResNet + Transformer + 100 个 object query，一次并行出框；匈牙利匹配、集合损失逐式对照官方代码，并列出 ACT 照搬与改动之处。</span>
         </span>
         <span class="tags"><span class="tag">Transformer</span><span class="tag">目标检测</span><span class="tag">ACT</span></span>
@@ -602,7 +623,7 @@
       <a class="entry" href="pi0-论文解读.html">
         <span class="ref">2410.24164</span>
         <span class="body">
-          <span class="title">π0<span class="fmt">精读</span></span>
+          <span class="title">π0<span class="kb-nick" style="display:inline-block;margin:0 6px;padding:0 8px;font-size:.72em;font-weight:600;vertical-align:.12em;border:1px dashed var(--signal,#c4572a);border-radius:999px;color:var(--signal,#c4572a);white-space:nowrap">「流水老大」</span><span class="fmt">精读</span></span>
           <span class="thesis">基于流匹配的通用 VLA 开山之作，把互联网视觉-语言先验带入机器人控制。</span>
         </span>
         <span class="tags"><span class="tag">VLA</span><span class="tag">Flow Matching</span></span>
@@ -622,7 +643,7 @@
       <a class="entry" href="FAST-论文解读.html">
         <span class="ref">2501.09747</span>
         <span class="body">
-          <span class="title">FAST / π0-FAST<span class="fmt">精读</span></span>
+          <span class="title">FAST / π0-FAST<span class="kb-nick" style="display:inline-block;margin:0 6px;padding:0 8px;font-size:.72em;font-weight:600;vertical-align:.12em;border:1px dashed var(--signal,#c4572a);border-radius:999px;color:var(--signal,#c4572a);white-space:nowrap">「动作压缩包」</span><span class="fmt">精读</span></span>
           <span class="thesis">用 DCT + BPE 把动作压成少量高信息 token，自回归 VLA 训练提速 5 倍；含交互演示与 openpi 逐文件读码。</span>
         </span>
         <span class="tags"><span class="tag">动作分词</span><span class="tag">自回归</span></span>
@@ -632,7 +653,7 @@
       <a class="entry" href="RTC-实时动作分块-论文解读.html">
         <span class="ref">2506.07339</span>
         <span class="body">
-          <span class="title">实时动作分块（RTC）<span class="fmt">精读</span></span>
+          <span class="title">实时动作分块（RTC）<span class="kb-nick" style="display:inline-block;margin:0 6px;padding:0 8px;font-size:.72em;font-weight:600;vertical-align:.12em;border:1px dashed var(--signal,#c4572a);border-radius:999px;color:var(--signal,#c4572a);white-space:nowrap">「接龙补画师」</span><span class="fmt">精读</span></span>
           <span class="thesis">衔接即补全：去噪每一步用前缀引导新动作块，流程图讲清异步循环、软掩码与延迟可行性。</span>
         </span>
         <span class="tags"><span class="tag">动作</span><span class="tag">Inpainting</span></span>
@@ -641,7 +662,7 @@
       <a class="entry" href="RTC-训练时-论文解读.html">
         <span class="ref">2512.05964</span>
         <span class="body">
-          <span class="title">训练时 RTC<span class="fmt">精读</span></span>
+          <span class="title">训练时 RTC<span class="kb-nick" style="display:inline-block;margin:0 6px;padding:0 8px;font-size:.72em;font-weight:600;vertical-align:.12em;border:1px dashed var(--signal,#c4572a);border-radius:999px;color:var(--signal,#c4572a);white-space:nowrap">「彩排接龙王」</span><span class="fmt">精读</span></span>
           <span class="thesis">训练时模拟推理延迟、以已执行动作前缀为条件，替代推理时补全，零推理开销；含交互演示与官方代码逐行读。</span>
         </span>
         <span class="tags"><span class="tag">实时执行</span><span class="tag">动作分块</span></span>
@@ -651,7 +672,7 @@
       <a class="entry" href="pi0.5-论文解读.html">
         <span class="ref">2504.16054</span>
         <span class="body">
-          <span class="title">π0.5<span class="fmt">精读 · 架构图 · 代码结构</span></span>
+          <span class="title">π0.5<span class="kb-nick" style="display:inline-block;margin:0 6px;padding:0 8px;font-size:.72em;font-weight:600;vertical-align:.12em;border:1px dashed var(--signal,#c4572a);border-radius:999px;color:var(--signal,#c4572a);white-space:nowrap">「混训学霸」</span><span class="fmt">精读 · 架构图 · 代码结构</span></span>
           <span class="thesis">五类数据混训、先离散后连续的两阶段训练、先说子任务再出动作；附对照 openpi 源码的架构图与代码结构树。</span>
         </span>
         <span class="tags"><span class="tag">VLA</span><span class="tag">泛化</span><span class="tag">读代码</span></span>
@@ -671,7 +692,7 @@
       <a class="entry" href="KI-知识隔离-论文解读.html">
         <span class="ref">2505.23705</span>
         <span class="body">
-          <span class="title">知识隔离（KI）<span class="fmt">精读</span></span>
+          <span class="title">知识隔离（KI）<span class="kb-nick" style="display:inline-block;margin:0 6px;padding:0 8px;font-size:.72em;font-weight:600;vertical-align:.12em;border:1px dashed var(--signal,#c4572a);border-radius:999px;color:var(--signal,#c4572a);white-space:nowrap">「梯度隔音墙」</span><span class="fmt">精读</span></span>
           <span class="thesis">动作专家只许读骨干、不许回写梯度：离散动作 token 训骨干，连续 flow 专家推理，语言能力保住，收敛更快。</span>
         </span>
         <span class="tags"><span class="tag">VLA</span><span class="tag">训练方法</span></span>
@@ -681,7 +702,7 @@
       <a class="entry" href="pi0.6-论文解读.html">
         <span class="ref">2511.14759v2</span>
         <span class="body">
-          <span class="title">π0.6<span class="fmt">精读</span></span>
+          <span class="title">π0.6<span class="kb-nick" style="display:inline-block;margin:0 6px;padding:0 8px;font-size:.72em;font-weight:600;vertical-align:.12em;border:1px dashed var(--signal,#c4572a);border-radius:999px;color:var(--signal,#c4572a);white-space:nowrap">「复盘达人」</span><span class="fmt">精读</span></span>
           <span class="thesis">通过自主经验与强化学习（RECAP）持续提升，突破示范数据的性能上限。</span>
         </span>
         <span class="tags"><span class="tag">VLA</span><span class="tag">强化学习</span></span>
@@ -691,7 +712,7 @@
       <a class="entry" href="pi0.7_问答学习卡.html">
         <span class="ref">2604.15483v2</span>
         <span class="body">
-          <span class="title">π0.7<span class="fmt">问答卡</span></span>
+          <span class="title">π0.7<span class="kb-nick" style="display:inline-block;margin:0 6px;padding:0 8px;font-size:.72em;font-weight:600;vertical-align:.12em;border:1px dashed var(--signal,#c4572a);border-radius:999px;color:var(--signal,#c4572a);white-space:nowrap">「百变点单王」</span><span class="fmt">问答卡</span></span>
           <span class="thesis">Flow Matching 驱动的 VLA，prompt 多样化是核心贡献。</span>
         </span>
         <span class="tags"><span class="tag">VLA</span><span class="tag">Flow Matching</span></span>
@@ -719,7 +740,7 @@
       <a class="entry" href="RL-Token-论文解读.html">
         <span class="ref">2604.23073v2</span>
         <span class="body">
-          <span class="title">RL Token<span class="fmt">解读</span></span>
+          <span class="title">RL Token<span class="kb-nick" style="display:inline-block;margin:0 6px;padding:0 8px;font-size:.72em;font-weight:600;vertical-align:.12em;border:1px dashed var(--signal,#c4572a);border-radius:999px;color:var(--signal,#c4572a);white-space:nowrap">「练习插口」</span><span class="fmt">解读</span></span>
           <span class="thesis">冻结 VLA + 轻量 actor-critic，用 RL token 在几小时内精调毫米级高精度操作。</span>
         </span>
         <span class="tags"><span class="tag">强化学习</span><span class="tag">在线精调</span></span>
@@ -729,7 +750,7 @@
       <a class="entry" href="RLToken-漫画分镜解读.html">
         <span class="ref">RL-TOKEN</span>
         <span class="body">
-          <span class="title">RL Token · 漫画分镜解读<span class="fmt">漫画实验</span></span>
+          <span class="title">RL Token · 漫画分镜解读<span class="kb-nick" style="display:inline-block;margin:0 6px;padding:0 8px;font-size:.72em;font-weight:600;vertical-align:.12em;border:1px dashed var(--signal,#c4572a);border-radius:999px;color:var(--signal,#c4572a);white-space:nowrap">「练习插口」</span><span class="fmt">漫画实验</span></span>
           <span class="thesis">从 RL Token 到动作块、稀疏奖励与 actor-critic，用分镜和交互实验串起在线强化学习的训练过程。</span>
         </span>
         <span class="tags"><span class="tag">强化学习</span><span class="tag">可交互</span></span>
@@ -739,7 +760,7 @@
       <a class="entry" href="piRL-论文解读.html">
         <span class="ref">2510.25889</span>
         <span class="body">
-          <span class="title">πRL<span class="fmt">精读</span></span>
+          <span class="title">πRL<span class="kb-nick" style="display:inline-block;margin:0 6px;padding:0 8px;font-size:.72em;font-weight:600;vertical-align:.12em;border:1px dashed var(--signal,#c4572a);border-radius:999px;color:var(--signal,#c4572a);white-space:nowrap">「去噪掷骰手」</span><span class="fmt">精读</span></span>
           <span class="thesis">把流匹配 VLA 的去噪过程建模成 MDP，用 PPO 在线微调 π0/π0.5（与 RL Token 对比）。</span>
         </span>
         <span class="tags"><span class="tag">VLA</span><span class="tag">强化学习</span><span class="tag">Flow Matching</span></span>
@@ -749,7 +770,7 @@
       <a class="entry" href="ObjectCentric-RL-论文解读.html">
         <span class="ref">2606.18953v1</span>
         <span class="body">
-          <span class="title">Object-Centric Residual RL<span class="fmt">精读</span></span>
+          <span class="title">Object-Centric Residual RL<span class="kb-nick" style="display:inline-block;margin:0 6px;padding:0 8px;font-size:.72em;font-weight:600;vertical-align:.12em;border:1px dashed var(--signal,#c4572a);border-radius:999px;color:var(--signal,#c4572a);white-space:nowrap">「位姿副驾」</span><span class="fmt">精读</span></span>
           <span class="thesis">物体位姿残差 RL，纯仿真训练零样本 sim-to-real，成功率 42%→76%。</span>
         </span>
         <span class="tags"><span class="tag">强化学习</span><span class="tag">Sim-to-Real</span></span>
@@ -759,7 +780,7 @@
       <a class="entry" href="DynamicVLA-论文解读.html">
         <span class="ref">2601.22153v1</span>
         <span class="body">
-          <span class="title">DynamicVLA<span class="fmt">精读</span></span>
+          <span class="title">DynamicVLA<span class="kb-nick" style="display:inline-block;margin:0 6px;padding:0 8px;font-size:.72em;font-weight:600;vertical-align:.12em;border:1px dashed var(--signal,#c4572a);border-radius:999px;color:var(--signal,#c4572a);white-space:nowrap">「追物快手」</span><span class="fmt">精读</span></span>
           <span class="thesis">面向移动/动态目标抓取的 VLA，解决动作时延导致的错位问题。</span>
         </span>
         <span class="tags"><span class="tag">VLA</span><span class="tag">动态物体</span></span>
@@ -769,7 +790,7 @@
       <a class="entry" href="PUMA-论文解读.html">
         <span class="ref">2603.15620v2</span>
         <span class="body">
-          <span class="title">PUMA<span class="fmt">精读</span></span>
+          <span class="title">PUMA<span class="kb-nick" style="display:inline-block;margin:0 6px;padding:0 8px;font-size:.72em;font-weight:600;vertical-align:.12em;border:1px dashed var(--signal,#c4572a);border-radius:999px;color:var(--signal,#c4572a);white-space:nowrap">「光流预言家」</span><span class="fmt">精读</span></span>
           <span class="thesis">面向动态环境的可泛化机械臂操作 VLA。</span>
         </span>
         <span class="tags"><span class="tag">VLA</span><span class="tag">动态操作</span></span>
@@ -779,7 +800,7 @@
       <a class="entry" href="Qwen-VLA-论文解读.html">
         <span class="ref">2605.30280v2</span>
         <span class="body">
-          <span class="title">Qwen-VLA<span class="fmt">精读</span></span>
+          <span class="title">Qwen-VLA<span class="kb-nick" style="display:inline-block;margin:0 6px;padding:0 8px;font-size:.72em;font-weight:600;vertical-align:.12em;border:1px dashed var(--signal,#c4572a);border-radius:999px;color:var(--signal,#c4572a);white-space:nowrap">「万能转接头」</span><span class="fmt">精读</span></span>
           <span class="thesis">统一任务、环境与机器人构型的视觉-语言-动作建模。</span>
         </span>
         <span class="tags"><span class="tag">VLA</span><span class="tag">多构型</span></span>
@@ -789,7 +810,7 @@
       <a class="entry" href="Realtime-VLA-论文解读.html">
         <span class="ref">2605.13778v1</span>
         <span class="body">
-          <span class="title">Realtime-VLA FLASH<span class="fmt">精读</span></span>
+          <span class="title">Realtime-VLA FLASH<span class="kb-nick" style="display:inline-block;margin:0 6px;padding:0 8px;font-size:.72em;font-weight:600;vertical-align:.12em;border:1px dashed var(--signal,#c4572a);border-radius:999px;color:var(--signal,#c4572a);white-space:nowrap">「草稿快枪手」</span><span class="fmt">精读</span></span>
           <span class="thesis">投机推理加速扩散 VLA，实现实时闭环控制。</span>
         </span>
         <span class="tags"><span class="tag">VLA</span><span class="tag">推理加速</span></span>
@@ -799,7 +820,7 @@
       <a class="entry" href="SmolVLA-论文解读.html">
         <span class="ref">2506.01844</span>
         <span class="body">
-          <span class="title">SmolVLA<span class="fmt">精读</span></span>
+          <span class="title">SmolVLA<span class="kb-nick" style="display:inline-block;margin:0 6px;padding:0 8px;font-size:.72em;font-weight:600;vertical-align:.12em;border:1px dashed var(--signal,#c4572a);border-radius:999px;color:var(--signal,#c4572a);white-space:nowrap">「半脑小钢炮」</span><span class="fmt">精读</span></span>
           <span class="thesis">0.45B 小型 VLA：只用 VLM 前一半层，配交替交叉/自注意力的流匹配动作专家，单卡可训，并提出异步推理。</span>
         </span>
         <span class="tags"><span class="tag">VLA</span><span class="tag">轻量化</span></span>
@@ -809,7 +830,7 @@
       <a class="entry" href="RL-100-论文解读.html">
         <span class="ref">2510.14830</span>
         <span class="body">
-          <span class="title">RL-100<span class="fmt">精读</span></span>
+          <span class="title">RL-100<span class="kb-nick" style="display:inline-block;margin:0 6px;padding:0 8px;font-size:.72em;font-weight:600;vertical-align:.12em;border:1px dashed var(--signal,#c4572a);border-radius:999px;color:var(--signal,#c4572a);white-space:nowrap">「三段满分生」</span><span class="fmt">精读</span></span>
           <span class="thesis">模仿学习打底 + OPE 把关的迭代离线 RL + 小预算在线 RL；去噪链内 PPO、一致性蒸馏压成单步，八项真机任务 100%。</span>
         </span>
         <span class="tags"><span class="tag">强化学习</span><span class="tag">真机</span></span>
@@ -827,7 +848,7 @@
       <a class="entry" href="InternData-A1-论文解读.html">
         <span class="ref">2511.16651v1</span>
         <span class="body">
-          <span class="title">InternData-A1<span class="fmt">精读</span></span>
+          <span class="title">InternData-A1<span class="kb-nick" style="display:inline-block;margin:0 6px;padding:0 8px;font-size:.72em;font-weight:600;vertical-align:.12em;border:1px dashed var(--signal,#c4572a);border-radius:999px;color:var(--signal,#c4572a);white-space:nowrap">「假数据真功夫」</span><span class="fmt">精读</span></span>
           <span class="thesis">首个证明纯合成数据可媲美真实数据的 VLA 预训练（630k 轨迹 / 7433 小时）。</span>
         </span>
         <span class="tags"><span class="tag">合成数据</span><span class="tag">预训练</span></span>
@@ -837,7 +858,7 @@
       <a class="entry" href="D4RT_study_cards.html">
         <span class="ref">DeepMind</span>
         <span class="body">
-          <span class="title">D4RT<span class="fmt">精读卡片</span></span>
+          <span class="title">D4RT<span class="kb-nick" style="display:inline-block;margin:0 6px;padding:0 8px;font-size:.72em;font-weight:600;vertical-align:.12em;border:1px dashed var(--signal,#c4572a);border-radius:999px;color:var(--signal,#c4572a);white-space:nowrap">「时空问答机」</span><span class="fmt">精读卡片</span></span>
           <span class="thesis">单视频联合推理深度、时空对应与相机参数，高效 4D 场景重建。</span>
         </span>
         <span class="tags"><span class="tag">4D 重建</span><span class="tag">Transformer</span></span>

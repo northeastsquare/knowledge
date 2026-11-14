@@ -144,6 +144,7 @@ footer{margin-top:70px;font-size:13px;color:var(--ink-3)}
 <header class="hero">
   <div class="kicker">Object Detection · <b>DETR</b> · 论文 + 官方代码 · ACT 的母体</div>
   <h1>DETR：把目标检测当成"集合预测"来做</h1>
+<p class="kb-nick" style="margin:6px 0 14px;font-size:15px;line-height:1.6;color:var(--ink-2,#51626f);text-align:inherit"><span style="display:inline-block;padding:1px 10px;margin-right:8px;border:1px dashed var(--signal,#c4572a);border-radius:999px;color:var(--signal,#c4572a);font-weight:700;white-space:nowrap">外号 · 「匈牙利点名官」</span>100 个 query 一次出框，匈牙利匹配挨个点名</p>
   <p class="lede">传统检测器先铺几万个 anchor，再用 NMS 去掉重复框。<b>DETR 去掉了这两样：CNN 抽特征，Transformer 编码，再用 100 个可学习的 object query 一次并行解码出 100 个"槽"，每个槽要么是一个物体，要么是"没有物体"。</b>训练时用匈牙利算法把槽和真值一对一配好，再算损失。ACT 的策略网络几乎就是这套结构，只是把"100 个框"换成了"100 步动作"。</p>
   <div class="facts">
     <div class="fact"><div class="n">2020</div><div class="l">ECCV · Carion、Massa 等（Facebook AI）</div></div>

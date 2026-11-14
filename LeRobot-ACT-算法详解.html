@@ -122,6 +122,7 @@ summary{cursor:pointer;font-weight:600}
 <header class="hero">
 <div class="kicker"><b>ACT</b> · Action Chunking with Transformers · RSS 2023 · LeRobot 实现</div>
 <h1 id="concept-act" class="concept-anchor">ACT：看一眼，规划接下来 2 秒的动作</h1>
+<p class="kb-nick" style="margin:6px 0 14px;font-size:15px;line-height:1.6;color:var(--ink-2,#51626f);text-align:inherit"><span style="display:inline-block;padding:1px 10px;margin-right:8px;border:1px dashed var(--signal,#c4572a);border-radius:999px;color:var(--signal,#c4572a);font-weight:700;white-space:nowrap">外号 · 「一眼百步」</span>看一眼画面，一次出 100 步动作</p>
 <p class="lede">ACT 是一种<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-behavior-cloning">行为克隆</a>算法。它每看一次画面，就一次性输出接下来 <b>100 步</b>（50Hz 下约 2 秒）的关节目标位置，而不是一步一步地猜。网络是一个 <b>CVAE</b>：训练时用一个额外的编码器把"人这次的操作风格"压成隐变量 z，推理时扔掉编码器，令 z = 0。</p>
 <div class="facts">
 <div class="fact"><div class="n">k = 100</div><div class="l">每次预测的动作步数（chunk size）</div></div>

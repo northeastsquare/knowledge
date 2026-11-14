@@ -203,6 +203,7 @@
       <section class="hero">
     <div class="eyebrow">精读笔记 · 执行与实时性</div>
     <h1>训练时 RTC：让模型在训练里就学会“接着已经在执行的动作往下写”</h1>
+<p class="kb-nick" style="margin:6px 0 14px;font-size:15px;line-height:1.6;color:var(--ink-2,#51626f);text-align:inherit"><span style="display:inline-block;padding:1px 10px;margin-right:8px;border:1px dashed var(--signal,#c4572a);border-radius:999px;color:var(--signal,#c4572a);font-weight:700;white-space:nowrap">外号 · 「彩排接龙王」</span>训练时先模拟延迟，推理时接龙零开销</p>
     <p class="summary">异步执行时，新动作块算出来的那一刻，旧动作块已经执行了 d 步，所以新块必须和这 d 步严丝合缝地接上。推理时 RTC 在<b>每一步去噪</b>时都用梯度把新块往这 d 步上“拽”，有效但更慢；训练时 RTC 换了个思路：训练时<b>随机模拟延迟</b>，把前 d 步换成真实动作并标记为“已经干净”，让模型直接学会条件生成。这样推理时不增加任何计算，网络结构也不用改。</p>
     <div class="meta">
       <div class="m"><span class="k">论文</span><span class="v">Training-Time Action Conditioning for Efficient Real-Time Chunking</span></div>
