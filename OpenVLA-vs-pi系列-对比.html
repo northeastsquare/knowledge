@@ -180,9 +180,25 @@
       <div class="m"><span class="k">主题</span><span class="v">动作表示 · 骨干与架构</span></div>
     </div>
   </section>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>OpenVLA 和 π0 最核心的分歧是什么？ <a class="reading-goto" href="#rq-1">读这一节 ↓</a></li>
+    <li>为什么说动作头是分水岭？ <a class="reading-goto" href="#rq-2">读这一节 ↓</a></li>
+    <li>今天两条路线还是“谁离散、谁连续”吗？ <a class="reading-goto" href="#rq-3">读这一节 ↓</a></li>
+  </ol>
+</div>
+<figure class="kb-arch" id="kb-arch">
+<figcaption><strong>架构图 · OpenVLA 与 π0 的数据流对照</strong>带 ↗ 的方框可点击，跳到对应代码或页面。</figcaption>
+<div class="kb-arch-scroll"><svg class="kb-arch-svg" viewBox="0 0 960 528" role="img" aria-label="OpenVLA 与 π0 的数据流对照" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ah2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:#6b7280"/></marker></defs><path d="M248,66 C248,90 248,90 248,114" style="fill:none;stroke:#6b7280;stroke-width:1.4" marker-end="url(#ah2)"/><path d="M248,166 C248,190 248,190 248,214" style="fill:none;stroke:#6b7280;stroke-width:1.4" marker-end="url(#ah2)"/><path d="M248,266 C248,290 248,290 248,314" style="fill:none;stroke:#6b7280;stroke-width:1.4" marker-end="url(#ah2)"/><path d="M248,366 C248,390 248,390 248,414" style="fill:none;stroke:#6b7280;stroke-width:1.4" marker-end="url(#ah2)"/><path d="M712,66 C712,90 712,90 712,114" style="fill:none;stroke:#6b7280;stroke-width:1.4" marker-end="url(#ah2)"/><path d="M712,166 C712,190 712,190 712,214" style="fill:none;stroke:#6b7280;stroke-width:1.4" marker-end="url(#ah2)"/><path d="M712,266 C712,295 712,295 712,324" style="fill:none;stroke:#6b7280;stroke-width:1.4" marker-end="url(#ah2)"/><path d="M712,356 C712,390 712,390 712,424" style="fill:none;stroke:#6b7280;stroke-width:1.4" marker-end="url(#ah2)"/><rect x="185" y="14" width="127" height="52" rx="8" style="fill:#f4f4f2;stroke:#8a8a85;stroke-width:1.5"/><text x="248" y="35" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">OpenVLA 输入</text><text x="248" y="54" style="font:400 12px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">单张图像 + 指令</text><rect x="616" y="14" width="192" height="52" rx="8" style="fill:#f4f4f2;stroke:#8a8a85;stroke-width:1.5"/><text x="712" y="35" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">π0 输入</text><text x="712" y="54" style="font:400 12px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">2–3 路图像 + 指令 + 状态</text><rect x="163" y="114" width="170" height="52" rx="8" style="fill:#e3f3f5;stroke:#3095a4;stroke-width:1.5"/><text x="248" y="135" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">DINOv2 + SigLIP</text><text x="248" y="154" style="font:400 12px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">视觉特征 → 投影进 LLM</text><rect x="639" y="114" width="147" height="52" rx="8" style="fill:#e3f3f5;stroke:#3095a4;stroke-width:1.5"/><text x="712" y="135" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">PaliGemma VLM 3B</text><text x="712" y="154" style="font:400 12px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">图像 + 语言前缀</text><a href="https://github.com/openvla/openvla/blob/c8f03f48af692657d3060c19588038c7220e9af9/prismatic/models/vlas/openvla.py#L36-L103" target="_blank" rel="noreferrer"><title>打开：openvla.py#L36-L103</title><rect x="173" y="214" width="149" height="52" rx="8" style="fill:#e3f3f5;stroke:#3095a4;stroke-width:1.5"/><text x="248" y="235" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">Llama 2 7B</text><text x="248" y="254" style="font:400 12px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">逐个自回归出 token ↗</text></a><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L217-L280" target="_blank" rel="noreferrer"><title>打开：pi0.py#L217-L280</title><rect x="629" y="214" width="166" height="52" rx="8" style="fill:#e3f3f5;stroke:#3095a4;stroke-width:1.5"/><text x="712" y="235" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">动作专家 300M</text><text x="712" y="254" style="font:400 12px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">读前缀 KV，流匹配去噪 ↗</text></a><a href="https://github.com/openvla/openvla/blob/c8f03f48af692657d3060c19588038c7220e9af9/prismatic/vla/action_tokenizer.py#L13-L73" target="_blank" rel="noreferrer"><title>打开：action_tokenizer.py#L13-L73</title><rect x="182" y="314" width="133" height="52" rx="8" style="fill:#f8f8f8;stroke:#9a9a9a;stroke-width:1.5;stroke-dasharray:5 4"/><text x="248" y="335" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">7 个动作 token</text><text x="248" y="354" style="font:400 12px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">每维 256 个 bin ↗</text></a><rect x="651" y="324" width="121" height="33" rx="8" style="fill:#f8f8f8;stroke:#9a9a9a;stroke-width:1.5;stroke-dasharray:5 4"/><text x="712" y="344" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">欧拉积分 10 步</text><rect x="191" y="414" width="114" height="52" rx="8" style="fill:#fff4e0;stroke:#d08a1e;stroke-width:1.5"/><text x="248" y="435" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">单步 7 维动作</text><text x="248" y="454" style="font:400 12px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">反离散化</text><rect x="649" y="424" width="127" height="33" rx="8" style="fill:#fff4e0;stroke:#d08a1e;stroke-width:1.5"/><text x="712" y="444" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">50 步连续动作块</text><rect x="702" y="182" width="21" height="16" rx="3" style="fill:#fcfcfb;fill-opacity:.92;stroke:none"/><text x="712" y="194" style="font:11px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">KV</text><rect x="16" y="500" width="18" height="12" rx="3" style="fill:#e3f3f5;stroke:#3095a4;stroke-width:1.3"/><text x="40" y="510" style="font:11.5px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563">神经网络模块</text><rect x="131.0" y="500" width="18" height="12" rx="3" style="fill:#f4f4f2;stroke:#8a8a85;stroke-width:1.3"/><text x="155.0" y="510" style="font:11.5px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563">数据 / 中间量</text><rect x="254.51" y="500" width="18" height="12" rx="3" style="fill:#fff4e0;stroke:#d08a1e;stroke-width:1.3"/><text x="278.51" y="510" style="font:11.5px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563">输入输出 · 部署</text><rect x="389.52" y="500" width="18" height="12" rx="3" style="fill:#f8f8f8;stroke:#9a9a9a;stroke-width:1.3;stroke-dasharray:3 2"/><text x="413.52" y="510" style="font:11.5px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563">确定性步骤 / 概念（无参数）</text></svg></div>
+<p class="kb-arch-src">依据：<a href="https://arxiv.org/abs/2406.09246" target="_blank" rel="noreferrer">OpenVLA 论文（arXiv 2406.09246）</a>、<a href="https://arxiv.org/abs/2410.24164" target="_blank" rel="noreferrer">π0 论文（arXiv 2410.24164）</a>；<a href="https://github.com/openvla/openvla/blob/c8f03f48af692657d3060c19588038c7220e9af9/prismatic/models/vlas/openvla.py#L36-L103" target="_blank" rel="noreferrer">openvla · predict_action</a>、<a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L217-L280" target="_blank" rel="noreferrer">openpi · sample_actions</a></p>
+</figure>
+
+
 
   <section>
-    <h2>一句话区别</h2>
+    <h2 id="rq-1">一句话区别</h2>
     <div class="vs">
       <div class="card"><h3 class="tag-a concept-anchor" id="concept-action-binning">OpenVLA：把动作当文字</h3><p>沿用 RT-2 路线。每个动作维度切成 256 个 bin，借用词表里的 token，由 Llama 2 <strong>自回归</strong>地一个一个输出，一次只输出一步动作。</p></div>
       <div class="card"><h3 class="tag-b">π0：VLM 负责理解，动作专家负责生成</h3><p>VLM 之外另接一个约 300M 的"<a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a>"，用 <a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">flow matching</a> 从噪声中生成<strong>连续</strong>动作，一次输出一段 <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">action chunk</a>（50 步）。</p></div>
@@ -207,7 +223,7 @@
   </section>
 
   <section>
-    <h2>为什么动作头是分水岭</h2>
+    <h2 id="rq-2">为什么动作头是分水岭</h2>
     <ul>
       <li><strong>精度</strong>：每维 256 个 bin 是粗量化，细腻的连续控制会损失精度；flow 直接在连续空间建模，还能表达多峰分布（同一场景下有多种合理做法）。</li>
       <li><strong>速度</strong>：自回归每输出一个维度就要前向一次，7 维动作就要解码 7 个 token；动作块配合并行生成，一次推理就能覆盖未来多步。</li>
@@ -217,7 +233,7 @@
   </section>
 
   <section>
-    <h2>后来两条路线互相借鉴</h2>
+    <h2 id="rq-3">后来两条路线互相借鉴</h2>
     <div class="vs">
       <div class="card"><h3 class="tag-a concept-anchor" id="concept-openvla-oft">OpenVLA → OpenVLA-OFT（2025.02）</h3><p>放弃逐 token 解码，改为<strong>并行解码 + 动作块 + 连续动作 L1 回归</strong>，速度和成功率都大幅提升，实际已向 π0 的"一次输出一段连续动作"靠拢。<a href="https://arxiv.org/abs/2502.19645" target="_blank" rel="noreferrer">arXiv 2502.19645</a></p></div>
       <div class="card"><h3 class="tag-b">π0 → π0-FAST / π0.5 / π*0.6 / π0.7</h3><p>反过来引入离散 token：<a class="concept-link" href="FAST-论文解读.html#concept-pi0-fast">π0-FAST</a> 用 <a class="concept-link" href="FAST-论文解读.html#concept-dct">DCT</a> + <a class="concept-link" href="FAST-论文解读.html#concept-bpe">BPE</a> 压缩动作 token（<a href="FAST-论文解读.html">精读</a>）；<a class="concept-link" href="pi0.5_论文测验_精美版.html#concept-fast">π0.5</a> 训练时用离散 token、推理时用 flow；<a class="concept-link" href="pi0.6-论文解读.html#concept-recap">π*0.6</a> 加入 RL（RECAP）；<a class="concept-link" href="pi0.7_问答学习卡.html#concept-prompt-conditioning">π0.7</a> 让模型可以通过提示调节行为。</p></div>
@@ -259,6 +275,24 @@
     </ul>
   </section>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>OpenVLA 和 π0 最核心的分歧是什么？</b></p><p>动作怎么生成：OpenVLA 把动作当文字，每维 256 个 bin 自回归出 token；π0 让 VLM 负责理解，另接约 300M 的动作专家用 flow matching 生成连续动作块。 <a class="reading-goto" href="#rq-1">回到原文 ↑</a></p></li>
+        <li><p><b>为什么说动作头是分水岭？</b></p><p>精度上，256 个 bin 是粗量化；速度上，自回归每一维都要前向一次，而 flow 一次出整段动作块。 <a class="reading-goto" href="#rq-2">回到原文 ↑</a></p></li>
+        <li><p><b>今天两条路线还是“谁离散、谁连续”吗？</b></p><p>不是了。OpenVLA-OFT 改成并行解码 + 动作块 + 连续 L1 回归；π 系列反过来用 FAST 离散 token。分界变成：训练时用离散 token 保住语义，推理时用连续动作保证精度和速度。 <a class="reading-goto" href="#rq-3">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>（本页自测题）OpenVLA 输出一个 7 维动作要解码几个 token？π0 一次推理输出多少步？</p><details><summary>看答案</summary><p>OpenVLA 要 7 个 token（每维一个）；π0 一次输出一个 50 步的动作块。</p></details></li>
+    <li><p>（本页自测题）为什么说 π0 的动作专家会“伤害”VLM 的语言知识？π0.5 怎么补救？</p><details><summary>看答案</summary><p>随机初始化的专家梯度回传进骨干，冲淡预训练知识；π0.5 训练时让骨干预测 FAST 离散 token，并配合知识隔离（stop-gradient）和网页数据联训。</p></details></li>
+    <li><p>思考：只有一张消费级显卡，想读懂 VLA 的最小形态并改代码，先上手哪个？</p><details><summary>看答案</summary><p>先读 OpenVLA：结构是标准 PyTorch + HuggingFace 的 VLM 加分箱 tokenizer，单卡就能做 LoRA 微调；做灵巧、高频、双臂任务再用 openpi。</p></details></li>
+  </ol>
+</div>
     <aside class="concept-related" aria-label="相关概念">
     <strong>相关概念</strong>
     <a class="concept-link" href="FAST-论文解读.html#concept-fast">分箱之后：FAST 动作压缩</a>

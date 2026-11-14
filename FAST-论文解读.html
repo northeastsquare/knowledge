@@ -176,7 +176,13 @@
   .pipe small{color:var(--ink-3)} .pipe i{color:var(--accent);font-style:normal}
   details.qz{border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin:8px 0;background:var(--surface)}
   details.qz summary{cursor:pointer;font-weight:600} details.qz p{margin:8px 0 0}
+  .katex-display{overflow-x:auto;overflow-y:hidden;padding:.25em 0;max-width:100%;}
+  .eq{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:6px 16px;margin:12px 0}
+  .basis svg{width:100%;height:auto;display:block}
+  .basis .lab{font-size:11px;fill:var(--ink-2);font-family:"IBM Plex Mono",ui-monospace,Consolas,monospace}
+  h3.sub{font-size:16.5px;font-weight:700;margin:24px 0 8px;color:var(--accent-strong)}
 </style>
+<link rel="stylesheet" href="assets/katex/katex.min.css">
 <link rel="stylesheet" href="concepts.css">
 </head>
 <body>
@@ -200,9 +206,25 @@
       <div class="m"><span class="k">首版</span><span class="v"><a href="https://arxiv.org/abs/2501.09747" target="_blank" rel="noreferrer">arXiv 2501.09747</a>（2025.01）</span></div>
     </div>
     <nav class="toc" aria-label="本页目录">
-      <a href="#s-one">一句话</a><a href="#s-problem">问题</a><a href="#s-demo">动手看</a><a href="#concept-fast">算法五步</a><a href="#concept-fast-plus">FAST+</a><a href="#concept-pi0-fast">π0-FAST</a><a href="#s-code">读代码</a><a href="#s-results">结果</a><a href="#s-insight">深层理解</a><a href="#s-cost">代价</a><a href="#s-next">被谁接手</a><a href="#s-quiz">自测</a>
+      <a href="#s-one">一句话</a><a href="#s-problem">问题</a><a href="#s-demo">动手看</a><a href="#concept-fast">算法五步</a><a href="#s-dct-math">DCT 详解</a><a href="#concept-fast-plus">FAST+</a><a href="#concept-pi0-fast">π0-FAST</a><a href="#s-code">读代码</a><a href="#s-results">结果</a><a href="#s-insight">深层理解</a><a href="#s-cost">代价</a><a href="#s-next">被谁接手</a><a href="#s-quiz">自测</a>
     </nav>
   </section>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>每步每维一个分箱 token，为什么在高频控制数据上“学不动”？ <a class="reading-goto" href="#rq-1">读这一节 ↓</a></li>
+    <li>FAST 怎么把一段动作压成少量 token？ <a class="reading-goto" href="#rq-2">读这一节 ↓</a></li>
+    <li>π0-FAST 和 π0 的结构差在哪？ <a class="reading-goto" href="#rq-3">读这一节 ↓</a></li>
+  </ol>
+</div>
+<figure class="kb-arch" id="kb-arch">
+<figcaption><strong>架构图 · FAST 动作 tokenizer：连续动作块 → 离散 token</strong>带 ↗ 的方框可点击，跳到对应代码或页面。</figcaption>
+<div class="kb-arch-scroll"><svg class="kb-arch-svg" viewBox="0 0 960 228" role="img" aria-label="FAST 动作 tokenizer：连续动作块 → 离散 token" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ah0" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:#6b7280"/></marker></defs><path d="M184,40 L274,40" style="fill:none;stroke:#6b7280;stroke-width:1.4" marker-end="url(#ah0)"/><path d="M454,40 L533,40" style="fill:none;stroke:#6b7280;stroke-width:1.4" marker-end="url(#ah0)"/><path d="M659,40 L755,40" style="fill:none;stroke:#6b7280;stroke-width:1.4" marker-end="url(#ah0)"/><path d="M828,66 C828,90 828,90 828,114" style="fill:none;stroke:#6b7280;stroke-width:1.4" marker-end="url(#ah0)"/><path d="M770,140 L661,140" style="fill:none;stroke:#6b7280;stroke-width:1.4" marker-end="url(#ah0)"/><path d="M531,140 L445,140" style="fill:none;stroke:#6b7280;stroke-width:1.4" marker-end="url(#ah0)"/><path d="M283,140 L219,140" style="fill:none;stroke:#6b7280;stroke-width:1.4" marker-end="url(#ah0)"/><rect x="80" y="14" width="105" height="52" rx="8" style="fill:#f4f4f2;stroke:#8a8a85;stroke-width:1.5"/><text x="132" y="35" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">动作块</text><text x="132" y="54" style="font:400 12px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">H 步 × D 维</text><rect x="274" y="14" width="180" height="52" rx="8" style="fill:#f8f8f8;stroke:#9a9a9a;stroke-width:1.5;stroke-dasharray:5 4"/><text x="364" y="35" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">分位数归一化</text><text x="364" y="54" style="font:400 12px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">每维 1%–99% → [−1, 1]</text><rect x="533" y="14" width="127" height="52" rx="8" style="fill:#f8f8f8;stroke:#9a9a9a;stroke-width:1.5;stroke-dasharray:5 4"/><text x="596" y="35" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">逐维 DCT</text><text x="596" y="54" style="font:400 12px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">时域 → 频域系数</text><rect x="755" y="14" width="145" height="52" rx="8" style="fill:#f8f8f8;stroke:#9a9a9a;stroke-width:1.5;stroke-dasharray:5 4"/><text x="828" y="35" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">缩放 + 四舍五入</text><text x="828" y="54" style="font:400 12px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">高频小系数大多变 0</text><rect x="45" y="114" width="174" height="52" rx="8" style="fill:#f8f8f8;stroke:#9a9a9a;stroke-width:1.5;stroke-dasharray:5 4"/><text x="132" y="135" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">解码：逆 BPE → 逆 DCT</text><text x="132" y="154" style="font:400 12px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">→ 连续动作</text><rect x="283" y="114" width="162" height="52" rx="8" style="fill:#e3f3f5;stroke:#3095a4;stroke-width:1.5"/><text x="364" y="135" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">π0-FAST 的 VLM</text><text x="364" y="154" style="font:400 12px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">自回归预测动作 token</text><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/tokenizer.py#L51-L145" target="_blank" rel="noreferrer"><title>打开：tokenizer.py#L51-L145</title><rect x="531" y="114" width="130" height="52" rx="8" style="fill:#f8f8f8;stroke:#9a9a9a;stroke-width:1.5;stroke-dasharray:5 4"/><text x="596" y="135" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">BPE 压缩</text><text x="596" y="154" style="font:400 12px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">合并常见系数组合 ↗</text></a><rect x="770" y="114" width="117" height="52" rx="8" style="fill:#f8f8f8;stroke:#9a9a9a;stroke-width:1.5;stroke-dasharray:5 4"/><text x="828" y="135" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">按频率交错展平</text><text x="828" y="154" style="font:400 12px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">低频系数排前面</text><rect x="462" y="123" width="52" height="16" rx="3" style="fill:#fcfcfb;fill-opacity:.92;stroke:none"/><text x="488" y="135" style="font:11px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">训练目标</text><rect x="225" y="123" width="52" height="16" rx="3" style="fill:#fcfcfb;fill-opacity:.92;stroke:none"/><text x="251" y="135" style="font:11px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">推理输出</text><rect x="16" y="200" width="18" height="12" rx="3" style="fill:#e3f3f5;stroke:#3095a4;stroke-width:1.3"/><text x="40" y="210" style="font:11.5px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563">神经网络模块</text><rect x="131.0" y="200" width="18" height="12" rx="3" style="fill:#f4f4f2;stroke:#8a8a85;stroke-width:1.3"/><text x="155.0" y="210" style="font:11.5px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563">数据 / 中间量</text><rect x="254.51" y="200" width="18" height="12" rx="3" style="fill:#f8f8f8;stroke:#9a9a9a;stroke-width:1.3;stroke-dasharray:3 2"/><text x="278.51" y="210" style="font:11.5px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563">确定性步骤 / 概念（无参数）</text></svg></div>
+<p class="kb-arch-src">依据：<a href="https://arxiv.org/abs/2501.09747" target="_blank" rel="noreferrer">FAST 论文 §4（arXiv 2501.09747）</a>；<a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/tokenizer.py#L51-L145" target="_blank" rel="noreferrer">openpi · FASTTokenizer</a></p>
+</figure>
+
+
 
   <section id="s-one">
     <h2>先建立坐标：三种“动作怎么出”</h2>
@@ -221,7 +243,7 @@
   </section>
 
   <section id="s-problem">
-    <h2>问题：为什么分箱 token 在高频下“学不动”</h2>
+    <h2 id="rq-1">问题：为什么分箱 token 在高频下“学不动”</h2>
     <p>分箱的做法是：对<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块</a> <code>a<sub>1:H</sub></code>（H 步 × D 维）的<b>每一步、每一维</b>独立离散成 256 个 bin 之一，得到 <code>H×D</code> 个 token：<code>[T<sub>1,1</sub>…T<sub>1,D</sub>, …, T<sub>H,1</sub>…T<sub>H,D</sub>]</code>。</p>
     <ol>
       <li><strong>玩具实验</strong>：让小 Transformer 根据 4 个点预测一条三次样条。曲线本身不变，只改采样率（每条 25 → 800 个点）。分箱 token 在低采样率下预测很准；采样率越高误差越大，最后模型干脆<b>一直复制第一个动作</b>。</li>
@@ -254,10 +276,10 @@
   </section>
 
   <section id="concept-fast" class="concept-anchor">
-    <h2>FAST 算法五步（Frequency-space Action Sequence Tokenization）</h2>
+    <h2 id="rq-2">FAST 算法五步（Frequency-space Action Sequence Tokenization）</h2>
     <div class="flow">
       <div class="st"><b>① 归一化</b><span>每个动作维度的训练集第 1 / 99 分位数映射到 [−1, 1]。用分位数是为了抗离群值，也方便不同机器人共用一个 tokenizer。</span></div>
-      <div class="st concept-anchor" id="concept-dct"><b>② 逐维 DCT</b><span>对 H×D 动作块的每一维沿时间轴做离散余弦变换。低频系数描述整体走势，高频系数描述突变。平滑的轨迹只需要少数几个系数。</span></div>
+      <div class="st concept-anchor" id="concept-dct"><b>② 逐维 DCT</b><span>对 H×D 动作块的每一维沿时间轴做离散余弦变换。低频系数描述整体走势，高频系数描述突变。平滑的轨迹只需要少数几个系数。<a href="#s-dct-math">公式与推导 ↓</a></span></div>
       <div class="st"><b>③ 缩放取整</b><span><code>round(γ·C)</code>，γ 默认为 10。这是<b>唯一有损</b>的一步：小系数会变成 0，矩阵变得稀疏。γ 控制压缩率和精度之间的权衡。</span></div>
       <div class="st"><b>④ 低频优先展平</b><span>按“先所有维度的第 0 频，再所有维度的第 1 频……”展平（column-first）。这样自回归时先确定整体形状，再补细节，rollout 更稳。</span></div>
       <div class="st concept-anchor" id="concept-bpe"><b>⑤ BPE 合并</b><span>在整数序列上训练词表为 1024 的 BPE，无损地压掉成串的 0，并合并跨维度常一起出现的系数组合。输出是固定大小的词表，可以直接塞进 VLM 词表。</span></div>
@@ -273,6 +295,82 @@
     </div>
   </section>
 
+  <section id="s-dct-math">
+    <h2>DCT 详解：公式、做法、为什么这样做</h2>
+    <p><b>DCT</b> 全称 <b>Discrete Cosine Transform</b>（离散余弦变换），由 Ahmed、Natarajan、Rao 在 1974 年提出。JPEG 压缩用的就是它。FAST 用的是最常见的 <b>DCT-II</b>，并且是正交归一化版本（代码里的 <code>norm="ortho"</code>）。</p>
+
+    <h3 class="sub">1. 目标：把一条曲线写成“余弦波的配方”</h3>
+    <p>只看一个关节，它在一个动作块里有 \(N\) 个时间步的值 \(x_0,\dots,x_{N-1}\)。DCT 想把这条曲线写成 \(N\) 条固定的<b>基准波</b> \(b_k\) 的加权和：</p>
+    <div class="eq">\[ x_n \;=\; \sum_{k=0}^{N-1} X_k\, b_k(n), \qquad b_k(n) \;=\; \alpha_k \cos\!\Big[\frac{\pi}{N}\Big(n+\tfrac12\Big)k\Big] \]</div>
+    <p>\(X_k\) 是第 \(k\) 条波的“份量”，DCT 要求的就是这 \(N\) 个份量。第 \(k\) 条波在 \(N\) 步里正好走 \(k\) 个半周期：\(k=0\) 是一条平线，\(k=1\) 是一次从高到低，\(k\) 越大抖得越快。</p>
+    <div class="diagram basis">
+      <svg id="basisSvg" viewBox="0 0 760 250" role="img" aria-label="N=8 时前 4 条 DCT 基准波"></svg>
+      <div class="caption">N = 8 时的前 4 条基准波。圆点是真正被用到的 8 个采样点（每步正中间，n+½），虚线是连续的余弦。</div>
+    </div>
+
+    <h3 class="sub">2. 正变换与逆变换</h3>
+    <div class="eq">\[ \textbf{正变换：}\quad X_k \;=\; \alpha_k \sum_{n=0}^{N-1} x_n \cos\!\Big[\frac{\pi}{N}\Big(n+\tfrac12\Big)k\Big], \qquad k=0,\dots,N-1 \]
+    \[ \textbf{逆变换：}\quad x_n \;=\; \sum_{k=0}^{N-1} \alpha_k\, X_k \cos\!\Big[\frac{\pi}{N}\Big(n+\tfrac12\Big)k\Big] \]
+    \[ \alpha_0=\sqrt{\tfrac1N}, \qquad \alpha_k=\sqrt{\tfrac2N}\;\;(k\ge 1) \]</div>
+    <p>把基准波按行排成 \(N\times N\) 矩阵 \(M\)，即 \(M_{kn}=b_k(n)\)。正变换和逆变换就是两次矩阵乘法：</p>
+    <div class="eq">\[ X = M x, \qquad x = M^{\top} X, \qquad M^{\top}M = I \]</div>
+
+    <h3 class="sub">3. 为什么正变换是“逐点相乘再求和”</h3>
+    <ol>
+      <li><strong>基准波两两正交</strong>：不同的两条波逐点相乘再求和，结果是 0：\(\sum_n b_j(n)\,b_k(n)=0\;(j\ne k)\)。</li>
+      <li><strong>其他波都被消掉</strong>：把 \(x=\sum_j X_j b_j\) 和 \(b_k\) 做点积，
+        \[ \langle x, b_k\rangle = \sum_j X_j \langle b_j, b_k\rangle = X_k \langle b_k,b_k\rangle = X_k. \]
+        所以“和第 \(k\) 条波做点积”就能把 \(X_k\) 单独取出来。这就是正变换公式。</li>
+      <li><strong>\(\alpha_k\) 让每条波的长度为 1</strong>：\(\sum_n \cos^2[\cdot]\) 在 \(k=0\) 时等于 \(N\)，在 \(k\ge1\) 时等于 \(N/2\)。乘上 \(\alpha_k\) 后 \(\langle b_k,b_k\rangle=1\)，点积出来的就是 \(X_k\)，不用再除。这也让 \(M\) 成为正交矩阵，逆变换就是转置。</li>
+      <li><strong>能量守恒（Parseval）</strong>：正交变换不改变长度，\(\sum_n x_n^2=\sum_k X_k^2\)。DCT 不丢信息，只是换了一组坐标轴。</li>
+    </ol>
+    <p class="hl-line">打个比方：平面上一个点，和单位 x 轴做点积得到横坐标，和 y 轴做点积得到纵坐标。DCT 也一样，只是坐标轴换成了 \(N\) 条“从慢到快”的余弦波。</p>
+
+    <h3 class="sub">4. 为什么用余弦，而且是 n+½</h3>
+    <ul>
+      <li><strong>不用傅里叶（DFT）</strong>：DFT 默认信号首尾相接、周期重复。动作块的起点和终点通常不一样高，接起来会有一个<b>跳变</b>，跳变的能量会洒到所有高频上（频谱泄漏），高频系数就不为 0 了。</li>
+      <li><strong>DCT-II 等于先镜像再变换</strong>：DCT-II 相当于把序列在两端各做一次镜像对称延拓（\(x_0\dots x_{N-1}x_{N-1}\dots x_0\)），延拓后首尾是连续的，没有跳变。在延拓后的信号上，只用余弦（偶函数）就能表示。</li>
+      <li><strong>\(n+\tfrac12\)</strong>：采样点取在每一步的正中间，对称轴正好落在两个采样点之间。这样镜像后的序列严格对称，每条余弦在两个端点处的斜率都是 0。</li>
+    </ul>
+
+    <h3 class="sub">5. 为什么平滑轨迹只剩少数几个系数</h3>
+    <p>平滑意味着相邻两步差得很少，曲线里几乎没有快速抖动的成分。快速抖动的成分正是高频系数，所以它们都接近 0。这个性质叫<b>能量集中</b>（energy compaction）。</p>
+    <p>最小的例子，\(N=2\)：</p>
+    <div class="eq">\[ X_0=\frac{x_0+x_1}{\sqrt2}\;(\text{和}), \qquad X_1=\frac{x_0-x_1}{\sqrt2}\;(\text{差}) \]</div>
+    <p>\(x=[5.0,\,5.1]\) 时 \(X=[7.14,\,-0.07]\)。动作越平滑，“差”就越小。</p>
+    <p>\(N=8\)，一条从 0 走到 0.7 的斜线：</p>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th></th><th>0</th><th>1</th><th>2</th><th>3</th><th>4</th><th>5</th><th>6</th><th>7</th></tr>
+        <tr><td>\(x_n\)</td><td>0.00</td><td>0.10</td><td>0.20</td><td>0.30</td><td>0.40</td><td>0.50</td><td>0.60</td><td>0.70</td></tr>
+        <tr><td>\(X_k\)</td><td>0.990</td><td>−0.644</td><td>0</td><td>−0.067</td><td>0</td><td>−0.020</td><td>0</td><td>−0.005</td></tr>
+        <tr><td>\(\mathrm{round}(10X_k)\)</td><td>10</td><td>−6</td><td>0</td><td>−1</td><td>0</td><td>0</td><td>0</td><td>0</td></tr>
+        <tr><td>逆变换还原</td><td>0.02</td><td>0.11</td><td>0.24</td><td>0.32</td><td>0.38</td><td>0.47</td><td>0.59</td><td>0.69</td></tr>
+      </table>
+    </div>
+    <p>\(\sum x_n^2=1.40\)，而 \(X_0^2+X_1^2\approx0.980+0.415=1.395\)：<b>前 2 个系数装了 99.6% 的能量</b>。取整后 8 个数只剩 3 个非零，还原误差最大 0.04。偶数位系数恰好为 0，是因为斜线减去平均值后关于中点反对称，而 \(k=2,4,6\) 的余弦关于中点对称（\(b_k(N-1-n)=(-1)^k b_k(n)\)），两者点积为 0。平均值只进入 \(X_0\)。</p>
+
+    <h3 class="sub">6. 放回 FAST：整块动作的矩阵写法</h3>
+    <p>动作块 \(A\in\mathbb{R}^{H\times D}\)（\(H\) 步、\(D\) 维，已经归一化到 \([-1,1]\)）。“逐维 DCT”就是对每一列分别做 DCT，等价于左乘一次 DCT 矩阵：</p>
+    <div class="eq">\[ C = M_H\,A \in \mathbb{R}^{H\times D}, \qquad Q=\mathrm{round}(\gamma\, C), \qquad \hat A = M_H^{\top}\,\frac{Q}{\gamma} \]</div>
+    <ul>
+      <li><strong>只沿时间轴做</strong>：同一个关节在相邻时间步上是平滑的，所以在时间轴上能压缩。关节编号的先后没有“平滑”可言，所以维度方向不做变换。</li>
+      <li><strong>误差有上界</strong>：取整让每个系数最多偏 \(\tfrac{1}{2\gamma}\)。\(M_H\) 是正交矩阵，不放大误差，所以
+        \[ \|\hat A - A\|_F = \Big\|\tfrac{Q}{\gamma}-C\Big\|_F \le \frac{\sqrt{HD}}{2\gamma}, \qquad \mathrm{RMSE}\le\frac{1}{2\gamma}. \]
+        \(\gamma=10\) 时，每个值的均方根误差不超过 0.05（归一化单位）。这就是“γ 控制精度”的来源。</li>
+      <li><strong>低频优先展平</strong>：把 \(Q\) 按行展平，得到 \([Q_{0,1},\dots,Q_{0,D},\,Q_{1,1},\dots,Q_{1,D},\dots]\)：先放所有维度的第 0 频，再放第 1 频，依此类推。成片的 0 都排到末尾，接下来 BPE 能把它们压得很短。</li>
+    </ul>
+    <div class="tbl-wrap">
+      <table>
+        <tr><th>公式</th><th>代码（<code>lerobot/policies/molmoact2/molmoact2_hf_model/action_tokenizer.py</code>）</th></tr>
+        <tr><td>\(C=M_H A\)</td><td>第 93 行 <code>dct(action_chunk, axis=1, norm="ortho")</code>。输入是 <code>[batch, H, D]</code>，<code>axis=1</code> 就是时间轴</td></tr>
+        <tr><td>\(Q=\mathrm{round}(\gamma C)\)</td><td>第 94 行 <code>np.around(dct_coeff * self.scale)</code>，<code>scale</code> 默认 10</td></tr>
+        <tr><td>按行展平 → 字符</td><td>第 97 行 <code>elem.flatten() - self.min_token</code>，再用 <code>chr</code> 变成字符串交给 BPE</td></tr>
+        <tr><td>\(\hat A=M_H^{\top}Q/\gamma\)</td><td>第 126 行 reshape 回 <code>(H, D)</code>，第 136 行 <code>idct(coeff / self.scale, axis=0, norm="ortho")</code></td></tr>
+      </table>
+    </div>
+  </section>
+
   <section id="concept-fast-plus" class="concept-anchor">
     <h2>FAST+：通用动作 tokenizer</h2>
     <ul>
@@ -283,7 +381,7 @@
   </section>
 
   <section id="concept-pi0-fast" class="concept-anchor">
-    <h2>π0-FAST：模型怎么搭、怎么训、怎么推</h2>
+    <h2 id="rq-3">π0-FAST：模型怎么搭、怎么训、怎么推</h2>
     <ol>
       <li><strong>结构</strong>：π0 的 PaliGemma（Gemma 2B + SigLIP）主干，<b>去掉动作专家</b>。动作也变成词表里的 token，与文字共用同一个输出头。</li>
       <li><strong>输入序列</strong>：<code>[图像 token] Task: 指令, State: 256-bin 离散状态;\n</code> 作为前缀，<code>Action: [FAST token…] |</code> 作为后缀。前缀内部双向注意力，后缀因果注意力。</li>
@@ -379,6 +477,25 @@
     <details class="qz"><summary>FAST 让训练快 5 倍，为什么 π0.5 推理时又换回 flow？</summary><p>FAST 推理要用 2B 主干逐 token 解码（约 750ms/块），flow 动作专家 10 步积分约 100ms。π0.5 用 FAST 训练拿收敛速度和语言能力，用 flow 推理拿速度。</p></details>
   </section>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>每步每维一个分箱 token，为什么在高频控制数据上“学不动”？</b></p><p>采样越密，相邻 token 越像，“下一个 token 约等于上一个”成了最省事的答案；每个 token 带的新信息很少，交叉熵学不到真正的动作结构。 <a class="reading-goto" href="#rq-1">回到原文 ↑</a></p></li>
+        <li><p><b>FAST 怎么把一段动作压成少量 token？</b></p><p>归一化 → 每一维做 DCT → 乘缩放系数 γ 后取整 → 按“低频优先”展平 → 用 BPE 合并成离散 token。解码是完全逆过程。 <a class="reading-goto" href="#rq-2">回到原文 ↑</a></p></li>
+        <li><p><b>π0-FAST 和 π0 的结构差在哪？</b></p><p>π0-FAST 去掉了动作专家，直接用 PaliGemma 主干自回归吐 FAST token，训练用交叉熵；π0 用独立动作专家做 flow matching。 <a class="reading-goto" href="#rq-3">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>1 秒、50Hz、14 维的双臂动作：分箱要多少 token？FAST 大约多少？</p><details><summary>看答案</summary><p>分箱 50×14=700 个；FAST 约 53 个。</p></details></li>
+    <li><p>为什么展平时要“低频优先”，而不是先把一维的所有频率写完？</p><details><summary>看答案</summary><p>按维度展平时，前面的 token 只描述一个维度；低频优先让最先生成的 token 就确定所有维度的整体轮廓，后面再补细节，自回归更好学。</p></details></li>
+    <li><p>去掉 BPE 会怎样？</p><details><summary>看答案</summary><p>仍比分箱好，但量化后有大量 0 token，会稀释学习信号，序列也更长、解码更慢。</p></details></li>
+    <li><p>思考：π0-FAST 训练快、语言跟随强，但推理慢。慢在哪里？</p><details><summary>看答案</summary><p>动作要逐 token 自回归解码，每个 token 都要过一遍主干；π0 的动作专家一次出整段，只需约 10 步积分。</p></details></li>
+  </ol>
+</div>
   <aside class="concept-related" aria-label="相关概念">
     <strong>相关概念</strong>
     <a class="concept-link" href="concepts.html#fast">FAST 概念卡</a>
@@ -435,6 +552,27 @@
   if(window.matchMedia)window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',draw);
   draw();
 })();
+</script>
+<script>
+(function(){
+  var svg=document.getElementById('basisSvg');if(!svg)return;
+  var N=8,rowH=60,L=70,R=740,h='';
+  function px(t){return L+(t+0.5)/N*(R-L);}
+  for(var k=0;k<4;k++){
+    var cy=rowH*k+32,amp=22,a=Math.sqrt((k?2:1)/N),norm=Math.sqrt(2/N);
+    h+='<line x1="'+L+'" y1="'+cy+'" x2="'+R+'" y2="'+cy+'" style="stroke:var(--line)"/>';
+    h+='<text class="lab" x="8" y="'+(cy+4)+'">k='+k+'</text>';
+    var d='';for(var s=0;s<=120;s++){var t=-0.5+s/120*N;var v=a*Math.cos(Math.PI/N*(t+0.5)*k)/norm;d+=(s?'L':'M')+px(t).toFixed(1)+','+(cy-v*amp).toFixed(1);}
+    h+='<path d="'+d+'" fill="none" style="stroke:var(--accent);stroke-dasharray:4 3;stroke-width:1.4"/>';
+    for(var n=0;n<N;n++){var v2=a*Math.cos(Math.PI/N*(n+0.5)*k)/norm;h+='<line x1="'+px(n)+'" y1="'+cy+'" x2="'+px(n)+'" y2="'+(cy-v2*amp)+'" style="stroke:var(--line-strong)"/><circle cx="'+px(n)+'" cy="'+(cy-v2*amp)+'" r="4" style="fill:var(--accent)"/>';}
+  }
+  svg.innerHTML=h;
+})();
+</script>
+<script src="assets/katex/katex.min.js"></script>
+<script src="assets/katex/contrib/auto-render.min.js"></script>
+<script>
+  if(window.renderMathInElement){renderMathInElement(document.getElementById('s-dct-math'),{delimiters:[{left:'\\[',right:'\\]',display:true},{left:'\\(',right:'\\)',display:false}],throwOnError:false});}
 </script>
 <script src="nav.js"></script>
 </body>

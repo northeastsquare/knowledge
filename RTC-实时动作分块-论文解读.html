@@ -153,6 +153,22 @@
   <p class="meta">Real-Time Execution of Action Chunking Flow Policies · Kevin Black, Manuel Y. Galliker, Sergey Levine</p>
   <div class="one"><b>一句话：</b>模型算动作要时间，机器人却不能停。RTC 让下一段动作块在生成时，把“已经注定会发生”的前几步当成已知条件，像补全一张图那样把剩下的部分接上去。它只改推理过程，不用重新训练，任何<a class="concept-link" href="DiffusionPolicy-论文解读.html#concept-diffusion-policy">扩散</a>或 flow 策略都能套。</div>
 </header>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>机器人为什么会“卡”？ <a class="reading-goto" href="#rq-1">读这一节 ↓</a></li>
+    <li>RTC 的核心想法是什么？ <a class="reading-goto" href="#rq-2">读这一节 ↓</a></li>
+    <li>RTC 改了模型权重吗？ <a class="reading-goto" href="#rq-3">读这一节 ↓</a></li>
+  </ol>
+</div>
+<figure class="kb-arch" id="kb-arch">
+<figcaption><strong>架构图 · 推理时 RTC：边执行边生成，用引导把新块接到旧块上</strong>带 ↗ 的方框可点击，跳到对应代码或页面。</figcaption>
+<div class="kb-arch-scroll"><svg class="kb-arch-svg" viewBox="0 0 960 428" role="img" aria-label="推理时 RTC：边执行边生成，用引导把新块接到旧块上" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ah8" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:#6b7280"/></marker></defs><path d="M248,66 C248,90 248,90 248,114" style="fill:none;stroke:#6b7280;stroke-width:1.4" marker-end="url(#ah8)"/><path d="M712,56 C712,85 712,85 712,114" style="fill:none;stroke:#6b7280;stroke-width:1.4" marker-end="url(#ah8)"/><path d="M248,166 C248,190 480,190 480,214" style="fill:none;stroke:#6b7280;stroke-width:1.4" marker-end="url(#ah8)"/><path d="M712,166 C712,190 480,190 480,214" style="fill:none;stroke:#6b7280;stroke-width:1.4" marker-end="url(#ah8)"/><path d="M498,214 C498,190 730,190 730,166" style="fill:none;stroke:#6b7280;stroke-width:1.4;stroke-dasharray:5 4" marker-end="url(#ah8)"/><path d="M480,266 C480,290 248,290 248,314" style="fill:none;stroke:#6b7280;stroke-width:1.4" marker-end="url(#ah8)"/><path d="M306,340 L654,340" style="fill:none;stroke:#6b7280;stroke-width:1.4" marker-end="url(#ah8)"/><path d="M770,340 L792,340 L792,40 L306,40" style="fill:none;stroke:#6b7280;stroke-width:1.4;stroke-dasharray:5 4" marker-end="url(#ah8)"/><rect x="190" y="14" width="117" height="52" rx="8" style="fill:#f4f4f2;stroke:#8a8a85;stroke-width:1.5"/><text x="248" y="35" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">上一块剩余动作</text><text x="248" y="54" style="font:400 12px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">正在被执行</text><rect x="660" y="24" width="104" height="33" rx="8" style="fill:#f4f4f2;stroke:#8a8a85;stroke-width:1.5"/><text x="712" y="44" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">新观测 o_t</text><a href="https://github.com/Physical-Intelligence/real-time-chunking-kinetix/blob/9296f31d62d5bfeb5779dcb2f9bcf71ca37f448b/src/model.py#L40-L63" target="_blank" rel="noreferrer"><title>打开：model.py#L40-L63</title><rect x="120" y="114" width="256" height="52" rx="8" style="fill:#f8f8f8;stroke:#9a9a9a;stroke-width:1.5;stroke-dasharray:5 4"/><text x="248" y="135" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">软掩码 W</text><text x="248" y="154" style="font:400 12px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">前 d 步 = 1 · 重叠区衰减 · 尾部 0 ↗</text></a><rect x="654" y="114" width="117" height="52" rx="8" style="fill:#e3f3f5;stroke:#3095a4;stroke-width:1.5"/><text x="712" y="135" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">流匹配去噪一步</text><text x="712" y="154" style="font:400 12px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">预测终点 Â¹</text><a href="https://github.com/Physical-Intelligence/real-time-chunking-kinetix/blob/9296f31d62d5bfeb5779dcb2f9bcf71ca37f448b/src/model.py#L236-L251" target="_blank" rel="noreferrer"><title>打开：model.py#L236-L251</title><rect x="394" y="214" width="172" height="52" rx="8" style="fill:#f8f8f8;stroke:#9a9a9a;stroke-width:1.5;stroke-dasharray:5 4"/><text x="480" y="235" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">ΠGDM 引导</text><text x="480" y="254" style="font:400 12px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">把 Â¹ 拉向 W ⊙ 上一块 ↗</text></a><a href="https://github.com/Physical-Intelligence/real-time-chunking-kinetix/blob/9296f31d62d5bfeb5779dcb2f9bcf71ca37f448b/src/model.py#L219-L265" target="_blank" rel="noreferrer"><title>打开：model.py#L219-L265</title><rect x="190" y="314" width="117" height="52" rx="8" style="fill:#fff4e0;stroke:#d08a1e;stroke-width:1.5"/><text x="248" y="335" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">新动作块</text><text x="248" y="354" style="font:400 12px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">与旧块平滑衔接 ↗</text></a><rect x="654" y="314" width="117" height="52" rx="8" style="fill:#fff4e0;stroke:#d08a1e;stroke-width:1.5"/><text x="712" y="335" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">机器人执行</text><text x="712" y="354" style="font:400 12px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">推理期间不停顿</text><rect x="556" y="182" width="115" height="16" rx="3" style="fill:#fcfcfb;fill-opacity:.92;stroke:none"/><text x="614" y="194" style="font:11px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">修正速度，循环 n 步</text><rect x="338" y="282" width="52" height="16" rx="3" style="fill:#fcfcfb;fill-opacity:.92;stroke:none"/><text x="364" y="294" style="font:11px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">积分完成</text><rect x="766" y="182" width="52" height="16" rx="3" style="fill:#fcfcfb;fill-opacity:.92;stroke:none"/><text x="792" y="194" style="font:11px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">异步回流</text><rect x="16" y="400" width="18" height="12" rx="3" style="fill:#e3f3f5;stroke:#3095a4;stroke-width:1.3"/><text x="40" y="410" style="font:11.5px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563">神经网络模块</text><rect x="131.0" y="400" width="18" height="12" rx="3" style="fill:#f4f4f2;stroke:#8a8a85;stroke-width:1.3"/><text x="155.0" y="410" style="font:11.5px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563">数据 / 中间量</text><rect x="254.51" y="400" width="18" height="12" rx="3" style="fill:#fff4e0;stroke:#d08a1e;stroke-width:1.3"/><text x="278.51" y="410" style="font:11.5px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563">输入输出 · 部署</text><rect x="389.52" y="400" width="18" height="12" rx="3" style="fill:#f8f8f8;stroke:#9a9a9a;stroke-width:1.3;stroke-dasharray:3 2"/><text x="413.52" y="410" style="font:11.5px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563">确定性步骤 / 概念（无参数）</text><text x="944" y="410" style="font:11.5px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:end">虚线箭头 = 训练时 / 回路</text></svg></div>
+<p class="kb-arch-src">依据：<a href="https://arxiv.org/abs/2506.07339" target="_blank" rel="noreferrer">RTC 论文 Alg.1（arXiv 2506.07339）</a>；<a href="https://github.com/Physical-Intelligence/real-time-chunking-kinetix/blob/9296f31d62d5bfeb5779dcb2f9bcf71ca37f448b/src/model.py#L219-L265" target="_blank" rel="noreferrer">kinetix · realtime_action</a>、<a href="https://github.com/Physical-Intelligence/real-time-chunking-kinetix/blob/9296f31d62d5bfeb5779dcb2f9bcf71ca37f448b/src/model.py#L40-L63" target="_blank" rel="noreferrer">get_prefix_weights</a>、<a href="https://github.com/Physical-Intelligence/real-time-chunking-kinetix/blob/9296f31d62d5bfeb5779dcb2f9bcf71ca37f448b/src/model.py#L236-L251" target="_blank" rel="noreferrer">pinv_corrected_velocity</a></p>
+</figure>
+
+
 
 <!-- ============ 0 地图 ============ -->
 <h2><span class="no">0</span>先看地图</h2>
@@ -189,7 +205,7 @@
 </div>
 
 <!-- ============ 1 为什么卡 ============ -->
-<h2><span class="no">1</span>问题：为什么机器人会“卡”</h2>
+<h2 id="rq-1"><span class="no">1</span>问题：为什么机器人会“卡”</h2>
 <p class="sub">先把时间画出来。卡顿不是模型不准，而是“想”和“做”没有排好队。</p>
 
 <h3>一个动作块是什么</h3>
@@ -250,7 +266,7 @@
 </div>
 
 <!-- ============ 2 核心想法 ============ -->
-<h2><span class="no">2</span>核心想法：把衔接当成补全</h2>
+<h2 id="rq-2"><span class="no">2</span>核心想法：把衔接当成补全</h2>
 <p class="sub">这是全文最值得记住的一句话。</p>
 
 <div class="analogy">
@@ -292,7 +308,7 @@
 <p>关键在于：前缀并不是简单“复制”进去。论文用的是<b>引导（guidance）</b>：在生成过程中不断检查当前的预测是否偏离前缀，偏了就往回拉。所以前缀是软硬兼施的约束，而不是硬拼接。</p>
 
 <!-- ============ 3 怎么做 ============ -->
-<h2><span class="no">3</span>怎么做：去噪的每一步都要加一次“拉回”</h2>
+<h2 id="rq-3"><span class="no">3</span>怎么做：去噪的每一步都要加一次“拉回”</h2>
 <p class="sub">RTC 不改模型的权重，改的是 flow 的采样过程。下面是一个去噪步的完整流程。</p>
 
 <div class="diagram">
@@ -609,6 +625,25 @@
   <a href="pi0-论文解读.html">π0 精读<small>RTC 最初运行的模型家族</small></a>
 </div>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>机器人为什么会“卡”？</b></p><p>不是模型不准，而是“想”和“做”没排好队：同步执行要停下等推理；朴素异步时新块从纯噪声生成，不知道机器人此刻在哪，接缝处会跳。 <a class="reading-goto" href="#rq-1">回到原文 ↑</a></p></li>
+        <li><p><b>RTC 的核心想法是什么？</b></p><p>把块间衔接当成图像补全：新块的前 d 步是已执行、不可改的动作，相当于已知像素，其余部分去噪生成并与前缀连贯。 <a class="reading-goto" href="#rq-2">回到原文 ↑</a></p></li>
+        <li><p><b>RTC 改了模型权重吗？</b></p><p>没有，只改 flow 的采样过程：每个去噪步都估计干净终点，算与已知动作的加权误差，再把修正“拉回”当前状态。 <a class="reading-goto" href="#rq-3">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>异步执行能成立的可行性条件是什么？</p><details><summary>看答案</summary><p>d ≤ H − s：推理延迟不能超过“预测长度减执行长度”。块越长、每次执行越短，能容忍的延迟越大。</p></details></li>
+    <li><p>为什么引导权重用软掩码，而不是只约束前 d 步？</p><details><summary>看答案</summary><p>只约束前 d 步引导太弱，后面的部分仍可能“换一个策略”；让所有与旧块重叠的位置都参与、权重递减，衔接更稳。</p></details></li>
+    <li><p>为什么要把引导系数裁剪在 β（实验中为 5）？</p><details><summary>看答案</summary><p>去噪最开始时引导系数趋于无穷大，数值不稳定；裁剪只影响最早几步。</p></details></li>
+    <li><p>思考：RTC 和 temporal ensembling（TE）的根本区别？</p><details><summary>看答案</summary><p>TE 事后把几个预测平均，是时间上的平滑；RTC 事前约束新预测与已知动作一致，所以延迟变大时仍能稳定。</p></details></li>
+  </ol>
+</div>
   <aside class="concept-related" aria-label="相关概念">
     <strong>相关概念</strong>
     <a class="concept-link" href="RTC-训练时-论文解读.html#concept-trtc">训练时 RTC：把补全学进模型</a>

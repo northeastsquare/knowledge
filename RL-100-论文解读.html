@@ -215,9 +215,19 @@
       <a href="#s7">7 · 疑问与局限</a>
     </div>
   </section>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>纯模仿学习的天花板在哪里？ <a class="reading-goto" href="#rq-1">读这一节 ↓</a></li>
+    <li>RL-100 的三段式流水线是什么？ <a class="reading-goto" href="#rq-2">读这一节 ↓</a></li>
+    <li>OPE 闸门怎么保证“每步都在变好”？ <a class="reading-goto" href="#concept-ope">读这一节 ↓</a></li>
+  </ol>
+</div>
+
 
   <section id="s1">
-    <h2><span class="no">1</span>要解决什么问题</h2>
+    <h2 id="rq-1"><span class="no">1</span>要解决什么问题</h2>
     <p class="lead">模仿学习有个天花板：它只能学到演示里已有的东西。</p>
     <div class="card">
       <p>纯<a class="concept-link" href="RLToken-漫画分镜解读.html#concept-behavior-cloning">行为克隆（BC）</a>的性能上限<strong>受限于演示数据的质量与覆盖度</strong>。演示本身有噪声、不一致，长程任务里小误差会累积成失败；而且 BC 无法优化"完成得多快"——演示里的人怎么做，模型就怎么学。</p>
@@ -227,7 +237,7 @@
   </section>
 
   <section id="s2">
-    <h2><span class="no">2</span>三段式流水线</h2>
+    <h2 id="rq-2"><span class="no">2</span>三段式流水线</h2>
     <p class="lead">IL 打底 → 迭代离线 RL 挑大梁 → 在线 RL 收尾。</p>
 
     <div class="flow">
@@ -432,6 +442,25 @@
     </div>
   </section>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>纯模仿学习的天花板在哪里？</b></p><p>只能学到演示里已有的东西：受限于演示质量和覆盖度，小误差会累积，而且无法直接优化成功率和速度。 <a class="reading-goto" href="#rq-1">回到原文 ↑</a></p></li>
+        <li><p><b>RL-100 的三段式流水线是什么？</b></p><p>IL 打底 → 迭代离线 RL 挑大梁 → 在线 RL 收尾。 <a class="reading-goto" href="#rq-2">回到原文 ↑</a></p></li>
+        <li><p><b>OPE 闸门怎么保证“每步都在变好”？</b></p><p>用带学习转移模型的 AM-Q 估计器比较候选策略和当前策略，不用额外真机交互；候选高出至少 δ 才接受更新，否则行为策略保持不变。 <a class="reading-goto" href="#concept-ope">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>扩散策略一次要去噪 K 步，PPO 怎么套上去？</p><details><summary>看答案</summary><p>把整个去噪过程当成嵌在每个环境步内部的 K 步子 MDP，在每一步去噪上都用 clip 的 PPO 目标，离线和在线用同一个目标。</p></details></li>
+    <li><p>部署时怎么把多步去噪压成一步？</p><details><summary>看答案</summary><p>一致性蒸馏：训练一个一致性模型，从噪声一步出结果；和 RL 联合训练，L_total = L_RL + λ_CD·L_CD。</p></details></li>
+    <li><p>除了 Dynamic Push-T，奖励是怎么给的？</p><details><summary>看答案</summary><p>全是稀疏奖励：任务成功 +1，其余 0，由人工监控者敲键盘给出。</p></details></li>
+    <li><p>思考：整条流水线最脆弱的一环在哪？</p><details><summary>看答案</summary><p>OPE 闸门依赖学习到的转移模型；它的误差会直接影响接受/拒绝判断，论文没有深入分析。</p></details></li>
+  </ol>
+</div>
   <aside class="concept-related" aria-label="相关概念">
     <strong>对比阅读</strong>
     <a href="RL-Token-论文解读.html">RL Token：冻结 VLA + 轻量头</a>

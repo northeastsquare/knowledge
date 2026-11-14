@@ -214,6 +214,22 @@
       <a href="#s-one">一句话</a><a href="#s-problem">问题</a><a href="#s-demo">动手看</a><a href="#concept-rtc">推理时 RTC</a><a href="#concept-trtc">训练时 RTC</a><a href="#s-why">为什么成立</a><a href="#s-code">读代码</a><a href="#s-results">结果</a><a href="#s-insight">深层理解</a><a href="#s-cost">代价</a><a href="#s-next">被谁接手</a><a href="#s-quiz">自测</a>
     </nav>
   </section>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>推理时 RTC 的代价在哪？ <a class="reading-goto" href="#rq-1">读这一节 ↓</a></li>
+    <li>训练时 RTC 改了哪些地方？ <a class="reading-goto" href="#rq-2">读这一节 ↓</a></li>
+    <li>这篇真正改变了什么？ <a class="reading-goto" href="#rq-3">读这一节 ↓</a></li>
+  </ol>
+</div>
+<figure class="kb-arch" id="kb-arch">
+<figcaption><strong>架构图 · 训练时 RTC：训练中模拟延迟，推理不再需要引导</strong>带 ↗ 的方框可点击，跳到对应代码或页面。</figcaption>
+<div class="kb-arch-scroll"><svg class="kb-arch-svg" viewBox="0 0 960 428" role="img" aria-label="训练时 RTC：训练中模拟延迟，推理不再需要引导" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ah9" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:#6b7280"/></marker></defs><path d="M248,66 C248,90 248,90 248,114" style="fill:none;stroke:#6b7280;stroke-width:1.4" marker-end="url(#ah9)"/><path d="M248,66 C248,90 712,90 712,114" style="fill:none;stroke:#6b7280;stroke-width:1.4" marker-end="url(#ah9)"/><path d="M712,66 C712,90 248,90 248,114" style="fill:none;stroke:#6b7280;stroke-width:1.4" marker-end="url(#ah9)"/><path d="M248,166 C248,190 480,190 480,214" style="fill:none;stroke:#6b7280;stroke-width:1.4" marker-end="url(#ah9)"/><path d="M712,166 C712,190 480,190 480,214" style="fill:none;stroke:#6b7280;stroke-width:1.4" marker-end="url(#ah9)"/><path d="M480,266 C480,290 248,290 248,314" style="fill:none;stroke:#6b7280;stroke-width:1.4;stroke-dasharray:5 4" marker-end="url(#ah9)"/><path d="M480,266 C480,290 712,290 712,314" style="fill:none;stroke:#6b7280;stroke-width:1.4" marker-end="url(#ah9)"/><rect x="195" y="14" width="106" height="52" rx="8" style="fill:#f4f4f2;stroke:#8a8a85;stroke-width:1.5"/><text x="248" y="35" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">示范动作块 A</text><text x="248" y="54" style="font:400 12px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">H 步</text><rect x="660" y="14" width="104" height="52" rx="8" style="fill:#f8f8f8;stroke:#9a9a9a;stroke-width:1.5;stroke-dasharray:5 4"/><text x="712" y="35" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">随机延迟 d</text><text x="712" y="54" style="font:400 12px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">0 … d_max</text><rect x="144" y="114" width="209" height="52" rx="8" style="fill:#f4f4f2;stroke:#8a8a85;stroke-width:1.5"/><text x="248" y="135" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">前 d 步：保持干净真值</text><text x="248" y="154" style="font:400 12px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">逐 token 时间设为「已去噪」</text><rect x="640" y="114" width="144" height="52" rx="8" style="fill:#f4f4f2;stroke:#8a8a85;stroke-width:1.5"/><text x="712" y="135" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">后 H − d 步：加噪</text><text x="712" y="154" style="font:400 12px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">时间 τ 随机</text><rect x="402" y="214" width="157" height="52" rx="8" style="fill:#e3f3f5;stroke:#3095a4;stroke-width:1.5"/><text x="480" y="235" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">动作专家</text><text x="480" y="254" style="font:400 12px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">逐 token 的时间条件</text><a href="https://github.com/Physical-Intelligence/real-time-chunking-kinetix/blob/9296f31d62d5bfeb5779dcb2f9bcf71ca37f448b/src/model.py#L267-L289" target="_blank" rel="noreferrer"><title>打开：model.py#L267-L289</title><rect x="183" y="314" width="131" height="52" rx="8" style="fill:#fdecf2;stroke:#c0396b;stroke-width:1.5"/><text x="248" y="335" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">流匹配损失</text><text x="248" y="354" style="font:400 12px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">只算后 H − d 步 ↗</text></a><a href="https://github.com/Physical-Intelligence/real-time-chunking-kinetix/blob/9296f31d62d5bfeb5779dcb2f9bcf71ca37f448b/src/model.py#L219-L265" target="_blank" rel="noreferrer"><title>打开：model.py#L219-L265</title><rect x="608" y="314" width="208" height="52" rx="8" style="fill:#fff4e0;stroke:#d08a1e;stroke-width:1.5"/><text x="712" y="335" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">推理：前缀填上一块已承诺动作</text><text x="712" y="354" style="font:400 12px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">不需要引导，零额外计算 ↗</text></a><rect x="349" y="282" width="30" height="16" rx="3" style="fill:#fcfcfb;fill-opacity:.92;stroke:none"/><text x="364" y="294" style="font:11px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">训练</text><rect x="581" y="282" width="30" height="16" rx="3" style="fill:#fcfcfb;fill-opacity:.92;stroke:none"/><text x="596" y="294" style="font:11px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">推理</text><rect x="16" y="400" width="18" height="12" rx="3" style="fill:#e3f3f5;stroke:#3095a4;stroke-width:1.3"/><text x="40" y="410" style="font:11.5px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563">神经网络模块</text><rect x="131.0" y="400" width="18" height="12" rx="3" style="fill:#f4f4f2;stroke:#8a8a85;stroke-width:1.3"/><text x="155.0" y="410" style="font:11.5px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563">数据 / 中间量</text><rect x="254.51" y="400" width="18" height="12" rx="3" style="fill:#fff4e0;stroke:#d08a1e;stroke-width:1.3"/><text x="278.51" y="410" style="font:11.5px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563">输入输出 · 部署</text><rect x="389.52" y="400" width="18" height="12" rx="3" style="fill:#f8f8f8;stroke:#9a9a9a;stroke-width:1.3;stroke-dasharray:3 2"/><text x="413.52" y="410" style="font:11.5px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563">确定性步骤 / 概念（无参数）</text><rect x="593.53" y="400" width="18" height="12" rx="3" style="fill:#fdecf2;stroke:#c0396b;stroke-width:1.3"/><text x="617.53" y="410" style="font:11.5px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563">损失 · 优化目标</text><text x="944" y="410" style="font:11.5px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:end">虚线箭头 = 训练时 / 回路</text></svg></div>
+<p class="kb-arch-src">依据：训练时 RTC 论文；<a href="https://github.com/Physical-Intelligence/real-time-chunking-kinetix/blob/9296f31d62d5bfeb5779dcb2f9bcf71ca37f448b/src/model.py#L267-L289" target="_blank" rel="noreferrer">kinetix · loss（训练时 RTC）</a>、<a href="https://github.com/Physical-Intelligence/real-time-chunking-kinetix/blob/9296f31d62d5bfeb5779dcb2f9bcf71ca37f448b/src/model.py#L219-L265" target="_blank" rel="noreferrer">realtime_action 训练时分支</a></p>
+</figure>
+
+
 
   <section id="s-one">
     <h2>先建立坐标：四种“块与块怎么接”</h2>
@@ -268,7 +284,7 @@
   </section>
 
   <section id="concept-rtc" class="concept-anchor">
-    <h2>推理时 RTC：把衔接当成“补全图像”，每一步去噪都做一次引导</h2>
+    <h2 id="rq-1">推理时 RTC：把衔接当成“补全图像”，每一步去噪都做一次引导</h2>
     <p>前作 <a href="https://arxiv.org/abs/2506.07339" target="_blank" rel="noreferrer">Real-Time Chunking（arXiv 2506.07339）</a> 把块间衔接看成<b><a class="concept-link" href="RTC-实时动作分块-论文解读.html#concept-inpainting">图像补全（inpainting）</a></b>：前 d 步像图像中已知的像素，其余部分要补全。它用的是不需要训练的伪逆引导（ΠGDM）。设 flow 约定为 <code>A<sup>τ</sup> = τ·A + (1−τ)·ε</code>，τ=1 时是干净动作。每个去噪步做四件事：</p>
     <div class="flow">
       <div class="st"><b>① 估计终点</b>用当前速度一步跳到 τ=1：<code>Â¹ = A<sup>τ</sup> + (1−τ)·v</code></div>
@@ -281,7 +297,7 @@
   </section>
 
   <section id="concept-trtc" class="concept-anchor">
-    <h2>训练时 RTC：三处改动</h2>
+    <h2 id="rq-2">训练时 RTC：三处改动</h2>
     <p>目标是直接学习条件分布 <code>p(A<sub>t+d:H</sub> | o<sub>t</sub>, A<sub>t:t+d</sub>)</code>，前缀和后缀都取自同一条真实动作块。</p>
     <div class="flow">
       <div class="st"><b>① 每个 token 有自己的 τ</b>标准 flow 中整个块共用一个 τ。现在 τ 变成形状 <code>(batch, H)</code>。对于 adaLN-zero 结构（π0.6 的<a class="concept-link" href="pi0-论文解读.html#concept-action-expert">动作专家</a>、DiT），只需让 scale/shift/gate 逐 token 不同，<b>参数量不变</b>。</div>
@@ -345,7 +361,7 @@ for _ in range(num_steps):
   </section>
 
   <section id="s-insight">
-    <h2>深层理解：这篇真正改变了什么</h2>
+    <h2 id="rq-3">深层理解：这篇真正改变了什么</h2>
     <ul>
       <li><strong>执行层的问题，可以在训练层解决。</strong>RTC 把实时性当作采样算法问题，训练时 RTC 把它变成数据增强：训练分布里本来就包含“带延迟的条件生成”这种情形。</li>
       <li><strong>flow 时间步是通用的条件接口。</strong>τ 不只是噪声日程，还可以逐 token 表达“这一位有多确定”。同样的思路可以推广到其他已知部分动作的场景，例如固定的末端位姿或安全约束。论文没有做这些实验，这里是推论。</li>
@@ -383,6 +399,24 @@ for _ in range(num_steps):
     <details class="qz"><summary>它能完全替代推理时 RTC 吗？</summary><p>大多数场景可以，真机上效果持平且更省计算。但它只支持硬前缀、需要事先确定延迟分布、要额外微调；需要软约束或现成 checkpoint 时，推理时 RTC 仍然有用。</p></details>
   </section>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>推理时 RTC 的代价在哪？</b></p><p>每一步去噪都要用梯度把新块往已执行的 d 步上“拽”，额外的反向传播增加了推理计算。 <a class="reading-goto" href="#rq-1">回到原文 ↑</a></p></li>
+        <li><p><b>训练时 RTC 改了哪些地方？</b></p><p>训练中随机模拟一段延迟 d，把动作块前缀设为真实动作（τ=1，不加噪），只学生成剩下的部分，直接学条件分布 p(A_{t+d:H} | o_t, A_{t:t+d})。 <a class="reading-goto" href="#rq-2">回到原文 ↑</a></p></li>
+        <li><p><b>这篇真正改变了什么？</b></p><p>执行层的问题可以在训练层解决：把实时性从采样算法问题变成数据增强，训练分布里本来就包含带延迟的条件生成。 <a class="reading-goto" href="#rq-3">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>训练时前缀那 d 步要不要计算损失？</p><details><summary>看答案</summary><p>不要。前缀是给定的真实动作，只在需要生成的后缀上算损失。</p></details></li>
+    <li><p>训练时延迟 d 是固定值还是随机抽？为什么？</p><details><summary>看答案</summary><p>随机抽，覆盖部署时可能遇到的各种延迟；代价是需要事先确定延迟分布。</p></details></li>
+    <li><p>思考：如果手头只有一个现成 checkpoint、不能再微调，用哪种 RTC？</p><details><summary>看答案</summary><p>推理时 RTC：它不改权重，只改采样；训练时 RTC 需要额外微调。</p></details></li>
+  </ol>
+</div>
   <aside class="concept-related" aria-label="相关概念">
     <strong>相关概念</strong>
     <a class="concept-link" href="concepts.html#rtc">RTC 概念卡</a>

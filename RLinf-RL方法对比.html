@@ -150,7 +150,7 @@
 
   <section class="hero">
     <div class="eyebrow">框架专题 · RLinf</div>
-    <h1>RLinf 里的 RL 方法详细对比</h1>
+    <h1 id="rq-1">RLinf 里的 RL 方法详细对比</h1>
     <p class="sub">RLinf（"inf" = Infrastructure / Infinite）不是一种算法，而是把<strong>十几种 RL 算法塞进同一套接口</strong>的具身 RL 基础设施。这一页按「数据从哪来、要不要 critic、改模型哪部分」把内置的 15 种 RL 算法 + 5 种 SFT/模仿配方摊开对比。</p>
     <div class="stats">
       <div class="stat"><span class="n">15</span><span class="l">RL 算法</span></div>
@@ -159,6 +159,22 @@
       <div class="stat"><span class="n">15+</span><span class="l">仿真器</span></div>
     </div>
   </section>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>RLinf 是一种算法吗？ <a class="reading-goto" href="#rq-1">读这一节 ↓</a></li>
+    <li>on-policy 和 off-policy 两族的根本取舍是什么？ <a class="reading-goto" href="#rq-2">读这一节 ↓</a></li>
+    <li>VLA 一次输出一个动作块，给 RL 带来什么新问题？ <a class="reading-goto" href="#rq-3">读这一节 ↓</a></li>
+  </ol>
+</div>
+<figure class="kb-arch" id="kb-arch">
+<figcaption><strong>架构图 · RLinf 系统里一轮 RL 的数据流</strong>带 ↗ 的方框可点击，跳到对应代码或页面。</figcaption>
+<div class="kb-arch-scroll"><svg class="kb-arch-svg" viewBox="0 0 960 509" role="img" aria-label="RLinf 系统里一轮 RL 的数据流" xmlns="http://www.w3.org/2000/svg"><defs><marker id="ah22" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" style="fill:#6b7280"/></marker></defs><path d="M480,66 C480,90 480,90 480,114" style="fill:none;stroke:#6b7280;stroke-width:1.4" marker-end="url(#ah22)"/><path d="M498,114 C498,90 498,90 498,66" style="fill:none;stroke:#6b7280;stroke-width:1.4;stroke-dasharray:5 4" marker-end="url(#ah22)"/><path d="M480,166 C480,190 248,190 248,214" style="fill:none;stroke:#6b7280;stroke-width:1.4" marker-end="url(#ah22)"/><path d="M480,166 C480,190 712,190 712,214" style="fill:none;stroke:#6b7280;stroke-width:1.4" marker-end="url(#ah22)"/><path d="M248,266 C248,290 248,290 248,314" style="fill:none;stroke:#6b7280;stroke-width:1.4" marker-end="url(#ah22)"/><path d="M712,266 C712,290 712,290 712,314" style="fill:none;stroke:#6b7280;stroke-width:1.4" marker-end="url(#ah22)"/><path d="M248,366 C248,390 480,390 480,414" style="fill:none;stroke:#6b7280;stroke-width:1.4" marker-end="url(#ah22)"/><path d="M712,366 C712,390 480,390 480,414" style="fill:none;stroke:#6b7280;stroke-width:1.4" marker-end="url(#ah22)"/><path d="M562,430 L600,430 L600,140 L578,140" style="fill:none;stroke:#6b7280;stroke-width:1.4;stroke-dasharray:5 4" marker-end="url(#ah22)"/><rect x="404" y="14" width="153" height="52" rx="8" style="fill:#f4f4f2;stroke:#8a8a85;stroke-width:1.5"/><text x="480" y="35" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">Env Worker</text><text x="480" y="54" style="font:400 12px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">仿真 / 真机并行环境</text><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/models/embodiment/openpi/sampling/rl_sampler.py#L30-L87" target="_blank" rel="noreferrer"><title>打开：rl_sampler.py#L30-L87</title><rect x="382" y="114" width="197" height="52" rx="8" style="fill:#e3f3f5;stroke:#3095a4;stroke-width:1.5"/><text x="480" y="135" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">Rollout Worker</text><text x="480" y="154" style="font:400 12px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">VLA 采样动作块 + logprob ↗</text></a><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/algorithms/advantages.py#L25-L86" target="_blank" rel="noreferrer"><title>打开：advantages.py#L25-L86</title><rect x="143" y="214" width="210" height="52" rx="8" style="fill:#f8f8f8;stroke:#9a9a9a;stroke-width:1.5;stroke-dasharray:5 4"/><text x="248" y="235" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">on-policy 分支</text><text x="248" y="254" style="font:400 12px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">整批轨迹 → GAE / GRPO 优势 ↗</text></a><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/data/storage/replay/buffer.py#L228" target="_blank" rel="noreferrer"><title>打开：buffer.py#L228</title><rect x="645" y="214" width="135" height="52" rx="8" style="fill:#f4f4f2;stroke:#8a8a85;stroke-width:1.5"/><text x="712" y="235" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">off-policy 分支</text><text x="712" y="254" style="font:400 12px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">存进回放池 ↗</text></a><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/algorithms/losses.py#L179-L371" target="_blank" rel="noreferrer"><title>打开：losses.py#L179-L371</title><rect x="150" y="314" width="195" height="52" rx="8" style="fill:#fdecf2;stroke:#c0396b;stroke-width:1.5"/><text x="248" y="335" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">Actor Worker</text><text x="248" y="354" style="font:400 12px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">PPO actor / critic 损失 ↗</text></a><a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/workers/actor/fsdp_sac_policy_worker.py#L355-L481" target="_blank" rel="noreferrer"><title>打开：fsdp_sac_policy_worker.py#L355-L481</title><rect x="633" y="314" width="158" height="52" rx="8" style="fill:#fdecf2;stroke:#c0396b;stroke-width:1.5"/><text x="712" y="335" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">SAC Actor Worker</text><text x="712" y="354" style="font:400 12px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">双 Q + target + 熵 ↗</text></a><rect x="398" y="414" width="164" height="33" rx="8" style="fill:#f8f8f8;stroke:#9a9a9a;stroke-width:1.5;stroke-dasharray:5 4"/><text x="480" y="435" style="font:600 13px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#1f2328;text-anchor:middle">新权重同步回 Rollout</text><rect x="444" y="82" width="71" height="16" rx="3" style="fill:#fcfcfb;fill-opacity:.92;stroke:none"/><text x="480" y="94" style="font:11px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">观测 · 奖励</text><rect x="478" y="82" width="41" height="16" rx="3" style="fill:#fcfcfb;fill-opacity:.92;stroke:none"/><text x="498" y="94" style="font:11px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">动作块</text><rect x="686" y="282" width="52" height="16" rx="3" style="fill:#fcfcfb;fill-opacity:.92;stroke:none"/><text x="712" y="294" style="font:11px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">采样小批</text><rect x="585" y="277" width="30" height="16" rx="3" style="fill:#fcfcfb;fill-opacity:.92;stroke:none"/><text x="600" y="289" style="font:11px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:middle">权重</text><rect x="16" y="481" width="18" height="12" rx="3" style="fill:#e3f3f5;stroke:#3095a4;stroke-width:1.3"/><text x="40" y="491" style="font:11.5px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563">神经网络模块</text><rect x="131.0" y="481" width="18" height="12" rx="3" style="fill:#f4f4f2;stroke:#8a8a85;stroke-width:1.3"/><text x="155.0" y="491" style="font:11.5px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563">数据 / 中间量</text><rect x="254.51" y="481" width="18" height="12" rx="3" style="fill:#f8f8f8;stroke:#9a9a9a;stroke-width:1.3;stroke-dasharray:3 2"/><text x="278.51" y="491" style="font:11.5px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563">确定性步骤 / 概念（无参数）</text><rect x="458.52" y="481" width="18" height="12" rx="3" style="fill:#fdecf2;stroke:#c0396b;stroke-width:1.3"/><text x="482.52" y="491" style="font:11.5px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563">损失 · 优化目标</text><text x="944" y="491" style="font:11.5px -apple-system,'Segoe UI','Microsoft YaHei','Noto Sans CJK SC',sans-serif;fill:#4b5563;text-anchor:end">虚线箭头 = 训练时 / 回路</text></svg></div>
+<p class="kb-arch-src">依据：<a href="https://github.com/RLinf/RLinf" target="_blank" rel="noreferrer">RLinf 代码</a>：<a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/algorithms/advantages.py#L25-L86" target="_blank" rel="noreferrer">compute_gae</a>、<a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/algorithms/losses.py#L179-L371" target="_blank" rel="noreferrer">compute_ppo_actor_loss</a>、<a href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/data/storage/replay/buffer.py#L228" target="_blank" rel="noreferrer">TrajectoryReplayBuffer</a></p>
+</figure>
+
+
 
   <section class="spectrum">
     <div class="spec-head"><span>严格 on-policy</span><span>← 数据来源 →</span><span>纯离线（不交互）</span></div>
@@ -210,7 +226,7 @@
   </div>
 
   <div class="camp">
-    <div class="camp-head"><span class="bar" style="background:var(--c-resid)"></span><h2>② off-policy 最大熵</h2><span class="cnt">3 个</span></div>
+    <div class="camp-head"><span class="bar" style="background:var(--c-resid)"></span><h2 id="rq-2">② off-policy 最大熵</h2><span class="cnt">3 个</span></div>
     <div class="camp-body">
       <p class="desc">SAC 一脉。样本效率远高于 ①（能反复复用 <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-replay-buffer">replay buffer</a>），代价是<strong><a class="concept-link" href="两条主干-拆机手册.html#concept-overestimation">价值高估</a></strong>要靠一堆工程手段压住。RLinf 的三个变体正好是三种压法：CrossQ 改架构、RLPD 改数据配比 + 集成、SAC 本身靠 target 网络。</p>
       <div class="mcard"><div class="mt">SAC</div><div class="md">软 Bellman + 自动调温度 α，双 Q + target 网络。</div></div>
@@ -248,7 +264,7 @@
     </div>
   </div>
   <div class="box">
-    <h2>VLA 专属：动作块带来的粒度问题</h2>
+    <h2 id="rq-3">VLA 专属：动作块带来的粒度问题</h2>
     <p>VLA 一次输出一个<strong><a class="concept-link" href="RLToken-漫画分镜解读.html#concept-action-chunk">动作块</a></strong>，这让「优势 / logprob 算在哪一级」成了真问题。RLinf 把它做成配置项，支持三级粒度：</p>
     <dl class="kv">
       <dt>chunk-level</dt><dd>整块当一个宏动作，共享一个奖励和<a class="concept-link" href="两条主干-拆机手册.html#concept-advantage">优势</a>；critic 只出一个标量。</dd>
@@ -295,6 +311,25 @@
     </ul>
   </div>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>RLinf 是一种算法吗？</b></p><p>不是。它是具身 RL 基础设施，把十几种 RL 算法塞进同一套接口。 <a class="reading-goto" href="#rq-1">回到原文 ↑</a></p></li>
+        <li><p><b>on-policy 和 off-policy 两族的根本取舍是什么？</b></p><p>on-policy 只用刚采的数据更新一次、稳；off-policy 能反复复用 replay buffer，样本效率高得多，但要压住价值高估。 <a class="reading-goto" href="#rq-2">回到原文 ↑</a></p></li>
+        <li><p><b>VLA 一次输出一个动作块，给 RL 带来什么新问题？</b></p><p>优势和 logprob 算在哪一级（单步、动作块还是整条轨迹）成了真问题；RLinf 把粒度做成配置项。 <a class="reading-goto" href="#rq-3">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>PPO 的价值估计用 action-level 还是 chunk-level？</p><details><summary>看答案</summary><p>action-level。</p></details></li>
+    <li><p>GRPO 为什么要开 Valid Action Mask？</p><details><summary>看答案</summary><p>任务提前完成后的时间步不应计入损失，要 mask 掉。</p></details></li>
+    <li><p>RLT 和 OPD 都“不改 VLA 本体”，目的有何不同？</p><details><summary>看答案</summary><p>RLT 换一个更好的状态表示再做 RL；OPD 根本不做 RL，用 teacher 的 logprob 当优势做在线蒸馏。</p></details></li>
+    <li><p>思考：真机上没有仿真器、不想做新 rollout，该走哪一族？</p><details><summary>看答案</summary><p>离线优势条件：IQL（优势加权 BC）或 RECAP/STEAM（把优势变成条件），只用已有数据重新打分再训。</p></details></li>
+  </ol>
+</div>
   <aside class="concept-related" aria-label="相关概念">
     <strong>相关概念</strong>
     <a href="为什么取log.html#concept-policy-gradient">策略梯度的起点</a>

@@ -149,6 +149,65 @@
   .diagram svg{max-width:100%; height:auto; display:block;}
   .diagram .caption{font-size:12.5px; color:var(--ink-3); margin-top:8px;}
 
+  .arch-figure{
+    --arch-vlm-soft:color-mix(in srgb,var(--accent) 9%,var(--surface));
+    --arch-action-soft:color-mix(in srgb,var(--signal) 9%,var(--surface));
+    margin:22px 0; border:1px solid var(--line-strong); border-radius:16px;
+    background:var(--surface); box-shadow:var(--shadow); overflow:hidden;
+  }
+  .arch-header{padding:20px 22px 16px; border-bottom:1px solid var(--line);}
+  .arch-header h3{margin:0 0 8px; font-size:19px; line-height:1.45;}
+  .arch-header p{font-size:13px; color:var(--ink-2); margin:0;}
+  .arch-legend{display:flex; flex-wrap:wrap; gap:8px 18px; margin-top:12px; font-size:12px; color:var(--ink-2);}
+  .arch-legend span{display:inline-flex; align-items:center; gap:6px;}
+  .arch-dot{width:9px; height:9px; border-radius:3px; background:var(--accent);}
+  .arch-dot.action{background:var(--signal);}
+  .arch-scroll{overflow-x:auto; padding:16px 12px 0;}
+  .arch-svg{display:block; width:100%; min-width:720px; height:auto; font-family:"IBM Plex Sans","Microsoft YaHei",sans-serif; font-size:14px;}
+  .arch-svg text{fill:var(--ink);}
+  .arch-svg .muted{fill:var(--ink-2); font-size:12px;}
+  .arch-svg .tiny{fill:var(--ink-2); font-size:11px;}
+  .arch-svg .label{font-size:12px; font-weight:600; letter-spacing:.04em;}
+  .arch-svg .title{font-size:15px; font-weight:700;}
+  .arch-svg .mono{font-family:"IBM Plex Mono",Consolas,monospace; font-size:12px;}
+  .arch-svg .box{fill:var(--surface); stroke:var(--line-strong); stroke-width:1.2;}
+  .arch-svg .vlm{fill:var(--arch-vlm-soft); stroke:var(--accent); stroke-width:1.2;}
+  .arch-svg .action{fill:var(--arch-action-soft); stroke:var(--signal); stroke-width:1.2;}
+  .arch-svg .model{fill:var(--surface-2); stroke:var(--line-strong); stroke-width:1.2;}
+  .arch-svg .vlm-ink{fill:var(--accent);}
+  .arch-svg .action-ink{fill:var(--signal);}
+  .arch-svg .edge{fill:none; stroke:var(--ink-2); stroke-width:1.5; marker-end:url(#arch-arrow);}
+  .arch-svg .cache-edge{fill:none; stroke:var(--accent); stroke-width:1.5; stroke-dasharray:5 4; marker-end:url(#arch-cache-arrow);}
+  .arch-caption{padding:0 22px 18px; font-size:13px; color:var(--ink-2);}
+  .arch-mobile-hint{display:none; font-size:12px; color:var(--ink-2); padding:10px 22px 0; margin:0;}
+  .arch-details{display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:18px 0;}
+  .arch-panel{min-width:0; border:1px solid var(--line); border-radius:12px; padding:18px; background:var(--surface);}
+  .arch-panel h3{font-size:15px; margin:0 0 10px;}
+  .arch-panel p{font-size:13px; color:var(--ink-2); margin:10px 0 0;}
+  .arch-mask{font-size:12px; margin:0;}
+  .arch-mask caption{text-align:left; color:var(--ink-2); font-size:12px; margin-bottom:8px;}
+  .arch-mask th,.arch-mask td{padding:8px 5px; text-align:center;}
+  .arch-mask th{font-family:inherit; font-size:12px; letter-spacing:0;}
+  .arch-mask .allowed{color:var(--accent); background:color-mix(in srgb,var(--accent) 8%,var(--surface)); font-weight:700;}
+  .arch-mask .blocked{color:var(--ink-3);}
+  .arch-flow{list-style:none; padding:0; margin:0; counter-reset:flow;}
+  .arch-flow li{position:relative; padding-left:29px; font-size:13px; margin:0 0 12px; counter-increment:flow;}
+  .arch-flow li::before{content:counter(flow); position:absolute; left:0; top:2px; width:20px; height:20px; border-radius:50%; background:var(--surface-2); color:var(--accent-strong); text-align:center; font:12px/20px "IBM Plex Mono",monospace;}
+  .arch-flow code{font-size:11.5px; padding:1px 3px;}
+  .arch-note{border-left:3px solid var(--signal); background:var(--surface-2); border-radius:0 10px 10px 0; padding:14px 18px; font-size:13px; margin:16px 0;}
+  .arch-note p:last-child{margin:0;}
+  .arch-sources{font-size:13px;}
+  .arch-sources summary{cursor:pointer; color:var(--accent); font-weight:600; padding:8px 0;}
+  .arch-sources table{font-size:12.5px;}
+  .arch-sources code{font-size:11.5px; overflow-wrap:anywhere;}
+  #pi0-architecture{scroll-margin-top:72px;}
+  @media (max-width:760px){
+    .arch-details{grid-template-columns:1fr;}
+    .arch-mobile-hint{display:block;}
+    .arch-header,.arch-caption{padding-left:16px; padding-right:16px;}
+    .arch-scroll{padding-left:4px; padding-right:4px;}
+  }
+
   footer{
     margin-top:56px; padding-top:20px; border-top:1px solid var(--line-strong);
     display:flex; justify-content:space-between; gap:12px; font-size:13px; color:var(--ink-3);
@@ -179,9 +238,19 @@
       <div class="m"><span class="k">主题</span><span class="v">VLA · Flow Matching</span></div>
     </div>
   </section>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>机器人学习走向“通用”有哪三道坎？ <a class="reading-goto" href="#rq-1">读这一节 ↓</a></li>
+    <li>训练时预测方向 u = A − ε，不也相当于直接预测终点吗？ <a class="reading-goto" href="#rq-2">读这一节 ↓</a></li>
+    <li>为什么说“底座 + 动作头”是 VLA 的正解？ <a class="reading-goto" href="#rq-3">读这一节 ↓</a></li>
+  </ol>
+</div>
+
 
   <section>
-    <h2>它解决的问题</h2>
+    <h2 id="rq-1">它解决的问题</h2>
     <p>机器人学习要走向"通用"，横着三道坎：<strong>数据稀缺、泛化差、鲁棒性不足</strong>。想靠每个任务单独采数据、单独训小模型，永远追不上通用智能。π0 的思路是把大模型预训练的逻辑搬进机器人：先在<b>海量、多样的<a class="concept-link" href="Qwen-VLA-论文解读.html#concept-cross-embodiment">跨本体数据</a></b>上预训练一个"机器人基础模型"，再用高质量数据微调出想要的技能。</p>
     <p>但直接照搬这条路会撞上两个技术硬伤：</p>
     <ul>
@@ -196,7 +265,7 @@
     <ol>
       <li><strong>底座选 VLM</strong>：以开源的 PaliGemma（3B 视觉-语言模型）为视觉-语言主干，直接继承互联网规模预训练的语义知识与推理能力。</li>
       <li id="concept-action-expert" class="concept-anchor"><strong>挂一个"动作专家"</strong>：另起一套 <code>300M</code> 参数的独立权重（action expert），用<span class="hl">流匹配</span>把动作建模成连续分布，一次输出 <code>H=50</code> 步的动作块。这个新模块的梯度会不会伤骨干，正是<a class="concept-link" href="KI-知识隔离-论文解读.html#concept-knowledge-insulation">知识隔离</a>要解决的问题。<a class="code-jump" href="代码索引.html#action-expert" style="font:12px ui-monospace,Consolas,monospace;white-space:nowrap;text-decoration:none;border:1px dashed currentColor;border-radius:4px;padding:0 5px;margin-left:4px;opacity:.8">⟨/⟩ 代码</a></li>
-      <li><strong>统一 token 流 + 块状因果注意力</strong>：图像、语言、本体状态、动作全部投进同一个 transformer；注意力分成三块 <code>[图像+语言] | [状态] | [动作]</code>，动作块内部双向、只允许向后看。</li>
+      <li><strong>统一 token 序列 + 块状因果注意力</strong>：图像和语言走 VLM 权重，状态和动作走动作专家权重；两者在每层 self-attention 交互。注意力分成三块 <code>[图像+语言] | [状态] | [动作]</code>，每块内部双向，跨块只能读取自身及前面的块。<a href="#pi0-architecture">查看完整架构图 ↓</a></li>
       <li><strong>预训练 + 后训练两阶段</strong>：先在约 <code>1 万小时</code>跨本体数据上预训练打底，再用高质量任务数据微调出"流畅、高效、会纠错"的行为。</li>
       <li><strong>（可选）高层 VLM 策略</strong>：复杂长任务交给<a class="concept-link" href="PI-工作全景.html#concept-hi-robot">高层 VLM</a> 拆解成中间语言指令（类似 SayCan），π0 只负责执行每个子指令。</li>
     </ol>
@@ -207,56 +276,166 @@
     <div class="tbl-wrap">
       <table>
         <tr><th>环节</th><th>内容</th><th>说明</th></tr>
-        <tr><td><strong>输入</strong></td><td>多视角 RGB 图像 <code>I_t</code>（每台机器人 2~3 个相机）＋ 语言指令 <code>ℓ_t</code> ＋ 本体状态 <code>q_t</code>（关节角向量）</td><td>图像走 ViT 编码、语言走 tokenizer、状态走线性投影，三者投到<b>同一个 embedding 空间</b>，组成观测 <code>o_t</code></td></tr>
+        <tr><td><strong>输入</strong></td><td>多视角 RGB 图像 <code>I_t</code>（每台机器人 2~3 个相机）＋ 语言指令 <code>ℓ_t</code> ＋ 本体状态 <code>q_t</code>（关节角向量）</td><td>图像与语言嵌入 VLM 的 <b>2048 维</b>空间；状态投影到动作专家的 <b>1024 维</b>空间，组成观测 <code>o_t</code></td></tr>
         <tr><td><strong>内部处理</strong></td><td>单 transformer + 两套权重（VLM 主干 / 动作专家）</td><td>图像与语言走 3B 的 VLM 主干；<code>q_t</code> 与动作块走 300M 的动作专家，两套权重只在 self-attention 里交互</td></tr>
-        <tr><td><strong>注意力掩码</strong></td><td>块状因果，3 块：<code>[图像+语言]</code>｜<code>[q_t]</code>｜<code>[动作块]</code></td><td>动作块内部双向；状态块不随积分步变化，可缓存 KV 加速</td></tr>
+        <tr><td><strong>注意力掩码</strong></td><td>块状因果，3 块：<code>[图像+语言]</code>｜<code>[q_t]</code>｜<code>[动作块]</code></td><td>动作块内部双向；论文允许缓存整个观测，本文引用的 openpi 实现仅缓存图像与语言的 K/V</td></tr>
         <tr><td><strong>输出</strong></td><td>动作块 <code>A_t = [a_t, …, a_{t+H-1}]</code>，<code>H=50</code> 步连续动作</td><td>经流匹配 <b>10 步</b><a class="concept-link" href="pi0-论文解读.html#concept-euler-integration">前向欧拉积分</a>去噪；最高 <b>50Hz</b> 控制频率</td></tr>
       </table>
     </div>
 
-    <div class="diagram">
-      <svg viewBox="0 0 860 300" xmlns="http://www.w3.org/2000/svg" font-family="Segoe UI, Microsoft YaHei, sans-serif">
-        <defs>
-          <marker id="arr" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto">
-            <path d="M0,0 L8,3 L0,6 Z" fill="#0e6e8a"/>
-          </marker>
-        </defs>
+    <figure class="arch-figure" id="pi0-architecture" aria-labelledby="arch-heading">
+      <div class="arch-header">
+        <h3 id="arch-heading">π0 完整架构图</h3>
+        <p>根据论文 Figure 3、附录 B / D 与官方 openpi 重绘。输入编码和缓存按 <code>pi05=False</code> 的 π0 实现展开。</p>
+        <div class="arch-legend" aria-label="图例">
+          <span><i class="arch-dot" aria-hidden="true"></i>视觉 / 语言：PaliGemma 3B（含视觉编码器）</span>
+          <span><i class="arch-dot action" aria-hidden="true"></i>状态 / 动作：新增约 300M 专家</span>
+        </div>
+      </div>
+      <p class="arch-mobile-hint">窄屏可左右滑动查看完整架构图。</p>
+      <div class="arch-scroll" role="region" aria-label="π0 架构图，可横向滚动" tabindex="0">
+        <svg class="arch-svg" viewBox="0 0 760 814" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="arch-svg-title arch-svg-desc">
+          <title id="arch-svg-title">π0：双专家 Transformer 与连续动作速度场</title>
+          <desc id="arch-svg-desc">图像经 SigLIP、语言经词嵌入，得到 2048 维视觉语言前缀。状态经线性投影，带噪动作与正弦时间编码经拼接和 MLP，得到 1024 维后缀。18 层中，两专家用独立 QKV 投影、输出投影和 MLP，通过块状掩码联合自注意力交互。官方代码缓存每层图像语言 K/V，只取动作位置经线性投影得到速度场，再用十步欧拉积分生成动作块。</desc>
+          <defs>
+            <marker id="arch-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="var(--ink-2)"/></marker>
+            <marker id="arch-cache-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="var(--accent)"/></marker>
+          </defs>
 
-        <!-- input box -->
-        <rect x="16" y="70" width="200" height="160" rx="14" fill="#fbfcfd" stroke="#0e6e8a" stroke-width="1.5"/>
-        <text x="116" y="96" text-anchor="middle" font-size="14" font-weight="700" fill="#16222e">观测输入 o_t</text>
-        <line x1="36" y1="108" x2="196" y2="108" stroke="#d8e1e7"/>
-        <text x="116" y="130" text-anchor="middle" font-size="12" fill="#51626f">RGB 图像 ×2~3</text>
-        <text x="116" y="152" text-anchor="middle" font-size="12" fill="#51626f">语言指令 ℓ_t</text>
-        <text x="116" y="174" text-anchor="middle" font-size="12" fill="#51626f">本体状态 q_t</text>
-        <text x="116" y="204" text-anchor="middle" font-size="11" fill="#83919c">→ 同一 embedding 空间</text>
+          <text x="20" y="20" class="label vlm-ink">01 / 图像与语言前缀 · embed_prefix</text>
+          <text x="372" y="20" class="label action-ink">02 / 状态与动作后缀 · embed_suffix</text>
+          <rect class="vlm" x="20" y="38" width="150" height="62" rx="9"/>
+          <text x="95" y="63" text-anchor="middle" class="title">多视角 RGB</text>
+          <text x="95" y="84" text-anchor="middle" class="muted">2–3 路相机图像</text>
+          <rect class="vlm" x="185" y="38" width="150" height="62" rx="9"/>
+          <text x="260" y="63" text-anchor="middle" class="title">语言指令 ℓ</text>
+          <text x="260" y="84" text-anchor="middle" class="muted">例如：把衣服叠好</text>
+          <rect class="action" x="372" y="38" width="145" height="62" rx="9"/>
+          <text x="444" y="63" text-anchor="middle" class="title">本体状态 q</text>
+          <text x="444" y="84" text-anchor="middle" class="muted">归一化的连续向量</text>
+          <rect class="action" x="539" y="38" width="201" height="62" rx="9"/>
+          <text x="639" y="63" text-anchor="middle" class="title">带噪动作 xₜ + 流时间 t</text>
+          <text x="639" y="84" text-anchor="middle" class="muted">H × d，H = 50</text>
+          <path class="edge" d="M95 100 V126"/><path class="edge" d="M260 100 V126"/>
+          <path class="edge" d="M444 100 V126"/><path class="edge" d="M639 100 V126"/>
 
-        <!-- model box -->
-        <rect x="330" y="40" width="320" height="220" rx="14" fill="#eaf0f4" stroke="#0a4c60" stroke-width="1.5"/>
-        <text x="490" y="66" text-anchor="middle" font-size="14" font-weight="700" fill="#0a4c60">单个 transformer · 两套权重</text>
-        <line x1="350" y1="80" x2="630" y2="80" stroke="#c3d0d9"/>
-        <rect x="350" y="92" width="280" height="62" rx="10" fill="#fbfcfd" stroke="#0a4c60" stroke-width="1.2"/>
-        <text x="490" y="116" text-anchor="middle" font-size="12.5" font-weight="700" fill="#16222e">VLM 主干（PaliGemma, 3B）</text>
-        <text x="490" y="136" text-anchor="middle" font-size="11" fill="#51626f">图像 + 语言 token · 互联网先验</text>
-        <rect x="350" y="162" width="280" height="62" rx="10" fill="#fbfcfd" stroke="#c4572a" stroke-width="1.2"/>
-        <text x="490" y="186" text-anchor="middle" font-size="12.5" font-weight="700" fill="#c4572a">动作专家（300M）</text>
-        <text x="490" y="206" text-anchor="middle" font-size="11" fill="#51626f">q_t + 噪声动作 · 流匹配去噪</text>
-        <text x="490" y="244" text-anchor="middle" font-size="11" fill="#83919c">块状因果注意力 · 10 步积分去噪</text>
+          <rect class="box" x="20" y="126" width="150" height="72" rx="9"/>
+          <text x="95" y="150" text-anchor="middle">共享 SigLIP ViT</text>
+          <text x="95" y="171" text-anchor="middle" class="mono">So400m/14</text>
+          <text x="95" y="189" text-anchor="middle" class="muted">patch 特征 → 投影</text>
+          <rect class="box" x="185" y="126" width="150" height="72" rx="9"/>
+          <text x="260" y="151" text-anchor="middle">Tokenizer</text>
+          <text x="260" y="176" text-anchor="middle">+ 词嵌入</text>
+          <rect class="box" x="372" y="126" width="145" height="72" rx="9"/>
+          <text x="444" y="151" text-anchor="middle" class="mono">state_proj</text>
+          <text x="444" y="176" text-anchor="middle" class="muted">Linear：d → 1024</text>
+          <rect class="box" x="539" y="126" width="201" height="72" rx="9"/>
+          <text x="639" y="149" text-anchor="middle" class="mono">action_in_proj(xₜ)</text>
+          <text x="639" y="170" text-anchor="middle" class="muted">拼接 sin/cos(t) → MLP</text>
+          <text x="639" y="189" text-anchor="middle" class="tiny">时间编码广播到每个动作位置</text>
+          <path class="edge" d="M95 198 V226"/><path class="edge" d="M260 198 V226"/>
+          <path class="edge" d="M444 198 V226"/><path class="edge" d="M639 198 V226"/>
 
-        <!-- output box -->
-        <rect x="744" y="70" width="104" height="160" rx="14" fill="#fbfcfd" stroke="#0e6e8a" stroke-width="1.5"/>
-        <text x="796" y="96" text-anchor="middle" font-size="13" font-weight="700" fill="#16222e">动作块 A_t</text>
-        <line x1="760" y1="108" x2="832" y2="108" stroke="#d8e1e7"/>
-        <text x="796" y="130" text-anchor="middle" font-size="12" fill="#51626f">H = 50 步</text>
-        <text x="796" y="152" text-anchor="middle" font-size="12" fill="#51626f">连续动作</text>
-        <text x="796" y="174" text-anchor="middle" font-size="12" fill="#51626f">最高 50Hz</text>
-        <text x="796" y="204" text-anchor="middle" font-size="11" fill="#83919c">→ 机器人执行</text>
+          <rect class="vlm" x="20" y="226" width="315" height="62" rx="9"/>
+          <text x="177" y="251" text-anchor="middle" class="title">[ 图像 tokens | 语言 tokens ]</text>
+          <text x="177" y="273" text-anchor="middle" class="muted">每个 token 的隐藏宽度 = 2048</text>
+          <rect class="action" x="372" y="226" width="368" height="62" rx="9"/>
+          <text x="556" y="251" text-anchor="middle" class="title">[ 1 个状态 token | 50 个动作 tokens ]</text>
+          <text x="556" y="273" text-anchor="middle" class="muted">每个 token 的隐藏宽度 = 1024</text>
 
-        <line x1="216" y1="150" x2="322" y2="150" stroke="#0e6e8a" stroke-width="2" marker-end="url(#arr)"/>
-        <line x1="650" y1="150" x2="736" y2="150" stroke="#0e6e8a" stroke-width="2" marker-end="url(#arr)"/>
-      </svg>
-      <div class="caption">π0 数据流总览：观测（图像 / 语言 / 状态）→ 单 transformer（VLM 主干 + 动作专家）→ 流匹配去噪得到 50 步动作块。</div>
+          <rect class="model" x="20" y="324" width="720" height="284" rx="13"/>
+          <text x="40" y="351" class="title">03 / 双专家 Transformer</text>
+          <text x="720" y="351" text-anchor="end" class="muted">以下层结构 × 18 · 按模态固定分配权重</text>
+          <path class="edge" d="M177 288 V324"/><path class="edge" d="M568 288 V324"/>
+          <path class="edge" d="M182 362 V376"/><path class="edge" d="M568 362 V376"/>
+          <rect class="vlm" x="40" y="376" width="284" height="54" rx="8"/>
+          <text x="182" y="398" text-anchor="middle" class="title">VLM 专家 · 预训练初始化</text>
+          <text x="182" y="418" text-anchor="middle" class="muted">独立 Q / K / V 投影 · 宽度 2048</text>
+          <rect class="action" x="416" y="376" width="304" height="54" rx="8"/>
+          <text x="568" y="398" text-anchor="middle" class="title">动作专家 · 从零初始化</text>
+          <text x="568" y="418" text-anchor="middle" class="muted">独立 Q / K / V 投影 · 宽度 1024</text>
+          <path class="edge" d="M182 430 V454"/><path class="edge" d="M568 430 V454"/>
+          <rect class="box" x="40" y="454" width="680" height="60" rx="8"/>
+          <text x="380" y="479" text-anchor="middle" class="title">联合 self-attention · 块状因果掩码</text>
+          <text x="380" y="501" text-anchor="middle" class="muted">Q/K/V 投到兼容的 head 维度，沿 token 序列拼接，按掩码计算注意力</text>
+          <path class="edge" d="M182 514 V544"/><path class="edge" d="M568 514 V544"/>
+          <rect class="vlm" x="40" y="544" width="284" height="44" rx="8"/>
+          <text x="182" y="563" text-anchor="middle">独立输出投影 + 残差 / MLP</text>
+          <text x="182" y="580" text-anchor="middle" class="tiny">MLP 宽度 16,384 · 返回 VLM 分支</text>
+          <rect class="action" x="416" y="544" width="304" height="44" rx="8"/>
+          <text x="568" y="563" text-anchor="middle">独立输出投影 + 残差 / MLP</text>
+          <text x="568" y="580" text-anchor="middle" class="tiny">MLP 宽度 4,096 · 返回动作分支</text>
+
+          <path class="cache-edge" d="M40 403 H8 V676 H20"/>
+          <rect class="vlm" x="20" y="648" width="315" height="144" rx="10"/>
+          <text x="40" y="674" class="title vlm-ink">推理加速：缓存观测前缀</text>
+          <text x="40" y="701">保存每层图像 / 语言的 K、V</text>
+          <text x="40" y="724" class="muted">同一动作块的 10 次积分复用这份缓存。</text>
+          <text x="40" y="748" class="muted">此 openpi 版本每步重算状态与动作后缀。</text>
+          <text x="40" y="775" class="tiny">示意省略归一化、RoPE 与部分残差连线。</text>
+          <path class="edge" d="M568 588 V648"/>
+          <rect class="action" x="416" y="648" width="304" height="56" rx="9"/>
+          <text x="568" y="671" text-anchor="middle" class="mono">action_out_proj：1024 → d</text>
+          <text x="568" y="692" text-anchor="middle" class="muted">只取最后 H 个动作位置</text>
+          <path class="edge" d="M568 704 V736"/>
+          <rect class="action" x="416" y="736" width="304" height="56" rx="9"/>
+          <text x="568" y="759" text-anchor="middle" class="title">速度场 vθ(xₜ, t, o) · H × d</text>
+          <text x="568" y="780" text-anchor="middle" class="muted">交给下方欧拉循环，积分后得到动作</text>
+        </svg>
+      </div>
+      <figcaption class="arch-caption">读图顺序：四路输入 → 各自编码 → 两套专家逐层交互 → 动作位置输出速度场。图中 <code>t</code> 是 openpi 的流时间（1 为噪声，0 为动作），与正文的论文符号满足 <code>τ = 1 − t</code>。</figcaption>
+    </figure>
+
+    <div class="arch-details">
+      <div class="arch-panel">
+        <h3>注意力连接：谁能读取谁？</h3>
+        <table class="arch-mask">
+          <caption>行 = Query（读取方），列 = Key（被读取方）</caption>
+          <thead><tr><th scope="col">Q ＼ K</th><th scope="col">图像+语言</th><th scope="col">状态</th><th scope="col">动作</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">图像+语言</th><td class="allowed" aria-label="允许">✓</td><td class="blocked" aria-label="屏蔽">×</td><td class="blocked" aria-label="屏蔽">×</td></tr>
+            <tr><th scope="row">状态</th><td class="allowed" aria-label="允许">✓</td><td class="allowed" aria-label="允许">✓</td><td class="blocked" aria-label="屏蔽">×</td></tr>
+            <tr><th scope="row">动作</th><td class="allowed" aria-label="允许">✓</td><td class="allowed" aria-label="允许">✓</td><td class="allowed" aria-label="允许">✓</td></tr>
+          </tbody>
+        </table>
+        <p>每块内部双向；50 个动作位置相互可见，<strong>同时预测</strong>整段速度场。前向计算中，VLM 前缀不读取状态和动作，因此前缀 K/V 可以复用。padding token 还会被额外屏蔽。</p>
+      </div>
+      <div class="arch-panel">
+        <h3>04 / 速度场 → 10 步积分 → 动作块</h3>
+        <ol class="arch-flow">
+          <li><strong>准备观测</strong>：编码图像、语言，缓存前缀 K/V。</li>
+          <li><strong>初始化</strong>：采样 <code>x₁ = ε ~ N(0, I)</code>，设 <code>t = 1</code>、<code>dt = −0.1</code>。</li>
+          <li><strong>重复 10 次</strong>：输入状态、当前 <code>xₜ</code> 和 <code>t</code>，预测 <code>vθ</code>；更新 <code>x ← x + dt·vθ</code>，<code>t ← t + dt</code>。</li>
+          <li><strong>输出</strong>：到 <code>t = 0</code> 得到 <code>H = 50</code> 步动作块，经反归一化及机器人动作适配后执行；新观测到来后再规划。</li>
+        </ol>
+        <p><strong>训练对应关系</strong>：<code>xₜ = tε + (1−t)A</code>，监督目标为 <code>ε−A</code>。代码的负步长与该速度方向配套，等价于正文 <code>τ</code> 从 0 走向 1。</p>
+      </div>
     </div>
+
+    <div class="arch-note">
+      <p><strong>论文 ↔ 代码对照</strong>：论文实验的最大动作维度是 <code>d=18</code>；openpi 的 <code>Pi0Config</code> 默认 <code>d=32</code>、<code>H=50</code>，有效维度由机器人适配器处理。论文说明状态 K/V 也可缓存；本图引用的实现只缓存图像和语言，状态放在后缀中重算。</p>
+      <p><strong>时间条件的版本区别</strong>：这里画的是 π0 的“动作投影 + 时间编码拼接 → MLP”。π0.5 的 adaRMSNorm 时间条件与离散状态文本属于另一条实现路径。</p>
+    </div>
+
+    <details class="arch-sources">
+      <summary>展开：架构图的论文依据与代码定位</summary>
+      <p>论文：<a href="https://arxiv.org/html/2410.24164v4#S2.F3" target="_blank" rel="noopener noreferrer">Figure 3</a> · <a href="https://arxiv.org/html/2410.24164v4#S4" target="_blank" rel="noopener noreferrer">Section IV</a> · <a href="https://arxiv.org/html/2410.24164v4#A1.SS2" target="_blank" rel="noopener noreferrer">附录 B：模型结构与注意力</a> · <a href="https://arxiv.org/html/2410.24164v4#A1.SS4" target="_blank" rel="noopener noreferrer">附录 D：推理与缓存</a> · <a href="pdfs/pi0.pdf">本地论文 PDF</a>。</p>
+      <p>官方代码固定到提交 <code>215abfb</code>，与本站代码索引使用同一版本，便于逐项核对。</p>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr><th>图中模块</th><th>官方代码</th><th>核对内容</th></tr></thead>
+          <tbody>
+            <tr><td>输入与时间编码</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L106-L186" target="_blank" rel="noopener noreferrer"><code>pi0.py · embed_prefix / embed_suffix</code></a></td><td>图像、文本、状态与动作 token 的生成；时间拼接 MLP</td></tr>
+            <tr><td>三块注意力掩码</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L19-L45" target="_blank" rel="noopener noreferrer"><code>pi0.py · make_attn_mask</code></a></td><td>块序号累加比较；结合前后缀的掩码标记</td></tr>
+            <tr><td>两专家联合注意力</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/gemma.py#L163-L249" target="_blank" rel="noopener noreferrer"><code>gemma.py · Attention</code></a></td><td>独立 QKV、沿序列拼接、分别输出投影</td></tr>
+            <tr><td>宽度与层数</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/gemma.py#L69-L87" target="_blank" rel="noopener noreferrer"><code>gemma.py · get_config</code></a></td><td>2048 / 1024 隐藏宽度，18 层，两套 MLP 宽度</td></tr>
+            <tr><td>训练速度目标</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L189-L214" target="_blank" rel="noopener noreferrer"><code>pi0.py · compute_loss</code></a></td><td>混合带噪动作、预测速度、MSE 损失</td></tr>
+            <tr><td>缓存与欧拉循环</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0.py#L217-L280" target="_blank" rel="noopener noreferrer"><code>pi0.py · sample_actions</code></a></td><td>前缀 K/V 缓存、后缀重算、负时间步积分</td></tr>
+            <tr><td>π0 默认配置</td><td><a href="https://github.com/Physical-Intelligence/openpi/blob/215abfb217dbac7d5f1273282331b9b1866c0479/src/openpi/models/pi0_config.py#L19-L31" target="_blank" rel="noopener noreferrer"><code>pi0_config.py · Pi0Config</code></a></td><td><code>pi05=False</code>、<code>action_dim=32</code>、<code>action_horizon=50</code></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </details>
   </section>
 
   <section>
@@ -369,7 +548,7 @@
         <tr><th>项</th><th>内容</th></tr>
         <tr><td>输入①：观测前缀</td><td>图像、语言，由 3B VLM 主干处理；10 步中不变，KV 可缓存</td></tr>
         <tr><td>输入②：机器人状态 <code>q_t</code></td><td>进入动作专家一侧</td></tr>
-        <tr><td>输入③：带噪动作块 <code>A^τ</code> 与 <code>τ</code></td><td>形状 <code>H×d</code>（<code>H=50</code>，<code>d</code> 为动作维度，页面未给具体数值）</td></tr>
+        <tr><td>输入③：带噪动作块 <code>A^τ</code> 与 <code>τ</code></td><td>形状 <code>H×d</code>（<code>H=50</code>；论文最大 <code>d=18</code>，openpi 默认补齐到 <code>d=32</code>）</td></tr>
         <tr><td>输出</td><td><b>速度向量 <code>v_θ</code></b>（与 <code>A^τ</code> 同形状），不是干净动作；干净动作是 10 步积分的结果</td></tr>
       </table>
     </div>
@@ -390,7 +569,7 @@
     <p><strong>为什么还要 10 步而不是一步 <code>ε + v₀</code></strong>：路径若严格是直线，一步就够。但网络学到的是各位置的"平均方向"，同一观测下有多个合理动作，路径中途会有弯曲，所以要边走边重新看当前位置、修正方向。步数越多越准越慢，10 步是精度与延迟的折中。想彻底去掉积分，要么让路径更直，要么像 <a class="concept-link" href="DiffusionPolicy-论文解读.html#concept-consistency">consistency</a> 那样让网络直接学终点（代价是训练更难）。</p>
 
     <div class="card" style="background:var(--surface-2);border-left:3px solid var(--signal);">
-      <h3 style="margin:0 0 10px;color:var(--signal);">🤔 训练时预测方向 u = A - ε，不也相当于预测终点吗？</h3>
+      <h3 id="rq-2" style="margin:0 0 10px;color:var(--signal);">🤔 训练时预测方向 u = A - ε，不也相当于预测终点吗？</h3>
       <p style="margin:0 0 8px;"><b>看起来像，但本质不同。</b>训练目标 <code>u = A - ε</code> 确实包含终点 A 的信息，但网络学到的函数是 <code>v_θ(A^τ, τ, 观测)</code>，输入包含<b>当前位置</b>和<b>时间步</b>。</p>
 
       <p style="margin:12px 0 6px;"><b>如果路径完美是直线</b>：</p>
@@ -614,7 +793,7 @@
   </section>
 
   <section>
-    <h2>我真正学到的内容</h2>
+    <h2 id="rq-3">我真正学到的内容</h2>
     <ul>
       <li><strong>"底座 + 动作头"是 VLA 的正解</strong>：VLM 负责理解与语义，动作专家负责高精度连续输出，两者靠 self-attention 交互；动作头可以独立瘦身（宽度 / MLP 减半），兼顾表达与实时性。</li>
       <li><strong>离散化动作 token 是自回归 VLA 的硬伤</strong>：对连续、高频、灵巧动作，扩散 / 流匹配 + 动作块是更对口的表示；这也解释了 OpenVLA 为什么在这些任务上打不过 π0。</li>
@@ -655,6 +834,25 @@
     </ul>
   </section>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>机器人学习走向“通用”有哪三道坎？</b></p><p>数据稀缺、泛化差、鲁棒性不足。π0 的思路是把大模型“预训练 + 后训练”的逻辑搬到机器人上。 <a class="reading-goto" href="#rq-1">回到原文 ↑</a></p></li>
+        <li><p><b>训练时预测方向 u = A − ε，不也相当于直接预测终点吗？</b></p><p>不一样。网络学到的是 v_θ(A^τ, τ, 观测)，输入包含当前位置和时间步，是一个速度场；推理时沿这个场积分，每一步都在根据当前位置修正方向。 <a class="reading-goto" href="#rq-2">回到原文 ↑</a></p></li>
+        <li><p><b>为什么说“底座 + 动作头”是 VLA 的正解？</b></p><p>VLM 负责理解与语义，动作专家负责高精度连续输出，两者靠 self-attention 交互；动作头权重独立，可以单独瘦身加速。 <a class="reading-goto" href="#rq-3">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>π0 预训练用了多少数据？</p><details><summary>看答案</summary><p>约 1 万小时跨本体数据；自有灵巧操作数据覆盖 7 种机器人配置、68 个任务，共 903M timesteps。</p></details></li>
+    <li><p>动作专家用独立权重（2-expert MoE）有什么好处？</p><details><summary>看答案</summary><p>给预训练 VLM 接新模态时只加一小套权重、靠 attention 交互，不污染原主干，还能各自调宽度。</p></details></li>
+    <li><p>这篇论文的结果有什么“偏软”的地方？</p><details><summary>看答案</summary><p>主要用 rubric 平均进度分，缺少闭环成功率、失败恢复率这类更硬、可跨论文对比的指标。</p></details></li>
+    <li><p>思考：推理时速度场把噪声“拉回”训练分布，为什么动作仍可能失败？</p><details><summary>看答案</summary><p>落在训练分布里只说明动作“像示范”，不保证适合此刻的场景；观测理解错、分布本身覆盖不到、多步执行误差累积，都会导致失败。</p></details></li>
+  </ol>
+</div>
   <aside class="concept-related" aria-label="相关概念">
     <strong>相关概念</strong>
     <a class="concept-link" href="FAST-论文解读.html#concept-fast">FAST：离散动作表示</a>

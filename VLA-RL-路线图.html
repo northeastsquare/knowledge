@@ -179,10 +179,20 @@
       <span class="chip">冻结 vs 整模型</span>
     </div>
   </section>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>所有 VLA+RL 方法本质上都在回答哪三个问题？ <a class="reading-goto" href="#rq-1">读这一节 ↓</a></li>
+    <li>每条路线都在和哪四组拉扯打交道？ <a class="reading-goto" href="#rq-2">读这一节 ↓</a></li>
+    <li>站在 2026 年 10 月，RL 已经做到什么、还没解决什么？ <a class="reading-goto" href="#rq-3">读这一节 ↓</a></li>
+  </ol>
+</div>
+
 
   <!-- 0. 三个旋钮 -->
   <section>
-    <h2><span class="n">00</span>先拧三个旋钮</h2>
+    <h2 id="rq-1"><span class="n">00</span>先拧三个旋钮</h2>
     <p class="sub">所有 VLA+RL 方法，本质上都在回答三个问题。拖动下面的滑块，看看哪条路线最像你的情况。</p>
 
     <div class="knobs">
@@ -445,7 +455,7 @@
 
   <!-- 4. 四个张力 -->
   <section>
-    <h2><span class="n">04</span>四组拉扯：每条路线都在和它们打交道</h2>
+    <h2 id="rq-2"><span class="n">04</span>四组拉扯：每条路线都在和它们打交道</h2>
     <p class="sub">不用记方法名，记住这四组拉扯，就能判断一篇新论文站在哪里。</p>
     <div class="tensions">
       <div class="tension">
@@ -477,7 +487,7 @@
 
   <!-- 5. 今天 -->
   <section>
-    <h2><span class="n">05</span>站在 2026 年 10 月的位置</h2>
+    <h2 id="rq-3"><span class="n">05</span>站在 2026 年 10 月的位置</h2>
     <p class="sub">结论先写：强化学习已经能在真机上让 VLA 变好，但“持续、稳定、多机、不忘”还没有解决。</p>
     <div class="today">
       <div class="lbl">已经比较清楚的</div>
@@ -543,6 +553,24 @@
     </div>
   </section>
 
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>所有 VLA+RL 方法本质上都在回答哪三个问题？</b></p><p>改多少（整模型还是外挂小网络）、奖励从哪来、老本领要不要护住。 <a class="reading-goto" href="#rq-1">回到原文 ↑</a></p></li>
+        <li><p><b>每条路线都在和哪四组拉扯打交道？</b></p><p>探索↔安全、信用分配↔动作块长度、奖励↔人力、学新↔不忘旧。 <a class="reading-goto" href="#rq-2">回到原文 ↑</a></p></li>
+        <li><p><b>站在 2026 年 10 月，RL 已经做到什么、还没解决什么？</b></p><p>已经能在真机上让 VLA 变好；但“持续、稳定、多机、不忘”还没有解决。 <a class="reading-goto" href="#rq-3">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>为什么“学新忘旧”往往看平均分看不出来？</p><details><summary>看答案</summary><p>新任务涨分、旧任务掉分可能互相抵消，平均分不变；要按任务分开看旧任务有没有退化。</p></details></li>
+    <li><p>流匹配策略算不出 log π，路线图里第一种绕法是什么？</p><details><summary>看答案</summary><p>把去噪链本身当成 MDP：每个去噪步注入噪声变成高斯转移，似然就能算，再套 PPO 一类方法。</p></details></li>
+    <li><p>思考：拿到一篇新的 VLA+RL 论文，怎么快速判断它站在哪里？</p><details><summary>看答案</summary><p>用三个旋钮定位（改多少、奖励来源、护不护老本领），再看它在四组拉扯里偏向哪一边、付出了什么代价。</p></details></li>
+  </ol>
+</div>
   <aside class="concept-related" aria-label="相关概念">
     <strong>相关概念</strong>
     <a class="concept-link" href="RLToken-漫画分镜解读.html#concept-credit-assignment">动作块与信用分配</a>

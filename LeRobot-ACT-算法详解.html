@@ -133,6 +133,16 @@ summary{cursor:pointer;font-weight:600}
 <a href="#history">1 前世今生</a><a href="#bigpicture">2 一张图看全流程</a><a href="#train-detail">3 训练细节 ①–⑨</a><a href="#infer-detail">4 推理细节 ⑩–⑪</a><a href="#why">5 为什么有效</a><a href="#lerobot">6 LeRobot 上手</a><a href="#compare">7 对比与局限</a><a href="#refs">8 资料</a>
 </nav>
 </header>
+<div class="reading-guide" id="reading-guide" role="note" aria-label="带着问题读">
+  <strong>带着问题读</strong>
+  <p>先在心里试着回答，读的时候留意答案藏在哪；页末有<a href="#reading-answers">参考答案</a>和练习题。</p>
+  <ol>
+    <li>ACT 每看一眼画面输出多少动作？为什么要一次出这么多？ <a class="reading-goto" href="#concept-act">读这一节 ↓</a></li>
+    <li>CVAE 编码器压缩出的 z 是什么？推理时从哪里来？ <a class="reading-goto" href="#rq-2">读这一节 ↓</a></li>
+    <li>解码器怎么做到一次并行输出 100 步？ <a class="reading-goto" href="#rq-3">读这一节 ↓</a></li>
+  </ol>
+</div>
+
 
 <div class="note"><b>读这页之前，可以先带着这几个问题：</b><br>
 ① 一次预测 100 步，为什么比一步一步预测更准？<br>
@@ -344,7 +354,7 @@ batch["action_is_pad"]         (B, 100)       ← 越过回合末尾的位置为
 <div class="code-ref"><b>LEROBOT</b><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/configuration_act.py#L173">configuration_act.py#L173 action_delta_indices</a><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/datasets/factory.py#L39">factory.py#L39 resolve_delta_timestamps</a></div>
 </div>
 <div class="step train" id="s3"><div class="badge">3</div>
-<h3>CVAE 编码器：把"这次怎么做的"压成 z<span class="tag train">只在训练</span></h3>
+<h3 id="rq-2">CVAE 编码器：把"这次怎么做的"压成 z<span class="tag train">只在训练</span></h3>
 <p>这是一个 BERT 风格的 4 层 Transformer 编码器。它的输入序列是：</p>
 <div class="shape">[CLS]           1 个可学习 token
 qpos → Linear   1 个 token（14 → 512）
@@ -412,7 +422,7 @@ encoder 输入 (1202, B, 512)
 <div class="code-ref"><b>LEROBOT</b><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/modeling_act.py#L524">modeling_act.py#L524 ACTEncoder</a><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/modeling_act.py#L561">#L561 ACTEncoderLayer.forward（q = k = x + pos）</a></div>
 </div>
 <div class="step" id="s7"><div class="badge">7</div>
-<h3>Transformer 解码器：100 个 query 各自"认领"一个未来时刻<span class="tag both">训练 + 推理</span></h3>
+<h3 id="rq-3">Transformer 解码器：100 个 query 各自"认领"一个未来时刻<span class="tag both">训练 + 推理</span></h3>
 <p>这是 ACT 能一次输出 100 步的关键。解码器的输入是一个全零张量 <code>(100, B, 512)</code>，真正起作用的是 <code>decoder_pos_embed = nn.Embedding(100, 512)</code>。这是 100 个可学习向量，第 i 个向量专门负责"未来第 i 步"。每一层的计算分三步：</p>
 <div class="shape">① 自注意力：100 个 query 互相看     → 保证相邻时刻的动作前后连贯
 ② 交叉注意力：Q = query + 位置编码
@@ -465,6 +475,27 @@ encoder 输入 (1202, B, 512)
 <p>最后以真机（或仿真）成功率为准：可以扫 β = 1、10、100，挑成功率最高的。</p>
 <div class="code-ref"><b>LEROBOT</b><a href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/policies/act/modeling_act.py#L152-L162">modeling_act.py#L152-L162 KL 计算与总损失（b6ec006）</a><a href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/policies/act/configuration_act.py#L123">configuration_act.py#L123 kl_weight = 10.0（b6ec006）</a><a class="pl" href="https://arxiv.org/abs/1312.6114">Kingma &amp; Welling 2013，附录 B</a></div>
 </div>
+<details><summary>β = 10 怎么就换来"z 只保留风格"？</summary>
+<p><b>β 是 z 每带一点信息要付的价钱。</b>价钱高了，z 只留下非带不可的东西。</p>
+<pre><code>训练损失 = L1(动作重建误差) + β × KL(z 的分布 ‖ N(0, I))
+                                   ↑
+                    z 里每多装 1 点信息，这一项就涨一点</code></pre>
+<p>编码器看到"真实动作序列 + 关节状态"，把它压成 z。解码器（策略）看到的是 z + 图像 + 关节状态。</p>
+<ol>
+<li>KL 衡量 z 离标准正态有多远。z 装的信息越多，KL 越大。</li>
+<li>β = 10 时，每 1 点 KL 按 10 倍计入总损失。</li>
+<li>图像和关节里能看出来的信息（物体在哪、手臂在哪），放进 z 降不了多少 L1，却要多付 KL。优化器会把它们从 z 里扔掉。</li>
+<li>看图看不出来的信息只能靠 z 带：这次示范先左后右还是先右后左、操作员手快还是手慢。不放进 z，L1 降不下去，所以值得付钱。</li>
+<li>第 4 条留下的信息很少、维度很低，就是这里说的"风格"。</li>
+</ol>
+<table>
+<tr><th>原因</th><th>结果</th></tr>
+<tr><td>KL 把 z 往 N(0, I) 拉</td><td>z 的平均值就是 0</td></tr>
+<tr><td>z 里只有一点风格信息</td><td>去掉它，策略照样能从图像读出该做什么</td></tr>
+<tr><td>推理时 z = 0</td><td>相当于选了"平均风格"</td></tr>
+</table>
+<p>β 大不大，要看它和 L1 的量级比。动作归一化后 L1 很小，β = 10 已让 KL 分量很重。β 再大，z 可能什么都不装（后验坍塌），CVAE 就退化成普通回归。</p>
+</details>
 <div class="note warn"><b>一处原文的不一致：</b>论文 Algorithm 1 的伪代码写的是 <code>L_reconst = MSE</code>，但正文明确说"我们用 L1 而非常见的 L2，L1 对动作序列的建模更精确"，消融实验也证明换不回来。LeRobot 的实现按正文用 L1。另外论文把 KL 权重记作 β，代码里叫 <code>kl_weight</code>，默认 <code>10.0</code>。</div>
 <p>Adam，学习率 <code>1e-5</code>，batch size 8，dropout 0.1。LeRobot 里 ResNet 主干被单独分到一个参数组（<code>optimizer_lr_backbone</code>，默认也是 1e-5），整体约 80M 参数，单卡 2080 Ti 约 5 小时。</p>
 <div class="code-ref"><b>LEROBOT</b><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/modeling_act.py#L140-L167">modeling_act.py#L140-L167 损失计算</a><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/modeling_act.py#L75-L94">#L75-L94 主干单独的学习率</a><a href="https://github.com/huggingface/lerobot/blob/72e1d9e5e76ee719bacfc78bc34d817bee5fb521/src/lerobot/policies/act/configuration_act.py#L123-L128">configuration_act.py#L123 kl_weight / lr 默认值</a></div>
@@ -705,6 +736,25 @@ lerobot-rollout \
 <script>
 document.addEventListener('DOMContentLoaded',function(){if(window.renderMath)window.renderMath();});
 </script>
+
+<div class="reading-review" id="reading-review" role="note" aria-label="读后思考与练习">
+  <strong>读后思考 · 练习题</strong>
+  <p>合上页面先自己作答，再展开对照。</p>
+  <details class="reading-answers" id="reading-answers">
+    <summary>开头问题的参考答案</summary>
+    <ol>
+        <li><p><b>ACT 每看一眼画面输出多少动作？为什么要一次出这么多？</b></p><p>一次输出接下来 100 步（50Hz 下约 2 秒）。整段一起预测更连贯，也减少了逐步预测时误差的累积。 <a class="reading-goto" href="#concept-act">回到原文 ↑</a></p></li>
+        <li><p><b>CVAE 编码器压缩出的 z 是什么？推理时从哪里来？</b></p><p>z 编码的是“这次示范具体是怎么做的”（风格、节奏），帮模型区分同一场景下不同的示范方式。它只在训练时由真实动作算出，推理时直接取 0（先验均值）。 <a class="reading-goto" href="#rq-2">回到原文 ↑</a></p></li>
+        <li><p><b>解码器怎么做到一次并行输出 100 步？</b></p><p>输入 100 个 query，每个 query 各自“认领”一个未来时刻，与 DETR 的 100 个 object query 同一套机制，并行解码，不是自回归。 <a class="reading-goto" href="#rq-3">回到原文 ↑</a></p></li>
+    </ol>
+  </details>
+  <ol class="reading-ex">
+    <li><p>拼进 Transformer 编码器的 1202 个 token 是怎么来的？</p><details><summary>看答案</summary><p>1 个 z + 1 个关节状态 + 4 路相机 × 300 个视觉 token（ResNet18 layer4 特征图展平）= 1202。</p></details></li>
+    <li><p>一条示范共 400 步，训练时抽到 t=350，后面不足 100 步怎么办？</p><details><summary>看答案</summary><p>只有 50 步真实动作，后 50 步补齐，并用掩码标出，补齐部分不参与损失。</p></details></li>
+    <li><p>采集示范时，动作为什么取主臂的角度而不是从臂？</p><details><summary>看答案</summary><p>从臂由电机 PID 追主臂，总有滞后；主臂的角度才是人真正想要的动作。</p></details></li>
+    <li><p>思考：z 和图像一样只是一个普通 token，这样设计有什么好处？</p><details><summary>看答案</summary><p>Transformer 可以通过注意力自己决定 z 的影响有多大，不需要手工设计 z 怎么注入网络。</p></details></li>
+  </ol>
+</div>
 <script src="nav.js"></script>
 
 </div>
