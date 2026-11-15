@@ -26,10 +26,10 @@ GitHub 默认分支和网页发布分支均为 `master`。发布源选择 `maste
 - 各页面的公共导航：`nav.js`。
 - 新页面要同时加到 `nav.js` 和 `index.html`；校验脚本会检查 `nav.js` 里的每一页在首页都有入口。
 - 关键概念索引：`concepts.html`；正文概念链接与跳转提示样式：`concepts.css`。
-- 论文原文：`pdfs/`（只在本地，不进 Git）。
+- 论文原文：链接到 arXiv 等公开地址。`pdfs/` 只作本地存档，不进 Git，页面里不要链接它。
 - 页面写作约定（架构图、问答环节）：见 `AGENTS.md`。
 - 新增文章时，将 HTML 放在根目录，并更新首页与公共导航。
-- 站内链接使用相对路径，例如 `index.html`、`pi0-论文解读.html`、`pdfs/pi0.pdf`；不要写成本机磁盘路径或以 `/` 开头的路径。这样既能本地打开，也能在 `/knowledge/` 子路径下访问。中文文件名可以保留。
+- 站内链接使用相对路径，例如 `index.html`、`pi0-论文解读.html`；不要写成本机磁盘路径或以 `/` 开头的路径。这样既能本地打开，也能在 `/knowledge/` 子路径下访问。中文文件名可以保留。
 
 字体和部分图表库通过外部 CDN 加载，对应功能需要能够访问这些服务。
 
@@ -57,6 +57,6 @@ python -m http.server 8000
 
 - **网页 404**：确认 Pages 发布源是 `master / (root)`，根目录存在 `index.html`，且 Actions 中部署成功。
 - **更新未显示**：检查修改是否推送到了 `master`，等待部署成功后刷新浏览器。
-- **PDF 404**：确认首页链接对应的 PDF 已提交到 `pdfs/`；只存在于本机的文件不会被发布。
+- **PDF 打不开**：论文链接应指向 arXiv 等公开地址；`pdfs/` 里的文件只在本机，不会被发布。代码链接应指向 GitHub 上固定 commit 的源码。
 
 参考：[GitHub Pages 发布源配置文档](https://docs.github.com/en/pages/getting-started-with-github-pages/configuring-a-publishing-source-for-your-github-pages-site)。

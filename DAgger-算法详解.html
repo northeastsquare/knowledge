@@ -140,14 +140,14 @@ footer{margin-top:70px;font-size:13px;color:var(--ink-3)}
     <div class="box">
       <b>原始论文</b>
       <p style="margin:4px 0"><i>A Reduction of Imitation Learning and Structured Prediction to No-Regret Online Learning</i></p>
-      <a class="pl" href="pdfs/DAgger-1011.0686v3.pdf">本地 PDF：pdfs/DAgger-1011.0686v3.pdf</a>
+      <a class="pl" href="https://arxiv.org/pdf/1011.0686v3" target="_blank" rel="noreferrer">PDF（arXiv）</a>
       <a class="pl" href="https://arxiv.org/abs/1011.0686">arXiv:1011.0686</a>
     </div>
     <div class="box">
       <b>代码</b>
       <p style="margin:4px 0">论文没有附官方代码。这里对照的是 LeRobot 里的实现（commit <code>b6ec006</code>），它走的是 HG-DAgger / RaC 这种“人在环接管”路线。</p>
-      <a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="15">dagger.py:15</a>
-      <a class="cl" data-path="docs/source/hil_data_collection.mdx" data-line="1">hil_data_collection.mdx</a>
+      <a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L15" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="15">dagger.py:15</a>
+      <a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/docs/source/hil_data_collection.mdx?plain=1#L1" target="_blank" rel="noreferrer" data-path="docs/source/hil_data_collection.mdx" data-line="1">hil_data_collection.mdx</a>
     </div>
   </div>
 </header>
@@ -210,12 +210,12 @@ footer{margin-top:70px;font-size:13px;color:var(--ink-3)}
 
 <h3>3.2 LeRobot：人在环接管（<code>--strategy.type=dagger</code>）</h3>
 <p>入口是 <code>lerobot-rollout</code>。<code>factory.py</code> 看到 <code>type == "dagger"</code> 就创建 <code>DAggerStrategy</code>。它把一次部署变成一个三状态的状态机，由键盘或脚踏板切换。</p>
-<p><a class="cl" data-path="src/lerobot/rollout/strategies/factory.py" data-line="48">factory.py:48</a><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="88">DAggerPhase:88</a><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="97">_DAGGER_TRANSITIONS:97</a></p>
+<p><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/factory.py#L48" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/factory.py" data-line="48">factory.py:48</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L88" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="88">DAggerPhase:88</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L97" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="97">_DAGGER_TRANSITIONS:97</a></p>
 <table>
 <tr><th>状态</th><th>谁在控制</th><th>每帧做什么</th><th>代码</th></tr>
-<tr><td><span class="pill a">AUTONOMOUS</span></td><td>策略</td><td>取观测 → 推理 → <code>send_next_action</code> 发动作</td><td><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="447">dagger.py:447</a></td></tr>
-<tr><td><span class="pill p">PAUSED</span></td><td>没人</td><td>反复发送上一个动作，原地停住，等人决定</td><td><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="441">dagger.py:441</a></td></tr>
-<tr><td><span class="pill c">CORRECTING</span></td><td>人（遥操作臂）</td><td><code>teleop.get_action()</code> → 发给机器人 → 记一帧 <code>intervention=True</code></td><td><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="413">dagger.py:413</a></td></tr>
+<tr><td><span class="pill a">AUTONOMOUS</span></td><td>策略</td><td>取观测 → 推理 → <code>send_next_action</code> 发动作</td><td><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L447" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="447">dagger.py:447</a></td></tr>
+<tr><td><span class="pill p">PAUSED</span></td><td>没人</td><td>反复发送上一个动作，原地停住，等人决定</td><td><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L441" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="441">dagger.py:441</a></td></tr>
+<tr><td><span class="pill c">CORRECTING</span></td><td>人（遥操作臂）</td><td><code>teleop.get_action()</code> → 发给机器人 → 记一帧 <code>intervention=True</code></td><td><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L413" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="413">dagger.py:413</a></td></tr>
 </table>
 <p>合法的切换只有四条，写死在 <code>_DAGGER_TRANSITIONS</code> 里。按键线程只调用 <code>request_transition</code> 登记请求，主循环每帧开头用 <code>consume_transition</code> 取走，所以状态只在主循环里改。</p>
 <table>
@@ -225,7 +225,7 @@ footer{margin-top:70px;font-size:13px;color:var(--ink-3)}
 <tr><td>upload</td><td><code>enter</code></td><td><code>KEY_C</code></td><td>后台推送数据集到 Hub</td></tr>
 <tr><td>停止</td><td><code>esc</code></td><td>—</td><td>结束整个会话</td></tr>
 </table>
-<p><a class="cl" data-path="src/lerobot/rollout/configs.py" data-line="142">DAggerKeyboardConfig:142</a><a class="cl" data-path="src/lerobot/rollout/configs.py" data-line="155">DAggerPedalConfig:155</a><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="171">_init_dagger_keyboard:171</a><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="134">request_transition:134</a><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="144">consume_transition:144</a></p>
+<p><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/configs.py#L142" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/configs.py" data-line="142">DAggerKeyboardConfig:142</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/configs.py#L155" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/configs.py" data-line="155">DAggerPedalConfig:155</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L171" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="171">_init_dagger_keyboard:171</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L134" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="134">request_transition:134</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L144" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="144">consume_transition:144</a></p>
 
 <h3>3.3 两种记录模式</h3>
 <table>
@@ -235,18 +235,18 @@ footer{margin-top:70px;font-size:13px;color:var(--ink-3)}
 <tr><td>标签</td><td>全部 <code>intervention=True</code></td><td>策略帧 <code>False</code>，纠正帧 <code>True</code></td></tr>
 <tr><td>何时保存</td><td>CORRECTING → PAUSED 时 <code>save_episode()</code></td><td>到时长且不在纠正中时保存</td></tr>
 <tr><td>上传</td><td>按 upload 键</td><td>每 <code>upload_every_n_episodes</code>（默认 5）个自动后台上传</td></tr>
-<tr><td>代码</td><td><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="514">_run_corrections_only:514</a><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="585">保存:585</a></td><td><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="337">_run_continuous:337</a><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="474">轮换:474</a></td></tr>
+<tr><td>代码</td><td><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L514" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="514">_run_corrections_only:514</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L585" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="585">保存:585</a></td><td><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L337" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="337">_run_continuous:337</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L474" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="474">轮换:474</a></td></tr>
 </table>
-<p>纠正段里，动作标签用的是<b>人的遥操作动作</b> <code>processed_teleop</code>，不是发给机器人的动作。录制步长是 <code>correction_stride = interpolator.multiplier</code>，每次纠正开始时 <code>correction_tick</code> 归零，保证纠正段每秒正好 fps 帧。<a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="427">dagger.py:427</a></p>
+<p>纠正段里，动作标签用的是<b>人的遥操作动作</b> <code>processed_teleop</code>，不是发给机器人的动作。录制步长是 <code>correction_stride = interpolator.multiplier</code>，每次纠正开始时 <code>correction_tick</code> 归零，保证纠正段每秒正好 fps 帧。<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L427" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="427">dagger.py:427</a></p>
 
 <h3>3.4 交接：让人和机器人不“抢手”</h3>
 <p><code>_apply_transition</code> 处理切换时的副作用。默认 <code>smooth_handover=True</code>。</p>
 <table>
 <tr><th>切换</th><th>做什么</th><th>代码</th></tr>
-<tr><td>AUTONOMOUS → PAUSED</td><td>暂停推理引擎。主臂能被驱动（SO-101、OpenArmMini 这类）时，把主臂慢慢移到从臂的位置</td><td><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="716">dagger.py:716</a></td></tr>
-<tr><td>PAUSED → CORRECTING</td><td>主臂不能被驱动时，反过来把从臂慢慢移到主臂姿态。然后关掉主臂力矩，交给人</td><td><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="729">dagger.py:729</a></td></tr>
-<tr><td>CORRECTING → PAUSED</td><td>重新上主臂力矩，保持位置</td><td><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="747">dagger.py:747</a></td></tr>
-<tr><td>→ AUTONOMOUS</td><td>重置插值器和引擎，恢复推理，松开主臂</td><td><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="751">dagger.py:751</a></td></tr>
+<tr><td>AUTONOMOUS → PAUSED</td><td>暂停推理引擎。主臂能被驱动（SO-101、OpenArmMini 这类）时，把主臂慢慢移到从臂的位置</td><td><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L716" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="716">dagger.py:716</a></td></tr>
+<tr><td>PAUSED → CORRECTING</td><td>主臂不能被驱动时，反过来把从臂慢慢移到主臂姿态。然后关掉主臂力矩，交给人</td><td><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L729" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="729">dagger.py:729</a></td></tr>
+<tr><td>CORRECTING → PAUSED</td><td>重新上主臂力矩，保持位置</td><td><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L747" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="747">dagger.py:747</a></td></tr>
+<tr><td>→ AUTONOMOUS</td><td>重置插值器和引擎，恢复推理，松开主臂</td><td><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L751" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="751">dagger.py:751</a></td></tr>
 </table>
 
 <h3 id="s3-5">3.5 论文 vs LeRobot</h3>
@@ -260,7 +260,7 @@ footer{margin-top:70px;font-size:13px;color:var(--ink-3)}
 </table>
 
 <h2 id="s4"><span class="no">04</span>模型迭代方式</h2>
-<p>LeRobot 没有把“采集 → 训练 → 再采集”写成一个自动循环。每一轮是几条命令，人来串起来。官方文档的流程（<a class="cl" data-path="docs/source/hil_data_collection.mdx" data-line="83">Step 1:83</a><a class="cl" data-path="docs/source/hil_data_collection.mdx" data-line="96">Step 2:96</a><a class="cl" data-path="docs/source/hil_data_collection.mdx" data-line="186">Step 3:186</a>）对应到论文的 for 循环：</p>
+<p>LeRobot 没有把“采集 → 训练 → 再采集”写成一个自动循环。每一轮是几条命令，人来串起来。官方文档的流程（<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/docs/source/hil_data_collection.mdx?plain=1#L83" target="_blank" rel="noreferrer" data-path="docs/source/hil_data_collection.mdx" data-line="83">Step 1:83</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/docs/source/hil_data_collection.mdx?plain=1#L96" target="_blank" rel="noreferrer" data-path="docs/source/hil_data_collection.mdx" data-line="96">Step 2:96</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/docs/source/hil_data_collection.mdx?plain=1#L186" target="_blank" rel="noreferrer" data-path="docs/source/hil_data_collection.mdx" data-line="186">Step 3:186</a>）对应到论文的 for 循环：</p>
 <ol class="steps">
 <li><b>第 0 轮：BC 预训练（论文 β₁ = 1）。</b>用专家示教 D₀ 训练 π̂₁。
 <pre>lerobot-train --dataset.repo_id=&lt;user&gt;/demo-dataset --policy.type=pi0 \
@@ -270,17 +270,17 @@ footer{margin-top:70px;font-size:13px;color:var(--ink-3)}
   --policy.path=outputs/pretrain/checkpoints/last/pretrained_model \
   --robot.type=bi_openarm_follower --teleop.type=openarm_mini \
   --dataset.repo_id=&lt;user&gt;/rollout_hil_data --dataset.single_task="Fold the T-shirt"</pre>
-<a class="cl" data-path="src/lerobot/scripts/lerobot_rollout.py" data-line="93">lerobot_rollout.py:93</a></li>
+<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/scripts/lerobot_rollout.py#L93" target="_blank" rel="noreferrer" data-path="src/lerobot/scripts/lerobot_rollout.py" data-line="93">lerobot_rollout.py:93</a></li>
 <li><b>聚合 D ← D ∪ Dᵢ（论文 ④）。</b>把示教集和本轮纠正集合并。
 <pre>lerobot-edit-dataset --new_repo_id &lt;user&gt;/demo_plus_hil_r1 \
   --operation.type merge \
   --operation.repo_ids "['&lt;user&gt;/demo-dataset', '&lt;user&gt;/rollout_hil_data']"</pre>
-<a class="cl" data-path="src/lerobot/scripts/lerobot_edit_dataset.py" data-line="294">MergeConfig:294</a><a class="cl" data-path="src/lerobot/datasets/aggregate.py" data-line="352">aggregate_datasets:352</a></li>
+<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/scripts/lerobot_edit_dataset.py#L294" target="_blank" rel="noreferrer" data-path="src/lerobot/scripts/lerobot_edit_dataset.py" data-line="294">MergeConfig:294</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/datasets/aggregate.py#L352" target="_blank" rel="noreferrer" data-path="src/lerobot/datasets/aggregate.py" data-line="352">aggregate_datasets:352</a></li>
 <li><b>重训 π̂ᵢ₊₁（论文 ⑤）。</b>文档做法是从上一轮的权重接着微调。
 <pre>lerobot-train --dataset.repo_id=&lt;user&gt;/demo_plus_hil_r1 --policy.type=pi0 \
   --policy.pretrained_path=outputs/pretrain/checkpoints/last/pretrained_model \
   --output_dir=outputs/hil_finetune --steps=20000</pre>
-<a class="cl" data-path="src/lerobot/scripts/lerobot_train.py" data-line="385">train:385</a></li>
+<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/scripts/lerobot_train.py#L385" target="_blank" rel="noreferrer" data-path="src/lerobot/scripts/lerobot_train.py" data-line="385">train:385</a></li>
 <li><b>回到第 2 步。</b>新策略的失败点不同，下一轮接管的位置也会变。挑真机成功率最高的一版（论文 ⑥）。</li>
 </ol>
 
@@ -413,7 +413,7 @@ footer{margin-top:70px;font-size:13px;color:var(--ink-3)}
 <p>RaC 要先恢复，是因为只纠正不恢复，模型学不会“从错误里退出来”。LeRobot 把两者合在一起：HG-DAgger 的按键接管，加 RaC 的“先恢复再纠正”（见 <a href="#s3-1">3.1</a>）。同一家族还有 SafeDAgger、EnsembleDAgger 等，它们让模型自己判断何时该叫人。</p>
 
 <h2 id="s5"><span class="no">05</span>架构图</h2>
-<p class="hint">图里文字可选中、复制。点右下角「✎ 编辑」后可直接改字，按「保存」或 ⌘/Ctrl+S 写回这个 HTML 文件（Chrome / Edge 第一次保存时选中本文件即可覆盖；其他浏览器会下载一份新文件）。编辑模式下点击 ⌗ 代码芯片可以改它指向的文件和行号。右下角可切换代码链接打开 GitHub 还是本地 VS Code。</p>
+<p class="hint">图里文字可选中、复制。点右下角「✎ 编辑」后可直接改字，按「保存」或 ⌘/Ctrl+S 写回这个 HTML 文件（Chrome / Edge 第一次保存时选中本文件即可覆盖；其他浏览器会下载一份新文件）。编辑模式下点击 ⌗ 代码芯片可以改它指向的文件和行号。代码链接都指向 GitHub 上固定 commit 的源码，论文链接指向 arXiv，换台机器也能打开。</p>
 </div><!-- /wrap -->
 
 <div class="wide">
@@ -455,22 +455,22 @@ footer{margin-top:70px;font-size:13px;color:var(--ink-3)}
 <div class="nd data" style="left:20px;top:28px;width:202px;min-height:144px">
   <div class="nt">① 专家示教 D₀</div>
   <div class="nb">人用遥操作采几十到几百条成功轨迹。论文里这一轮就是 β₁ = 1。</div>
-  <div class="nl"><a class="cl" data-path="docs/source/hil_data_collection.mdx" data-line="83">Step 1:83</a></div>
+  <div class="nl"><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/docs/source/hil_data_collection.mdx?plain=1#L83" target="_blank" rel="noreferrer" data-path="docs/source/hil_data_collection.mdx" data-line="83">Step 1:83</a></div>
 </div>
 <div class="nd train" style="left:298px;top:28px;width:228px;min-height:144px">
   <div class="nt">② 训练 π̂ᵢ（在 D 上做 BC）</div>
   <div class="nb">第 0 轮从头训；之后用 <b>pretrained_path</b> 接上一轮权重微调。</div>
-  <div class="nl"><a class="cl" data-path="src/lerobot/scripts/lerobot_train.py" data-line="385">lerobot_train.py:385</a><a class="pl" href="pdfs/DAgger-1011.0686v3.pdf">论文 ⑤</a></div>
+  <div class="nl"><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/scripts/lerobot_train.py#L385" target="_blank" rel="noreferrer" data-path="src/lerobot/scripts/lerobot_train.py" data-line="385">lerobot_train.py:385</a><a class="pl" href="https://arxiv.org/pdf/1011.0686v3" target="_blank" rel="noreferrer">论文 ⑤</a></div>
 </div>
 <div class="nd" style="left:594px;top:28px;width:226px;min-height:144px">
   <div class="nt">③ 部署 lerobot-rollout</div>
   <div class="nb"><b>--strategy.type=dagger</b> → factory 创建 DAggerStrategy → setup() → run()</div>
-  <div class="nl"><a class="cl" data-path="src/lerobot/rollout/strategies/factory.py" data-line="48">factory.py:48</a><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="256">setup:256</a><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="291">run:291</a></div>
+  <div class="nl"><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/factory.py#L48" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/factory.py" data-line="48">factory.py:48</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L256" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="256">setup:256</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L291" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="291">run:291</a></div>
 </div>
 <div class="nd human" style="left:850px;top:28px;width:190px;min-height:144px">
   <div class="nt">④ 输入设备</div>
   <div class="nb">键盘 space / tab / enter / esc，或脚踏板 A / B / C。另开线程监听。</div>
-  <div class="nl"><a class="cl" data-path="src/lerobot/rollout/configs.py" data-line="142">configs.py:142</a><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="171">dagger.py:171</a></div>
+  <div class="nl"><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/configs.py#L142" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/configs.py" data-line="142">configs.py:142</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L171" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="171">dagger.py:171</a></div>
 </div>
 
 <!-- 状态机 -->
@@ -478,41 +478,41 @@ footer{margin-top:70px;font-size:13px;color:var(--ink-3)}
 <div class="nd st a" style="left:318px;top:262px;width:210px;min-height:190px">
   <div class="nt">AUTONOMOUS · 策略开</div>
   <div class="nb">观测 → 推理 → send_next_action 发动作。只记纠正模式下<b>不记帧</b>。</div>
-  <div class="nl"><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="447">dagger.py:447</a><a class="cl" data-path="src/lerobot/rollout/strategies/core.py" data-line="329">send_next_action:329</a></div>
+  <div class="nl"><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L447" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="447">dagger.py:447</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/core.py#L329" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/core.py" data-line="329">send_next_action:329</a></div>
 </div>
 <div class="nd st p" style="left:592px;top:262px;width:186px;min-height:190px">
   <div class="nt">PAUSED · 停住</div>
   <div class="nb">重复发上一个动作。进入时暂停引擎，并把主臂平滑移到从臂位置。</div>
-  <div class="nl"><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="441">dagger.py:441</a><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="716">交接:716</a></div>
+  <div class="nl"><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L441" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="441">dagger.py:441</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L716" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="716">交接:716</a></div>
 </div>
 <div class="nd st c human" style="left:838px;top:262px;width:186px;min-height:190px">
   <div class="nt">CORRECTING · 人开</div>
   <div class="nb">teleop.get_action() → 发给机器人。标签用人的动作，intervention=True。</div>
-  <div class="nl"><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="413">dagger.py:413</a><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="729">交接:729</a></div>
+  <div class="nl"><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L413" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="413">dagger.py:413</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L729" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="729">交接:729</a></div>
 </div>
 
 <!-- 论文对照 -->
 <div class="nd paper" style="left:20px;top:228px;width:204px;min-height:252px">
   <div class="nt">论文 ①②③ 对照</div>
   <div class="nb">πᵢ = βᵢπ* + (1−βᵢ)π̂ᵢ，按概率选谁执行；专家给<b>所有</b>访问到的状态打标签。<br>LeRobot 去掉了 β：人按键决定何时接管，只有接管段有标签（HG-DAgger / RaC）。</div>
-  <div class="nl"><a class="pl" href="pdfs/DAgger-1011.0686v3.pdf">论文 第 3 节</a></div>
+  <div class="nl"><a class="pl" href="https://arxiv.org/pdf/1011.0686v3" target="_blank" rel="noreferrer">论文 第 3 节</a></div>
 </div>
 
 <!-- 底部数据流 -->
 <div class="nd data" style="left:776px;top:538px;width:264px;min-height:150px">
   <div class="nt">⑥ 写帧 add_frame</div>
   <div class="nb">纠正帧 intervention=<b>True</b>；record_autonomous=true 时策略帧也记，标 <b>False</b>。</div>
-  <div class="nl"><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="427">纠正:427</a><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="459">策略:459</a><a class="cl" data-path="src/lerobot/rollout/configs.py" data-line="237">record_autonomous:237</a></div>
+  <div class="nl"><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L427" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="427">纠正:427</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L459" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="459">策略:459</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/configs.py#L237" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/configs.py" data-line="237">record_autonomous:237</a></div>
 </div>
 <div class="nd data" style="left:458px;top:538px;width:254px;min-height:150px">
   <div class="nt">⑦ 新数据集 Dᵢ</div>
   <div class="nb">纠正结束或到时长 → save_episode()；单线程后台 push_to_hub，纠正中不推。</div>
-  <div class="nl"><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="585">save:585</a><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="776">_background_push:776</a></div>
+  <div class="nl"><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L585" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="585">save:585</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L776" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="776">_background_push:776</a></div>
 </div>
 <div class="nd data" style="left:130px;top:538px;width:268px;min-height:150px">
   <div class="nt">⑧ 聚合 D ← D ∪ Dᵢ</div>
   <div class="nb">lerobot-edit-dataset merge 把 D₀ 和各轮 Dᵢ 合成一个数据集，再回到 ②。</div>
-  <div class="nl"><a class="cl" data-path="src/lerobot/scripts/lerobot_edit_dataset.py" data-line="294">MergeConfig:294</a><a class="cl" data-path="src/lerobot/datasets/aggregate.py" data-line="352">aggregate.py:352</a><a class="pl" href="pdfs/DAgger-1011.0686v3.pdf">论文 ④</a></div>
+  <div class="nl"><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/scripts/lerobot_edit_dataset.py#L294" target="_blank" rel="noreferrer" data-path="src/lerobot/scripts/lerobot_edit_dataset.py" data-line="294">MergeConfig:294</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/datasets/aggregate.py#L352" target="_blank" rel="noreferrer" data-path="src/lerobot/datasets/aggregate.py" data-line="352">aggregate.py:352</a><a class="pl" href="https://arxiv.org/pdf/1011.0686v3" target="_blank" rel="noreferrer">论文 ④</a></div>
 </div>
 
 <!-- 连线标签 -->
@@ -536,20 +536,20 @@ footer{margin-top:70px;font-size:13px;color:var(--ink-3)}
 <h2 id="s6"><span class="no">06</span>代码索引</h2>
 <table>
 <tr><th>功能</th><th>位置</th></tr>
-<tr><td>模块说明（RaC、两种记录模式、交接）</td><td><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="15">dagger.py:15</a></td></tr>
-<tr><td>三状态与合法切换表</td><td><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="88">dagger.py:88</a><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="97">dagger.py:97</a></td></tr>
-<tr><td>线程安全的事件容器</td><td><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="105">DAggerEvents:105</a></td></tr>
-<tr><td>键盘 / 踏板监听</td><td><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="171">dagger.py:171</a><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="204">dagger.py:204</a></td></tr>
-<tr><td>策略类、setup / run / teardown</td><td><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="229">dagger.py:229</a><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="298">teardown:298</a></td></tr>
-<tr><td>连续记录模式主循环</td><td><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="337">dagger.py:337</a></td></tr>
-<tr><td>只记纠正模式主循环</td><td><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="514">dagger.py:514</a></td></tr>
-<tr><td>切换副作用（平滑交接、力矩）</td><td><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="681">dagger.py:681</a></td></tr>
-<tr><td>后台上传</td><td><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="776">dagger.py:776</a></td></tr>
-<tr><td>配置项</td><td><a class="cl" data-path="src/lerobot/rollout/configs.py" data-line="209">DAggerStrategyConfig:209</a></td></tr>
-<tr><td>命令示例</td><td><a class="cl" data-path="src/lerobot/scripts/lerobot_rollout.py" data-line="93">lerobot_rollout.py:93</a></td></tr>
-<tr><td>数据集合并</td><td><a class="cl" data-path="src/lerobot/scripts/lerobot_edit_dataset.py" data-line="294">lerobot_edit_dataset.py:294</a><a class="cl" data-path="src/lerobot/datasets/aggregate.py" data-line="352">aggregate.py:352</a></td></tr>
-<tr><td>训练入口</td><td><a class="cl" data-path="src/lerobot/scripts/lerobot_train.py" data-line="385">lerobot_train.py:385</a></td></tr>
-<tr><td>文档：流程与相关工作</td><td><a class="cl" data-path="docs/source/hil_data_collection.mdx" data-line="186">mdx:186</a><a class="cl" data-path="docs/source/hil_data_collection.mdx" data-line="231">mdx:231</a></td></tr>
+<tr><td>模块说明（RaC、两种记录模式、交接）</td><td><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L15" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="15">dagger.py:15</a></td></tr>
+<tr><td>三状态与合法切换表</td><td><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L88" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="88">dagger.py:88</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L97" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="97">dagger.py:97</a></td></tr>
+<tr><td>线程安全的事件容器</td><td><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L105" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="105">DAggerEvents:105</a></td></tr>
+<tr><td>键盘 / 踏板监听</td><td><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L171" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="171">dagger.py:171</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L204" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="204">dagger.py:204</a></td></tr>
+<tr><td>策略类、setup / run / teardown</td><td><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L229" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="229">dagger.py:229</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L298" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="298">teardown:298</a></td></tr>
+<tr><td>连续记录模式主循环</td><td><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L337" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="337">dagger.py:337</a></td></tr>
+<tr><td>只记纠正模式主循环</td><td><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L514" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="514">dagger.py:514</a></td></tr>
+<tr><td>切换副作用（平滑交接、力矩）</td><td><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L681" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="681">dagger.py:681</a></td></tr>
+<tr><td>后台上传</td><td><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L776" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="776">dagger.py:776</a></td></tr>
+<tr><td>配置项</td><td><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/configs.py#L209" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/configs.py" data-line="209">DAggerStrategyConfig:209</a></td></tr>
+<tr><td>命令示例</td><td><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/scripts/lerobot_rollout.py#L93" target="_blank" rel="noreferrer" data-path="src/lerobot/scripts/lerobot_rollout.py" data-line="93">lerobot_rollout.py:93</a></td></tr>
+<tr><td>数据集合并</td><td><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/scripts/lerobot_edit_dataset.py#L294" target="_blank" rel="noreferrer" data-path="src/lerobot/scripts/lerobot_edit_dataset.py" data-line="294">lerobot_edit_dataset.py:294</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/datasets/aggregate.py#L352" target="_blank" rel="noreferrer" data-path="src/lerobot/datasets/aggregate.py" data-line="352">aggregate.py:352</a></td></tr>
+<tr><td>训练入口</td><td><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/scripts/lerobot_train.py#L385" target="_blank" rel="noreferrer" data-path="src/lerobot/scripts/lerobot_train.py" data-line="385">lerobot_train.py:385</a></td></tr>
+<tr><td>文档：流程与相关工作</td><td><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/docs/source/hil_data_collection.mdx?plain=1#L186" target="_blank" rel="noreferrer" data-path="docs/source/hil_data_collection.mdx" data-line="186">mdx:186</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/docs/source/hil_data_collection.mdx?plain=1#L231" target="_blank" rel="noreferrer" data-path="docs/source/hil_data_collection.mdx" data-line="231">mdx:231</a></td></tr>
 </table>
 
 <h2 id="s7"><span class="no">07</span>读完做几道题</h2>
@@ -560,30 +560,26 @@ footer{margin-top:70px;font-size:13px;color:var(--ink-3)}
 <li><p>论文为什么返回“验证集上最好的 π̂ᵢ”，而不是最后一轮的策略？</p>
 <details><summary>看答案</summary><div>理论只保证 N 轮里<b>存在</b>一个足够好的策略，没保证最后一个最好。真机上对应的是：每轮都测成功率，留最高的那版。</div></details></li>
 <li><p>默认的只记纠正模式下，一个 episode 从哪里开始，到哪里结束？</p>
-<details><summary>看答案</summary><div>按 tab 从 PAUSED 进入 CORRECTING 开始记，再按 tab 回到 PAUSED 时调用 <code>save_episode()</code> 结束。策略自己开的时候不记帧。<a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="585">dagger.py:585</a></div></details></li>
+<details><summary>看答案</summary><div>按 tab 从 PAUSED 进入 CORRECTING 开始记，再按 tab 回到 PAUSED 时调用 <code>save_episode()</code> 结束。策略自己开的时候不记帧。<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L585" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="585">dagger.py:585</a></div></details></li>
 <li><p>纠正段里写进数据集的动作标签，是人的遥操作动作，还是发给机器人的动作？</p>
-<details><summary>看答案</summary><div>人的遥操作动作 <code>processed_teleop</code>（经过 <code>teleop_action_processor</code>）。发给机器人的是再经过 <code>robot_action_processor</code> 的 <code>robot_action_to_send</code>，它不进数据集。<a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="430">dagger.py:430</a></div></details></li>
+<details><summary>看答案</summary><div>人的遥操作动作 <code>processed_teleop</code>（经过 <code>teleop_action_processor</code>）。发给机器人的是再经过 <code>robot_action_processor</code> 的 <code>robot_action_to_send</code>，它不进数据集。<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L430" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="430">dagger.py:430</a></div></details></li>
 <li><p>开了 <code>record_autonomous=true</code>，再直接拿全部帧训练，会有什么问题？</p>
 <details><summary>看答案</summary><div>人接管前那几秒，策略正在犯错，这些帧标着 <code>intervention=False</code> 也被记下来了。训练代码不读 <code>intervention</code> 列，会把错误动作当成正确示范学。要过滤或加权，或者用只记纠正模式。见 <a href="#s4">第 04 节</a> 坑 2。</div></details></li>
 <li><p>主臂能被电机驱动（如 SO-101）和不能被驱动时，交接有什么不同？</p>
-<details><summary>看答案</summary><div>能驱动：AUTONOMOUS → PAUSED 时，把<b>主臂</b>慢慢移到从臂位置，人接手不跳。不能驱动：PAUSED → CORRECTING 时，反过来把<b>从臂</b>慢慢移到主臂姿态。<a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="716">dagger.py:716</a><a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="729">dagger.py:729</a></div></details></li>
+<details><summary>看答案</summary><div>能驱动：AUTONOMOUS → PAUSED 时，把<b>主臂</b>慢慢移到从臂位置，人接手不跳。不能驱动：PAUSED → CORRECTING 时，反过来把<b>从臂</b>慢慢移到主臂姿态。<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L716" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="716">dagger.py:716</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L729" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="729">dagger.py:729</a></div></details></li>
 <li><p>按键线程为什么不直接改状态，而要先 <code>request_transition</code>，再由主循环 <code>consume_transition</code>？</p>
-<details><summary>看答案</summary><div>两个原因：一是只登记合法切换，非法按键直接忽略；二是状态只在主循环每帧开头改，不会在一帧处理到一半时被别的线程改掉。<a class="cl" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="134">dagger.py:134</a></div></details></li>
+<details><summary>看答案</summary><div>两个原因：一是只登记合法切换，非法按键直接忽略；二是状态只在主循环每帧开头改，不会在一帧处理到一半时被别的线程改掉。<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rollout/strategies/dagger.py#L134" target="_blank" rel="noreferrer" data-path="src/lerobot/rollout/strategies/dagger.py" data-line="134">dagger.py:134</a></div></details></li>
 <li><p>β = 0.5 时，专家要往左、模型要往右。这一步机械臂会往哪走？标签记谁的？</p>
 <details><summary>看答案</summary><div>抛硬币：一半概率往左（专家），一半概率往右（模型），不会平均成“直走”。公式加的是选动作的概率，不是动作本身。不管谁在开，标签都记专家的“往左”。见 <a href="#s4x-2">04+ 第 ② 条</a>。</div></details></li>
 </ol>
 
-<footer>论文：Ross, Gordon, Bagnell. AISTATS 2011，arXiv:1011.0686。代码：huggingface/lerobot @ b6ec006（本地 /Users/jianweizhang/src/lerobot）。</footer>
+<footer>论文：Ross, Gordon, Bagnell. AISTATS 2011，arXiv:1011.0686。代码：<a href="https://github.com/huggingface/lerobot/tree/b6ec0060779550c0a157ae34feb89e0cf86012a8" target="_blank" rel="noreferrer">github.com/huggingface/lerobot @ b6ec006</a>。</footer>
 </div>
 </div><!-- /doc -->
 
 <div class="kb-tools" id="kb-tools">
   <button type="button" id="btn-edit">✎ 编辑</button>
   <button type="button" id="btn-save">保存</button>
-  <select id="sel-link" title="代码链接打开方式">
-    <option value="github">GitHub @b6ec006</option>
-    <option value="vscode">本地 VS Code</option>
-  </select>
   <span class="st" id="kb-st"></span>
 </div>
 
@@ -592,25 +588,21 @@ footer{margin-top:70px;font-size:13px;color:var(--ink-3)}
   'use strict';
   var COMMIT='b6ec0060779550c0a157ae34feb89e0cf86012a8';
   var GH='https://github.com/huggingface/lerobot/blob/'+COMMIT+'/';
-  var LOCAL='/Users/jianweizhang/src/lerobot/';
   var doc=document.getElementById('doc'), body=document.body;
-  var st=document.getElementById('kb-st'), btnEdit=document.getElementById('btn-edit'), sel=document.getElementById('sel-link');
+  var st=document.getElementById('kb-st'), btnEdit=document.getElementById('btn-edit');
   var headSnap=new Set(Array.prototype.slice.call(document.head.children));
   var bodyClass=body.getAttribute('class'), dirty=false, handle=null;
 
   /* ---------- 代码链接 ---------- */
-  function hrefOf(a,mode){
+  function hrefOf(a){
     var p=a.getAttribute('data-path'), l=a.getAttribute('data-line')||'1';
-    if(mode==='vscode') return 'vscode://file'+LOCAL+p+':'+l;
     return GH+p+(/\.mdx?$/.test(p)?'?plain=1':'')+'#L'+l;
   }
+  /* 链接已直接写在 HTML 里；编辑后按 data-path / data-line 重新生成 GitHub 地址 */
   function applyLinks(){
-    var mode=sel.value;
-    document.querySelectorAll('a.cl').forEach(function(a){a.href=hrefOf(a,mode);a.target=mode==='github'?'_blank':'';a.title=a.getAttribute('data-path')+':'+a.getAttribute('data-line');});
-    document.querySelectorAll('a.pl').forEach(function(a){a.target='_blank';});
+    document.querySelectorAll('a.cl').forEach(function(a){a.setAttribute('href',hrefOf(a));a.setAttribute('target','_blank');a.setAttribute('rel','noreferrer');});
+    document.querySelectorAll('a.pl').forEach(function(a){a.setAttribute('target','_blank');a.setAttribute('rel','noreferrer');});
   }
-  try{sel.value=localStorage.getItem('dagger-link-mode')||'github';}catch(e){}
-  sel.addEventListener('change',function(){try{localStorage.setItem('dagger-link-mode',sel.value);}catch(e){}applyLinks();});
   applyLinks();
 
   /* ---------- 编辑 ---------- */
@@ -654,7 +646,7 @@ footer{margin-top:70px;font-size:13px;color:var(--ink-3)}
     c.querySelectorAll('[contenteditable]').forEach(function(n){n.removeAttribute('contenteditable');});
     var cs=c.querySelector('#kb-st'); if(cs) cs.textContent='';
     var ce=c.querySelector('#btn-edit'); if(ce){ce.textContent='✎ 编辑';ce.classList.remove('on');}
-    c.querySelectorAll('a.cl').forEach(function(a){a.setAttribute('href',hrefOf(a,'github'));a.removeAttribute('target');a.removeAttribute('title');});
+    c.querySelectorAll('a.cl').forEach(function(a){a.setAttribute('href',hrefOf(a));a.setAttribute('target','_blank');a.setAttribute('rel','noreferrer');});
     return '<!DOCTYPE html>\n'+c.outerHTML+'\n';
   }
   /* 文件句柄存进 IndexedDB，刷新后仍能直接覆盖原文件 */
