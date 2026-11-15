@@ -137,6 +137,7 @@ footer{margin-top:70px;font-size:13px;color:var(--ink-3)}
   <h1>CFGRL：扩散模型的「引导」就是一个可以拧的策略改进旋钮</h1>
 <p class="kb-nick" style="margin:6px 0 14px;font-size:15px;line-height:1.6;color:var(--ink-2,#51626f);text-align:inherit"><span style="display:inline-block;padding:1px 10px;margin-right:8px;border:1px dashed var(--signal,#c4572a);border-radius:999px;color:var(--signal,#c4572a);font-weight:700;white-space:nowrap">外号 · 「改进旋钮」</span>一个网络算两遍，拧 w 决定往好动作偏多少</p>
   <p class="lede">行为克隆（BC）简单好训，但最多学到数据的平均水平。强化学习能超过数据，但对扩散/流策略很难稳定地训。<b>CFGRL 证明：给扩散策略加一个「这是好动作」的条件，再用 classifier-free guidance（CFG）放大这个条件，得到的就是一个比数据更好的策略。</b>训练只是监督学习，改进幅度 w 在推理时调，不用重训。</p>
+  <p class="lede" style="font-size:15.5px">第一次读？先看下面的<a href="#s-easy">零基础版</a>，用一个投篮的例子讲清楚整篇论文的那一个公式。</p>
   <div class="facts">
     <div class="fact"><div class="n">2025</div><div class="l">Frans、Park、Abbeel、Levine（UC Berkeley）</div></div>
     <div class="fact"><div class="n">1 个网络</div><div class="l">同时学「有条件」和「无条件」两种动作分布</div></div>
@@ -161,6 +162,70 @@ footer{margin-top:70px;font-size:13px;color:var(--ink-3)}
     </div>
   </div>
 </header>
+
+<h2 id="s-easy"><span class="no">入门</span>零基础版：先看懂这一个公式</h2>
+<p>第一次读，先只看这一节。整篇论文其实只讲一件事，用一个投篮的例子就能说清楚。后面的定理和代码，是在证明和实现这件事。</p>
+
+<h3>一个投篮的例子</h3>
+<p>你有一大堆投篮录像，有人投得准，有人投不准。你想学出一个比录像里大多数人都好的投法。</p>
+<table>
+<tr><th></th><th>做法一：照着所有人学（行为克隆 BC）</th><th>做法二：CFGRL</th></tr>
+<tr><td>学什么</td><td>好的坏的一起模仿</td><td>同一个模型学两件事：<b>一般人怎么投</b>，<b>投进的人怎么投</b></td></tr>
+<tr><td>例子</td><td>大家出手角度平均 40°，你也学成 40°</td><td>一般人 40°，投进的人 50°，差别是「投进的人角度高 10°」</td></tr>
+<tr><td>结果</td><td>平均水平</td><td>沿着这个差别再多走一点，能比投进的人还好</td></tr>
+</table>
+<p>做法二用的时候就是一行算式：</p>
+<div class="eq">出手角度 = 一般人 + w × (投进的人 − 一般人)
+         = 40°  + w × 10°</div>
+<table>
+<tr><th>w</th><th>出手角度</th><th>意思</th></tr>
+<tr><td>0</td><td>40°</td><td>就是平均水平，等于普通 BC</td></tr>
+<tr><td>1</td><td>50°</td><td>学投进的人</td></tr>
+<tr><td>2</td><td>60°</td><td>比投进的人再往前推一步</td></tr>
+<tr><td>太大，比如 10</td><td>140°</td><td>推过头了。录像里没人这么投，这个方向在这里已经不可信</td></tr>
+</table>
+<div class="box note"><h4>这就是整篇论文</h4>
+<p style="margin:0">代码里那行 <code>v = v_uncond + w * (v_cond − v_uncond)</code> 就是上面的算式：<code>v_uncond</code> 是「一般人」，<code>v_cond</code> 是「投进的人」，<code>w</code> 是「往好的方向多推多少」。论文标题说的「可控」，就是 w 可以在用的时候随便调，不用重新训练。</p></div>
+
+<h3>投篮例子和论文符号的对照</h3>
+<table>
+<tr><th>投篮例子</th><th>论文 / 代码里叫什么</th><th>在哪一节细讲</th></tr>
+<tr><td>录像</td><td>离线数据集</td><td><a href="#s1">01</a></td></tr>
+<tr><td>一般人怎么投</td><td>无条件策略 π̂(a|s)，代码里的 <code>v_uncond</code></td><td><a href="#s3-2">3.2</a></td></tr>
+<tr><td>投进的人怎么投</td><td>条件策略 π̂(a|s,o)，代码里的 <code>v_cond</code></td><td><a href="#s3">03</a></td></tr>
+<tr><td>「投进了」这个标签</td><td>最优性 o。有两种定法：价值函数打分（Q − V &gt; 0），或者「最后到达了目标」</td><td><a href="#s3">03</a>、<a href="#s5">05</a></td></tr>
+<tr><td>往好的方向推多少</td><td>引导强度 w（CFG 系数）</td><td><a href="#s2-4">2.4</a>、<a href="#s3-2">3.2</a></td></tr>
+<tr><td>推过头了不可信</td><td>离数据太远，KL 变大，估计不准</td><td><a href="#s2-4">2.4</a></td></tr>
+</table>
+
+<h3 id="demo-sec">自己拧一下 w</h3>
+<p>横轴是「出手方式」，可以想成出手角度。灰色是录像里大家怎么投：左边那个峰人最多，但投得差；右边两个峰人少，但投得好。蓝色虚线是每种投法的好坏打分。橙色是拧了 w 之后的新投法。</p>
+<div class="demo" id="demo">
+  <svg id="demo-svg" viewBox="0 0 680 270" role="img" aria-label="π_w 随 w 变化的示意图"></svg>
+  <div class="ctl">
+    <label>w = <span class="wv" id="demo-wv">1.0</span> <input type="range" id="demo-w" min="0" max="8" step="0.1" value="1"></label>
+    <label><input type="checkbox" id="demo-hard"> 改用硬标签 𝟙[A&gt;0]</label>
+  </div>
+  <div class="stats">
+    <div>录像里的平均好坏（原策略平均优势）<b id="demo-e0">0.00</b></div>
+    <div>新策略的平均好坏（π<sub>w</sub> 平均优势）<b id="demo-e1">0.00</b></div>
+    <div>离录像有多远（KL，越大越远）<b id="demo-kl">0.00</b></div>
+  </div>
+  <p class="hint" style="margin:8px 0 0">试试看：① 把 w 从 0 慢慢拉到 8。橙色曲线从左边那个「常见但差」的峰，挪到右边「少见但好」的峰，平均好坏一路上升。② 注意最右边 a &gt; 0.9 那段：录像里几乎没人这么做，所以 w 再大，橙色也过不去。CFGRL 只会在录像里有过的做法之间挑。③ 勾上「硬标签」，w ≥ 1 之后曲线就不再变了，原因见 <a href="#s3-3">3.3</a>，第一遍可以不管。</p>
+</div>
+
+<h3>后面各节在讲什么</h3>
+<table>
+<tr><th>小节</th><th>一句话</th><th>第一遍</th></tr>
+<tr><td><a href="#s2">02</a> 定理</td><td>证明「往好的方向偏」不会让成绩变差</td><td>相信结论就行，证明可跳过</td></tr>
+<tr><td><a href="#s3">03</a> 贝叶斯与 CFG</td><td>说明「投进的人 vs 一般人」正好就是扩散模型里现成的 CFG 技巧</td><td>只看 3.2 那张 w 表</td></tr>
+<tr><td><a href="#s4">04</a> 和 AWR 比</td><td>老方法每换一次 w 就要重训，CFGRL 用的时候直接改 w</td><td>看表格就够</td></tr>
+<tr><td><a href="#s5">05</a> 目标条件</td><td>不用打分，「最后到达了目标」本身就算「投进了」</td><td>可跳过</td></tr>
+<tr><td><a href="#s6">06</a> 代码</td><td>上面那行算式在代码里怎么写、怎么训练两种「投法」</td><td>要改代码时再看</td></tr>
+<tr><td><a href="#s9">09</a> 架构图</td><td>训练和推理的全流程一张图</td><td>建议看一眼</td></tr>
+</table>
+<div class="box note"><h4>建议这样读</h4>
+<p style="margin:0">① 看懂上面的投篮算式和 w 表。② 拖一下滑块。③ 看 <a href="#s9">09 架构图</a>的第三行「推理」。到这里就抓住主线了。之后有兴趣再回头看定理，或者往后看代码。哪一句看不懂，记下小节编号，单独查那一句就好，不用从头硬啃。</p></div>
 
 <h2 id="s0"><span class="no">00</span>带着问题读</h2>
 <p>先想一想这几个问题。答案在正文里用 <span class="ans" style="display:inline;padding:1px 6px;margin:0"><b class="q">Q</b>答</span> 标出来了。</p>
@@ -240,20 +305,8 @@ f(A) 和 A 同增同减，所以它们的协方差 ≥ 0，即 E<sub>π̂</sub>[
 <p>平均优势和 KL 一起涨。w 越大，越像「只挑最好的那个」。</p>
 
 <h3 id="s2-5">2.5 自己拧一下 w</h3>
-<p>下面是一个一维动作的例子。灰色是数据里的动作分布 π̂（三个峰，左边那个最常见但最差），蓝色虚线是优势 A(a)，橙色是 π<sub>w</sub>。打分规则用软标签 p(o|a) = sigmoid(A/0.25)。</p>
-<div class="demo" id="demo">
-  <svg id="demo-svg" viewBox="0 0 680 270" role="img" aria-label="π_w 随 w 变化的示意图"></svg>
-  <div class="ctl">
-    <label>w = <span class="wv" id="demo-wv">1.0</span> <input type="range" id="demo-w" min="0" max="8" step="0.1" value="1"></label>
-    <label><input type="checkbox" id="demo-hard"> 改用硬标签 𝟙[A&gt;0]</label>
-  </div>
-  <div class="stats">
-    <div>原策略平均优势<b id="demo-e0">0.00</b></div>
-    <div>π<sub>w</sub> 平均优势<b id="demo-e1">0.00</b></div>
-    <div>KL(π<sub>w</sub>‖π̂)<b id="demo-kl">0.00</b></div>
-  </div>
-  <p class="hint" style="margin:8px 0 0">试试看：① w 从 0 拉到 8，橙色曲线一步步从左峰挪到右峰，但右边 a&gt;0.9 那段数据里几乎没有，橙色也去不了。② 勾上硬标签，w ≥ 1 之后曲线就不再变了，原因见 <a href="#s3-3">3.3</a>。</p>
-</div>
+<p>交互演示放在页首的<a href="#demo-sec">零基础版</a>里。用本节的符号说：灰色是数据里的动作分布 π̂（三个峰，左边那个最常见但最差），蓝色虚线是优势 A(a)，橙色是 π<sub>w</sub> ∝ π̂·p(o|a)<sup>w</sup>，打分规则用软标签 p(o|a) = sigmoid(A/0.25)。拖动 w 时，平均优势和 KL 一起上升，和 2.4 的表格一致。</p>
+
 
 <h2 id="s3"><span class="no">03</span>理论二：把 f 换成「最优」的概率，乘积策略就变成条件策略，w 就是 CFG</h2>
 <h3>3.1 引入一个「最优性」变量 o</h3>
@@ -612,7 +665,7 @@ actor_loss = mean((pred - vel) ** <span class="k">2</span>)                     
 <li><p>乘积改进定理要求 f 满足哪两个条件？如果 f 随优势递减会怎样？</p>
 <details><summary>看答案</summary><div>f 非负、随优势单调不减。如果 f 递减，概率会被挪到差动作上，f(A) 和 A 的协方差为负，新策略的平均优势 ≤ 0，回报可能下降。见 <a href="#s2-2">2.2</a>。</div></details></li>
 <li><p>新策略 π ∝ π̂·f(A) 能不能选出数据里从没出现过的动作？这是优点还是缺点？</p>
-<details><summary>看答案</summary><div>不能。π̂(a|s) = 0 的地方，乘任何 f 还是 0。优点是天然保守，不会去试数据外估值不可信的动作；缺点是改进上限受数据覆盖范围限制。演示里 a &gt; 0.9 的区域就是这种情况。见 <a href="#s2-5">2.5</a>。</div></details></li>
+<details><summary>看答案</summary><div>不能。π̂(a|s) = 0 的地方，乘任何 f 还是 0。优点是天然保守，不会去试数据外估值不可信的动作；缺点是改进上限受数据覆盖范围限制。演示里 a &gt; 0.9 的区域就是这种情况。见 <a href="#demo-sec">零基础版的演示</a>。</div></details></li>
 <li><p>如果 p(o|s,a) 严格只取 0 或 1，w = 3 和 w = 1 的理论分布有区别吗？为什么实际上 w = 3 还有用？</p>
 <details><summary>看答案</summary><div>理论上没区别，0<sup>w</sup> = 0、1<sup>w</sup> = 1。实际有用是因为网络学到的条件分布对相似样本的标签做了平均，隐含的 p(o|s,a) 是软的；另外 CFG 只是近似乘积分布。见 <a href="#s3-3">3.3</a>（笔者分析）。</div></details></li>
 <li><p><code>iql_diffusion.py</code> 里配置项 <code>temperature=3.0</code> 对 CFGRL 的训练有影响吗？</p>
@@ -681,9 +734,9 @@ actor_loss = mean((pred - vel) ** <span class="k">2</span>)                     
     h+='<path d="'+area+'" fill="rgba(131,145,156,.22)" stroke="#83919c" stroke-width="1.2"/>';
     h+='<path d="'+line(adv,0.45/amax,0.5)+'" fill="none" stroke="#0e6e8a" stroke-width="1.6" stroke-dasharray="6 4"/>';
     h+='<path d="'+line(pw,s,0)+'" fill="none" stroke="#c4572a" stroke-width="2.6"/>';
-    h+='<text x="'+(L+6)+'" y="'+(T+12)+'" font-size="12" fill="#83919c">■ π̂ 数据分布</text>';
-    h+='<text x="'+(L+120)+'" y="'+(T+12)+'" font-size="12" fill="#c4572a">━ π_w</text>';
-    h+='<text x="'+(L+180)+'" y="'+(T+12)+'" font-size="12" fill="#0e6e8a">┅ 优势 A(a)（虚线横线为 A=0）</text>';
+    h+='<text x="'+(L+6)+'" y="'+(T+12)+'" font-size="12" fill="#83919c">■ 录像里大家怎么做（π̂）</text>';
+    h+='<text x="'+(L+190)+'" y="'+(T+12)+'" font-size="12" fill="#c4572a">━ 新策略（π_w）</text>';
+    h+='<text x="'+(L+310)+'" y="'+(T+12)+'" font-size="12" fill="#0e6e8a">┅ 好坏打分 A(a)（浅色横线为 0）</text>';
     svg.innerHTML=h;
   }
   slider.addEventListener('input',draw); hard.addEventListener('change',draw); draw();
