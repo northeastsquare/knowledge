@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CFGRL · 扩散引导就是可控的策略改进 · 论文理论与官方代码全图解</title>
+<link rel="stylesheet" href="concepts.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#f1f4f6;--surface:#fbfcfd;--surface-2:#eaf0f4;--ink:#16222e;--ink-2:#51626f;--ink-3:#83919c;
+ --train:#c4572a;--train-bg:#fbeee7;--infer:#0e6e8a;--infer-bg:#e3f1f5;--human:#7a4fb0;--human-bg:#f1eafa;--ok:#2f7d4f;--ok-bg:#e6f4ec;
+ --line:#d8e1e7;--line-strong:#c3d0d9;--shadow:0 1px 2px rgba(22,34,46,.04),0 14px 34px rgba(22,34,46,.07)}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans",-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;font-size:16px;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background-image:linear-gradient(rgba(22,34,46,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(22,34,46,.05) 1px,transparent 1px);background-size:28px 28px}
+.wrap{max-width:980px;margin:0 auto;padding:0 22px 100px}
+.wide{max-width:1160px;margin:0 auto;padding:0 16px}
+header.hero{padding:56px 0 28px}
+.kicker{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-2)}
+.kicker b{color:var(--infer)}
+h1{font-family:"Noto Serif SC",serif;font-size:38px;line-height:1.3;margin:10px 0 12px}
+.lede{font-size:17.5px;color:var(--ink-2);max-width:800px}
+.lede b{color:var(--ink)}
+.facts{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:24px 0 0}
+.fact{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.fact .n{font-family:"IBM Plex Mono",monospace;font-size:22px;font-weight:600;color:var(--infer)}
+.fact .l{font-size:13px;color:var(--ink-2);line-height:1.5}
+h2{font-family:"Noto Serif SC",serif;font-size:27px;margin:64px 0 6px;padding-top:10px}
+h2 .no{font-family:"IBM Plex Mono",monospace;font-size:14px;color:var(--ink-3);display:block;letter-spacing:.12em}
+h3{font-size:19px;margin:34px 0 8px}
+p{margin:10px 0}
+a{color:var(--infer)}
+code,.mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.88em}
+p code,li code,td code{background:var(--surface-2);padding:1px 5px;border-radius:4px}
+pre{background:#14202b;color:#dbe6ee;padding:14px 16px;border-radius:10px;overflow-x:auto;font-size:13px;line-height:1.6}
+pre .c{color:#7f97a8}
+pre .k{color:#f0b37e}
+pre .h{color:#9fd8a8}
+.eq{font-family:"IBM Plex Mono",monospace;font-size:15px;background:var(--surface);border:1px solid var(--line);border-left:4px solid var(--infer);border-radius:8px;padding:10px 14px;margin:12px 0;overflow-x:auto;white-space:pre;line-height:1.7}
+.eq .c{color:var(--ink-3)}
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14.5px;background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+th,td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{background:var(--surface-2);font-weight:600;font-size:13.5px}
+tr:last-child td{border-bottom:none}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin:16px 0;box-shadow:var(--shadow)}
+.box.warn{border-left:4px solid var(--train)}
+.box.note{border-left:4px solid var(--infer)}
+.box.mine{border-left:4px solid var(--human)}
+.box h4{margin:0 0 6px;font-size:15.5px}
+.src{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:22px 0 0}
+.src .box{margin:0}
+.src b{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.1em;color:var(--ink-2)}
+.steps{counter-reset:s;list-style:none;padding:0;margin:14px 0}
+.steps>li{counter-increment:s;position:relative;padding:12px 16px 12px 58px;background:var(--surface);border:1px solid var(--line);border-radius:10px;margin:10px 0}
+.steps>li::before{content:counter(s);position:absolute;left:16px;top:12px;width:30px;height:30px;border-radius:50%;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:14px}
+.steps pre{margin:8px 0 2px}
+
+/* ---------- 代码 / 论文链接芯片 ---------- */
+a.cl,a.pl{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:11.5px;line-height:1.5;text-decoration:none;padding:0 6px;margin:1px 2px 1px 0;border-radius:5px;border:1px solid #b9dbe5;background:var(--infer-bg);color:var(--infer);white-space:nowrap}
+a.pl{border-color:#efc9b8;background:var(--train-bg);color:var(--train)}
+a.cl:hover,a.pl:hover{filter:brightness(.95);text-decoration:underline}
+a.cl::before{content:"⌗ "}
+a.pl::before{content:"¶ "}
+
+/* ---------- 交互演示 ---------- */
+.demo{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin:18px 0;box-shadow:var(--shadow)}
+.demo svg{width:100%;height:auto;display:block;background:#fff;border:1px solid var(--line);border-radius:10px}
+.demo .ctl{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:center;margin:10px 2px 4px;font-size:14px}
+.demo input[type=range]{width:260px;vertical-align:middle}
+.demo .wv{font-family:"IBM Plex Mono",monospace;font-weight:600;color:var(--train);min-width:42px;display:inline-block}
+.demo .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
+.demo .stats div{background:var(--surface-2);border-radius:8px;padding:6px 10px;font-size:13px;color:var(--ink-2)}
+.demo .stats b{display:block;font-family:"IBM Plex Mono",monospace;font-size:17px;color:var(--ink)}
+
+/* ---------- 架构图 ---------- */
+.dg-scroll{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);margin:16px 0}
+.dg{position:relative;width:1100px;height:900px;margin:0 auto}
+.dg svg.wires{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.wires path{fill:none;stroke:#6f8291;stroke-width:1.8}
+.wires path.tr{stroke:var(--train);stroke-width:2.2}
+.wires path.inf{stroke:var(--infer);stroke-width:2.2}
+.wires path.dash{stroke-dasharray:5 5;stroke:#9aa9b4}
+.nd{position:absolute;background:#fff;border:1.5px solid var(--line-strong);border-radius:10px;padding:8px 11px;font-size:13px;line-height:1.5;box-shadow:0 1px 2px rgba(22,34,46,.05)}
+.nd .nt{font-weight:700;font-size:14px;margin-bottom:3px}
+.nd .nb{color:var(--ink-2)}
+.nd .nb b{color:var(--ink)}
+.nd .nf{font-family:"IBM Plex Mono",monospace;font-size:12px;color:var(--ink);background:var(--surface-2);border-radius:5px;padding:2px 6px;margin:4px 0;display:block}
+.nd .nl{margin-top:6px}
+.nd.data{border-color:#b9dbe5;background:#f6fbfd}
+.nd.train{border-color:#efc9b8;background:#fff8f4}
+.nd.net{border-color:var(--human);border-width:2px;background:#faf7fe}
+.nd.infer{border-color:var(--infer);border-width:2px;background:#f6fbfd}
+.nd.paper{border-style:dashed;background:var(--surface-2)}
+.frame{position:absolute;border:1.5px dashed var(--line-strong);border-radius:14px;background:rgba(234,240,244,.45)}
+.frame .ft{position:absolute;left:14px;top:6px;font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.06em;color:var(--ink-2)}
+.wl{position:absolute;font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink-2);background:var(--surface);padding:0 4px;border-radius:4px;white-space:nowrap}
+.wl.tr{color:var(--train);font-weight:600}
+.wl.inf{color:var(--infer);font-weight:600}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13px;color:var(--ink-2);margin:8px 2px}
+.legend i{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-2px;margin-right:5px;border:1.5px solid}
+
+/* ---------- 编辑模式 ---------- */
+.kb-tools{position:fixed;right:18px;bottom:18px;z-index:50;display:flex;gap:8px;align-items:center;background:var(--surface);border:1px solid var(--line-strong);border-radius:12px;padding:8px 10px;box-shadow:var(--shadow);font-size:13px}
+.kb-tools button,.kb-tools select{font:inherit;font-size:13px;border:1px solid var(--line-strong);background:#fff;color:var(--ink);border-radius:8px;padding:4px 10px;cursor:pointer}
+.kb-tools button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.kb-tools .st{color:var(--ink-3);min-width:64px}
+body.editing #doc [contenteditable]{outline:none}
+body.editing #doc .nd,body.editing #doc .wl,body.editing #doc p,body.editing #doc td,body.editing #doc li{outline:1px dashed rgba(14,110,138,.35);outline-offset:1px}
+body.editing a.cl,body.editing a.pl{cursor:context-menu}
+.hint{font-size:13px;color:var(--ink-3)}
+.qs{counter-reset:q;list-style:none;padding:0;margin:12px 0}
+.qs>li{counter-increment:q;position:relative;padding:8px 14px 8px 52px;background:var(--surface);border:1px solid var(--line);border-radius:10px;margin:8px 0}
+.qs>li::before{content:"Q" counter(q);position:absolute;left:12px;top:8px;font-family:"IBM Plex Mono",monospace;font-weight:600;color:var(--train)}
+.qs .go{font-size:12.5px;margin-left:6px}
+.ans{margin:12px 0;padding:10px 14px;border-radius:10px;background:var(--train-bg);border:1px solid #efc9b8;font-size:14.5px}
+.ans b.q{font-family:"IBM Plex Mono",monospace;color:var(--train);margin-right:6px}
+.quiz{counter-reset:z;list-style:none;padding:0;margin:12px 0}
+.quiz>li{counter-increment:z;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 16px;margin:10px 0}
+.quiz>li>p:first-child::before{content:"题 " counter(z) "　";font-family:"IBM Plex Mono",monospace;font-weight:600;color:var(--infer)}
+.quiz details{margin-top:4px;font-size:14.5px}
+.quiz summary{cursor:pointer;color:var(--infer);font-size:13.5px}
+.quiz details>div{margin-top:6px;padding:8px 12px;background:var(--surface-2);border-radius:8px}
+footer{margin-top:70px;font-size:13px;color:var(--ink-3)}
+@media (max-width:760px){.facts{grid-template-columns:repeat(2,1fr)}.src{grid-template-columns:1fr}h1{font-size:30px}.demo .stats{grid-template-columns:1fr}}
+@media print{.kb-tools{display:none}}
+</style>
+</head>
+<body>
+<div id="doc">
+<div class="wrap">
+
+<header class="hero">
+  <div class="kicker">Offline RL · <b>CFGRL</b> · 论文理论 + 官方代码</div>
+  <h1>CFGRL：扩散模型的「引导」就是一个可以拧的策略改进旋钮</h1>
+<p class="kb-nick" style="margin:6px 0 14px;font-size:15px;line-height:1.6;color:var(--ink-2,#51626f);text-align:inherit"><span style="display:inline-block;padding:1px 10px;margin-right:8px;border:1px dashed var(--signal,#c4572a);border-radius:999px;color:var(--signal,#c4572a);font-weight:700;white-space:nowrap">外号 · 「改进旋钮」</span>一个网络算两遍，拧 w 决定往好动作偏多少</p>
+  <p class="lede">行为克隆（BC）简单好训，但最多学到数据的平均水平。强化学习能超过数据，但对扩散/流策略很难稳定地训。<b>CFGRL 证明：给扩散策略加一个「这是好动作」的条件，再用 classifier-free guidance（CFG）放大这个条件，得到的就是一个比数据更好的策略。</b>训练只是监督学习，改进幅度 w 在推理时调，不用重训。</p>
+  <div class="facts">
+    <div class="fact"><div class="n">2025</div><div class="l">Frans、Park、Abbeel、Levine（UC Berkeley）</div></div>
+    <div class="fact"><div class="n">1 个网络</div><div class="l">同时学「有条件」和「无条件」两种动作分布</div></div>
+    <div class="fact"><div class="n">w</div><div class="l">引导强度 = 改进幅度，推理时调，不用重训</div></div>
+    <div class="fact"><div class="n">10%</div><div class="l">OGBench 实现里把目标换成「无条件」的比例</div></div>
+  </div>
+
+  <div class="src">
+    <div class="box">
+      <b>原始论文</b>
+      <p style="margin:4px 0"><i>Diffusion Guidance Is a Controllable Policy Improvement Operator</i></p>
+      <a class="pl" href="https://arxiv.org/abs/2505.23458">arXiv:2505.23458</a>
+      <a class="pl" href="https://arxiv.org/pdf/2505.23458">PDF（arXiv）</a>
+      <a class="pl" href="https://openreview.net/forum?id=PwaUsAk4i6">OpenReview</a>
+    </div>
+    <div class="box">
+      <b>官方代码</b>
+      <p style="margin:4px 0">kvfrans/cfgrl（commit <code>14bd57b</code>，JAX）。两套实现：<code>rlbase/</code> 做带价值函数的离线 RL（ExORL），<code>ogbench/</code> 做不要价值函数的目标条件版本。</p>
+      <a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="146">iql_diffusion.py:146</a>
+      <a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="22">cfgrl.py:22</a>
+      <a class="cl" data-path="README.md" data-line="1">README.md</a>
+    </div>
+  </div>
+</header>
+
+<h2 id="s0"><span class="no">00</span>带着问题读</h2>
+<p>先想一想这几个问题。答案在正文里用 <span class="ans" style="display:inline;padding:1px 6px;margin:0"><b class="q">Q</b>答</span> 标出来了。</p>
+<ol class="qs">
+<li>为什么把原策略乘上一个「随优势单调变大」的权重，新策略就一定不比原来差？<a class="go" href="#a1">→ 答案</a></li>
+<li>扩散模型里的 CFG 和强化学习的「策略改进」是怎么对上的？<a class="go" href="#a2">→ 答案</a></li>
+<li>为什么说 w 是「可控」的？w 越大越好吗？<a class="go" href="#a3">→ 答案</a></li>
+<li>和常用的 AWR（优势加权回归）比，CFGRL 好在哪里？<a class="go" href="#a4">→ 答案</a></li>
+<li>为什么说目标条件 BC 本身就是一次策略改进，连价值函数都不用学？<a class="go" href="#a5">→ 答案</a></li>
+<li>代码里「有条件」分支和「无条件」分支各自用哪些数据训练？<a class="go" href="#a6">→ 答案</a></li>
+</ol>
+
+<h2 id="s1"><span class="no">01</span>问题：BC 太老实，RL 太难训</h2>
+<p>设定是离线强化学习：手上只有一批别人采好的轨迹（状态 s、动作 a、奖励 r），不能再和环境交互。目标是学出一个比采数据的策略更好的策略。</p>
+<table>
+<tr><th></th><th><a class="concept-link" href="RLToken-漫画分镜解读.html#concept-behavior-cloning">行为克隆</a>（BC）</th><th>标准 RL（价值 + 策略梯度）</th><th>CFGRL</th></tr>
+<tr><td>训练方式</td><td>监督学习：模仿数据里的动作</td><td>学 Q 函数，再沿 Q 的梯度或<a class="concept-link" href="为什么取log.html#concept-policy-gradient">策略梯度</a>更新策略</td><td>监督学习：模仿动作，但多带一个条件</td></tr>
+<tr><td>上限</td><td>数据的平均水平。好动作坏动作一起学</td><td>能超过数据</td><td>能超过数据，幅度由 w 控制</td></tr>
+<tr><td>对扩散/流策略</td><td>直接能用</td><td>难：<a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">流匹配</a>模型算不出 log π，梯度要穿过整条去噪链</td><td>直接能用：只多一次前向</td></tr>
+<tr><td>稳定性</td><td>稳</td><td>超参敏感，大模型上常发散</td><td>和 BC 一样稳</td></tr>
+</table>
+<p>中间还有一类折中办法：加权回归，比如 AWR。它给每个样本乘一个权重 exp(A/β)，好动作权重大，坏动作权重小，再做 BC。CFGRL 也属于这个思路，但换了一种实现：<b>不改样本权重，而是改采样过程</b>。为什么这样做更好，见 <a href="#s4">第 04 节</a>。</p>
+
+<h2 id="s2"><span class="no">02</span>理论一：乘一个「越好越大」的权重，就是策略改进</h2>
+<h3>2.1 先定几个符号</h3>
+<table>
+<tr><th>符号</th><th>意思</th><th>直观理解</th></tr>
+<tr><td>π̂(a|s)</td><td>参考策略：采数据的那个策略（行为策略）</td><td>数据里，在状态 s 下各种动作出现的频率</td></tr>
+<tr><td>Q<sup>π̂</sup>(s,a)</td><td><a class="concept-link" href="两条主干-拆机手册.html#concept-q-value">Q 值</a>：在 s 做 a，之后按 π̂ 走，能拿多少回报</td><td>这一步这么做，最后能得几分</td></tr>
+<tr><td>V<sup>π̂</sup>(s)</td><td>状态价值：E<sub>a~π̂</sub>[Q<sup>π̂</sup>(s,a)]</td><td>在 s 按老习惯随便做，平均能得几分</td></tr>
+<tr><td>A<sup>π̂</sup>(s,a)</td><td><a class="concept-link" href="两条主干-拆机手册.html#concept-advantage">优势</a>：Q − V</td><td>这个动作比平均水平好多少。按定义 E<sub>a~π̂</sub>[A] = 0</td></tr>
+<tr><td>f(·)</td><td>一个非负、单调递增的函数</td><td>打分规则：优势越高，给的权重越大</td></tr>
+<tr><td>J(π)</td><td>策略 π 的期望总回报</td><td>我们要让它变大</td></tr>
+</table>
+
+<h3 id="s2-2">2.2 定理：乘积策略不会变差</h3>
+<p>论文的出发点是这样一个新策略：在原策略上，按优势给每个动作重新加权。</p>
+<div class="eq">π(a|s) ∝ π̂(a|s) · f( A<sup>π̂</sup>(s,a) )        <span class="c">f ≥ 0 且单调递增</span></div>
+<p><b>结论：J(π) ≥ J(π̂)。</b>只要 f 非负、随优势单调不减，这个乘积策略就不会比原策略差。证明分两步：</p>
+<ol class="steps">
+<li><b>每个状态上，新策略的平均优势 ≥ 0。</b>新策略下的平均优势是
+<pre>E<sub>a~π</sub>[A] = E<sub>π̂</sub>[ f(A)·A ] / E<sub>π̂</sub>[ f(A) ]</pre>
+f(A) 和 A 同增同减，所以它们的协方差 ≥ 0，即 E<sub>π̂</sub>[f(A)·A] ≥ E<sub>π̂</sub>[f(A)]·E<sub>π̂</sub>[A] = 0。所以 E<sub>a~π</sub>[A] ≥ 0。直观地说：把概率从低优势的动作挪到高优势的动作上，平均优势只会上升。</li>
+<li><b>用性能差分引理把「每步更好」变成「整体更好」。</b>
+<pre>J(π) − J(π̂) = 1/(1−γ) · E<sub>s~d<sup>π</sup></sub> E<sub>a~π</sub>[ A<sup>π̂</sup>(s,a) ]</pre>
+右边对每个 s 都 ≥ 0，所以整体 ≥ 0。这里 d<sup>π</sup> 是新策略访问到的状态分布。不管新策略走到哪些状态，每个状态上它都不比老习惯差。</li>
+</ol>
+<div class="ans" id="a1"><b class="q">Q1 答</b>因为 f 随优势单调递增，乘上 f 就是把概率从「比平均差」的动作挪到「比平均好」的动作上，所以每个状态下新策略的平均优势 ≥ 0（f(A) 和 A 的协方差非负）。再用性能差分引理，每个状态上都不差，整体回报 J 就不会下降。</div>
+
+<h3>2.3 一个三选一的小例子</h3>
+<p>某个状态下数据里只有三种动作，优势已经算好（平均优势为 0）：</p>
+<table>
+<tr><th>动作</th><th>π̂（数据频率）</th><th>优势 A</th><th>f = 𝟙[A&gt;0] 之后</th><th>f = sigmoid(2A) 之后</th></tr>
+<tr><td>a₁ 常见但不太好</td><td>0.50</td><td>−1.00</td><td>0</td><td>0.126</td></tr>
+<tr><td>a₂ 还行</td><td>0.30</td><td>+0.50</td><td>0.60</td><td>0.464</td></tr>
+<tr><td>a₃ 最好但少见</td><td>0.20</td><td>+1.75</td><td>0.40</td><td>0.410</td></tr>
+<tr><td>平均优势</td><td>0</td><td></td><td><b>1.00</b></td><td><b>0.82</b></td></tr>
+</table>
+<p>两种打分规则都让平均优势从 0 升到正数。注意新策略只是在<b>数据里已有的动作</b>之间重新分配概率，它不会发明数据里没有的动作。这一点让它天然保守，不会去试数据外的离谱动作。</p>
+
+<h3 id="s2-4">2.4 加一个指数 w：改进幅度可以调</h3>
+<p>把权重再取 w 次方：</p>
+<div class="eq">π<sub>w</sub>(a|s) ∝ π̂(a|s) · f(A)<sup>w</sup>        <span class="c">w = 0：原策略；w 越大，越偏向高优势动作</span></div>
+<p>对 w 求导可以看出，平均优势随 w 单调上升：</p>
+<div class="eq">d/dw · E<sub>π<sub>w</sub></sub>[A] = Cov<sub>π<sub>w</sub></sub>( A, log f(A) ) ≥ 0</div>
+<p>代价是新策略离原策略越来越远。f = exp(A) 时，π<sub>w</sub> 正好是下面这个带 KL 约束问题的最优解，w 就是 KL 惩罚系数的倒数：</p>
+<div class="eq">max<sub>π</sub>  E<sub>a~π</sub>[A(s,a)] − (1/w)·KL( π ‖ π̂ )</div>
+<p>所以 w 是在「多改进」和「别离数据太远」之间做取舍。离数据太远有两个问题：优势 A<sup>π̂</sup> 是从数据里估出来的，冷门动作上估得不准；性能差分引理里的状态分布 d<sup>π</sup> 也会跟着变。用上面的例子，取 f = sigmoid(2A)：</p>
+<table>
+<tr><th>w</th><th>π<sub>w</sub>(a₁, a₂, a₃)</th><th>平均优势</th><th>KL(π<sub>w</sub>‖π̂)</th></tr>
+<tr><td>0</td><td>0.50, 0.30, 0.20</td><td>0</td><td>0</td></tr>
+<tr><td>1</td><td>0.13, 0.46, 0.41</td><td>0.82</td><td>0.32</td></tr>
+<tr><td>2</td><td>0.02, 0.45, 0.53</td><td>1.13</td><td>0.63</td></tr>
+<tr><td>3</td><td>0.00, 0.39, 0.61</td><td>1.26</td><td>0.76</td></tr>
+<tr><td>5</td><td>0.00, 0.27, 0.73</td><td>1.42</td><td>0.92</td></tr>
+</table>
+<p>平均优势和 KL 一起涨。w 越大，越像「只挑最好的那个」。</p>
+
+<h3 id="s2-5">2.5 自己拧一下 w</h3>
+<p>下面是一个一维动作的例子。灰色是数据里的动作分布 π̂（三个峰，左边那个最常见但最差），蓝色虚线是优势 A(a)，橙色是 π<sub>w</sub>。打分规则用软标签 p(o|a) = sigmoid(A/0.25)。</p>
+<div class="demo" id="demo">
+  <svg id="demo-svg" viewBox="0 0 680 270" role="img" aria-label="π_w 随 w 变化的示意图"></svg>
+  <div class="ctl">
+    <label>w = <span class="wv" id="demo-wv">1.0</span> <input type="range" id="demo-w" min="0" max="8" step="0.1" value="1"></label>
+    <label><input type="checkbox" id="demo-hard"> 改用硬标签 𝟙[A&gt;0]</label>
+  </div>
+  <div class="stats">
+    <div>原策略平均优势<b id="demo-e0">0.00</b></div>
+    <div>π<sub>w</sub> 平均优势<b id="demo-e1">0.00</b></div>
+    <div>KL(π<sub>w</sub>‖π̂)<b id="demo-kl">0.00</b></div>
+  </div>
+  <p class="hint" style="margin:8px 0 0">试试看：① w 从 0 拉到 8，橙色曲线一步步从左峰挪到右峰，但右边 a&gt;0.9 那段数据里几乎没有，橙色也去不了。② 勾上硬标签，w ≥ 1 之后曲线就不再变了，原因见 <a href="#s3-3">3.3</a>。</p>
+</div>
+
+<h2 id="s3"><span class="no">03</span>理论二：把 f 换成「最优」的概率，乘积策略就变成条件策略，w 就是 CFG</h2>
+<h3>3.1 引入一个「最优性」变量 o</h3>
+<p id="concept-optimality-conditioning" class="concept-anchor">直接按 π̂·f(A) 采样不好做：扩散模型没法对任意 f 做重加权。论文的关键一步是挑一个特别的 f：<b>某个二值事件 o（「这个动作是好的」）发生的概率</b>。</p>
+<div class="eq">f(A) = p( o | s, a )        <span class="c">要求 p(o|s,a) 随 A 单调递增，例如 o = 𝟙[A(s,a) &gt; 0]</span></div>
+<p>由贝叶斯公式：</p>
+<div class="eq">π̂(a|s, o) = π̂(a|s) · p(o|s,a) / p(o|s)   ∝   π̂(a|s) · f(A)</div>
+<p>右边正是第 02 节的乘积策略。所以<b>「只模仿被标成好的动作」学出来的条件策略 π̂(a|s,o)，本身就是一次策略改进</b>，对应 w = 1。训练它只需要普通的条件 BC：给每个样本打上 o 的标签，当作输入条件喂给网络。</p>
+
+<h3 id="s3-2">3.2 w ≠ 1：就是 classifier-free guidance</h3>
+<p>把 p(o|s,a) 用贝叶斯公式换回两个策略的比值，再代入 2.4 的 π<sub>w</sub>：</p>
+<div class="eq">π<sub>w</sub>(a|s) ∝ π̂(a|s) · [ π̂(a|s,o) / π̂(a|s) ]<sup>w</sup>  =  π̂(a|s)<sup>1−w</sup> · π̂(a|s,o)<sup>w</sup></div>
+<p>扩散/流模型不直接给出概率，给的是 <a class="concept-link" href="DiffusionPolicy-论文解读.html#concept-score">score</a>（log 概率对动作的梯度）或速度场。对上式两边取 ∇<sub>a</sub> log：</p>
+<div class="eq">∇<sub>a</sub> log π<sub>w</sub> = ∇<sub>a</sub> log π̂(a|s) + w · [ ∇<sub>a</sub> log π̂(a|s,o) − ∇<sub>a</sub> log π̂(a|s) ]
+<span class="c">        无条件 score         引导强度    有条件 score 与无条件 score 之差</span></div>
+<p>这就是图像生成里的 <a class="concept-link" href="pi0.7_问答学习卡.html#concept-classifier-free-guidance">CFG</a>，只是「条件」从文字提示换成了「最优」。流匹配版本把 score 换成速度场，代码里就是一行：</p>
+<pre>v = v_uncond + w * (v_cond − v_uncond)     <span class="c"># ogbench/agents/cfgrl.py:94，rlbase/algs_offline/iql_diffusion.py:213</span></pre>
+<table>
+<tr><th>w</th><th>采样出来的策略</th><th>含义</th></tr>
+<tr><td>0</td><td>π̂(a|s)</td><td>纯 BC，学到数据平均水平</td></tr>
+<tr><td>1</td><td>π̂(a|s,o)</td><td>条件 BC，一次标准的策略改进</td></tr>
+<tr><td>&gt; 1</td><td>π̂<sup>1−w</sup>·π̂(a|s,o)<sup>w</sup></td><td>沿「好 − 平均」的方向外推，改进更多，离数据更远</td></tr>
+</table>
+<div class="ans" id="a2"><b class="q">Q2 答</b>选 f(A) = p(o|s,a)（o 表示「这是好动作」），贝叶斯公式说 π̂(a|s)·f(A) ∝ π̂(a|s,o)，所以条件策略就是乘积改进策略。再加指数 w，π<sub>w</sub> ∝ π̂<sup>1−w</sup>·π̂(a|s,o)<sup>w</sup>，对它取 score 正好是 CFG 公式：无条件 + w ×（有条件 − 无条件）。</div>
+<div class="ans" id="a3"><b class="q">Q3 答</b>「可控」指 w 在推理时调：训练一次得到有条件、无条件两个速度场，采样时换个 w 就是另一个改进幅度，不用重训。w 越大，平均优势越高，但离数据越远（KL 越大），优势估计也越不可信。所以 w 是一个取舍，不是越大越好。官方代码在 ExORL 上把 w 从 1 扫到 100 再挑最好的（<a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="342">iql_diffusion.py:342</a>）。</div>
+
+<h3 id="s3-3">3.3 一个容易忽略的细节：硬标签为什么还能继续锐化</h3>
+<div class="box mine"><h4>说明：这一段是笔者的分析，不是论文原文</h4>
+<p>代码里 o 是硬标签：<code>o = 𝟙[Q − V &gt; 0]</code>。如果 p(o|s,a) 真的只取 0 或 1，那么 f<sup>w</sup> = f，w &gt; 1 和 w = 1 一模一样（上面的演示勾上硬标签就能看到）。</p>
+<p>实际能继续锐化有两个原因：</p>
+<p><b>1. 网络学到的 p(o|s,a) 是软的。</b>相似的 (s,a) 在数据里有时标正、有时标负（优势估计有噪声，状态也不会完全相同），网络学到的条件分布相当于对这些标签求了平均，隐含的 p(o|s,a) 落在 0 到 1 之间。</p>
+<p style="margin-bottom:0"><b>2. CFG 只是近似乘积分布。</b>CFG 在每个去噪步上组合速度场，中间噪声分布上的组合不严格等于终点分布的乘积。这是图像生成里也有的已知近似。所以 w 很大时，实际采样分布和公式之间会有偏差，这也是要扫 w 的原因之一。</p></div>
+
+<h2 id="s4"><span class="no">04</span>和 AWR 比：权重写进采样，而不是写进损失</h2>
+<p id="concept-awr" class="concept-anchor">AWR（Advantage-Weighted Regression）也想得到 π̂·exp(A/β)，做法是把 exp(A/β) 当成样本权重乘在 BC 的对数似然上。官方仓库里的基线就是这么写的：</p>
+<pre><span class="c"># rlbase/algs_offline/iql.py:123-131（AWR 基线）</span>
+exp_a = jnp.exp((q - v) * agent.config[<span class="h">'temperature'</span>])   <span class="c"># temperature = 1/β，默认 3.0</span>
+exp_a = jnp.minimum(exp_a, <span class="k">100.0</span>)                       <span class="c"># 截断，防止个别样本权重爆炸</span>
+log_probs = dist.log_prob(actions)                       <span class="c"># 需要能算 log π：高斯策略</span>
+actor_loss = -(exp_a * log_probs).mean()</pre>
+<table>
+<tr><th></th><th>AWR</th><th>CFGRL</th></tr>
+<tr><td>改进写在哪</td><td>损失里的样本权重</td><td>采样时的速度场组合</td></tr>
+<tr><td>调改进幅度</td><td>改温度 β，<b>必须重训</b></td><td>改 w，<b>推理时直接换</b></td></tr>
+<tr><td>改进幅度大时</td><td>β 小，少数样本权重极大，有效样本数骤降，估计方差大；还得截断</td><td>两个分支都在大量样本上训练，只是推理时外推</td></tr>
+<tr><td>策略形式</td><td>要能算 log π，通常是单峰高斯</td><td>扩散/流，多峰动作分布也能表示</td></tr>
+<tr><td>额外开销</td><td>无</td><td>推理时每个去噪步多一次前向（有条件 + 无条件）</td></tr>
+</table>
+<div class="ans" id="a4"><b class="q">Q4 答</b>AWR 把改进写进样本权重，想改得多就要把温度调小，结果大部分样本权重接近 0，有效数据变少，而且每换一个温度都得重训。CFGRL 两个分支都用正常的监督学习训练，改进幅度 w 放到推理时调，还能直接用表达力更强的扩散/流策略。论文摘要说它比常用的加权策略提取方法更有效。代价是推理时每步多一次前向。</div>
+
+<h2 id="s5"><span class="no">05</span>理论三：不学价值函数，目标条件 BC 就是 CFGRL</h2>
+<h3>5.1 目标条件 BC 在做什么</h3>
+<p id="concept-gcbc" class="concept-anchor">目标条件 BC（GCBC）：任务是到达目标状态 g。训练时用 hindsight relabeling，从同一条轨迹的<b>未来</b>随便挑一个状态当 g，然后学 π̂(a|s,g)。不需要奖励，也不需要价值网络。官方代码的目标采样在 <a class="cl" data-path="ogbench/utils/datasets.py" data-line="263">datasets.py:263</a>。</p>
+
+<h3>5.2 为什么「以目标为条件」本身就是最优性条件</h3>
+<p>把 g 当成 3.1 里的 o。贝叶斯公式：</p>
+<div class="eq">π̂(a|s,g) = π̂(a|s) · p(g|s,a) / p(g|s)</div>
+<p>如果未来目标按折扣几何分布采样，p(g|s,a) 就是「从 (s,a) 出发、之后按 π̂ 走，未来到达 g 的折扣概率」。这正好是奖励为「到达 g」时的 Q 函数（差一个常数），p(g|s) 对应 V：</p>
+<div class="eq">p(g|s,a) / p(g|s)  =  Q<sup>π̂</sup>(s,a,g) / V<sup>π̂</sup>(s,g)  =  1 + A<sup>π̂</sup>(s,a,g) / V<sup>π̂</sup>(s,g)</div>
+<p>对固定的 s 和 g，这个比值随优势 A 单调递增，并且非负，满足第 02 节定理的条件。所以：</p>
+<ol class="steps">
+<li><b>GCBC 已经是一次策略改进。</b>相对于不看目标的行为策略 π̂(a|s)，它更偏向「更可能到达 g」的动作。对应 w = 1。</li>
+<li><b>加 CFG 可以继续改进。</b>训练时偶尔把 g 换成「无条件」标记，就同时学到了 π̂(a|s)；推理时取 w &gt; 1，π<sub>w</sub> ∝ π̂(a|s)·[π̂(a|s,g)/π̂(a|s)]<sup>w</sup>。</li>
+<li><b>全程不需要价值函数。</b>价值的信息藏在「g 是从未来采的」这件事里。论文摘要把这叫做「免费」获得的提升。</li>
+</ol>
+<div class="ans" id="a5"><b class="q">Q5 答</b>hindsight 采样下，p(g|s,a) 就是到达 g 的 Q 值（差常数），所以 π̂(a|s,g) = π̂(a|s)·Q/V，Q/V = 1 + A/V 随优势单调递增，正好满足乘积改进定理。目标条件本身就是「最优性」条件，GCBC 等于 w = 1 的 CFGRL；再训练一个无条件分支，推理时取 w &gt; 1 还能继续改进，整个过程只有监督学习。</div>
+<div class="box mine"><h4>笔者注：代码里的目标采样是均匀的</h4>
+<p style="margin:0">上面的 Q/V 推导要求未来目标按几何分布采样（对应折扣 γ）。官方 OGBench 配置里 <code>actor_geom_sample=False</code>（<a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="185">cfgrl.py:185</a>），用的是在当前步到轨迹末尾之间均匀采样（<a class="cl" data-path="ogbench/utils/datasets.py" data-line="281">datasets.py:281</a>）。这时 p(g|s,a) 是「这条轨迹之后某时刻到过 g」的概率，不再严格等于带折扣的 Q。直觉上它仍然随「动作有多大可能把你带到 g」单调变化，实验也有效，但严格的定理条件只在几何采样时成立。</p></div>
+
+<h3>5.3 分层版本 HCFGRL</h3>
+<p>长程导航任务里，直接从 s 和远处的 g 推动作太难。分层版本拆成两级，<b>两级都用 CFG</b>：</p>
+<table>
+<tr><th>层</th><th>输入 → 输出</th><th>条件 / 无条件</th><th>代码</th></tr>
+<tr><td>高层</td><td>(s, g) → 子目标 ŝ（约 25 步之后的状态）</td><td>g / 学到的无条件向量</td><td><a class="cl" data-path="ogbench/agents/hcfgrl.py" data-line="21">high_actor_loss:21</a><a class="cl" data-path="ogbench/agents/hcfgrl.py" data-line="116">采样:116</a></td></tr>
+<tr><td>低层</td><td>(s, ŝ) → 动作 a</td><td>ŝ / 学到的无条件向量</td><td><a class="cl" data-path="ogbench/agents/hcfgrl.py" data-line="45">low_actor_loss:45</a><a class="cl" data-path="ogbench/agents/hcfgrl.py" data-line="126">采样:126</a></td></tr>
+</table>
+<p>子目标间隔 <code>subgoal_steps=25</code>（<a class="cl" data-path="ogbench/agents/hcfgrl.py" data-line="222">hcfgrl.py:222</a>）。高层的「动作」就是子目标本身，也用流匹配生成。</p>
+
+<h2 id="s6"><span class="no">06</span>代码逐段对照</h2>
+<p>两套实现的共同骨架：一个流匹配网络，多一个条件输入；训练时一部分样本用「无条件」；采样时每个欧拉步算两次速度，按 w 组合。</p>
+
+<h3 id="s6-1">6.1 带价值函数：<code>rlbase/algs_offline/iql_diffusion.py</code>（ExORL）</h3>
+<ol class="steps">
+<li><b>用 <a class="concept-link" href="RLinf-RL原理对比.html#concept-iql">IQL</a> 学 Q 和 V。</b>Q 回归 TD 目标 r + γV(s′)；V 用 expectile 回归（<code>expectile=0.9</code>）逼近 Q 的高分位，不对数据外的动作取 max。Q 有两个头，取小值，另有目标网络软更新。
+<p><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="123">critic_loss_fn:123</a><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="133">value_loss_fn:133</a><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="51">expectile:51</a><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="191">target_update:191</a></p></li>
+<li><b>打最优性标签 o = 𝟙[Q − V &gt; 0]。</b>注意 155–156 行先算了 AWR 权重，157 行又被二值标签覆盖，所以 AWR 权重实际没用上，用的是 3.1 里的硬标签。
+<pre>q = jnp.min(qs, axis=<span class="k">0</span>)                                  <span class="c"># 154：两个 Q 头取小</span>
+exp_a = jnp.exp((q - v) * agent.config[<span class="h">'temperature'</span>])  <span class="c"># 155：AWR 权重……</span>
+exp_a = jnp.minimum(exp_a, <span class="k">100.0</span>)                      <span class="c"># 156</span>
+exp_a = ((q-v) &gt; <span class="k">0</span>).astype(jnp.float32)                 <span class="c"># 157：……被覆盖成 𝟙[A&gt;0]</span></pre>
+<p><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="154">q:154</a><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="157">标签:157</a></p></li>
+<li><b>条件流网络。</b>条件是一个 2 类 embedding：0 = 无条件，1 = 「好动作」。输入是 [s, x<sub>t</sub>, t 的正弦编码, 条件 embedding]，MLP 输出速度。
+<p><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="97">DiffusionPolicy:97</a><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="105">nn.Embed(2,32):105</a></p></li>
+<li><b>两个分支的损失。</b>同一批样本、同一个噪声点 x<sub>t</sub>，分别以「好」和「无条件」前向一次：
+<pre>x_t = x0 * (<span class="k">1</span> - t) + x1 * t ;  vel = x1 - x0         <span class="c"># 流匹配：直线插值，目标速度</span>
+vel_loss_positive = ‖vel − v(s, o=<span class="k">1</span>, x_t, t)‖² * exp_a  <span class="c"># 172：只有 A&gt;0 的样本计入</span>
+vel_loss_uncond   = ‖vel − v(s, o=∅, x_t, t)‖²           <span class="c"># 177：所有样本都计入</span>
+actor_loss = mean(vel_loss_positive + <span class="k">0.1</span> * vel_loss_uncond)  <span class="c"># 179</span></pre>
+有条件分支学的是 π̂(a|s,o)，无条件分支学的是 π̂(a|s)。流时间 t 取 {0, 1/32, …, 1} 里的离散值（164 行）。
+<p><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="164">t:164</a><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="172">positive:172</a><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="177">uncond:177</a><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="179">loss:179</a></p></li>
+<li><b>采样：32 步欧拉，每步 CFG 组合。</b>
+<pre>x ~ N(<span class="k">0</span>, I)
+<span class="k">for</span> t <span class="k">in</span> range(<span class="k">32</span>):
+    v_pos = actor(s, <span class="k">1</span>, x, t/<span class="k">32</span>) ;  v_unc = actor(s, <span class="k">0</span>, x, t/<span class="k">32</span>)
+    v = v_unc + cfg * (v_pos - v_unc)                     <span class="c"># 213</span>
+    x = x + v / <span class="k">32</span>
+action = clip(x, -<span class="k">1</span>, <span class="k">1</span>)</pre>
+<p><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="200">sample_actions:200</a><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="213">CFG:213</a></p></li>
+<li><b>评估：扫一遍 w。</b>每次评估对 cfg ∈ {1, 1.5, 3, 5, 10, 30, 100} 各跑一遍，分别记日志，<code>evaluation/episode.return</code> 记的是其中最好的那个。
+<p><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="342">cfg 扫描:342</a><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="396">取 max:396</a></p></li>
+</ol>
+
+<h3 id="s6-2">6.2 不要价值函数：<code>ogbench/agents/cfgrl.py</code>（OGBench 目标条件）</h3>
+<ol class="steps">
+<li><b>条件就是目标 g。</b>数据集按 hindsight 规则给每个样本配一个未来状态当 <code>actor_goals</code>。
+<p><a class="cl" data-path="ogbench/utils/datasets.py" data-line="246">actor_goals:246</a><a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="183">actor_p_trajgoal:183</a></p></li>
+<li><b>10% 条件丢弃。</b>无条件不是全零向量，而是一个<b>可学习的向量</b>（<code>nn.Embed(1, goal_dim)</code>），和目标同维度，直接替换掉 g：
+<pre>unc_embed = network.select(<span class="h">'unc_embed'</span>)(params=grad_params)       <span class="c"># 33</span>
+do_cfg = jax.random.bernoulli(cfg_rng, p=<span class="k">0.1</span>, shape=(batch_size,)) <span class="c"># 34</span>
+goals = jnp.where(do_cfg[:, <span class="k">None</span>], unc_embed, batch[<span class="h">'actor_goals'</span>])  <span class="c"># 35</span>
+pred = actor_flow(s, x_t, t, goals=goals)
+actor_loss = mean((pred - vel) ** <span class="k">2</span>)                             <span class="c"># 38</span></pre>
+和 6.1 不同，这里每个样本只走一个分支：90% 学 π̂(a|s,g)，10% 学 π̂(a|s)。
+<p><a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="33">unc_embed:33</a><a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="34">dropout:34</a><a class="cl" data-path="ogbench/utils/networks.py" data-line="559">UnconditionalEmbedding:559</a></p></li>
+<li><b>网络。</b>4 层 512 宽的 MLP，输入拼接 [s, g, x<sub>t</sub>, t]，输出速度。
+<p><a class="cl" data-path="ogbench/utils/networks.py" data-line="520">GCActorVectorField:520</a><a class="cl" data-path="ogbench/utils/networks.py" data-line="554">concat:554</a></p></li>
+<li><b>采样：16 步欧拉，默认 w = 3。</b>
+<p><a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="71">sample_actions:71</a><a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="94">CFG:94</a><a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="172">flow_steps=16:172</a><a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="173">cfg=3.0:173</a></p></li>
+<li><b>对照基线 GCFBC。</b><code>gcfbc.py</code> 是同样的流网络，只是没有无条件分支、采样时只用有条件速度，相当于固定 w = 1。CFGRL 相对它的提升，就是「把 w 从 1 调到 3」带来的。
+<p><a class="cl" data-path="ogbench/agents/gcfbc.py" data-line="21">gcfbc actor_loss:21</a><a class="cl" data-path="ogbench/agents/gcfbc.py" data-line="90">采样:90</a></p></li>
+</ol>
+<div class="ans" id="a6"><b class="q">Q6 答</b>ExORL 版（<code>iql_diffusion.py</code>）：同一批样本两个分支都前向；「好」分支只在 Q − V &gt; 0 的样本上算损失，学 π̂(a|s,o)；无条件分支用全部样本（权重 0.1），学 π̂(a|s)。OGBench 版（<code>cfgrl.py</code>）：每个样本只走一个分支，90% 以 hindsight 目标 g 为条件，10% 换成可学习的无条件向量。</div>
+
+<div class="box warn"><h4>读代码时容易踩的坑</h4>
+<p><b>1. AWR 权重那两行是死代码。</b><code>iql_diffusion.py</code> 155–156 行算了 exp(A·温度)，157 行马上被二值标签覆盖。配置里的 <code>temperature</code> 对 CFGRL 不起作用。</p>
+<p><b>2. 报告的回报是「各 w 里最好的」。</b>ExORL 脚本的 <code>evaluation/episode.return</code> 对 7 个 w 取最大值。看曲线时要分清是固定 w 还是事后挑的 w。</p>
+<p><b>3. 推理开销翻倍。</b>每个欧拉步要算有条件、无条件两次速度。可以把两份输入拼成一个 batch 一起前向，墙钟时间增加不多。</p>
+<p style="margin-bottom:0"><b>4. 无条件分支不能太少。</b>CFG 外推的方向是「有条件 − 无条件」。无条件分支训练太少会不准，外推方向就跟着错。ExORL 版让所有样本都训无条件分支，OGBench 版留 10%。</p></div>
+
+<h2 id="s7"><span class="no">07</span>实验结论</h2>
+<p>论文在两类基准上验证（具体数字以原文表格为准）：</p>
+<table>
+<tr><th>设定</th><th>对比</th><th>主要结论</th></tr>
+<tr><td>离线 RL，ExORL（walker、cheetah、quadruped、jaco 的 9 个任务，见 README）</td><td>IQL + AWR 等加权提取方法</td><td>增大 w 回报稳定上升；比常用的加权策略提取更有效</td></tr>
+<tr><td>目标条件，OGBench（导航、操作，含像素输入）</td><td>GCBC / 流匹配 GCBC</td><td>不学价值函数，只加 CFG，在大多数任务上都比 GCBC 好</td></tr>
+<tr><td>分层目标条件，OGBench 长程导航</td><td>分层 GCBC</td><td>两级都加 CFG 的版本，官方代码里是 <code>hcfgrl.py</code>，对比结果见原文</td></tr>
+</table>
+<p>关于 w：理论上 w 越大改进越多，但离数据也越远（2.4）。官方脚本把 w 从 1 一路扫到 100 再挑最好的，说明作者也把它当成要按任务挑的超参，不是固定越大越好。</p>
+
+<h2 id="s8"><span class="no">08</span>和 π*0.6 RECAP 的关系</h2>
+<p>Physical Intelligence 的 <a class="concept-link" href="pi0.6-论文解读.html#concept-recap">RECAP</a> 用的就是 CFGRL 这套理论，并把它放到了 VLA 上。</p>
+<table>
+<tr><th></th><th>CFGRL（ExORL 版）</th><th>π*0.6 RECAP</th></tr>
+<tr><td>最优性 o</td><td>𝟙[Q − V &gt; 0]，IQL 估优势</td><td>𝟙[A &gt; ε]，分布式价值函数估优势</td></tr>
+<tr><td>条件怎么喂</td><td>2 类 embedding</td><td>文本前缀 "Advantage: positive/negative"</td></tr>
+<tr><td>无条件分支</td><td>所有样本都训（权重 0.1）</td><td>训练时 30% 丢弃优势前缀</td></tr>
+<tr><td>推理</td><td>扫 w ∈ [1, 100]</td><td>固定 positive；可选 CFG（w &gt; 1）</td></tr>
+<tr><td>负样本</td><td>不显式训练 negative 条件</td><td>显式训练 negative，策略也学到「差动作长什么样」</td></tr>
+</table>
+<p>π0.6 页里那条公式 <code>π̂(a|o) ∝ π_ref(a|o)·π_ref(a|I,o)/π_ref(a|o)</code> 就是本页 3.2 的 w = 1 特例，一般形式是 π<sub>ref</sub>·[π<sub>ref</sub>(a|I,o)/π<sub>ref</sub>(a|o)]<sup>w</sup>。</p>
+
+<h2 id="s9"><span class="no">09</span>架构图</h2>
+<p class="hint">图里文字可选中、复制。点右下角「✎ 编辑」后可直接改字，按「保存」或 ⌘/Ctrl+S 写回这个 HTML 文件（Chrome / Edge 第一次保存时选中本文件即可覆盖；其他浏览器会下载一份新文件）。编辑模式下点击 ⌗ 代码芯片可以改它指向的文件和行号。右下角可切换代码链接打开 GitHub 还是本地 VS Code。</p>
+</div><!-- /wrap -->
+
+<div class="wide">
+<div class="legend">
+  <span><i style="background:#f6fbfd;border-color:#b9dbe5"></i>数据</span>
+  <span><i style="background:#fff8f4;border-color:#efc9b8"></i>训练</span>
+  <span><i style="background:#faf7fe;border-color:var(--human)"></i>共享网络</span>
+  <span><i style="background:#f6fbfd;border-color:var(--infer)"></i>推理</span>
+  <span><i style="background:var(--surface-2);border-color:var(--line-strong);border-style:dashed"></i>论文理论</span>
+  <span style="color:var(--train)">━ 训练数据流</span>
+  <span style="color:var(--infer)">━ 推理数据流</span>
+</div>
+<div class="dg-scroll">
+<div class="dg" id="cfgrl-diagram">
+<svg class="wires" viewBox="0 0 1100 900" aria-hidden="true">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6f8291"/></marker>
+    <marker id="art" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c4572a"/></marker>
+    <marker id="ari" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#0e6e8a"/></marker>
+  </defs>
+  <!-- ① ExORL 训练 -->
+  <path class="tr" d="M200 131 L228 131" marker-end="url(#art)"/>
+  <path class="tr" d="M400 131 L428 131" marker-end="url(#art)"/>
+  <path class="tr" d="M600 131 L628 131" marker-end="url(#art)"/>
+  <path class="tr" d="M800 131 L848 131" marker-end="url(#art)"/>
+  <path class="dash" d="M120 208 L120 222 L715 222 L715 208" marker-end="url(#ar)"/>
+  <!-- ② OGBench 训练 -->
+  <path class="tr" d="M200 361 L228 361" marker-end="url(#art)"/>
+  <path class="tr" d="M400 361 L428 361" marker-end="url(#art)"/>
+  <path class="tr" d="M600 361 L628 361" marker-end="url(#art)"/>
+  <path class="tr" d="M800 361 L848 361" marker-end="url(#art)"/>
+  <!-- 网络 → 推理 -->
+  <path class="inf" d="M965 438 L965 470 L300 470 L300 538" marker-end="url(#ari)"/>
+  <!-- ③ 推理 -->
+  <path class="inf" d="M200 612 L238 612" marker-end="url(#ari)"/>
+  <path class="inf" d="M470 612 L508 612" marker-end="url(#ari)"/>
+  <path class="inf" d="M750 612 L788 612" marker-end="url(#ari)"/>
+  <path class="inf" d="M920 612 L948 612" marker-end="url(#ari)"/>
+  <path class="inf" d="M855 538 L855 522 L420 522 L420 536" marker-end="url(#ari)"/>
+  <!-- 理论 -->
+  <path class="dash" d="M360 810 L388 810" marker-end="url(#ar)"/>
+  <path class="dash" d="M710 810 L738 810" marker-end="url(#ar)"/>
+  <path class="dash" d="M910 750 L910 728 L630 728 L630 692" marker-end="url(#ar)"/>
+</svg>
+
+<!-- ① ExORL 训练 -->
+<div class="frame" style="left:20px;top:20px;width:800px;height:212px"><div class="ft">① 训练 · 带价值函数（ExORL · iql_diffusion.py）</div></div>
+<div class="nd data" style="left:40px;top:56px;width:160px;min-height:150px">
+  <div class="nt">离线数据集 D</div>
+  <div class="nb">(s, a, r, s′)，行为策略采的，好坏混在一起。</div>
+  <div class="nl"><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="282">get_dataset:282</a></div>
+</div>
+<div class="nd train" style="left:230px;top:56px;width:170px;min-height:150px">
+  <div class="nt">IQL 学 Q、V</div>
+  <div class="nb">Q ← r + γV(s′)；V 用 expectile 0.9 回归 Q。</div>
+  <div class="nl"><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="123">critic:123</a><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="133">value:133</a></div>
+</div>
+<div class="nd train" style="left:430px;top:56px;width:170px;min-height:150px">
+  <div class="nt">最优性标签 o</div>
+  <span class="nf">o = 𝟙[min Q − V &gt; 0]</span>
+  <div class="nb">硬标签。AWR 权重被覆盖。</div>
+  <div class="nl"><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="157">标签:157</a></div>
+</div>
+<div class="nd train" style="left:630px;top:56px;width:170px;min-height:150px">
+  <div class="nt">两个分支的流匹配损失</div>
+  <div class="nb">o=1 分支只算 A&gt;0 样本；∅ 分支算全部，权重 0.1。</div>
+  <div class="nl"><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="172">pos:172</a><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="179">loss:179</a></div>
+</div>
+
+<!-- ② OGBench 训练 -->
+<div class="frame" style="left:20px;top:250px;width:800px;height:212px"><div class="ft">② 训练 · 不要价值函数（OGBench · cfgrl.py）</div></div>
+<div class="nd data" style="left:40px;top:286px;width:160px;min-height:150px">
+  <div class="nt">轨迹数据</div>
+  <div class="nb">没有奖励也行，只要按轨迹存好状态序列。</div>
+  <div class="nl"><a class="cl" data-path="ogbench/utils/datasets.py" data-line="154">GCDataset:154</a></div>
+</div>
+<div class="nd data" style="left:230px;top:286px;width:170px;min-height:150px">
+  <div class="nt">Hindsight 目标 g</div>
+  <div class="nb">从同一轨迹的未来均匀采一个状态。g 就是最优性条件。</div>
+  <div class="nl"><a class="cl" data-path="ogbench/utils/datasets.py" data-line="263">sample_goals:263</a></div>
+</div>
+<div class="nd train" style="left:430px;top:286px;width:170px;min-height:150px">
+  <div class="nt">10% 条件丢弃</div>
+  <div class="nb">g 换成<b>可学习的</b>无条件向量 ∅。</div>
+  <div class="nl"><a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="34">dropout:34</a><a class="cl" data-path="ogbench/utils/networks.py" data-line="559">∅ embed:559</a></div>
+</div>
+<div class="nd train" style="left:630px;top:286px;width:170px;min-height:150px">
+  <div class="nt">流匹配损失</div>
+  <span class="nf">‖v(s,g|∅,x_t,t) − (x₁−x₀)‖²</span>
+  <div class="nl"><a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="38">loss:38</a></div>
+</div>
+
+<!-- 共享网络 -->
+<div class="nd net" style="left:850px;top:56px;width:230px;min-height:380px">
+  <div class="nt">同一个流网络 θ，两种条件</div>
+  <div class="nb">输入 [s, c, x<sub>t</sub>, t]，输出速度 v。</div>
+  <span class="nf">c = o 或 g → 学 π̂(a|s,c)</span>
+  <span class="nf">c = ∅ → 学 π̂(a|s)</span>
+  <div class="nb" style="margin-top:6px">只训练一次。之后换 w 不用重训，这就是「可控」。</div>
+  <div class="nb" style="margin-top:6px">ExORL：MLP 3×512，条件是 2 类 embedding。<br>OGBench：MLP 4×512，条件是目标向量。</div>
+  <div class="nl"><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="97">DiffusionPolicy:97</a><a class="cl" data-path="ogbench/utils/networks.py" data-line="520">GCActorVectorField:520</a></div>
+</div>
+
+<!-- ③ 推理 -->
+<div class="frame" style="left:20px;top:490px;width:1060px;height:220px"><div class="ft">③ 推理 · 每次出动作</div></div>
+<div class="nd data" style="left:40px;top:540px;width:160px;min-height:150px">
+  <div class="nt">起点噪声</div>
+  <span class="nf">x ~ N(0, I)</span>
+  <div class="nb">维度 = 动作维度。</div>
+  <div class="nl"><a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="83">cfgrl.py:83</a></div>
+</div>
+<div class="nd infer" style="left:240px;top:540px;width:230px;min-height:150px">
+  <div class="nt">两次前向</div>
+  <span class="nf">v_unc = v_θ(s, ∅, x, t)</span>
+  <span class="nf">v_cond = v_θ(s, c, x, t)</span>
+  <div class="nb">c = 「好」或目标 g。</div>
+  <div class="nl"><a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="92">cfgrl.py:92</a></div>
+</div>
+<div class="nd infer" style="left:510px;top:540px;width:240px;min-height:150px">
+  <div class="nt">CFG = 策略改进</div>
+  <span class="nf">v = v_unc + w·(v_cond − v_unc)</span>
+  <div class="nb">w=0 BC，w=1 条件 BC，w&gt;1 改进更多。默认 w=3（OGBench）。</div>
+  <div class="nl"><a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="94">cfgrl.py:94</a><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="213">iql_diffusion.py:213</a></div>
+</div>
+<div class="nd infer" style="left:790px;top:540px;width:130px;min-height:150px">
+  <div class="nt">欧拉一步</div>
+  <span class="nf">x ← x + v/K</span>
+  <div class="nb">K = 16 或 32</div>
+  <div class="nl"><a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="96">:96</a></div>
+</div>
+<div class="nd data" style="left:950px;top:540px;width:115px;min-height:150px">
+  <div class="nt">动作 a</div>
+  <div class="nb">clip 到 [−1, 1] 后执行。</div>
+  <div class="nl"><a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="98">clip:98</a></div>
+</div>
+
+<!-- 理论 -->
+<div class="nd paper" style="left:40px;top:750px;width:320px;min-height:120px">
+  <div class="nt">定理：乘积策略不变差</div>
+  <span class="nf">π ∝ π̂ · f(A)，f≥0 单调增 ⇒ J(π) ≥ J(π̂)</span>
+  <div class="nb">平均优势 ≥ 0 + 性能差分引理。见 <a href="#s2-2">2.2</a></div>
+  <div class="nl"><a class="pl" href="https://arxiv.org/abs/2505.23458">论文 · 理论部分</a></div>
+</div>
+<div class="nd paper" style="left:390px;top:750px;width:320px;min-height:120px">
+  <div class="nt">贝叶斯：条件策略 = 乘积策略</div>
+  <span class="nf">f = p(o|s,a) ⇒ π̂(a|s,o) ∝ π̂(a|s)·f(A)</span>
+  <div class="nb">目标条件时 p(g|s,a)/p(g|s) = Q/V。见 <a href="#s3">03</a>、<a href="#s5">05</a></div>
+  <div class="nl"><a class="pl" href="https://arxiv.org/abs/2505.23458">论文 · 方法部分</a></div>
+</div>
+<div class="nd paper" style="left:740px;top:750px;width:340px;min-height:120px">
+  <div class="nt">指数 w ⇒ CFG</div>
+  <span class="nf">π_w ∝ π̂^(1−w) · π̂(a|s,o)^w</span>
+  <div class="nb">取 ∇ₐlog 得到 score 的 CFG 组合；w 是 KL 取舍旋钮。见 <a href="#s3-2">3.2</a></div>
+  <div class="nl"><a class="pl" href="https://arxiv.org/abs/2505.23458">论文 · 方法部分</a></div>
+</div>
+
+<!-- 连线标签 -->
+<div class="wl" style="left:380px;top:228px">动作 a 作为流匹配终点 x₁</div>
+<div class="wl tr" style="left:806px;top:108px">θ</div>
+<div class="wl tr" style="left:806px;top:338px">θ</div>
+<div class="wl inf" style="left:560px;top:450px">训练好的 θ（任一套）</div>
+<div class="wl inf" style="left:560px;top:512px">循环 K 步</div>
+<div class="wl" style="left:700px;top:734px">理论依据</div>
+</div>
+</div>
+</div><!-- /wide -->
+
+<div class="wrap">
+<h2 id="s10"><span class="no">10</span>代码索引</h2>
+<table>
+<tr><th>功能</th><th>位置</th></tr>
+<tr><td>ExORL 版：超参（expectile、denoise_steps 等）</td><td><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="42">iql_diffusion.py:42</a></td></tr>
+<tr><td>ExORL 版：条件流网络（2 类 embedding）</td><td><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="97">iql_diffusion.py:97</a></td></tr>
+<tr><td>ExORL 版：IQL 的 Q / V 损失</td><td><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="123">iql_diffusion.py:123</a><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="133">:133</a></td></tr>
+<tr><td>ExORL 版：最优性标签与两分支损失</td><td><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="146">iql_diffusion.py:146</a></td></tr>
+<tr><td>ExORL 版：CFG 采样</td><td><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="200">iql_diffusion.py:200</a></td></tr>
+<tr><td>ExORL 版：评估时扫 w</td><td><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="342">iql_diffusion.py:342</a></td></tr>
+<tr><td>AWR 基线的加权损失</td><td><a class="cl" data-path="rlbase/algs_offline/iql.py" data-line="115">iql.py:115</a></td></tr>
+<tr><td>OGBench 版：条件丢弃与损失</td><td><a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="22">cfgrl.py:22</a></td></tr>
+<tr><td>OGBench 版：CFG 采样</td><td><a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="71">cfgrl.py:71</a></td></tr>
+<tr><td>OGBench 版：默认配置（cfg=3.0、flow_steps=16）</td><td><a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="162">cfgrl.py:162</a></td></tr>
+<tr><td>分层版本 HCFGRL</td><td><a class="cl" data-path="ogbench/agents/hcfgrl.py" data-line="100">hcfgrl.py:100</a></td></tr>
+<tr><td>对照基线：流匹配 GCBC（w 固定为 1）</td><td><a class="cl" data-path="ogbench/agents/gcfbc.py" data-line="21">gcfbc.py:21</a></td></tr>
+<tr><td>流网络与无条件向量</td><td><a class="cl" data-path="ogbench/utils/networks.py" data-line="520">networks.py:520</a><a class="cl" data-path="ogbench/utils/networks.py" data-line="559">:559</a></td></tr>
+<tr><td>Hindsight 目标采样</td><td><a class="cl" data-path="ogbench/utils/datasets.py" data-line="263">datasets.py:263</a></td></tr>
+</table>
+
+<h2 id="s11"><span class="no">11</span>读完做几道题</h2>
+<p class="hint">先自己想，再点开看答案。</p>
+<ol class="quiz">
+<li><p>在 CFG 公式 v = v_unc + w·(v_cond − v_unc) 里，取 w = 0 和 w = 1 分别得到什么策略？</p>
+<details><summary>看答案</summary><div>w = 0 只剩无条件速度，采样的是 π̂(a|s)，即纯 BC。w = 1 只剩有条件速度，采样的是 π̂(a|s,o)，即条件 BC，也就是一次标准的乘积策略改进。见 <a href="#s3-2">3.2</a> 表格。</div></details></li>
+<li><p>乘积改进定理要求 f 满足哪两个条件？如果 f 随优势递减会怎样？</p>
+<details><summary>看答案</summary><div>f 非负、随优势单调不减。如果 f 递减，概率会被挪到差动作上，f(A) 和 A 的协方差为负，新策略的平均优势 ≤ 0，回报可能下降。见 <a href="#s2-2">2.2</a>。</div></details></li>
+<li><p>新策略 π ∝ π̂·f(A) 能不能选出数据里从没出现过的动作？这是优点还是缺点？</p>
+<details><summary>看答案</summary><div>不能。π̂(a|s) = 0 的地方，乘任何 f 还是 0。优点是天然保守，不会去试数据外估值不可信的动作；缺点是改进上限受数据覆盖范围限制。演示里 a &gt; 0.9 的区域就是这种情况。见 <a href="#s2-5">2.5</a>。</div></details></li>
+<li><p>如果 p(o|s,a) 严格只取 0 或 1，w = 3 和 w = 1 的理论分布有区别吗？为什么实际上 w = 3 还有用？</p>
+<details><summary>看答案</summary><div>理论上没区别，0<sup>w</sup> = 0、1<sup>w</sup> = 1。实际有用是因为网络学到的条件分布对相似样本的标签做了平均，隐含的 p(o|s,a) 是软的；另外 CFG 只是近似乘积分布。见 <a href="#s3-3">3.3</a>（笔者分析）。</div></details></li>
+<li><p><code>iql_diffusion.py</code> 里配置项 <code>temperature=3.0</code> 对 CFGRL 的训练有影响吗？</p>
+<details><summary>看答案</summary><div>没有。155 行用它算了 AWR 权重，157 行马上被 𝟙[Q − V &gt; 0] 覆盖。<a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="157">iql_diffusion.py:157</a></div></details></li>
+<li><p>OGBench 版的「无条件」是怎么实现的？为什么不用全零向量？</p>
+<details><summary>看答案</summary><div>用 <code>nn.Embed(1, goal_dim)</code> 学一个和目标同维度的向量，10% 的样本把目标换成它。全零向量可能和某个真实目标（比如坐标原点）撞上，网络分不清「没有目标」和「目标在原点」；学出来的向量没有这个问题。<a class="cl" data-path="ogbench/utils/networks.py" data-line="559">networks.py:559</a></div></details></li>
+<li><p>为什么目标条件 BC 不学价值函数，也能算一次策略改进？</p>
+<details><summary>看答案</summary><div>hindsight 采样下 p(g|s,a) ∝ Q(s,a,g)，所以 π̂(a|s,g) = π̂(a|s)·Q/V，Q/V 随优势单调递增，满足乘积改进定理。价值的信息藏在「g 是从未来采的」里。严格成立需要几何采样，代码用的是均匀采样。见 <a href="#s5">第 05 节</a>。</div></details></li>
+<li><p>想把 AWR 的改进幅度加大一倍，要做什么？CFGRL 呢？</p>
+<details><summary>看答案</summary><div>AWR 要把温度 β 调小并重训，而且 β 越小，有效样本越少、方差越大。CFGRL 只要推理时把 w 调大，模型不动。见 <a href="#s4">第 04 节</a>。</div></details></li>
+</ol>
+
+<footer>论文：Frans, Park, Abbeel, Levine. Diffusion Guidance Is a Controllable Policy Improvement Operator, arXiv:2505.23458（2025）。代码：kvfrans/cfgrl @ 14bd57b（本地 ~/src/cfgrl）。标「笔者」的段落是本页作者的分析，不是论文原文。</footer>
+</div>
+</div><!-- /doc -->
+
+<div class="kb-tools" id="kb-tools">
+  <button type="button" id="btn-edit">✎ 编辑</button>
+  <button type="button" id="btn-save">保存</button>
+  <select id="sel-link" title="代码链接打开方式">
+    <option value="github">GitHub @14bd57b</option>
+    <option value="vscode">本地 VS Code</option>
+  </select>
+  <span class="st" id="kb-st"></span>
+</div>
+
+<script>
+/* ---------- π_w 交互演示 ---------- */
+(function(){
+  'use strict';
+  var svg=document.getElementById('demo-svg'); if(!svg) return;
+  var slider=document.getElementById('demo-w'), wv=document.getElementById('demo-wv'), hard=document.getElementById('demo-hard');
+  var N=241, xs=[], base=[], adv=[];
+  function g(x,m,s){return Math.exp(-0.5*(x-m)*(x-m)/(s*s))/s;}
+  for(var i=0;i<N;i++){
+    var x=-1+2*i/(N-1); xs.push(x);
+    base.push(0.5*g(x,-0.45,0.15)+0.3*g(x,0.15,0.12)+0.2*g(x,0.62,0.1));
+  }
+  var Zb=base.reduce(function(a,b){return a+b;},0); base=base.map(function(v){return v/Zb;});
+  var q=xs.map(function(x){return Math.tanh(2.5*x);});
+  var V=0; for(i=0;i<N;i++) V+=base[i]*q[i];
+  adv=q.map(function(v){return v-V;});
+  var W=680,H=270,L=40,R=20,T=16,B=34;
+  function px(x){return L+(x+1)/2*(W-L-R);}
+  function line(vals,scale,off){
+    var d='';
+    for(var i=0;i<N;i++){var y=T+(H-T-B)*(1-(vals[i]*scale+off));d+=(i?'L':'M')+px(xs[i]).toFixed(1)+' '+y.toFixed(1);}
+    return d;
+  }
+  function draw(){
+    var w=parseFloat(slider.value); wv.textContent=w.toFixed(1);
+    var p=adv.map(function(a){return hard.checked?(a>0?1:0):1/(1+Math.exp(-a/0.25));});
+    var pw=base.map(function(b,i){return b*Math.pow(p[i],w);});
+    if(w===0) pw=base.slice();
+    var Z=pw.reduce(function(a,b){return a+b;},0); pw=pw.map(function(v){return v/Z;});
+    var e1=0,kl=0; for(var i=0;i<N;i++){e1+=pw[i]*adv[i]; if(pw[i]>1e-12) kl+=pw[i]*Math.log(pw[i]/base[i]);}
+    document.getElementById('demo-e0').textContent='0.00';
+    document.getElementById('demo-e1').textContent=e1.toFixed(2);
+    document.getElementById('demo-kl').textContent=kl.toFixed(2);
+    var m=Math.max(Math.max.apply(null,base),Math.max.apply(null,pw));
+    var s=0.92/m;
+    var amax=Math.max.apply(null,adv.map(Math.abs));
+    var y0=T+(H-T-B)*(1-0.5);
+    var area=line(base,s,0)+'L'+px(1)+' '+(H-B)+'L'+px(-1)+' '+(H-B)+'Z';
+    var h='';
+    h+='<line x1="'+L+'" y1="'+(H-B)+'" x2="'+(W-R)+'" y2="'+(H-B)+'" stroke="#c3d0d9"/>';
+    h+='<line x1="'+L+'" y1="'+y0.toFixed(1)+'" x2="'+(W-R)+'" y2="'+y0.toFixed(1)+'" stroke="#e3eaef" stroke-dasharray="3 4"/>';
+    [-1,-0.5,0,0.5,1].forEach(function(t){h+='<text x="'+px(t)+'" y="'+(H-B+18)+'" font-size="11" text-anchor="middle" fill="#83919c" font-family="IBM Plex Mono,monospace">'+t+'</text>';});
+    h+='<text x="'+(W-R)+'" y="'+(H-4)+'" font-size="11" text-anchor="end" fill="#83919c">动作 a</text>';
+    h+='<path d="'+area+'" fill="rgba(131,145,156,.22)" stroke="#83919c" stroke-width="1.2"/>';
+    h+='<path d="'+line(adv,0.45/amax,0.5)+'" fill="none" stroke="#0e6e8a" stroke-width="1.6" stroke-dasharray="6 4"/>';
+    h+='<path d="'+line(pw,s,0)+'" fill="none" stroke="#c4572a" stroke-width="2.6"/>';
+    h+='<text x="'+(L+6)+'" y="'+(T+12)+'" font-size="12" fill="#83919c">■ π̂ 数据分布</text>';
+    h+='<text x="'+(L+120)+'" y="'+(T+12)+'" font-size="12" fill="#c4572a">━ π_w</text>';
+    h+='<text x="'+(L+180)+'" y="'+(T+12)+'" font-size="12" fill="#0e6e8a">┅ 优势 A(a)（虚线横线为 A=0）</text>';
+    svg.innerHTML=h;
+  }
+  slider.addEventListener('input',draw); hard.addEventListener('change',draw); draw();
+})();
+</script>
+<script>
+(function(){
+  'use strict';
+  var COMMIT='14bd57b53bea27a3951687387520f11fbbe44abb';
+  var GH='https://github.com/kvfrans/cfgrl/blob/'+COMMIT+'/';
+  var LOCAL='/Users/jianweizhang/src/cfgrl/';
+  var doc=document.getElementById('doc'), body=document.body;
+  var st=document.getElementById('kb-st'), btnEdit=document.getElementById('btn-edit'), sel=document.getElementById('sel-link');
+  var headSnap=new Set(Array.prototype.slice.call(document.head.children));
+  var bodyClass=body.getAttribute('class'), dirty=false, handle=null;
+
+  /* ---------- 代码链接 ---------- */
+  function hrefOf(a,mode){
+    var p=a.getAttribute('data-path'), l=a.getAttribute('data-line')||'1';
+    if(mode==='vscode') return 'vscode://file'+LOCAL+p+':'+l;
+    return GH+p+(/\.mdx?$/.test(p)?'?plain=1':'')+'#L'+l;
+  }
+  function applyLinks(){
+    var mode=sel.value;
+    document.querySelectorAll('a.cl').forEach(function(a){a.href=hrefOf(a,mode);a.target=mode==='github'?'_blank':'';a.title=a.getAttribute('data-path')+':'+a.getAttribute('data-line');});
+    document.querySelectorAll('a.pl').forEach(function(a){a.target='_blank';});
+  }
+  try{sel.value=localStorage.getItem('cfgrl-link-mode')||'github';}catch(e){}
+  sel.addEventListener('change',function(){try{localStorage.setItem('cfgrl-link-mode',sel.value);}catch(e){}applyLinks();});
+  applyLinks();
+
+  /* ---------- 编辑 ---------- */
+  function setEdit(on){
+    body.classList.toggle('editing',on);
+    btnEdit.classList.toggle('on',on);
+    btnEdit.textContent=on?'✓ 完成编辑':'✎ 编辑';
+    if(on) doc.setAttribute('contenteditable','true'); else doc.removeAttribute('contenteditable');
+  }
+  btnEdit.addEventListener('click',function(){setEdit(!body.classList.contains('editing'));});
+  doc.addEventListener('input',function(e){ if(e.target&&e.target.closest&&e.target.closest('#demo')) return; dirty=true;st.textContent='未保存';});
+  doc.addEventListener('click',function(e){
+    if(!body.classList.contains('editing')) return;
+    var a=e.target.closest('a.cl,a.pl'); if(!a) return;
+    e.preventDefault();
+    if(a.classList.contains('cl')){
+      var cur=a.getAttribute('data-path')+':'+a.getAttribute('data-line');
+      var v=prompt('代码位置（仓库内路径:行号）',cur); if(!v||v===cur) return;
+      var m=v.trim().match(/^(.+?):(\d+)$/); if(!m){alert('格式应为 path/to/file.py:123');return;}
+      a.setAttribute('data-path',m[1]); a.setAttribute('data-line',m[2]);
+    }else{
+      var h=prompt('链接地址',a.getAttribute('href')); if(!h) return; a.setAttribute('href',h);
+    }
+    applyLinks(); dirty=true; st.textContent='未保存';
+  });
+  /* 粘贴只保留纯文本，避免带进别处样式 */
+  doc.addEventListener('paste',function(e){
+    if(!body.classList.contains('editing')) return;
+    e.preventDefault();
+    document.execCommand('insertText',false,(e.clipboardData||window.clipboardData).getData('text/plain'));
+  });
+
+  /* ---------- 保存 ---------- */
+  function serialize(){
+    var live=document.documentElement, c=live.cloneNode(true);
+    var lh=document.head.children, ch=c.querySelector('head').children;
+    for(var i=lh.length-1;i>=0;i--){ if(!headSnap.has(lh[i])) ch[i].remove(); }
+    c.querySelectorAll('.kb-root').forEach(function(n){n.remove();});
+    var cb=c.querySelector('body');
+    if(bodyClass===null) cb.removeAttribute('class'); else cb.setAttribute('class',bodyClass);
+    c.querySelectorAll('[contenteditable]').forEach(function(n){n.removeAttribute('contenteditable');});
+    var cs=c.querySelector('#kb-st'); if(cs) cs.textContent='';
+    var ce=c.querySelector('#btn-edit'); if(ce){ce.textContent='✎ 编辑';ce.classList.remove('on');}
+    var ds=c.querySelector('#demo-svg'); if(ds) ds.innerHTML='';
+    c.querySelectorAll('a.cl').forEach(function(a){a.setAttribute('href',hrefOf(a,'github'));a.removeAttribute('target');a.removeAttribute('title');});
+    return '<!DOCTYPE html>\n'+c.outerHTML+'\n';
+  }
+  /* 文件句柄存进 IndexedDB，刷新后仍能直接覆盖原文件 */
+  function idb(mode,val){
+    return new Promise(function(res){
+      try{
+        var r=indexedDB.open('cfgrl-page',1);
+        r.onupgradeneeded=function(){r.result.createObjectStore('h');};
+        r.onsuccess=function(){
+          var tx=r.result.transaction('h',mode), s=tx.objectStore('h');
+          var q=mode==='readonly'?s.get(location.pathname):s.put(val,location.pathname);
+          q.onsuccess=function(){res(q.result);}; q.onerror=function(){res(null);};
+        };
+        r.onerror=function(){res(null);};
+      }catch(e){res(null);}
+    });
+  }
+  async function save(){
+    var html=serialize(), name=decodeURIComponent(location.pathname.split('/').pop()||'CFGRL-论文解读.html');
+    if(window.showSaveFilePicker){
+      try{
+        if(!handle) handle=await idb('readonly');
+        if(handle && handle.requestPermission){
+          var ok=await handle.queryPermission({mode:'readwrite'});
+          if(ok!=='granted') ok=await handle.requestPermission({mode:'readwrite'});
+          if(ok!=='granted') handle=null;
+        }
+        if(!handle){
+          handle=await window.showSaveFilePicker({suggestedName:name,types:[{description:'HTML',accept:{'text/html':['.html']}}]});
+          idb('readwrite',handle);
+        }
+        var w=await handle.createWritable(); await w.write(html); await w.close();
+        dirty=false; st.textContent='已保存 '+new Date().toLocaleTimeString(); return;
+      }catch(e){ if(e&&e.name==='AbortError'){st.textContent='已取消';return;} console.warn(e); }
+    }
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([html],{type:'text/html'})); a.download=name;
+    document.body.appendChild(a); a.click(); a.remove();
+    dirty=false; st.textContent='已下载，替换原文件即可';
+  }
+  document.getElementById('btn-save').addEventListener('click',save);
+  document.addEventListener('keydown',function(e){ if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='s'){e.preventDefault();save();} });
+  window.addEventListener('beforeunload',function(e){ if(dirty){e.preventDefault();e.returnValue='';} });
+})();
+</script>
+<script src="nav.js"></script>
+</body>
+</html>

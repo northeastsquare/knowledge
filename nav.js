@@ -57,6 +57,7 @@
         { t: 'πRL', h: 'piRL-论文解读.html' },
         { t: 'Object-Centric Residual RL', h: 'ObjectCentric-RL-论文解读.html' },
         { t: 'RL-100', h: 'RL-100-论文解读.html' },
+        { t: 'CFGRL：扩散引导即策略改进', h: 'CFGRL-论文解读.html' },
         { t: 'DynamicVLA', h: 'DynamicVLA-论文解读.html' },
         { t: 'PUMA', h: 'PUMA-论文解读.html' },
         { t: 'Qwen-VLA', h: 'Qwen-VLA-论文解读.html' },

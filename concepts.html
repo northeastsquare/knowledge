@@ -16,7 +16,7 @@ a{color:var(--accent)}a:focus-visible,button:focus-visible,input:focus-visible{o
 </head>
 <body>
 <main>
-  <header><div class="eyebrow">ROBOTIC LEARNING / CONCEPT INDEX</div><h1>从一个概念，读懂另一篇。<small>98 个关键概念 · 29 篇研读网页</small></h1><p class="intro">正文里的虚线下划线可以点击，直达相关讲解。这里按问题收录概念：点击标题阅读原文，沿“接着理解”继续串读。</p></header>
+  <header><div class="eyebrow">ROBOTIC LEARNING / CONCEPT INDEX</div><h1>从一个概念，读懂另一篇。<small>102 个关键概念 · 30 篇研读网页</small></h1><p class="intro">正文里的虚线下划线可以点击，直达相关讲解。这里按问题收录概念：点击标题阅读原文，沿“接着理解”继续串读。</p></header>
   <aside class="route" aria-label="概念阅读路线"><strong>从你正在问的问题出发</strong><p>“target 和双 Q 是一回事吗？” <a href="#q-value">Q 值</a> → <a href="#target-network">target 副本</a> → <a href="#twin-q">双 Q</a></p><p>“VLA 怎么用 RL 变好？” <a href="#flow-matching">流匹配</a> → <a href="#denoising-mdp">去噪链 MDP</a> / <a href="#rl-token">RL Token</a> → <a href="#recap">RECAP</a></p><p>“知识隔离是什么？为什么梯度要切一半？” <a href="#knowledge-insulation">知识隔离</a> → <a href="#stop-gradient">Stop-gradient</a> → <a href="#co-training">VLM co-training</a></p><p>“Beta 为什么出现在 π0 训练里？” <a href="#probability-density">密度与面积</a> → <a href="#beta-distribution">Beta 分布</a> → <a href="#noise-schedule">噪声采样</a> → <a href="#flow-matching">流匹配</a></p><p>“生成动作后怎样接上实时控制？” <a href="#diffusion-policy">扩散策略</a> → <a href="#receding-horizon">滚动执行</a> → <a href="#inpainting">动作补全</a> → <a href="#rtc">RTC</a></p></aside>
   <div class="search-area"><div class="search-field"><label for="concept-search">查找概念或相关问题</label><input id="concept-search" type="search" placeholder="例如：target、双 Q、奖励、动作块" autocomplete="off"></div><button id="clear-search" type="button">清空搜索</button></div>
   <p class="count" id="result-count" role="status" aria-live="polite">共 98 个概念</p>
@@ -188,6 +188,34 @@ a{color:var(--accent)}a:focus-visible,button:focus-visible,input:focus-visible{o
         <div class="term-source">讲解位置：pi0.6-论文解读</div>
         <div class="term-code"><span>代码在哪 · <a href="代码索引.html#recap">索引</a></span> <a class="code-link" href="https://github.com/RLinf/RLinf/blob/c70606f08cdca259b8dec03d4430926b5b8fac9d/rlinf/models/embodiment/value_model/recap/modeling_critic.py" target="_blank" rel="noreferrer" title="RLinf · RECAP 价值模型">复现 · RLinf · RECAP 价值模型 ↗</a></div>
         <div class="term-related"><span>接着理解</span> <a href="#advantage">Advantage</a> <a href="#behavior-cloning">BC</a> <a href="#prompt-conditioning">Prompt conditioning</a></div>
+      </article>
+      <article class="term-card" id="cfgrl">
+        <h3><a href="CFGRL-论文解读.html#s3-2">CFGRL · 引导即策略改进<span aria-hidden="true"> ↗</span></a></h3>
+        <p>以「好动作」为条件训练扩散/流策略，推理时用 CFG 放大条件；引导强度 w 就是改进幅度，不用重训。</p>
+        <div class="term-source">讲解位置：CFGRL-论文解读</div>
+        <div class="term-code"><span>代码在哪</span> <a class="code-link" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/agents/cfgrl.py#L94" target="_blank" rel="noreferrer" title="cfgrl · CFG 采样">cfgrl · CFG 采样 ↗</a> <a class="code-link" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L146-L179" target="_blank" rel="noreferrer" title="cfgrl · 两分支损失">cfgrl · 两分支损失 ↗</a></div>
+        <div class="term-related"><span>接着理解</span> <a href="#optimality-conditioning">最优性条件化</a> <a href="#classifier-free-guidance">CFG</a> <a href="#awr">AWR</a> <a href="#recap">RECAP</a></div>
+      </article>
+      <article class="term-card" id="optimality-conditioning">
+        <h3><a href="CFGRL-论文解读.html#concept-optimality-conditioning">Optimality conditioning · 最优性条件化<span aria-hidden="true"> ↗</span></a></h3>
+        <p>令 f(A)=p(o|s,a)，由贝叶斯公式 π̂(a|s,o) ∝ π̂(a|s)·f(A)：只模仿「好动作」的条件策略本身就是一次策略改进。</p>
+        <div class="term-source">讲解位置：CFGRL-论文解读</div>
+        <div class="term-code"><span>代码在哪</span> <a class="code-link" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L157" target="_blank" rel="noreferrer" title="cfgrl · 𝟙[Q−V&gt;0] 标签">cfgrl · 𝟙[Q−V&gt;0] 标签 ↗</a></div>
+        <div class="term-related"><span>接着理解</span> <a href="#advantage">Advantage</a> <a href="#cfgrl">CFGRL</a> <a href="#gcbc">GCBC</a></div>
+      </article>
+      <article class="term-card" id="awr">
+        <h3><a href="CFGRL-论文解读.html#concept-awr">AWR · 优势加权回归<span aria-hidden="true"> ↗</span></a></h3>
+        <p>把 exp(A/β) 当样本权重做行为克隆；改进幅度靠温度 β，改一次要重训，β 小时有效样本骤降。</p>
+        <div class="term-source">讲解位置：CFGRL-论文解读</div>
+        <div class="term-code"><span>代码在哪</span> <a class="code-link" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql.py#L115-L131" target="_blank" rel="noreferrer" title="cfgrl 仓库 · AWR 基线">cfgrl 仓库 · AWR 基线 ↗</a></div>
+        <div class="term-related"><span>接着理解</span> <a href="#advantage">Advantage</a> <a href="#iql">IQL</a> <a href="#cfgrl">CFGRL</a></div>
+      </article>
+      <article class="term-card" id="gcbc">
+        <h3><a href="CFGRL-论文解读.html#concept-gcbc">GCBC · 目标条件行为克隆<span aria-hidden="true"> ↗</span></a></h3>
+        <p>用轨迹里的未来状态当目标 g 学 π(a|s,g)；p(g|s,a) 与到达 g 的 Q 成正比，所以它本身就是不需价值函数的策略改进。</p>
+        <div class="term-source">讲解位置：CFGRL-论文解读</div>
+        <div class="term-code"><span>代码在哪</span> <a class="code-link" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/utils/datasets.py#L263" target="_blank" rel="noreferrer" title="cfgrl · hindsight 目标采样">cfgrl · hindsight 目标采样 ↗</a> <a class="code-link" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/agents/cfgrl.py#L33-L38" target="_blank" rel="noreferrer" title="cfgrl · 10% 条件丢弃">cfgrl · 10% 条件丢弃 ↗</a></div>
+        <div class="term-related"><span>接着理解</span> <a href="#behavior-cloning">BC</a> <a href="#optimality-conditioning">最优性条件化</a> <a href="#cfgrl">CFGRL</a></div>
       </article>
       <article class="term-card" id="residual-rl">
         <h3><a href="ObjectCentric-RL-论文解读.html#concept-residual-rl">Residual RL · 残差强化学习<span aria-hidden="true"> ↗</span></a></h3>
