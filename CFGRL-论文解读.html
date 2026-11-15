@@ -148,16 +148,16 @@ footer{margin-top:70px;font-size:13px;color:var(--ink-3)}
     <div class="box">
       <b>原始论文</b>
       <p style="margin:4px 0"><i>Diffusion Guidance Is a Controllable Policy Improvement Operator</i></p>
-      <a class="pl" href="https://arxiv.org/abs/2505.23458">arXiv:2505.23458</a>
-      <a class="pl" href="https://arxiv.org/pdf/2505.23458">PDF（arXiv）</a>
-      <a class="pl" href="https://openreview.net/forum?id=PwaUsAk4i6">OpenReview</a>
+      <a class="pl" href="https://arxiv.org/abs/2505.23458" target="_blank" rel="noreferrer">arXiv:2505.23458</a>
+      <a class="pl" href="https://arxiv.org/pdf/2505.23458" target="_blank" rel="noreferrer">PDF（arXiv）</a>
+      <a class="pl" href="https://openreview.net/forum?id=PwaUsAk4i6" target="_blank" rel="noreferrer">OpenReview</a>
     </div>
     <div class="box">
       <b>官方代码</b>
       <p style="margin:4px 0">kvfrans/cfgrl（commit <code>14bd57b</code>，JAX）。两套实现：<code>rlbase/</code> 做带价值函数的离线 RL（ExORL），<code>ogbench/</code> 做不要价值函数的目标条件版本。</p>
-      <a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="146">iql_diffusion.py:146</a>
-      <a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="22">cfgrl.py:22</a>
-      <a class="cl" data-path="README.md" data-line="1">README.md</a>
+      <a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L146" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="146">iql_diffusion.py:146</a>
+      <a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/agents/cfgrl.py#L22" target="_blank" rel="noreferrer" data-path="ogbench/agents/cfgrl.py" data-line="22">cfgrl.py:22</a>
+      <a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/README.md?plain=1#L1" target="_blank" rel="noreferrer" data-path="README.md" data-line="1">README.md</a>
     </div>
   </div>
 </header>
@@ -278,7 +278,7 @@ f(A) 和 A 同增同减，所以它们的协方差 ≥ 0，即 E<sub>π̂</sub>[
 <tr><td>&gt; 1</td><td>π̂<sup>1−w</sup>·π̂(a|s,o)<sup>w</sup></td><td>沿「好 − 平均」的方向外推，改进更多，离数据更远</td></tr>
 </table>
 <div class="ans" id="a2"><b class="q">Q2 答</b>选 f(A) = p(o|s,a)（o 表示「这是好动作」），贝叶斯公式说 π̂(a|s)·f(A) ∝ π̂(a|s,o)，所以条件策略就是乘积改进策略。再加指数 w，π<sub>w</sub> ∝ π̂<sup>1−w</sup>·π̂(a|s,o)<sup>w</sup>，对它取 score 正好是 CFG 公式：无条件 + w ×（有条件 − 无条件）。</div>
-<div class="ans" id="a3"><b class="q">Q3 答</b>「可控」指 w 在推理时调：训练一次得到有条件、无条件两个速度场，采样时换个 w 就是另一个改进幅度，不用重训。w 越大，平均优势越高，但离数据越远（KL 越大），优势估计也越不可信。所以 w 是一个取舍，不是越大越好。官方代码在 ExORL 上把 w 从 1 扫到 100 再挑最好的（<a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="342">iql_diffusion.py:342</a>）。</div>
+<div class="ans" id="a3"><b class="q">Q3 答</b>「可控」指 w 在推理时调：训练一次得到有条件、无条件两个速度场，采样时换个 w 就是另一个改进幅度，不用重训。w 越大，平均优势越高，但离数据越远（KL 越大），优势估计也越不可信。所以 w 是一个取舍，不是越大越好。官方代码在 ExORL 上把 w 从 1 扫到 100 再挑最好的（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L342" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="342">iql_diffusion.py:342</a>）。</div>
 
 <h3 id="s3-3">3.3 一个容易忽略的细节：硬标签为什么还能继续锐化</h3>
 <div class="box mine"><h4>说明：这一段是笔者的分析，不是论文原文</h4>
@@ -306,7 +306,7 @@ actor_loss = -(exp_a * log_probs).mean()</pre>
 
 <h2 id="s5"><span class="no">05</span>理论三：不学价值函数，目标条件 BC 就是 CFGRL</h2>
 <h3>5.1 目标条件 BC 在做什么</h3>
-<p id="concept-gcbc" class="concept-anchor">目标条件 BC（GCBC）：任务是到达目标状态 g。训练时用 hindsight relabeling，从同一条轨迹的<b>未来</b>随便挑一个状态当 g，然后学 π̂(a|s,g)。不需要奖励，也不需要价值网络。官方代码的目标采样在 <a class="cl" data-path="ogbench/utils/datasets.py" data-line="263">datasets.py:263</a>。</p>
+<p id="concept-gcbc" class="concept-anchor">目标条件 BC（GCBC）：任务是到达目标状态 g。训练时用 hindsight relabeling，从同一条轨迹的<b>未来</b>随便挑一个状态当 g，然后学 π̂(a|s,g)。不需要奖励，也不需要价值网络。官方代码的目标采样在 <a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/utils/datasets.py#L263" target="_blank" rel="noreferrer" data-path="ogbench/utils/datasets.py" data-line="263">datasets.py:263</a>。</p>
 
 <h3>5.2 为什么「以目标为条件」本身就是最优性条件</h3>
 <p>把 g 当成 3.1 里的 o。贝叶斯公式：</p>
@@ -321,16 +321,16 @@ actor_loss = -(exp_a * log_probs).mean()</pre>
 </ol>
 <div class="ans" id="a5"><b class="q">Q5 答</b>hindsight 采样下，p(g|s,a) 就是到达 g 的 Q 值（差常数），所以 π̂(a|s,g) = π̂(a|s)·Q/V，Q/V = 1 + A/V 随优势单调递增，正好满足乘积改进定理。目标条件本身就是「最优性」条件，GCBC 等于 w = 1 的 CFGRL；再训练一个无条件分支，推理时取 w &gt; 1 还能继续改进，整个过程只有监督学习。</div>
 <div class="box mine"><h4>笔者注：代码里的目标采样是均匀的</h4>
-<p style="margin:0">上面的 Q/V 推导要求未来目标按几何分布采样（对应折扣 γ）。官方 OGBench 配置里 <code>actor_geom_sample=False</code>（<a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="185">cfgrl.py:185</a>），用的是在当前步到轨迹末尾之间均匀采样（<a class="cl" data-path="ogbench/utils/datasets.py" data-line="281">datasets.py:281</a>）。这时 p(g|s,a) 是「这条轨迹之后某时刻到过 g」的概率，不再严格等于带折扣的 Q。直觉上它仍然随「动作有多大可能把你带到 g」单调变化，实验也有效，但严格的定理条件只在几何采样时成立。</p></div>
+<p style="margin:0">上面的 Q/V 推导要求未来目标按几何分布采样（对应折扣 γ）。官方 OGBench 配置里 <code>actor_geom_sample=False</code>（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/agents/cfgrl.py#L185" target="_blank" rel="noreferrer" data-path="ogbench/agents/cfgrl.py" data-line="185">cfgrl.py:185</a>），用的是在当前步到轨迹末尾之间均匀采样（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/utils/datasets.py#L281" target="_blank" rel="noreferrer" data-path="ogbench/utils/datasets.py" data-line="281">datasets.py:281</a>）。这时 p(g|s,a) 是「这条轨迹之后某时刻到过 g」的概率，不再严格等于带折扣的 Q。直觉上它仍然随「动作有多大可能把你带到 g」单调变化，实验也有效，但严格的定理条件只在几何采样时成立。</p></div>
 
 <h3>5.3 分层版本 HCFGRL</h3>
 <p>长程导航任务里，直接从 s 和远处的 g 推动作太难。分层版本拆成两级，<b>两级都用 CFG</b>：</p>
 <table>
 <tr><th>层</th><th>输入 → 输出</th><th>条件 / 无条件</th><th>代码</th></tr>
-<tr><td>高层</td><td>(s, g) → 子目标 ŝ（约 25 步之后的状态）</td><td>g / 学到的无条件向量</td><td><a class="cl" data-path="ogbench/agents/hcfgrl.py" data-line="21">high_actor_loss:21</a><a class="cl" data-path="ogbench/agents/hcfgrl.py" data-line="116">采样:116</a></td></tr>
-<tr><td>低层</td><td>(s, ŝ) → 动作 a</td><td>ŝ / 学到的无条件向量</td><td><a class="cl" data-path="ogbench/agents/hcfgrl.py" data-line="45">low_actor_loss:45</a><a class="cl" data-path="ogbench/agents/hcfgrl.py" data-line="126">采样:126</a></td></tr>
+<tr><td>高层</td><td>(s, g) → 子目标 ŝ（约 25 步之后的状态）</td><td>g / 学到的无条件向量</td><td><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/agents/hcfgrl.py#L21" target="_blank" rel="noreferrer" data-path="ogbench/agents/hcfgrl.py" data-line="21">high_actor_loss:21</a><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/agents/hcfgrl.py#L116" target="_blank" rel="noreferrer" data-path="ogbench/agents/hcfgrl.py" data-line="116">采样:116</a></td></tr>
+<tr><td>低层</td><td>(s, ŝ) → 动作 a</td><td>ŝ / 学到的无条件向量</td><td><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/agents/hcfgrl.py#L45" target="_blank" rel="noreferrer" data-path="ogbench/agents/hcfgrl.py" data-line="45">low_actor_loss:45</a><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/agents/hcfgrl.py#L126" target="_blank" rel="noreferrer" data-path="ogbench/agents/hcfgrl.py" data-line="126">采样:126</a></td></tr>
 </table>
-<p>子目标间隔 <code>subgoal_steps=25</code>（<a class="cl" data-path="ogbench/agents/hcfgrl.py" data-line="222">hcfgrl.py:222</a>）。高层的「动作」就是子目标本身，也用流匹配生成。</p>
+<p>子目标间隔 <code>subgoal_steps=25</code>（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/agents/hcfgrl.py#L222" target="_blank" rel="noreferrer" data-path="ogbench/agents/hcfgrl.py" data-line="222">hcfgrl.py:222</a>）。高层的「动作」就是子目标本身，也用流匹配生成。</p>
 
 <h2 id="s6"><span class="no">06</span>代码逐段对照</h2>
 <p>两套实现的共同骨架：一个流匹配网络，多一个条件输入；训练时一部分样本用「无条件」；采样时每个欧拉步算两次速度，按 w 组合。</p>
@@ -338,22 +338,22 @@ actor_loss = -(exp_a * log_probs).mean()</pre>
 <h3 id="s6-1">6.1 带价值函数：<code>rlbase/algs_offline/iql_diffusion.py</code>（ExORL）</h3>
 <ol class="steps">
 <li><b>用 <a class="concept-link" href="RLinf-RL原理对比.html#concept-iql">IQL</a> 学 Q 和 V。</b>Q 回归 TD 目标 r + γV(s′)；V 用 expectile 回归（<code>expectile=0.9</code>）逼近 Q 的高分位，不对数据外的动作取 max。Q 有两个头，取小值，另有目标网络软更新。
-<p><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="123">critic_loss_fn:123</a><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="133">value_loss_fn:133</a><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="51">expectile:51</a><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="191">target_update:191</a></p></li>
+<p><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L123" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="123">critic_loss_fn:123</a><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L133" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="133">value_loss_fn:133</a><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L51" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="51">expectile:51</a><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L191" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="191">target_update:191</a></p></li>
 <li><b>打最优性标签 o = 𝟙[Q − V &gt; 0]。</b>注意 155–156 行先算了 AWR 权重，157 行又被二值标签覆盖，所以 AWR 权重实际没用上，用的是 3.1 里的硬标签。
 <pre>q = jnp.min(qs, axis=<span class="k">0</span>)                                  <span class="c"># 154：两个 Q 头取小</span>
 exp_a = jnp.exp((q - v) * agent.config[<span class="h">'temperature'</span>])  <span class="c"># 155：AWR 权重……</span>
 exp_a = jnp.minimum(exp_a, <span class="k">100.0</span>)                      <span class="c"># 156</span>
 exp_a = ((q-v) &gt; <span class="k">0</span>).astype(jnp.float32)                 <span class="c"># 157：……被覆盖成 𝟙[A&gt;0]</span></pre>
-<p><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="154">q:154</a><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="157">标签:157</a></p></li>
+<p><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L154" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="154">q:154</a><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L157" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="157">标签:157</a></p></li>
 <li><b>条件流网络。</b>条件是一个 2 类 embedding：0 = 无条件，1 = 「好动作」。输入是 [s, x<sub>t</sub>, t 的正弦编码, 条件 embedding]，MLP 输出速度。
-<p><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="97">DiffusionPolicy:97</a><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="105">nn.Embed(2,32):105</a></p></li>
+<p><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L97" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="97">DiffusionPolicy:97</a><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L105" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="105">nn.Embed(2,32):105</a></p></li>
 <li><b>两个分支的损失。</b>同一批样本、同一个噪声点 x<sub>t</sub>，分别以「好」和「无条件」前向一次：
 <pre>x_t = x0 * (<span class="k">1</span> - t) + x1 * t ;  vel = x1 - x0         <span class="c"># 流匹配：直线插值，目标速度</span>
 vel_loss_positive = ‖vel − v(s, o=<span class="k">1</span>, x_t, t)‖² * exp_a  <span class="c"># 172：只有 A&gt;0 的样本计入</span>
 vel_loss_uncond   = ‖vel − v(s, o=∅, x_t, t)‖²           <span class="c"># 177：所有样本都计入</span>
 actor_loss = mean(vel_loss_positive + <span class="k">0.1</span> * vel_loss_uncond)  <span class="c"># 179</span></pre>
 有条件分支学的是 π̂(a|s,o)，无条件分支学的是 π̂(a|s)。流时间 t 取 {0, 1/32, …, 1} 里的离散值（164 行）。
-<p><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="164">t:164</a><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="172">positive:172</a><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="177">uncond:177</a><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="179">loss:179</a></p></li>
+<p><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L164" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="164">t:164</a><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L172" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="172">positive:172</a><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L177" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="177">uncond:177</a><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L179" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="179">loss:179</a></p></li>
 <li><b>采样：32 步欧拉，每步 CFG 组合。</b>
 <pre>x ~ N(<span class="k">0</span>, I)
 <span class="k">for</span> t <span class="k">in</span> range(<span class="k">32</span>):
@@ -361,15 +361,15 @@ actor_loss = mean(vel_loss_positive + <span class="k">0.1</span> * vel_loss_unco
     v = v_unc + cfg * (v_pos - v_unc)                     <span class="c"># 213</span>
     x = x + v / <span class="k">32</span>
 action = clip(x, -<span class="k">1</span>, <span class="k">1</span>)</pre>
-<p><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="200">sample_actions:200</a><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="213">CFG:213</a></p></li>
+<p><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L200" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="200">sample_actions:200</a><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L213" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="213">CFG:213</a></p></li>
 <li><b>评估：扫一遍 w。</b>每次评估对 cfg ∈ {1, 1.5, 3, 5, 10, 30, 100} 各跑一遍，分别记日志，<code>evaluation/episode.return</code> 记的是其中最好的那个。
-<p><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="342">cfg 扫描:342</a><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="396">取 max:396</a></p></li>
+<p><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L342" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="342">cfg 扫描:342</a><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L396" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="396">取 max:396</a></p></li>
 </ol>
 
 <h3 id="s6-2">6.2 不要价值函数：<code>ogbench/agents/cfgrl.py</code>（OGBench 目标条件）</h3>
 <ol class="steps">
 <li><b>条件就是目标 g。</b>数据集按 hindsight 规则给每个样本配一个未来状态当 <code>actor_goals</code>。
-<p><a class="cl" data-path="ogbench/utils/datasets.py" data-line="246">actor_goals:246</a><a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="183">actor_p_trajgoal:183</a></p></li>
+<p><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/utils/datasets.py#L246" target="_blank" rel="noreferrer" data-path="ogbench/utils/datasets.py" data-line="246">actor_goals:246</a><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/agents/cfgrl.py#L183" target="_blank" rel="noreferrer" data-path="ogbench/agents/cfgrl.py" data-line="183">actor_p_trajgoal:183</a></p></li>
 <li><b>10% 条件丢弃。</b>无条件不是全零向量，而是一个<b>可学习的向量</b>（<code>nn.Embed(1, goal_dim)</code>），和目标同维度，直接替换掉 g：
 <pre>unc_embed = network.select(<span class="h">'unc_embed'</span>)(params=grad_params)       <span class="c"># 33</span>
 do_cfg = jax.random.bernoulli(cfg_rng, p=<span class="k">0.1</span>, shape=(batch_size,)) <span class="c"># 34</span>
@@ -377,13 +377,13 @@ goals = jnp.where(do_cfg[:, <span class="k">None</span>], unc_embed, batch[<span
 pred = actor_flow(s, x_t, t, goals=goals)
 actor_loss = mean((pred - vel) ** <span class="k">2</span>)                             <span class="c"># 38</span></pre>
 和 6.1 不同，这里每个样本只走一个分支：90% 学 π̂(a|s,g)，10% 学 π̂(a|s)。
-<p><a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="33">unc_embed:33</a><a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="34">dropout:34</a><a class="cl" data-path="ogbench/utils/networks.py" data-line="559">UnconditionalEmbedding:559</a></p></li>
+<p><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/agents/cfgrl.py#L33" target="_blank" rel="noreferrer" data-path="ogbench/agents/cfgrl.py" data-line="33">unc_embed:33</a><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/agents/cfgrl.py#L34" target="_blank" rel="noreferrer" data-path="ogbench/agents/cfgrl.py" data-line="34">dropout:34</a><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/utils/networks.py#L559" target="_blank" rel="noreferrer" data-path="ogbench/utils/networks.py" data-line="559">UnconditionalEmbedding:559</a></p></li>
 <li><b>网络。</b>4 层 512 宽的 MLP，输入拼接 [s, g, x<sub>t</sub>, t]，输出速度。
-<p><a class="cl" data-path="ogbench/utils/networks.py" data-line="520">GCActorVectorField:520</a><a class="cl" data-path="ogbench/utils/networks.py" data-line="554">concat:554</a></p></li>
+<p><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/utils/networks.py#L520" target="_blank" rel="noreferrer" data-path="ogbench/utils/networks.py" data-line="520">GCActorVectorField:520</a><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/utils/networks.py#L554" target="_blank" rel="noreferrer" data-path="ogbench/utils/networks.py" data-line="554">concat:554</a></p></li>
 <li><b>采样：16 步欧拉，默认 w = 3。</b>
-<p><a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="71">sample_actions:71</a><a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="94">CFG:94</a><a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="172">flow_steps=16:172</a><a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="173">cfg=3.0:173</a></p></li>
+<p><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/agents/cfgrl.py#L71" target="_blank" rel="noreferrer" data-path="ogbench/agents/cfgrl.py" data-line="71">sample_actions:71</a><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/agents/cfgrl.py#L94" target="_blank" rel="noreferrer" data-path="ogbench/agents/cfgrl.py" data-line="94">CFG:94</a><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/agents/cfgrl.py#L172" target="_blank" rel="noreferrer" data-path="ogbench/agents/cfgrl.py" data-line="172">flow_steps=16:172</a><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/agents/cfgrl.py#L173" target="_blank" rel="noreferrer" data-path="ogbench/agents/cfgrl.py" data-line="173">cfg=3.0:173</a></p></li>
 <li><b>对照基线 GCFBC。</b><code>gcfbc.py</code> 是同样的流网络，只是没有无条件分支、采样时只用有条件速度，相当于固定 w = 1。CFGRL 相对它的提升，就是「把 w 从 1 调到 3」带来的。
-<p><a class="cl" data-path="ogbench/agents/gcfbc.py" data-line="21">gcfbc actor_loss:21</a><a class="cl" data-path="ogbench/agents/gcfbc.py" data-line="90">采样:90</a></p></li>
+<p><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/agents/gcfbc.py#L21" target="_blank" rel="noreferrer" data-path="ogbench/agents/gcfbc.py" data-line="21">gcfbc actor_loss:21</a><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/agents/gcfbc.py#L90" target="_blank" rel="noreferrer" data-path="ogbench/agents/gcfbc.py" data-line="90">采样:90</a></p></li>
 </ol>
 <div class="ans" id="a6"><b class="q">Q6 答</b>ExORL 版（<code>iql_diffusion.py</code>）：同一批样本两个分支都前向；「好」分支只在 Q − V &gt; 0 的样本上算损失，学 π̂(a|s,o)；无条件分支用全部样本（权重 0.1），学 π̂(a|s)。OGBench 版（<code>cfgrl.py</code>）：每个样本只走一个分支，90% 以 hindsight 目标 g 为条件，10% 换成可学习的无条件向量。</div>
 
@@ -416,7 +416,7 @@ actor_loss = mean((pred - vel) ** <span class="k">2</span>)                     
 <p>π0.6 页里那条公式 <code>π̂(a|o) ∝ π_ref(a|o)·π_ref(a|I,o)/π_ref(a|o)</code> 就是本页 3.2 的 w = 1 特例，一般形式是 π<sub>ref</sub>·[π<sub>ref</sub>(a|I,o)/π<sub>ref</sub>(a|o)]<sup>w</sup>。</p>
 
 <h2 id="s9"><span class="no">09</span>架构图</h2>
-<p class="hint">图里文字可选中、复制。点右下角「✎ 编辑」后可直接改字，按「保存」或 ⌘/Ctrl+S 写回这个 HTML 文件（Chrome / Edge 第一次保存时选中本文件即可覆盖；其他浏览器会下载一份新文件）。编辑模式下点击 ⌗ 代码芯片可以改它指向的文件和行号。右下角可切换代码链接打开 GitHub 还是本地 VS Code。</p>
+<p class="hint">图里文字可选中、复制。点右下角「✎ 编辑」后可直接改字，按「保存」或 ⌘/Ctrl+S 写回这个 HTML 文件（Chrome / Edge 第一次保存时选中本文件即可覆盖；其他浏览器会下载一份新文件）。编辑模式下点击 ⌗ 代码芯片可以改它指向的文件和行号。代码链接都指向 GitHub 上固定 commit 的源码，论文链接指向 arXiv，换台机器也能打开。</p>
 </div><!-- /wrap -->
 
 <div class="wide">
@@ -467,23 +467,23 @@ actor_loss = mean((pred - vel) ** <span class="k">2</span>)                     
 <div class="nd data" style="left:40px;top:56px;width:160px;min-height:150px">
   <div class="nt">离线数据集 D</div>
   <div class="nb">(s, a, r, s′)，行为策略采的，好坏混在一起。</div>
-  <div class="nl"><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="282">get_dataset:282</a></div>
+  <div class="nl"><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L282" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="282">get_dataset:282</a></div>
 </div>
 <div class="nd train" style="left:230px;top:56px;width:170px;min-height:150px">
   <div class="nt">IQL 学 Q、V</div>
   <div class="nb">Q ← r + γV(s′)；V 用 expectile 0.9 回归 Q。</div>
-  <div class="nl"><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="123">critic:123</a><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="133">value:133</a></div>
+  <div class="nl"><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L123" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="123">critic:123</a><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L133" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="133">value:133</a></div>
 </div>
 <div class="nd train" style="left:430px;top:56px;width:170px;min-height:150px">
   <div class="nt">最优性标签 o</div>
   <span class="nf">o = 𝟙[min Q − V &gt; 0]</span>
   <div class="nb">硬标签。AWR 权重被覆盖。</div>
-  <div class="nl"><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="157">标签:157</a></div>
+  <div class="nl"><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L157" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="157">标签:157</a></div>
 </div>
 <div class="nd train" style="left:630px;top:56px;width:170px;min-height:150px">
   <div class="nt">两个分支的流匹配损失</div>
   <div class="nb">o=1 分支只算 A&gt;0 样本；∅ 分支算全部，权重 0.1。</div>
-  <div class="nl"><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="172">pos:172</a><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="179">loss:179</a></div>
+  <div class="nl"><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L172" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="172">pos:172</a><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L179" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="179">loss:179</a></div>
 </div>
 
 <!-- ② OGBench 训练 -->
@@ -491,22 +491,22 @@ actor_loss = mean((pred - vel) ** <span class="k">2</span>)                     
 <div class="nd data" style="left:40px;top:286px;width:160px;min-height:150px">
   <div class="nt">轨迹数据</div>
   <div class="nb">没有奖励也行，只要按轨迹存好状态序列。</div>
-  <div class="nl"><a class="cl" data-path="ogbench/utils/datasets.py" data-line="154">GCDataset:154</a></div>
+  <div class="nl"><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/utils/datasets.py#L154" target="_blank" rel="noreferrer" data-path="ogbench/utils/datasets.py" data-line="154">GCDataset:154</a></div>
 </div>
 <div class="nd data" style="left:230px;top:286px;width:170px;min-height:150px">
   <div class="nt">Hindsight 目标 g</div>
   <div class="nb">从同一轨迹的未来均匀采一个状态。g 就是最优性条件。</div>
-  <div class="nl"><a class="cl" data-path="ogbench/utils/datasets.py" data-line="263">sample_goals:263</a></div>
+  <div class="nl"><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/utils/datasets.py#L263" target="_blank" rel="noreferrer" data-path="ogbench/utils/datasets.py" data-line="263">sample_goals:263</a></div>
 </div>
 <div class="nd train" style="left:430px;top:286px;width:170px;min-height:150px">
   <div class="nt">10% 条件丢弃</div>
   <div class="nb">g 换成<b>可学习的</b>无条件向量 ∅。</div>
-  <div class="nl"><a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="34">dropout:34</a><a class="cl" data-path="ogbench/utils/networks.py" data-line="559">∅ embed:559</a></div>
+  <div class="nl"><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/agents/cfgrl.py#L34" target="_blank" rel="noreferrer" data-path="ogbench/agents/cfgrl.py" data-line="34">dropout:34</a><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/utils/networks.py#L559" target="_blank" rel="noreferrer" data-path="ogbench/utils/networks.py" data-line="559">∅ embed:559</a></div>
 </div>
 <div class="nd train" style="left:630px;top:286px;width:170px;min-height:150px">
   <div class="nt">流匹配损失</div>
   <span class="nf">‖v(s,g|∅,x_t,t) − (x₁−x₀)‖²</span>
-  <div class="nl"><a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="38">loss:38</a></div>
+  <div class="nl"><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/agents/cfgrl.py#L38" target="_blank" rel="noreferrer" data-path="ogbench/agents/cfgrl.py" data-line="38">loss:38</a></div>
 </div>
 
 <!-- 共享网络 -->
@@ -517,7 +517,7 @@ actor_loss = mean((pred - vel) ** <span class="k">2</span>)                     
   <span class="nf">c = ∅ → 学 π̂(a|s)</span>
   <div class="nb" style="margin-top:6px">只训练一次。之后换 w 不用重训，这就是「可控」。</div>
   <div class="nb" style="margin-top:6px">ExORL：MLP 3×512，条件是 2 类 embedding。<br>OGBench：MLP 4×512，条件是目标向量。</div>
-  <div class="nl"><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="97">DiffusionPolicy:97</a><a class="cl" data-path="ogbench/utils/networks.py" data-line="520">GCActorVectorField:520</a></div>
+  <div class="nl"><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L97" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="97">DiffusionPolicy:97</a><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/utils/networks.py#L520" target="_blank" rel="noreferrer" data-path="ogbench/utils/networks.py" data-line="520">GCActorVectorField:520</a></div>
 </div>
 
 <!-- ③ 推理 -->
@@ -526,31 +526,31 @@ actor_loss = mean((pred - vel) ** <span class="k">2</span>)                     
   <div class="nt">起点噪声</div>
   <span class="nf">x ~ N(0, I)</span>
   <div class="nb">维度 = 动作维度。</div>
-  <div class="nl"><a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="83">cfgrl.py:83</a></div>
+  <div class="nl"><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/agents/cfgrl.py#L83" target="_blank" rel="noreferrer" data-path="ogbench/agents/cfgrl.py" data-line="83">cfgrl.py:83</a></div>
 </div>
 <div class="nd infer" style="left:240px;top:540px;width:230px;min-height:150px">
   <div class="nt">两次前向</div>
   <span class="nf">v_unc = v_θ(s, ∅, x, t)</span>
   <span class="nf">v_cond = v_θ(s, c, x, t)</span>
   <div class="nb">c = 「好」或目标 g。</div>
-  <div class="nl"><a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="92">cfgrl.py:92</a></div>
+  <div class="nl"><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/agents/cfgrl.py#L92" target="_blank" rel="noreferrer" data-path="ogbench/agents/cfgrl.py" data-line="92">cfgrl.py:92</a></div>
 </div>
 <div class="nd infer" style="left:510px;top:540px;width:240px;min-height:150px">
   <div class="nt">CFG = 策略改进</div>
   <span class="nf">v = v_unc + w·(v_cond − v_unc)</span>
   <div class="nb">w=0 BC，w=1 条件 BC，w&gt;1 改进更多。默认 w=3（OGBench）。</div>
-  <div class="nl"><a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="94">cfgrl.py:94</a><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="213">iql_diffusion.py:213</a></div>
+  <div class="nl"><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/agents/cfgrl.py#L94" target="_blank" rel="noreferrer" data-path="ogbench/agents/cfgrl.py" data-line="94">cfgrl.py:94</a><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L213" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="213">iql_diffusion.py:213</a></div>
 </div>
 <div class="nd infer" style="left:790px;top:540px;width:130px;min-height:150px">
   <div class="nt">欧拉一步</div>
   <span class="nf">x ← x + v/K</span>
   <div class="nb">K = 16 或 32</div>
-  <div class="nl"><a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="96">:96</a></div>
+  <div class="nl"><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/agents/cfgrl.py#L96" target="_blank" rel="noreferrer" data-path="ogbench/agents/cfgrl.py" data-line="96">:96</a></div>
 </div>
 <div class="nd data" style="left:950px;top:540px;width:115px;min-height:150px">
   <div class="nt">动作 a</div>
   <div class="nb">clip 到 [−1, 1] 后执行。</div>
-  <div class="nl"><a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="98">clip:98</a></div>
+  <div class="nl"><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/agents/cfgrl.py#L98" target="_blank" rel="noreferrer" data-path="ogbench/agents/cfgrl.py" data-line="98">clip:98</a></div>
 </div>
 
 <!-- 理论 -->
@@ -558,19 +558,19 @@ actor_loss = mean((pred - vel) ** <span class="k">2</span>)                     
   <div class="nt">定理：乘积策略不变差</div>
   <span class="nf">π ∝ π̂ · f(A)，f≥0 单调增 ⇒ J(π) ≥ J(π̂)</span>
   <div class="nb">平均优势 ≥ 0 + 性能差分引理。见 <a href="#s2-2">2.2</a></div>
-  <div class="nl"><a class="pl" href="https://arxiv.org/abs/2505.23458">论文 · 理论部分</a></div>
+  <div class="nl"><a class="pl" href="https://arxiv.org/abs/2505.23458" target="_blank" rel="noreferrer">论文 · 理论部分</a></div>
 </div>
 <div class="nd paper" style="left:390px;top:750px;width:320px;min-height:120px">
   <div class="nt">贝叶斯：条件策略 = 乘积策略</div>
   <span class="nf">f = p(o|s,a) ⇒ π̂(a|s,o) ∝ π̂(a|s)·f(A)</span>
   <div class="nb">目标条件时 p(g|s,a)/p(g|s) = Q/V。见 <a href="#s3">03</a>、<a href="#s5">05</a></div>
-  <div class="nl"><a class="pl" href="https://arxiv.org/abs/2505.23458">论文 · 方法部分</a></div>
+  <div class="nl"><a class="pl" href="https://arxiv.org/abs/2505.23458" target="_blank" rel="noreferrer">论文 · 方法部分</a></div>
 </div>
 <div class="nd paper" style="left:740px;top:750px;width:340px;min-height:120px">
   <div class="nt">指数 w ⇒ CFG</div>
   <span class="nf">π_w ∝ π̂^(1−w) · π̂(a|s,o)^w</span>
   <div class="nb">取 ∇ₐlog 得到 score 的 CFG 组合；w 是 KL 取舍旋钮。见 <a href="#s3-2">3.2</a></div>
-  <div class="nl"><a class="pl" href="https://arxiv.org/abs/2505.23458">论文 · 方法部分</a></div>
+  <div class="nl"><a class="pl" href="https://arxiv.org/abs/2505.23458" target="_blank" rel="noreferrer">论文 · 方法部分</a></div>
 </div>
 
 <!-- 连线标签 -->
@@ -588,20 +588,20 @@ actor_loss = mean((pred - vel) ** <span class="k">2</span>)                     
 <h2 id="s10"><span class="no">10</span>代码索引</h2>
 <table>
 <tr><th>功能</th><th>位置</th></tr>
-<tr><td>ExORL 版：超参（expectile、denoise_steps 等）</td><td><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="42">iql_diffusion.py:42</a></td></tr>
-<tr><td>ExORL 版：条件流网络（2 类 embedding）</td><td><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="97">iql_diffusion.py:97</a></td></tr>
-<tr><td>ExORL 版：IQL 的 Q / V 损失</td><td><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="123">iql_diffusion.py:123</a><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="133">:133</a></td></tr>
-<tr><td>ExORL 版：最优性标签与两分支损失</td><td><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="146">iql_diffusion.py:146</a></td></tr>
-<tr><td>ExORL 版：CFG 采样</td><td><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="200">iql_diffusion.py:200</a></td></tr>
-<tr><td>ExORL 版：评估时扫 w</td><td><a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="342">iql_diffusion.py:342</a></td></tr>
-<tr><td>AWR 基线的加权损失</td><td><a class="cl" data-path="rlbase/algs_offline/iql.py" data-line="115">iql.py:115</a></td></tr>
-<tr><td>OGBench 版：条件丢弃与损失</td><td><a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="22">cfgrl.py:22</a></td></tr>
-<tr><td>OGBench 版：CFG 采样</td><td><a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="71">cfgrl.py:71</a></td></tr>
-<tr><td>OGBench 版：默认配置（cfg=3.0、flow_steps=16）</td><td><a class="cl" data-path="ogbench/agents/cfgrl.py" data-line="162">cfgrl.py:162</a></td></tr>
-<tr><td>分层版本 HCFGRL</td><td><a class="cl" data-path="ogbench/agents/hcfgrl.py" data-line="100">hcfgrl.py:100</a></td></tr>
-<tr><td>对照基线：流匹配 GCBC（w 固定为 1）</td><td><a class="cl" data-path="ogbench/agents/gcfbc.py" data-line="21">gcfbc.py:21</a></td></tr>
-<tr><td>流网络与无条件向量</td><td><a class="cl" data-path="ogbench/utils/networks.py" data-line="520">networks.py:520</a><a class="cl" data-path="ogbench/utils/networks.py" data-line="559">:559</a></td></tr>
-<tr><td>Hindsight 目标采样</td><td><a class="cl" data-path="ogbench/utils/datasets.py" data-line="263">datasets.py:263</a></td></tr>
+<tr><td>ExORL 版：超参（expectile、denoise_steps 等）</td><td><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L42" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="42">iql_diffusion.py:42</a></td></tr>
+<tr><td>ExORL 版：条件流网络（2 类 embedding）</td><td><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L97" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="97">iql_diffusion.py:97</a></td></tr>
+<tr><td>ExORL 版：IQL 的 Q / V 损失</td><td><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L123" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="123">iql_diffusion.py:123</a><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L133" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="133">:133</a></td></tr>
+<tr><td>ExORL 版：最优性标签与两分支损失</td><td><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L146" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="146">iql_diffusion.py:146</a></td></tr>
+<tr><td>ExORL 版：CFG 采样</td><td><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L200" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="200">iql_diffusion.py:200</a></td></tr>
+<tr><td>ExORL 版：评估时扫 w</td><td><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L342" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="342">iql_diffusion.py:342</a></td></tr>
+<tr><td>AWR 基线的加权损失</td><td><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql.py#L115" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql.py" data-line="115">iql.py:115</a></td></tr>
+<tr><td>OGBench 版：条件丢弃与损失</td><td><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/agents/cfgrl.py#L22" target="_blank" rel="noreferrer" data-path="ogbench/agents/cfgrl.py" data-line="22">cfgrl.py:22</a></td></tr>
+<tr><td>OGBench 版：CFG 采样</td><td><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/agents/cfgrl.py#L71" target="_blank" rel="noreferrer" data-path="ogbench/agents/cfgrl.py" data-line="71">cfgrl.py:71</a></td></tr>
+<tr><td>OGBench 版：默认配置（cfg=3.0、flow_steps=16）</td><td><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/agents/cfgrl.py#L162" target="_blank" rel="noreferrer" data-path="ogbench/agents/cfgrl.py" data-line="162">cfgrl.py:162</a></td></tr>
+<tr><td>分层版本 HCFGRL</td><td><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/agents/hcfgrl.py#L100" target="_blank" rel="noreferrer" data-path="ogbench/agents/hcfgrl.py" data-line="100">hcfgrl.py:100</a></td></tr>
+<tr><td>对照基线：流匹配 GCBC（w 固定为 1）</td><td><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/agents/gcfbc.py#L21" target="_blank" rel="noreferrer" data-path="ogbench/agents/gcfbc.py" data-line="21">gcfbc.py:21</a></td></tr>
+<tr><td>流网络与无条件向量</td><td><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/utils/networks.py#L520" target="_blank" rel="noreferrer" data-path="ogbench/utils/networks.py" data-line="520">networks.py:520</a><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/utils/networks.py#L559" target="_blank" rel="noreferrer" data-path="ogbench/utils/networks.py" data-line="559">:559</a></td></tr>
+<tr><td>Hindsight 目标采样</td><td><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/utils/datasets.py#L263" target="_blank" rel="noreferrer" data-path="ogbench/utils/datasets.py" data-line="263">datasets.py:263</a></td></tr>
 </table>
 
 <h2 id="s11"><span class="no">11</span>读完做几道题</h2>
@@ -616,26 +616,22 @@ actor_loss = mean((pred - vel) ** <span class="k">2</span>)                     
 <li><p>如果 p(o|s,a) 严格只取 0 或 1，w = 3 和 w = 1 的理论分布有区别吗？为什么实际上 w = 3 还有用？</p>
 <details><summary>看答案</summary><div>理论上没区别，0<sup>w</sup> = 0、1<sup>w</sup> = 1。实际有用是因为网络学到的条件分布对相似样本的标签做了平均，隐含的 p(o|s,a) 是软的；另外 CFG 只是近似乘积分布。见 <a href="#s3-3">3.3</a>（笔者分析）。</div></details></li>
 <li><p><code>iql_diffusion.py</code> 里配置项 <code>temperature=3.0</code> 对 CFGRL 的训练有影响吗？</p>
-<details><summary>看答案</summary><div>没有。155 行用它算了 AWR 权重，157 行马上被 𝟙[Q − V &gt; 0] 覆盖。<a class="cl" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="157">iql_diffusion.py:157</a></div></details></li>
+<details><summary>看答案</summary><div>没有。155 行用它算了 AWR 权重，157 行马上被 𝟙[Q − V &gt; 0] 覆盖。<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L157" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="157">iql_diffusion.py:157</a></div></details></li>
 <li><p>OGBench 版的「无条件」是怎么实现的？为什么不用全零向量？</p>
-<details><summary>看答案</summary><div>用 <code>nn.Embed(1, goal_dim)</code> 学一个和目标同维度的向量，10% 的样本把目标换成它。全零向量可能和某个真实目标（比如坐标原点）撞上，网络分不清「没有目标」和「目标在原点」；学出来的向量没有这个问题。<a class="cl" data-path="ogbench/utils/networks.py" data-line="559">networks.py:559</a></div></details></li>
+<details><summary>看答案</summary><div>用 <code>nn.Embed(1, goal_dim)</code> 学一个和目标同维度的向量，10% 的样本把目标换成它。全零向量可能和某个真实目标（比如坐标原点）撞上，网络分不清「没有目标」和「目标在原点」；学出来的向量没有这个问题。<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/utils/networks.py#L559" target="_blank" rel="noreferrer" data-path="ogbench/utils/networks.py" data-line="559">networks.py:559</a></div></details></li>
 <li><p>为什么目标条件 BC 不学价值函数，也能算一次策略改进？</p>
 <details><summary>看答案</summary><div>hindsight 采样下 p(g|s,a) ∝ Q(s,a,g)，所以 π̂(a|s,g) = π̂(a|s)·Q/V，Q/V 随优势单调递增，满足乘积改进定理。价值的信息藏在「g 是从未来采的」里。严格成立需要几何采样，代码用的是均匀采样。见 <a href="#s5">第 05 节</a>。</div></details></li>
 <li><p>想把 AWR 的改进幅度加大一倍，要做什么？CFGRL 呢？</p>
 <details><summary>看答案</summary><div>AWR 要把温度 β 调小并重训，而且 β 越小，有效样本越少、方差越大。CFGRL 只要推理时把 w 调大，模型不动。见 <a href="#s4">第 04 节</a>。</div></details></li>
 </ol>
 
-<footer>论文：Frans, Park, Abbeel, Levine. Diffusion Guidance Is a Controllable Policy Improvement Operator, arXiv:2505.23458（2025）。代码：kvfrans/cfgrl @ 14bd57b（本地 ~/src/cfgrl）。标「笔者」的段落是本页作者的分析，不是论文原文。</footer>
+<footer>论文：Frans, Park, Abbeel, Levine. Diffusion Guidance Is a Controllable Policy Improvement Operator, arXiv:2505.23458（2025）。代码：<a href="https://github.com/kvfrans/cfgrl/tree/14bd57b53bea27a3951687387520f11fbbe44abb" target="_blank" rel="noreferrer">github.com/kvfrans/cfgrl @ 14bd57b</a>。标「笔者」的段落是本页作者的分析，不是论文原文。</footer>
 </div>
 </div><!-- /doc -->
 
 <div class="kb-tools" id="kb-tools">
   <button type="button" id="btn-edit">✎ 编辑</button>
   <button type="button" id="btn-save">保存</button>
-  <select id="sel-link" title="代码链接打开方式">
-    <option value="github">GitHub @14bd57b</option>
-    <option value="vscode">本地 VS Code</option>
-  </select>
   <span class="st" id="kb-st"></span>
 </div>
 
@@ -698,25 +694,21 @@ actor_loss = mean((pred - vel) ** <span class="k">2</span>)                     
   'use strict';
   var COMMIT='14bd57b53bea27a3951687387520f11fbbe44abb';
   var GH='https://github.com/kvfrans/cfgrl/blob/'+COMMIT+'/';
-  var LOCAL='/Users/jianweizhang/src/cfgrl/';
   var doc=document.getElementById('doc'), body=document.body;
-  var st=document.getElementById('kb-st'), btnEdit=document.getElementById('btn-edit'), sel=document.getElementById('sel-link');
+  var st=document.getElementById('kb-st'), btnEdit=document.getElementById('btn-edit');
   var headSnap=new Set(Array.prototype.slice.call(document.head.children));
   var bodyClass=body.getAttribute('class'), dirty=false, handle=null;
 
   /* ---------- 代码链接 ---------- */
-  function hrefOf(a,mode){
+  function hrefOf(a){
     var p=a.getAttribute('data-path'), l=a.getAttribute('data-line')||'1';
-    if(mode==='vscode') return 'vscode://file'+LOCAL+p+':'+l;
     return GH+p+(/\.mdx?$/.test(p)?'?plain=1':'')+'#L'+l;
   }
+  /* 链接已直接写在 HTML 里；编辑后按 data-path / data-line 重新生成 GitHub 地址 */
   function applyLinks(){
-    var mode=sel.value;
-    document.querySelectorAll('a.cl').forEach(function(a){a.href=hrefOf(a,mode);a.target=mode==='github'?'_blank':'';a.title=a.getAttribute('data-path')+':'+a.getAttribute('data-line');});
-    document.querySelectorAll('a.pl').forEach(function(a){a.target='_blank';});
+    document.querySelectorAll('a.cl').forEach(function(a){a.setAttribute('href',hrefOf(a));a.setAttribute('target','_blank');a.setAttribute('rel','noreferrer');});
+    document.querySelectorAll('a.pl').forEach(function(a){a.setAttribute('target','_blank');a.setAttribute('rel','noreferrer');});
   }
-  try{sel.value=localStorage.getItem('cfgrl-link-mode')||'github';}catch(e){}
-  sel.addEventListener('change',function(){try{localStorage.setItem('cfgrl-link-mode',sel.value);}catch(e){}applyLinks();});
   applyLinks();
 
   /* ---------- 编辑 ---------- */
@@ -761,7 +753,7 @@ actor_loss = mean((pred - vel) ** <span class="k">2</span>)                     
     var cs=c.querySelector('#kb-st'); if(cs) cs.textContent='';
     var ce=c.querySelector('#btn-edit'); if(ce){ce.textContent='✎ 编辑';ce.classList.remove('on');}
     var ds=c.querySelector('#demo-svg'); if(ds) ds.innerHTML='';
-    c.querySelectorAll('a.cl').forEach(function(a){a.setAttribute('href',hrefOf(a,'github'));a.removeAttribute('target');a.removeAttribute('title');});
+    c.querySelectorAll('a.cl').forEach(function(a){a.setAttribute('href',hrefOf(a));a.setAttribute('target','_blank');a.setAttribute('rel','noreferrer');});
     return '<!DOCTYPE html>\n'+c.outerHTML+'\n';
   }
   /* 文件句柄存进 IndexedDB，刷新后仍能直接覆盖原文件 */

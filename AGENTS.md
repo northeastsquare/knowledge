@@ -11,8 +11,8 @@
 - 图里的文字用 HTML 元素写（绝对定位的 div，连线用 SVG）。不要用整张图片，也不要用文字不能选中的 SVG。
 - 文字能选中、能复制。
 - 有编辑模式：右下角「✎ 编辑」打开后能直接改字；「保存」或 ⌘/Ctrl+S 把整页写回原 HTML 文件（Chrome / Edge 用 File System Access API 覆盖原文件，其他浏览器退回到下载）。保存时要去掉 `nav.js` 注入的元素和 `contenteditable` 属性。
-- 图里每个框都链到源码的具体行：`<a class="cl" data-path="仓库内路径" data-line="行号">`。默认打开 GitHub 上固定 commit 的链接，也能切换成本地 VS Code（`vscode://file/...:行号`）。行号要先在源码里核对。
-- 论文出处用 `<a class="pl">` 链到 `pdfs/` 里的本地 PDF 或 arXiv。
+- 图里每个框都链到源码的具体行：`<a class="cl" href="GitHub 固定 commit 的 URL#L行号" data-path="仓库内路径" data-line="行号">`。`href` 直接写在 HTML 里，不依赖脚本生成；不要提供本地 VS Code（`vscode://`）或本机磁盘路径的链接，页面要能跨机器浏览。行号要先在源码里核对。
+- 论文出处用 `<a class="pl">` 链到 arXiv（或 OpenReview 等公开地址），不要链到只在本地的 `pdfs/`。
 
 ### 2. 问答环节
 
@@ -24,5 +24,5 @@
 
 - 新页面要同时加到 `nav.js` 和 `index.html`。
 - `pdfs/` 只存在本地，已写进 `.gitignore`，不要提交、不要推送。
-- 讲到代码时，以本地源码为准，写清文件路径和行号（例如 LeRobot 在 `~/src/lerobot`）。
+- 讲到代码时，写清文件路径和行号，并链接到 GitHub 上固定 commit 的源码。
 - 直接在 `master` 上提交并推送到 `origin master`，不要新建分支。
