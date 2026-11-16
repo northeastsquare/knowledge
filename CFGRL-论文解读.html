@@ -236,6 +236,10 @@ footer{margin-top:70px;font-size:13px;color:var(--ink-3)}
 <li>和常用的 AWR（优势加权回归）比，CFGRL 好在哪里？<a class="go" href="#a4">→ 答案</a></li>
 <li>为什么说目标条件 BC 本身就是一次策略改进，连价值函数都不用学？<a class="go" href="#a5">→ 答案</a></li>
 <li>代码里「有条件」分支和「无条件」分支各自用哪些数据训练？<a class="go" href="#a6">→ 答案</a></li>
+<li>「超过数据」是超过数据的平均，还是能超过数据里最好的那部分？w 调得很大，某个关节角会不会比数据里最好的还好？<a class="go" href="#a7">→ 答案</a></li>
+<li>f 是不是只有 0 和 1：A &gt; 0 记 1，否则记 0？<a class="go" href="#a8">→ 答案</a></li>
+<li>w 是怎么学出来的？classifier-free guidance 这个名字是什么意思？<a class="go" href="#a9">→ 答案</a></li>
+<li>网络的输入输出是什么？推理时两次前向，输入和输出一样吗？进度 t 在训练和推理时有什么不同？<a class="go" href="#a10">→ 答案</a></li>
 </ol>
 
 <h2 id="s1"><span class="no">01</span>问题：BC 太老实，RL 太难训</h2>
@@ -243,7 +247,7 @@ footer{margin-top:70px;font-size:13px;color:var(--ink-3)}
 <table>
 <tr><th></th><th><a class="concept-link" href="RLToken-漫画分镜解读.html#concept-behavior-cloning">行为克隆</a>（BC）</th><th>标准 RL（价值 + 策略梯度）</th><th>CFGRL</th></tr>
 <tr><td>训练方式</td><td>监督学习：模仿数据里的动作</td><td>学 Q 函数，再沿 Q 的梯度或<a class="concept-link" href="为什么取log.html#concept-policy-gradient">策略梯度</a>更新策略</td><td>监督学习：模仿动作，但多带一个条件</td></tr>
-<tr><td>上限</td><td>数据的平均水平。好动作坏动作一起学</td><td>能超过数据</td><td>能超过数据，幅度由 w 控制</td></tr>
+<tr><td>上限</td><td>数据的平均水平。好动作坏动作一起学</td><td>能超过数据</td><td>能超过数据的平均，幅度由 w 控制。每一步仍在数据里的动作中挑，但靠拼接，整条轨迹可以比数据里最好的还好（<a href="#a7">Q7</a>）</td></tr>
 <tr><td>对扩散/流策略</td><td>直接能用</td><td>难：<a class="concept-link" href="pi0-论文解读.html#concept-flow-matching">流匹配</a>模型算不出 log π，梯度要穿过整条去噪链</td><td>直接能用：只多一次前向</td></tr>
 <tr><td>稳定性</td><td>稳</td><td>超参敏感，大模型上常发散</td><td>和 BC 一样稳</td></tr>
 </table>
@@ -274,6 +278,9 @@ f(A) 和 A 同增同减，所以它们的协方差 ≥ 0，即 E<sub>π̂</sub>[
 右边对每个 s 都 ≥ 0，所以整体 ≥ 0。这里 d<sup>π</sup> 是新策略访问到的状态分布。不管新策略走到哪些状态，每个状态上它都不比老习惯差。</li>
 </ol>
 <div class="ans" id="a1"><b class="q">Q1 答</b>因为 f 随优势单调递增，乘上 f 就是把概率从「比平均差」的动作挪到「比平均好」的动作上，所以每个状态下新策略的平均优势 ≥ 0（f(A) 和 A 的协方差非负）。再用性能差分引理，每个状态上都不差，整体回报 J 就不会下降。</div>
+
+<div class="ans" id="a8"><b class="q">Q8 答</b>理论上不是。f 可以是任何非负、单调递增的函数，比如 AWR 用的 e<sup>A/β</sup>。代码里选了最简单的 0/1：<code>((q - v) &gt; 0)</code>，A &gt; 0 记 1，A ≤ 0 记 0（A 正好等于 0 也记 0，因为是严格大于）（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L157" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="157">iql_diffusion.py:157</a>）。代码在第 155 行先算了 <code>exp((q-v)*temperature)</code>，第 157 行又把它覆盖掉了，所以配置里的 <code>temperature</code> 实际不起作用。
+<br><b>为什么选 0/1：</b>f 只取 0 和 1 时，π̂(a|s)·𝟙[A&gt;0] ∝ π̂(a|s, o=好)，就是「只留下好动作的数据分布」。这正好是有条件分支学的东西，所以能直接用条件扩散模型实现（见第 03 节）。0/1 本身分不出「好一点」和「好很多」，这个区分交给 w：w 越大，越偏向 p(好|s,a) 高的动作（见 3.3）。</div>
 
 <h3>2.3 一个三选一的小例子</h3>
 <p>某个状态下数据里只有三种动作，优势已经算好（平均优势为 0）：</p>
@@ -332,6 +339,33 @@ f(A) 和 A 同增同减，所以它们的协方差 ≥ 0，即 E<sub>π̂</sub>[
 </table>
 <div class="ans" id="a2"><b class="q">Q2 答</b>选 f(A) = p(o|s,a)（o 表示「这是好动作」），贝叶斯公式说 π̂(a|s)·f(A) ∝ π̂(a|s,o)，所以条件策略就是乘积改进策略。再加指数 w，π<sub>w</sub> ∝ π̂<sup>1−w</sup>·π̂(a|s,o)<sup>w</sup>，对它取 score 正好是 CFG 公式：无条件 + w ×（有条件 − 无条件）。</div>
 <div class="ans" id="a3"><b class="q">Q3 答</b>「可控」指 w 在推理时调：训练一次得到有条件、无条件两个速度场，采样时换个 w 就是另一个改进幅度，不用重训。w 越大，平均优势越高，但离数据越远（KL 越大），优势估计也越不可信。所以 w 是一个取舍，不是越大越好。官方代码在 ExORL 上把 w 从 1 扫到 100 再挑最好的（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L342" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="342">iql_diffusion.py:342</a>）。</div>
+
+<div class="ans" id="a7"><b class="q">Q7 答</b><b>「超过数据」首先指超过数据的平均。</b>BC 学的是平均，CFGRL 往好动作那边偏，所以比平均好。
+<table>
+<tr><th>问题</th><th>能不能</th><th>原因</th></tr>
+<tr><td>超过平均</td><td>能</td><td>放大「好动作」的条件</td></tr>
+<tr><td>在某个状态上，选到数据里没有的更好动作</td><td>理论上不能</td><td>π<sub>w</sub> ∝ π̂(a|s)·p(好|s,a)<sup>w</sup>。数据里没有的动作 π̂ ≈ 0，乘出来还是 ≈ 0。w 越大，越收缩到<b>数据里最好的那个动作</b></td></tr>
+<tr><td>整条轨迹超过数据里最好的那条</td><td>有时能</td><td>拼接（stitching）：A 轨迹前半段好、B 轨迹后半段好，每一步各挑最好的，拼出一条数据里没有的更好轨迹</td></tr>
+</table>
+拼接的前提是「好」按每一步的价值算（这里是优势 A = Q − V，靠价值函数把后面的回报传回来）。如果「好」只按整条轨迹的总分算，就拼不了，最多接近数据里最好的那部分。
+<br><b>那 w 很大时，某个关节角会不会超过数据里最好的？</b>理论上不会，见上表第二行。实际中会跑出去，有两种情况：
+<table>
+<tr><th>情况</th><th>关节例子</th><th>好不好</th></tr>
+<tr><td>泛化</td><td>同一个观测，数据里往往只有一条。网络从相似观测里学，给出的关节角可能比这一条更好</td><td>好，这是真正的改进</td></tr>
+<tr><td>外推（w 太大）</td><td>CFG 实际是沿「好 − 平均」的方向往外推（v = v<sub>unc</sub> + w·(v<sub>cond</sub> − v<sub>unc</sub>)）。推过头，关节角跑出数据范围</td><td>多半坏。那里没数据，Q 也不可信</td></tr>
+</table>
+这和图像 CFG 的 w 太大会过饱和、变形是一回事。所以 w 要扫一遍挑最好的，不是越大越好（Q3）。
+<br><b>一句话：</b>每一步跳不出数据里的动作；多步拼起来，整条轨迹可以比数据里最好的还好。</div>
+
+<div class="ans" id="a9"><b class="q">Q9 答</b><b>w 不是学出来的。</b>训练时根本没有 w。网络只学两样东西：有条件分支 π̂(a|s,o)（好动作长什么样）和无条件分支 π̂(a|s)（平均动作长什么样）。w 是推理时手动调的旋钮：每个去噪步算 v = v<sub>unc</sub> + w·(v<sub>cond</sub> − v<sub>unc</sub>)，(v<sub>cond</sub> − v<sub>unc</sub>) 是「往好的方向」，w 决定走多远。怎么选：几个值都跑一遍，看回报或成功率。官方代码扫 {1, 1.5, 3, 5, 10, 30, 100}（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L342" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="342">iql_diffusion.py:342</a>）。
+<br><b>名字的由来：</b>
+<table>
+<tr><th>方法</th><th>怎么往「好」的方向推</th></tr>
+<tr><td>Classifier guidance（Dhariwal &amp; Nichol 2021）</td><td>另外训练一个分类器 p(y|x)，用它的梯度推</td></tr>
+<tr><td>Classifier-<b>free</b> guidance（Ho &amp; Salimans 2022）</td><td>不训练分类器，用「有条件 − 无条件」代替它的梯度</td></tr>
+</table>
+能代替，是因为贝叶斯公式：∇log p(y|x) = ∇log p(x|y) − ∇log p(x)，右边两项正好是有条件模型和无条件模型。「free」就是不需要分类器。放到 CFGRL 里，那个「分类器」就是 p(好|s,a)，即「这个动作好不好」；CFGRL 不单独训练它，用两个策略的差代替。
+<br>注意：论文题目是《Diffusion Guidance Is a Controllable Policy Improvement Operator》，CFGRL 是 CFG + RL 的缩写，它借用了 CFG 这个方法。</div>
 
 <h3 id="s3-3">3.3 一个容易忽略的细节：硬标签为什么还能继续锐化</h3>
 <div class="box mine"><h4>说明：这一段是笔者的分析，不是论文原文</h4>
@@ -418,6 +452,30 @@ action = clip(x, -<span class="k">1</span>, <span class="k">1</span>)</pre>
 <li><b>评估：扫一遍 w。</b>每次评估对 cfg ∈ {1, 1.5, 3, 5, 10, 30, 100} 各跑一遍，分别记日志，<code>evaluation/episode.return</code> 记的是其中最好的那个。
 <p><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L342" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="342">cfg 扫描:342</a><a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L396" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="396">取 max:396</a></p></li>
 </ol>
+
+<div class="ans" id="a10"><b class="q">Q10 答</b><b>网络的输入和输出</b>（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L103" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="103">DiffusionPolicy:103</a>）：四个输入拼成一条向量送进 MLP。
+<table>
+<tr><th></th><th>是什么</th></tr>
+<tr><td>输入 s</td><td>观测</td></tr>
+<tr><td>输入 c</td><td>条件标签：1 = 好，0 = 空，变成 32 维 embedding</td></tr>
+<tr><td>输入 x<sub>t</sub></td><td>当前带噪的动作，维度 = 动作维度</td></tr>
+<tr><td>输入 t</td><td>去噪进度，0 到 1</td></tr>
+<tr><td>输出 v</td><td>速度，维度 = 动作维度，意思是「x 该往哪边走」</td></tr>
+</table>
+<b>两次前向</b>（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L211" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="211">iql_diffusion.py:211</a>）：s、x<sub>t</sub>、t 完全一样，只有 c 不同。所以输出不一样。
+<table>
+<tr><th></th><th>c</th><th>输出</th></tr>
+<tr><td>第一次</td><td>1（好）</td><td>v<sub>cond</sub>：往好动作走</td></tr>
+<tr><td>第二次</td><td>0（空）</td><td>v<sub>unc</sub>：往平均动作走</td></tr>
+</table>
+两次前向在<b>每个去噪步</b>都要做，所以一个动作要跑网络 2K 次。
+<br><b>进度 t：</b>x<sub>t</sub> = (1−t)·x<sub>0</sub> + t·x<sub>1</sub>，t = 0 是纯噪声，t = 1 是真实动作（和 DDPM 方向相反）。
+<table>
+<tr><th></th><th>t 怎么取</th><th>每次用几个 t</th></tr>
+<tr><td>训练（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L164" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="164">:164</a>）</td><td>每个样本随机抽一个：0, 1/K, …, 1</td><td>一个样本一个 t，跑一次就算损失</td></tr>
+<tr><td>推理（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L209" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="209">:209</a>）</td><td>按顺序：0, 1/K, …, (K−1)/K</td><td>K 个 t，一步接一步</td></tr>
+</table>
+推理时不直接输入 t = 1。t = 1 表示「已经到终点」，这时的 v 没用；动作是从噪声一小步一小步走出来的：每步用这一步的 t 跑两次网络，按 w 组合，再 x ← x + v/K。训练时随机抽 t，是为了让网络在 0 到 1 的每个位置都会给方向，因为推理时每个位置都会用到。</div>
 
 <h3 id="s6-2">6.2 不要价值函数：<code>ogbench/agents/cfgrl.py</code>（OGBench 目标条件）</h3>
 <ol class="steps">
@@ -574,7 +632,7 @@ actor_loss = mean((pred - vel) ** <span class="k">2</span>)                     
 </div>
 
 <!-- ③ 推理 -->
-<div class="frame" style="left:20px;top:490px;width:1060px;height:220px"><div class="ft">③ 推理 · 每次出动作</div></div>
+<div class="frame" style="left:20px;top:490px;width:1060px;height:220px"><div class="ft">③ 推理 · 每次出动作（两次前向 → CFG → 欧拉一步，重复 K 次，t = 0, 1/K, …, (K−1)/K）</div></div>
 <div class="nd data" style="left:40px;top:540px;width:160px;min-height:150px">
   <div class="nt">起点噪声</div>
   <span class="nf">x ~ N(0, I)</span>
