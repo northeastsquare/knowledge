@@ -179,6 +179,13 @@ footer{margin-top:70px;font-size:13px;color:var(--ink-3)}
 <li>没配上真值的 query 怎么监督？"无物体"类为什么权重只有 0.1？<a class="go" href="#a4">→ 答案</a></li>
 <li>位置编码加在哪里？为什么只加在 Q、K 上，V 不加？<a class="go" href="#a5">→ 答案</a></li>
 <li>ACT 从 DETR 搬了什么、改了什么？为什么 ACT 不用匈牙利匹配？<a class="go" href="#a6">→ 答案</a></li>
+<li>为什么说匈牙利匹配在训练早期会"来回跳"？<a class="go" href="#a7">→ 答案</a></li>
+<li>DINO 的对比去噪具体怎么做？为什么能加快收敛？<a class="go" href="#a8">→ 答案</a></li>
+<li>object query 最后会对应输出框，那它算不算 anchor？为什么说它"没有明确的位置"？<a class="go" href="#a9">→ 答案</a></li>
+<li>DETR 小物体检不好，根本原因是什么？<a class="go" href="#a10">→ 答案</a></li>
+<li>Deformable DETR 的"多尺度稀疏注意力"怎么做？为什么能改进？<a class="go" href="#a11">→ 答案</a></li>
+<li>框为什么不准？DINO 的 look forward twice 是什么？看三次会不会更准？<a class="go" href="#a12">→ 答案</a></li>
+<li>后续改进这么多，ACT 为什么不换成 DINO？ACT 用的是 ResNet-10 还是 ResNet-18？<a class="go" href="#a13">→ 答案</a></li>
 </ol>
 
 <h2 id="s1"><span class="no">01</span>问题：检测器里的手工部件</h2>
@@ -283,7 +290,7 @@ footer{margin-top:70px;font-size:13px;color:var(--ink-3)}
 <div class="box note"><h4>编码器有多重要</h4>
 <p style="margin:0">论文表 2：编码器 0 层时 36.7 AP，3 层 40.1，6 层 40.6，12 层 41.6。没有编码器，大物体 AP<sub>L</sub> 掉 6 个点。论文的注意力可视化显示，编码器已经把各个物体"分开"了，解码器只需盯住物体的边缘（头、脚）来定框。<a class="pl" href="https://arxiv.org/pdf/2005.12872" target="_blank" rel="noreferrer">论文 §4.2</a></p></div>
 <div class="box warn"><h4>收敛慢</h4>
-<p style="margin:0">DETR 要几百个 epoch，Faster R-CNN 只要 36 个左右。主要原因：一对一匹配让每个真值每步只有一个正样本，且匹配结果在训练早期不稳定；交叉注意力开始时对 850 个位置几乎均匀，要很久才学会聚焦。Deformable DETR、DN-DETR、DINO 等后续工作主要解决这一点。</p></div>
+<p style="margin:0">DETR 要几百个 epoch，Faster R-CNN 只要 36 个左右。主要原因：一对一匹配让每个真值每步只有一个正样本，且匹配结果在训练早期不稳定；交叉注意力开始时对 850 个位置几乎均匀，要很久才学会聚焦。Deformable DETR、DN-DETR、DINO 等后续工作主要解决这一点，详见 <a href="#s7">第 07 节</a>。</p></div>
 
 <h2 id="s6"><span class="no">06</span>ACT 照搬了什么，改了什么</h2>
 <p>ACT 的原始代码就是在 DETR 代码上改的（目录结构、<code>detr/</code> 子目录、<code>FrozenBatchNorm2d</code>、位置编码都原样保留）。LeRobot 重写成了一个文件，但结构一一对应。</p>
@@ -303,7 +310,83 @@ footer{margin-top:70px;font-size:13px;color:var(--ink-3)}
 </table>
 <div class="ans" id="a6"><b class="q">Q6 答</b>搬了：冻结 BN 的 ResNet + 1×1 投影、2D 正弦位置编码只加 Q/K、post-norm 编码器、"全 0 输入 + 可学习 query"的并行解码器。改了：输出从"无序的框集合"变成"有序的动作序列"，再加了 CVAE 的 z。动作序列有天然顺序，第 i 个槽就该预测第 t+i 步，对应关系是固定的，不需要找排列，所以不用匈牙利匹配，直接逐位置算 L1。也没有"无物体"类，不需要分类头。</div>
 
-<h2 id="s7"><span class="no">07</span>架构图</h2>
+<h2 id="s7"><span class="no">07</span>DETR 的缺点、后续改进，以及 ACT 为什么不用</h2>
+<p>DETR 有四个出名的毛病：训练慢、匹配不稳、小物体差、框不够准。后续工作一个个去修。下表先给总览，后面逐条讲原因和做法。</p>
+<table>
+<tr><th>毛病</th><th>根本原因</th><th>后续怎么修</th><th>ACT 里还有吗</th></tr>
+<tr><td>训练慢（500 epoch）</td><td>匹配不稳 + 注意力一开始均匀</td><td>DN-DETR / DINO 去噪；Deformable 局部采样</td><td>没有：不做匹配</td></tr>
+<tr><td>匹配来回跳</td><td>每步按当前预测重新匹配</td><td>DN-DETR 去噪；DINO 对比去噪</td><td>没有：槽和目标固定对应</td></tr>
+<tr><td>query 位置不明确</td><td>query 是隐式向量，不是框</td><td>DAB-DETR 锚框 query；DINO 混合 query 选择</td><td>用不上：query 表示时间步</td></tr>
+<tr><td>小物体差</td><td>只用步长 32 的 C5；全局注意力 O(N²)</td><td>Deformable 多尺度稀疏注意力</td><td>影响小：token 少，有腕部相机</td></tr>
+<tr><td>框不够准</td><td>每层从头回归，层与层不接力</td><td>逐层修框；DINO look forward twice</td><td>用不上：没有框</td></tr>
+</table>
+
+<h3 id="s7-match">7.1 匹配为什么会"来回跳"</h3>
+<p>每个训练步，DETR 都按<b>当前</b>的预测重新跑一次匈牙利匹配 <a class="cl" href="https://github.com/facebookresearch/detr/blob/29901c51d7fe8712168b8d0d64351170bc0f83e0/models/detr.py#L225" target="_blank" rel="noreferrer" data-path="models/detr.py" data-line="225">matcher 调用:225</a><a class="cl" href="https://github.com/facebookresearch/detr/blob/29901c51d7fe8712168b8d0d64351170bc0f83e0/models/matcher.py#L35" target="_blank" rel="noreferrer" data-path="models/matcher.py" data-line="35">matcher.py:35</a>。匹配结果是"谁的代价最小谁拿走"，代价差一点点，结果就整个换人。</p>
+<div class="ans" id="a7"><b class="q">Q7 答</b>训练早期，q3 和 q7 的预测都落在物体 A 附近，代价只差一点点 → 这一步 A 分给 q3，q7 的目标是 ∅ → 下一步预测稍微一动，A 改分给 q7，q3 的目标变成 ∅ → 同一个 query 的学习目标一会儿是"框住 A"，一会儿是"无物体" → 相邻两步的梯度方向相反，互相抵消 → 收敛很慢。DN-DETR 专门定义了一个"不稳定度"指标来量这件事：早期训练时，相邻两个 epoch 之间有相当多的 query 换了配对。<a class="pl" href="https://arxiv.org/abs/2203.01305" target="_blank" rel="noreferrer">DN-DETR §3</a></div>
+
+<h3 id="s7-cdn">7.2 DINO 的对比去噪（只在训练时用）</h3>
+<p>思路：另外造一批"答案事先知道"的 query。它们不参加匹配，目标固定，梯度就稳定。做法是把真框加上噪声当作输入，让 decoder 去还原。</p>
+<table>
+<tr><th>步骤</th><th>做法</th><th>代码</th></tr>
+<tr><td>① 复制真框</td><td>每个真框复制成若干组，每组一正一负</td><td><a class="cl" href="https://github.com/IDEA-Research/DINO/blob/d84a491d41898b3befd8294d1cf2614661fc0953/models/dino/dn_components.py#L71" target="_blank" rel="noreferrer" data-repo="dino" data-path="models/dino/dn_components.py" data-line="71">positive_idx:71</a><a class="cl" href="https://github.com/IDEA-Research/DINO/blob/d84a491d41898b3befd8294d1cf2614661fc0953/models/dino/dn_components.py#L74" target="_blank" rel="noreferrer" data-repo="dino" data-path="models/dino/dn_components.py" data-line="74">negative_idx:74</a></td></tr>
+<tr><td>② 类别加噪</td><td>一部分标签随机换成别的类</td><td><a class="cl" href="https://github.com/IDEA-Research/DINO/blob/d84a491d41898b3befd8294d1cf2614661fc0953/models/dino/dn_components.py#L63" target="_blank" rel="noreferrer" data-repo="dino" data-path="models/dino/dn_components.py" data-line="63">label_noise:63</a></td></tr>
+<tr><td>③ 正样本</td><td>框加<b>小</b>噪声，目标：还原真框 + 预测真类别</td><td rowspan="2"><a class="cl" href="https://github.com/IDEA-Research/DINO/blob/d84a491d41898b3befd8294d1cf2614661fc0953/models/dino/dn_components.py#L86" target="_blank" rel="noreferrer" data-repo="dino" data-path="models/dino/dn_components.py" data-line="86">rand_part:86</a></td></tr>
+<tr><td>④ 负样本</td><td>框加<b>大</b>噪声，目标：预测"无物体"</td></tr>
+<tr><td>⑤ 注意力遮罩</td><td>普通 query 看不到去噪 query（防止偷看答案）；各组去噪 query 之间也互相看不到</td><td><a class="cl" href="https://github.com/IDEA-Research/DINO/blob/d84a491d41898b3befd8294d1cf2614661fc0953/models/dino/dn_components.py#L115" target="_blank" rel="noreferrer" data-repo="dino" data-path="models/dino/dn_components.py" data-line="115">attn_mask:115</a></td></tr>
+<tr><td>⑥ 算损失</td><td>去噪 query 直接和自己的源真框算损失，不用匹配；推理时整批去掉</td><td><a class="cl" href="https://github.com/IDEA-Research/DINO/blob/d84a491d41898b3befd8294d1cf2614661fc0953/models/dino/dn_components.py#L20" target="_blank" rel="noreferrer" data-repo="dino" data-path="models/dino/dn_components.py" data-line="20">prepare_for_cdn:20</a></td></tr>
+</table>
+<p>代码里噪声加在框的四个角 (x₀, y₀, x₁, y₁) 上，幅度按框的半宽、半高缩放。正负样本只差在噪声的幅度：</p>
+<div class="fm">$$\tilde b=b_{\mathrm{xyxy}}+\lambda\cdot s\odot u\odot\tfrac12(w,\,h,\,w,\,h),\qquad s\in\{-1,+1\}^4,\qquad u\sim\begin{cases}U[0,1)^4 & \text{正样本}\\[2pt] U[1,2)^4 & \text{负样本}\end{cases}$$</div>
+<div class="ans" id="a8"><b class="q">Q8 答</b>有两层作用。(1) 稳：去噪 query 的目标事先知道、每步都一样，不受匹配跳动影响。decoder 先学会"把附近的框修准"这件事，普通 query 也跟着受益。这是 DN-DETR 已有的思路。(2) 对比：DINO 加了负样本。它们离真框不远、但偏得多，目标是"无物体"。这教会模型：同一个物体旁边、偏得多的框要拒掉，所以重复框少了。DN-DETR 只有正样本。<a class="pl" href="https://arxiv.org/abs/2203.03605" target="_blank" rel="noreferrer">DINO §3.3</a></div>
+
+<h3 id="s7-query">7.3 object query 算不算 anchor</h3>
+<table>
+<tr><th></th><th>anchor（Faster R-CNN）</th><th>DETR object query</th><th>DAB-DETR query</th></tr>
+<tr><td>是什么</td><td>显式的框 (x, y, w, h)</td><td>256 维可学习向量</td><td>显式的框 (x, y, w, h)</td></tr>
+<tr><td>位置先验</td><td>人定好，铺满整张图</td><td>没有，要自己学</td><td>有，并且每层更新</td></tr>
+<tr><td>输出</td><td>相对 anchor 的偏移</td><td>从特征直接回归出框</td><td>相对上一层框的偏移</td></tr>
+<tr><td>交叉注意力看哪里</td><td>（不用注意力）</td><td>一开始全图乱看</td><td>由 (x, y) 定中心，(w, h) 定范围</td></tr>
+</table>
+<div class="ans" id="a9"><b class="q">Q9 答</b>算"半个 anchor"。每个 query 最后确实对应一个输出槽，论文 Fig.7 也显示每个槽会偏好某些区域和大小。但这种偏好是训练出来的、很模糊，query 本身不是一个框。交叉注意力的 Q 由"内容 + query"组成，一开始不知道该往图的哪里看，只能全图搜，这也是收敛慢的原因之一。DAB-DETR 把 query 直接定义成 4 维框：用 (x, y) 的正弦编码当位置 query，用 (w, h) 调注意力的宽窄，每层再修一次框。这样 query 就有了明确的位置。<a class="pl" href="https://arxiv.org/abs/2201.12329" target="_blank" rel="noreferrer">DAB-DETR</a></div>
+
+<h3 id="s7-small">7.4 小物体为什么差</h3>
+<p>DETR 只用 ResNet 最后一层 C5，步长 32。一个 32×32 像素的物体，在特征图上只剩 1 格。想换高分辨率的层，又被全局自注意力的平方开销卡住：</p>
+<div class="fm">$$\text{编码器自注意力开销}\;\propto\;N^2,\qquad N=\frac{H}{s}\cdot\frac{W}{s}$$</div>
+<table>
+<tr><th>特征层</th><th>800×1200 的图对应 N</th><th>N²（注意力配对数）</th></tr>
+<tr><td>C5（步长 32）</td><td>25×38 ≈ 950</td><td>≈ 90 万</td></tr>
+<tr><td>C4（步长 16）</td><td>50×75 = 3750</td><td>≈ 1400 万</td></tr>
+<tr><td>C3（步长 8）</td><td>100×150 = 15000</td><td>≈ 2.25 亿</td></tr>
+</table>
+<div class="ans" id="a10"><b class="q">Q10 答</b>根本原因是两件事连在一起：小物体需要高分辨率特征，而全局注意力的开销是 N²，高分辨率层的 N 太大，用不起。所以 DETR 只能用 C5，也没法像 FPN 那样融合多个尺度。论文表 1 里 DETR（R50）的 AP<sub>S</sub> 是 20.5，Faster R-CNN-FPN+ 是 26.6，低约 6 个点；AP<sub>L</sub> 反而更高（61.1 对 53.4）。</div>
+
+<h3 id="s7-deform">7.5 Deformable DETR：多尺度稀疏注意力</h3>
+<p>思路：每个 query 不再和全部 N 个位置算注意力，只在自己的参考点附近采几个点。采哪几个点，由网络自己预测。</p>
+<div class="fm">$$\mathrm{MSDeformAttn}\big(z_q,\hat p_q,\{x^l\}_{l=1}^{L}\big)=\sum_{m=1}^{M}W_m\Big[\sum_{l=1}^{L}\sum_{k=1}^{K}A_{mlqk}\cdot W'_m\,x^l\big(\phi_l(\hat p_q)+\Delta p_{mlqk}\big)\Big],\qquad \sum_{l,k}A_{mlqk}=1$$</div>
+<table>
+<tr><th>符号</th><th>含义</th><th>代码</th></tr>
+<tr><td>$\hat p_q$</td><td>query 的参考点（归一化坐标），$\phi_l$ 把它换算到第 l 层</td><td><a class="cl" href="https://github.com/fundamentalvision/Deformable-DETR/blob/11169a60c33333af00a4849f1808023eba96a931/models/ops/modules/ms_deform_attn.py#L104" target="_blank" rel="noreferrer" data-repo="ddetr" data-path="models/ops/modules/ms_deform_attn.py" data-line="104">sampling_locations:104</a></td></tr>
+<tr><td>$\Delta p_{mlqk}$</td><td>采样偏移，由 $z_q$ 经一个线性层直接预测</td><td><a class="cl" href="https://github.com/fundamentalvision/Deformable-DETR/blob/11169a60c33333af00a4849f1808023eba96a931/models/ops/modules/ms_deform_attn.py#L55" target="_blank" rel="noreferrer" data-repo="ddetr" data-path="models/ops/modules/ms_deform_attn.py" data-line="55">sampling_offsets:55</a></td></tr>
+<tr><td>$A_{mlqk}$</td><td>采样权重，也由 $z_q$ 直接预测，不用 Q·K 点积</td><td><a class="cl" href="https://github.com/fundamentalvision/Deformable-DETR/blob/11169a60c33333af00a4849f1808023eba96a931/models/ops/modules/ms_deform_attn.py#L56" target="_blank" rel="noreferrer" data-repo="ddetr" data-path="models/ops/modules/ms_deform_attn.py" data-line="56">attention_weights:56</a></td></tr>
+<tr><td>$x^l(\cdot)$</td><td>在第 l 层特征上双线性插值取值</td><td><a class="cl" href="https://github.com/fundamentalvision/Deformable-DETR/blob/11169a60c33333af00a4849f1808023eba96a931/models/ops/functions/ms_deform_attn_func.py#L41" target="_blank" rel="noreferrer" data-repo="ddetr" data-path="models/ops/functions/ms_deform_attn_func.py" data-line="41">core_pytorch:41</a></td></tr>
+<tr><td>M, L, K</td><td>8 头 × 4 层（步长 8/16/32/64）× 4 点 = 每个 query 只取 128 个点</td><td></td></tr>
+</table>
+<div class="ans" id="a11"><b class="q">Q11 答</b>两点原因。(1) 开销从 N² 降到 N：每个 query 只取 128 个点，和 N 无关。这样就用得起步长 8 的高分辨率层，还能 4 个尺度一起用，小物体变好。(2) 一开始就看局部：DETR 刚开始时注意力平均铺在整张图上，要很久才学会聚焦；Deformable 从一开始就在参考点附近采样，相当于自带"往哪看"的先验。结果是训练从 500 epoch 降到 50 epoch，AP<sub>S</sub> 也明显提高。<a class="pl" href="https://arxiv.org/abs/2010.04159" target="_blank" rel="noreferrer">Deformable DETR §4.1</a></div>
+
+<h3 id="s7-lft">7.6 框为什么不准，look forward twice 是什么</h3>
+<p>原版 DETR 每层 decoder 都用 FFN 从特征直接回归出框，后一层不接着修前一层的框（辅助损失只是让每层都单独学一遍）。再加上只有 C5 特征、query 位置不明确，框的边缘定得不细。</p>
+<p>Deformable DETR 加了<b>逐层修框</b>：第 i 层只预测一个偏移 Δᵢ，加到上一层的框上。为了训练稳定，传给下一层前把框 detach（切断梯度）<a class="cl" href="https://github.com/fundamentalvision/Deformable-DETR/blob/11169a60c33333af00a4849f1808023eba96a931/models/deformable_transformer.py#L351" target="_blank" rel="noreferrer" data-repo="ddetr" data-path="models/deformable_transformer.py" data-line="351">detach:351</a>。这叫 look forward once：</p>
+<div class="fm">$$b_i=\sigma\!\Big(\sigma^{-1}\big(\mathrm{sg}[\,b_{i-1}]\big)+\Delta_i\Big),\qquad \mathcal L_i=\mathcal L_{\mathrm{box}}(b_i,\,b^{*})\;\Rightarrow\;\text{梯度只到 }\Delta_i$$</div>
+<p>sg 表示 stop-gradient。DINO 的做法：传给下一层的输入照样 detach <a class="cl" href="https://github.com/IDEA-Research/DINO/blob/d84a491d41898b3befd8294d1cf2614661fc0953/models/dino/deformable_transformer.py#L749" target="_blank" rel="noreferrer" data-repo="dino" data-path="models/dino/deformable_transformer.py" data-line="749">detach:749</a>，但另外保存一份<b>没 detach</b> 的框 <a class="cl" href="https://github.com/IDEA-Research/DINO/blob/d84a491d41898b3befd8294d1cf2614661fc0953/models/dino/deformable_transformer.py#L753" target="_blank" rel="noreferrer" data-repo="dino" data-path="models/dino/deformable_transformer.py" data-line="753">ref_points:753</a>。算第 i 层的损失时，用的是这份没 detach 的 $b_{i-1}$ <a class="cl" href="https://github.com/IDEA-Research/DINO/blob/d84a491d41898b3befd8294d1cf2614661fc0953/models/dino/dino.py#L279" target="_blank" rel="noreferrer" data-repo="dino" data-path="models/dino/dino.py" data-line="279">dino.py:279</a>：</p>
+<div class="fm">$$b_i^{\mathrm{pred}}=\sigma\!\Big(\sigma^{-1}\big(b_{i-1}\big)+\Delta_i\Big),\qquad \frac{\partial\mathcal L_i}{\partial\theta_{i-1}}\neq 0\;\Rightarrow\;\theta_{i-1}\text{ 同时被 }\mathcal L_{i-1}\text{ 和 }\mathcal L_i\text{ 训练}$$</div>
+<div class="ans" id="a12"><b class="q">Q12 答</b>"看两次"是说第 i−1 层的参数被两份损失训练：自己这层的，和下一层的。为什么会更准：第 i 层的特征更好，它的损失能告诉第 i−1 层"什么样的框好修"。前一层学的就变成"给下一层一个好起点"，不再只顾自己。看三次会不会更准：论文只做了两次，没试三次，下面是推断。梯度穿过的层越多，就越接近"完全不 detach"；当初加 detach 就是因为不切断时训练不稳。这个技巧在论文消融里只带来约 0.4 AP，收益本来就小。根本原因是一个折中：切断梯度换来稳定，传梯度换来层与层配合。"两次"是一个折中点，数字本身没什么特别。</div>
+
+<h3 id="s7-act">7.7 ACT 为什么不换成 DINO</h3>
+<p>先核对 backbone：ACT 用的是 <b>ResNet-18</b> <a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/policies/act/configuration_act.py#L98" target="_blank" rel="noreferrer" data-repo="lerobot" data-path="src/lerobot/policies/act/configuration_act.py" data-line="98">vision_backbone:98</a>，ACT 原论文也是 ResNet-18。torchvision 里没有 ResNet-10。</p>
+<div class="ans" id="a13"><b class="q">Q13 答</b>DINO 修的毛病，大多出在"检测框"这件事上，而 ACT 已经把这部分扔掉了。(1) 匹配是根子：DN 和 DINO 的主要技巧都是为了稳住匈牙利匹配；ACT 第 i 个槽固定对第 t+i 步，没有匹配。(2) 输出不同：DINO 输出无序的框，ACT 输出有序的关节角，锚框、query 选择、逐层修框都没地方放。(3) 训练慢不是 ACT 的瓶颈：一个任务约 50 条示教，训练几小时就够。(4) 不是不知道：DINO 是 2022 年 3 月的工作，ACT 是 2023 年 4 月；作者有意选最简单的 DETR 骨架，把新东西放在 CVAE 和动作分块上。(5) 可能有用的只有多尺度特征，也许能帮着看清小零件，但 ALOHA 有腕部相机近距离看，收益不确定。</div>
+
+<h2 id="s8"><span class="no">08</span>架构图</h2>
 <p class="hint">图里文字可选中、复制。点右下角「✎ 编辑」后可直接改字，按「保存」或 ⌘/Ctrl+S 写回这个 HTML 文件（Chrome / Edge 第一次保存时选中本文件即可覆盖；其他浏览器会下载一份新文件）。编辑模式下点击 ⌗ 代码芯片可以改它指向的文件和行号。代码链接都指向 GitHub 上固定 commit 的源码，论文链接指向 arXiv，换台机器也能打开。</p>
 </div><!-- /wrap -->
 
@@ -448,7 +531,7 @@ footer{margin-top:70px;font-size:13px;color:var(--ink-3)}
 </div><!-- /wide -->
 
 <div class="wrap">
-<h2 id="s8"><span class="no">08</span>代码索引</h2>
+<h2 id="s9"><span class="no">09</span>代码索引</h2>
 <table>
 <tr><th>功能</th><th>位置</th></tr>
 <tr><td>模型整体 / 前向</td><td><a class="cl" href="https://github.com/facebookresearch/detr/blob/29901c51d7fe8712168b8d0d64351170bc0f83e0/models/detr.py#L21" target="_blank" rel="noreferrer" data-path="models/detr.py" data-line="21">DETR:21</a><a class="cl" href="https://github.com/facebookresearch/detr/blob/29901c51d7fe8712168b8d0d64351170bc0f83e0/models/detr.py#L44" target="_blank" rel="noreferrer" data-path="models/detr.py" data-line="44">forward:44</a></td></tr>
@@ -464,7 +547,7 @@ footer{margin-top:70px;font-size:13px;color:var(--ink-3)}
 <tr><td>训练循环</td><td><a class="cl" href="https://github.com/facebookresearch/detr/blob/29901c51d7fe8712168b8d0d64351170bc0f83e0/engine.py#L33" target="_blank" rel="noreferrer" data-path="engine.py" data-line="33">engine.py:33</a></td></tr>
 </table>
 
-<h2 id="s9"><span class="no">09</span>读完做几道题</h2>
+<h2 id="s10"><span class="no">10</span>读完做几道题</h2>
 <p class="hint">先自己想，再点开看答案。</p>
 <ol class="quiz">
 <li><p>一张图有 3 个物体。100 个槽里，有几个槽会算框损失？其余槽的分类目标是什么？</p>
@@ -481,6 +564,10 @@ footer{margin-top:70px;font-size:13px;color:var(--ink-3)}
 <details><summary>看答案</summary><div>动作序列有顺序，第 i 个槽固定对应第 t+i 步，目标和槽一一对应，不需要找排列。DETR 的框没有顺序，必须先匹配才能知道哪个槽该对哪个真值。见 <a href="#a6">Q6 答</a>。</div></details></li>
 <li><p>交叉注意力里，K 加了位置编码，V 没加。如果 V 也加上 pos，最直接的变化是什么？</p>
 <details><summary>看答案</summary><div>取回来的内容里会混进位置向量，解码器残差流里内容和位置就搅在一起了。DETR 的设计是位置每层只用来算"看哪里"，内容保持干净。见 <a href="#a5">Q5 答</a>。</div></details></li>
+<li><p>DINO 的去噪 query 为什么要用注意力遮罩挡住普通 query？</p>
+<details><summary>看答案</summary><div>去噪 query 是从真框加噪声得来的，里面带着答案。普通 query 如果能看到它们，就会直接抄答案，推理时没有去噪 query 就不会做了。见 <a href="#a8">Q8 答</a>。</div></details></li>
+<li><p>Deformable 注意力里，一个 query 要取多少个点？为什么和图像大小无关？</p>
+<details><summary>看答案</summary><div>8 头 × 4 层 × 4 点 = 128 个点。采样位置是"参考点 + 网络预测的偏移"，个数固定，不随 N 变。所以开销是 O(N)，用得起高分辨率特征。见 <a href="#a11">Q11 答</a>。</div></details></li>
 </ol>
 
 <footer>论文：Carion, Massa, Synnaeve, Usunier, Kirillov, Zagoruyko. End-to-End Object Detection with Transformers. ECCV 2020，arXiv:2005.12872。代码：<a href="https://github.com/facebookresearch/detr/tree/29901c51d7fe8712168b8d0d64351170bc0f83e0" target="_blank" rel="noreferrer">github.com/facebookresearch/detr @ 29901c5</a>；ACT 对照：<a href="https://github.com/huggingface/lerobot/tree/b6ec0060779550c0a157ae34feb89e0cf86012a8" target="_blank" rel="noreferrer">github.com/huggingface/lerobot @ b6ec006</a>。</footer>
@@ -498,7 +585,9 @@ footer{margin-top:70px;font-size:13px;color:var(--ink-3)}
   'use strict';
   var REPOS={
     detr:{gh:'https://github.com/facebookresearch/detr/blob/29901c51d7fe8712168b8d0d64351170bc0f83e0/'},
-    lerobot:{gh:'https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/'}
+    lerobot:{gh:'https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/'},
+    ddetr:{gh:'https://github.com/fundamentalvision/Deformable-DETR/blob/11169a60c33333af00a4849f1808023eba96a931/'},
+    dino:{gh:'https://github.com/IDEA-Research/DINO/blob/d84a491d41898b3befd8294d1cf2614661fc0953/'}
   };
   var doc=document.getElementById('doc'), body=document.body;
   var st=document.getElementById('kb-st'), btnEdit=document.getElementById('btn-edit');
