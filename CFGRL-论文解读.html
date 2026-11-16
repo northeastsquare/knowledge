@@ -252,13 +252,13 @@ footer{margin-top:70px;font-size:13px;color:var(--ink-3)}
 <h2 id="s2"><span class="no">02</span>理论一：乘一个「越好越大」的权重，就是策略改进</h2>
 <h3>2.1 先定几个符号</h3>
 <table>
-<tr><th>符号</th><th>意思</th><th>直观理解</th></tr>
-<tr><td>π̂(a|s)</td><td>参考策略：采数据的那个策略（行为策略）</td><td>数据里，在状态 s 下各种动作出现的频率</td></tr>
-<tr><td>Q<sup>π̂</sup>(s,a)</td><td><a class="concept-link" href="两条主干-拆机手册.html#concept-q-value">Q 值</a>：在 s 做 a，之后按 π̂ 走，能拿多少回报</td><td>这一步这么做，最后能得几分</td></tr>
-<tr><td>V<sup>π̂</sup>(s)</td><td>状态价值：E<sub>a~π̂</sub>[Q<sup>π̂</sup>(s,a)]</td><td>在 s 按老习惯随便做，平均能得几分</td></tr>
-<tr><td>A<sup>π̂</sup>(s,a)</td><td><a class="concept-link" href="两条主干-拆机手册.html#concept-advantage">优势</a>：Q − V</td><td>这个动作比平均水平好多少。按定义 E<sub>a~π̂</sub>[A] = 0</td></tr>
-<tr><td>f(·)</td><td>一个非负、单调递增的函数</td><td>打分规则：优势越高，给的权重越大</td></tr>
-<tr><td>J(π)</td><td>策略 π 的期望总回报</td><td>我们要让它变大</td></tr>
+<tr><th>符号</th><th>意思</th><th>直观理解</th><th>代码里是什么（<code>iql_diffusion.py</code>）</th></tr>
+<tr><td>π̂(a|s)</td><td>参考策略：采数据的那个策略（行为策略）</td><td>数据里，在状态 s 下各种动作出现的频率</td><td>没有单独的网络。就是同一个扩散 actor 在标签 <code>idx=0</code>（无条件）时的输出，对所有数据学速度场（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L175" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="175">:175</a>）</td></tr>
+<tr><td>Q<sup>π̂</sup>(s,a)</td><td><a class="concept-link" href="两条主干-拆机手册.html#concept-q-value">Q 值</a>：在 s 做 a，之后按 π̂ 走，能拿多少回报</td><td>这一步这么做，最后能得几分</td><td>一组 critic 网络，输入 (s,a) 出一个数。目标是 <code>r + γ·V(s')</code>（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L125" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="125">:125</a>）。用的时候取几个 critic 的最小值</td></tr>
+<tr><td>V<sup>π̂</sup>(s)</td><td>状态价值：E<sub>a~π̂</sub>[Q<sup>π̂</sup>(s,a)]</td><td>在 s 按老习惯随便做，平均能得几分</td><td>value 网络，只输入 s。不是严格求平均，是用 expectile 0.9 去拟合 Q（IQL 的做法），比平均略偏高（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L137" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="137">:137</a>）</td></tr>
+<tr><td>A<sup>π̂</sup>(s,a)</td><td><a class="concept-link" href="两条主干-拆机手册.html#concept-advantage">优势</a>：Q − V</td><td>这个动作比平均水平好多少。按定义 E<sub>a~π̂</sub>[A] = 0</td><td>就是 <code>q - v</code>：数据里这一步的 Q 减去这个状态的 V（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L155" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="155">:155</a>）</td></tr>
+<tr><td>f(·)</td><td>一个非负、单调递增的函数</td><td>打分规则：优势越高，给的权重越大</td><td>取最简单的 0/1：<code>(q - v) > 0</code> 记 1（好动作），否则记 0。这个 0/1 只乘在有条件分支（<code>idx=1</code>）的损失上，所以有条件分支只学好动作（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L157" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="157">:157</a>，<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L172" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="172">:172</a>）</td></tr>
+<tr><td>J(π)</td><td>策略 π 的期望总回报</td><td>我们要让它变大</td><td>代码里不算它，也不对它求导。只在评估时跑环境，记下每个 w 的平均回报（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L342" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="342">:342</a>）</td></tr>
 </table>
 
 <h3 id="s2-2">2.2 定理：乘积策略不会变差</h3>
