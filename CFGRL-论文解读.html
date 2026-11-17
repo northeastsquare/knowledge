@@ -240,6 +240,12 @@ footer{margin-top:70px;font-size:13px;color:var(--ink-3)}
 <li>f 是不是只有 0 和 1：A &gt; 0 记 1，否则记 0？<a class="go" href="#a8">→ 答案</a></li>
 <li>w 是怎么学出来的？classifier-free guidance 这个名字是什么意思？<a class="go" href="#a9">→ 答案</a></li>
 <li>网络的输入输出是什么？推理时两次前向，输入和输出一样吗？进度 t 在训练和推理时有什么不同？<a class="go" href="#a10">→ 答案</a></li>
+<li>数据里没有好/坏标签，c = 1 是哪来的？价值函数只靠奖励，怎么学出谁是好动作？expectile 是什么，奖励怎么「往回传」？<a class="go" href="#a11">→ 答案</a></li>
+<li>推理两次，是整个网络跑两遍，还是只有一部分？和 π*0.6 有什么不同？<a class="go" href="#a12">→ 答案</a></li>
+<li>网络不输入图像吗？机械臂或物体换了位置，泛化好吗？<a class="go" href="#a13">→ 答案</a></li>
+<li>ExORL 和 OGBench 是什么？<a class="go" href="#a14">→ 答案</a></li>
+<li>有没有类似的方法加了图像、真机，还有开源代码？<a class="go" href="#a15">→ 答案</a></li>
+<li>开源复现 Destiny000621/RECAP 效果怎么样？做的什么任务，踩了哪些坑？<a class="go" href="#a16">→ 答案</a></li>
 </ol>
 
 <h2 id="s1"><span class="no">01</span>问题：BC 太老实，RL 太难训</h2>
@@ -264,6 +270,38 @@ footer{margin-top:70px;font-size:13px;color:var(--ink-3)}
 <tr><td>f(·)</td><td>一个非负、单调递增的函数</td><td>打分规则：优势越高，给的权重越大</td><td>取最简单的 0/1：<code>(q - v) > 0</code> 记 1（好动作），否则记 0。这个 0/1 只乘在有条件分支（<code>idx=1</code>）的损失上，所以有条件分支只学好动作（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L157" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="157">:157</a>，<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L172" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="172">:172</a>）</td></tr>
 <tr><td>J(π)</td><td>策略 π 的期望总回报</td><td>我们要让它变大</td><td>代码里不算它，也不对它求导。只在评估时跑环境，记下每个 w 的平均回报（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L342" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="342">:342</a>）</td></tr>
 </table>
+
+<div class="ans" id="a11"><b class="q">Q11 答</b><b>推理时直接设 c = 1 本身没用。</b>它管用，是因为训练时 c = 1 只和「好」动作配对，网络学到的是「c = 1 → 给出好动作」。就像文生图：输入「猫」就画猫，是因为训练时「猫」这个词只和猫的图配对。
+<br><b>数据里没有好/坏标签，只有奖励 r。</b>每条样本是 (s, a, r, s')，比如成功那一步 r = 1，其他步 r = 0。标签是这样算出来的：
+<div class="eq">奖励 r → 训练 Q、V → 每个样本 A = q − v → A &gt; 0 记「好」（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L157" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="157">:157</a>）→ c = 1 只在好样本上算损失（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L170" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="170">:170-172</a>），c = 0 用全部样本（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L175" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="175">:175-177</a>）→ 推理时写死 c = 1 和 c = 0（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L207" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="207">:207-208</a>）</div>
+<table>
+<tr><th>网络</th><th>学什么</th><th>训练目标</th></tr>
+<tr><td>Q(s,a)</td><td>在 s 做 a，以后能拿多少奖励</td><td><code>r + γ·V(s')</code>（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L125" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="125">:125</a>）</td></tr>
+<tr><td>V(s)</td><td>在 s 一般能拿多少奖励</td><td>用 expectile 0.9 拟合 Q（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L137" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="137">:137</a>）</td></tr>
+<tr><td>A = Q − V</td><td>这个动作比这个状态的一般水平好多少</td><td>不训练，直接相减</td></tr>
+</table>
+<b>「V 拟合 Q」是什么意思：</b>训练 V(s)，让它尽量接近数据里这个状态上各个动作的 Q(s,a)。同一个 s 上有好几个动作，Q 各不相同，V(s) 只能是一个数，所以它只能取这些 Q 的某种「代表值」。普通平方误差取到的是平均；expectile（期望分位数）是一种不对称的平方误差（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L81" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="81">:81-83</a>）：
+<pre>diff = q - v
+weight = 0.9 if diff > 0 else 0.1   # V 比 Q 低，罚得重；V 比 Q 高，罚得轻
+loss = weight * diff**2</pre>
+V 偏低时罚得重，所以被推高，最后停在平均之上。取 0.5 时两边一样重，就是平均。例子：s2 上两个动作各占一半，Q = 0.9 和 0.73。
+<table>
+<tr><th>方法</th><th>V(s2)</th></tr>
+<tr><td>平均</td><td>0.815</td></tr>
+<tr><td>expectile 0.9</td><td>0.883，接近最好的 0.9（解 0.9·(0.9 − V) = 0.1·(V − 0.73)）</td></tr>
+</table>
+不直接取最大的 Q，是因为取最大要在所有动作里找，数据里没有的动作 Q 不可信。expectile 只用数据里有的动作，又能接近其中最好的。这就是 IQL 的做法。
+<br><b>奖励怎么「往回传」：</b>一条走廊 s1 → s2 → s3 → G，只有 s3 → G 这一步 r = 1，γ = 0.9。每一轮，三条样本<b>同时</b>按同一个公式算目标：目标 = r + 0.9 × V(下一个状态)。每个状态只看它下一个状态<b>现在</b>的值。
+<table>
+<tr><th>轮次</th><th>s3 的目标</th><th>s2 的目标</th><th>s1 的目标</th></tr>
+<tr><td>1</td><td>1 + 0.9·0 = <b>1</b></td><td>0 + 0.9·0 = 0</td><td>0 + 0.9·0 = 0</td></tr>
+<tr><td>2</td><td>1</td><td>0 + 0.9·1 = <b>0.9</b></td><td>0 + 0.9·0 = 0</td></tr>
+<tr><td>3</td><td>1</td><td>0.9</td><td>0 + 0.9·0.9 = <b>0.81</b></td></tr>
+</table>
+没有专门「往回传」的步骤。重复多轮，终点的奖励就一格一格传到前面，就像传话。代码里这些轮次就是一次次梯度更新，数值是慢慢靠过去的。
+<br>如果 s2 还有一个往左回 s1 的动作，它的 Q = 0 + 0.9·0.81 ≈ 0.73，比往右的 0.9 小，A 为负，标「不好」。<b>「好动作」就是：同一个状态下，它比一般的动作以后能拿更多奖励。</b>
+<br><b>前提：</b>Q 和 V 要学得准。学不准，标成「好」的动作就不一定真好。真机上只标「最后成功没有」也能学，只是传得更慢、更不准。
+<br><b>OGBench 版不一样：</b>c 不是 0/1，而是目标 g。训练时 g 取同一条轨迹后面真到过的状态；推理时 c 放你想去的目标。</div>
 
 <h3 id="s2-2">2.2 定理：乘积策略不会变差</h3>
 <p>论文的出发点是这样一个新策略：在原策略上，按优势给每个动作重新加权。</p>
@@ -514,6 +552,38 @@ actor_loss = mean((pred - vel) ** <span class="k">2</span>)                     
 </table>
 <p>关于 w：理论上 w 越大改进越多，但离数据也越远（2.4）。官方脚本把 w 从 1 一路扫到 100 再挑最好的，说明作者也把它当成要按任务挑的超参，不是固定越大越好。</p>
 
+<div class="ans" id="a13"><b class="q">Q13 答</b><b>大多数实验输入的是状态向量，不是图像。</b>s 是一串数字，里面就有位置信息：
+<table>
+<tr><th>s 里有什么</th><th>例子</th></tr>
+<tr><td>机械臂</td><td>关节角、末端位置</td></tr>
+<tr><td>物体</td><td>位置、朝向</td></tr>
+<tr><td>目标（OGBench）</td><td>目标位置</td></tr>
+</table>
+物体挪了，s 里的位置数字就变了，网络能「知道」物体在哪。
+<br><b>为什么大多不用图像：</b>① 论文要比的是 RL 方法本身，图像会多出「怎么看懂图」的难题，说不清是谁的功劳；② 仿真里能直接拿到准确位置；③ 状态只有几十维，MLP 就够，训练快，也是这两个基准的标准做法。
+<table>
+<tr><th>情况</th><th>泛化</th></tr>
+<tr><td>仿真里换位置，在训练见过的范围内</td><td>可以，位置就写在 s 里</td></tr>
+<tr><td>超出训练范围</td><td>不好说，和 BC 一样会差</td></tr>
+<tr><td>真机</td><td>状态向量版用不了：真机没有现成的准确物体位置，只能看图</td></tr>
+</table>
+<b>代码里其实有图像版：</b>OGBench 版支持视觉编码器，README 给了 <code>visual-cube-single-play-oraclerep-v0</code> 的命令，用 <code>--agent.encoder=impala_small</code>（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/README.md#L56" target="_blank" rel="noreferrer" data-path="README.md" data-line="56">README:56-57</a>，<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/agents/cfgrl.py#L174" target="_blank" rel="noreferrer" data-path="ogbench/agents/cfgrl.py" data-line="174">cfgrl.py:174</a>）。方法不变：图像 → 编码器 → 特征，再接原来的 c、w、两次前向。ExORL 版（<code>iql_diffusion.py</code>）只有状态。</div>
+
+<div class="ans" id="a14"><b class="q">Q14 答</b>两个都是<b>离线 RL 的测试题库</b>：一堆现成的数据，加上仿真环境，用来比各种方法谁好。
+<table>
+<tr><th></th><th>ExORL</th><th>OGBench</th></tr>
+<tr><td>全名</td><td>Exploratory data for Offline RL</td><td>Offline Goal-conditioned RL Benchmark</td></tr>
+<tr><td>出处</td><td>Yarats 等，2022</td><td>Park、Frans 等，2024（和 CFGRL 同一组人）</td></tr>
+<tr><td>仿真环境</td><td>DeepMind Control：walker、cheetah、quadruped、Jaco 机械臂、点迷宫</td><td>迷宫导航（点、蚂蚁、人形），机械臂操作（cube、scene、puzzle）</td></tr>
+<tr><td>数据怎么来</td><td>机器人自己乱探索收的，不为任何任务</td><td>脚本或带噪声的策略收的，有的故意只给片段，要靠拼接</td></tr>
+<tr><td>奖励</td><td>收完再按任务补算，同一份数据能换不同任务</td><td>没有奖励，给的是目标状态</td></tr>
+<tr><td>任务形式</td><td>拿最多奖励，比如「往前跑」</td><td>到达指定目标，比如「把方块放到那里」</td></tr>
+<tr><td>CFGRL 里的 c</td><td>0/1（好 / 空）</td><td>目标 g</td></tr>
+<tr><td>对应代码</td><td><code>iql_diffusion.py</code></td><td><code>cfgrl.py</code></td></tr>
+<tr><td>输入</td><td>状态向量</td><td>默认状态向量，也有图像版（visual-*）</td></tr>
+</table>
+一句话：ExORL 测「有奖励时能不能学得比数据好」，OGBench 测「给一个目标，能不能走到」。</div>
+
 <h2 id="s8"><span class="no">08</span>和 π*0.6 RECAP 的关系</h2>
 <p>Physical Intelligence 的 <a class="concept-link" href="pi0.6-论文解读.html#concept-recap">RECAP</a> 用的就是 CFGRL 这套理论，并把它放到了 VLA 上。</p>
 <table>
@@ -525,6 +595,60 @@ actor_loss = mean((pred - vel) ** <span class="k">2</span>)                     
 <tr><td>负样本</td><td>不显式训练 negative 条件</td><td>显式训练 negative，策略也学到「差动作长什么样」</td></tr>
 </table>
 <p>π0.6 页里那条公式 <code>π̂(a|o) ∝ π_ref(a|o)·π_ref(a|I,o)/π_ref(a|o)</code> 就是本页 3.2 的 w = 1 特例，一般形式是 π<sub>ref</sub>·[π<sub>ref</sub>(a|I,o)/π<sub>ref</sub>(a|o)]<sup>w</sup>。</p>
+
+<div class="ans" id="a12"><b class="q">Q12 答</b><b>CFGRL（状态版）：整个网络跑两遍。</b>网络是一个小 MLP，s、c、x<sub>t</sub>、t 拼成一条向量一起送进去（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L103" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="103">:103</a>）。c 从第一层就进来，每一层结果都不同，没有能共用的部分（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L211" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="211">:211-212</a>）。两次也可以放进同一个 batch 一起算。OGBench 图像版例外：图像编码器在去噪循环外只算一次（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/agents/cfgrl.py#L79" target="_blank" rel="noreferrer" data-path="ogbench/agents/cfgrl.py" data-line="79">cfgrl.py:79-80</a>，循环在 :89），跑两遍的只有后面的速度场网络。
+<br><b>π*0.6 RECAP：只有后半段跑两遍。</b>图像和文字由 VLM 处理，动作由 action expert（动作小网络）生成。条件是一个文字 token <code>Advantage: positive</code>，放在图像和指令之后、动作之前。
+<div class="eq">图像 + 指令 token → 只算一次，存成 KV cache　|　Advantage token → 有 / 没有两种　|　action expert 去噪 → 每步跑两次</div>
+<table>
+<tr><th></th><th>CFGRL</th><th>π*0.6 RECAP</th></tr>
+<tr><td>网络</td><td>小 MLP</td><td>VLM + action expert</td></tr>
+<tr><td>条件 c</td><td>0/1 的 embedding，和输入拼在一起</td><td>一个文字 token</td></tr>
+<tr><td>跑两遍的部分</td><td>整个网络（图像版除外编码器）</td><td>条件 token 之后的部分</td></tr>
+<tr><td>价值怎么学</td><td>IQL：Q 用 r + γV(s') 往回传，V 用 expectile</td><td>只学一个 V，用整条轨迹的回报（离成功还差几步）去拟合</td></tr>
+<tr><td>A 的算法</td><td>A = Q − V</td><td>A ≈ 往后 N 步的回报 + V(N 步后) − V(现在)</td></tr>
+<tr><td>「好」的门槛</td><td>A &gt; 0</td><td>按任务设门槛，大约前 30% 算好</td></tr>
+<tr><td>推理</td><td>一定用 w 组合</td><td>一般直接给「好」，不组合；w &gt; 1 可选</td></tr>
+<tr><td>数据</td><td>固定的离线数据集</td><td>真机反复收新数据，人接管的动作直接算「好」</td></tr>
+<tr><td>训练</td><td>一次</td><td>收数据、训练，循环多轮</td></tr>
+</table>
+一句话：思路相同，都是「按优势打好/坏标签，再条件生成」。π*0.6 用在大 VLA 上，加了真机迭代，图像部分只算一次。（π*0.6 一栏凭记忆整理，未逐条对照原文。）</div>
+
+<div class="ans" id="a15"><b class="q">Q15 答</b>真正「条件化 + 图像 + 真机」的，主要是 π*0.6 这一支（2026-11 检索）。
+<table>
+<tr><th>名字</th><th>和 CFGRL 像在哪</th><th>图像</th><th>代码</th></tr>
+<tr><td><a href="https://arxiv.org/abs/2511.14759" target="_blank" rel="noreferrer">π*0.6 RECAP</a>（Physical Intelligence，2025）</td><td>按优势标好/坏，作为条件放进输入</td><td>有，VLA + 真机</td><td>官方没开源（<a href="https://github.com/Physical-Intelligence/openpi/issues/857" target="_blank" rel="noreferrer">openpi #857</a>）</td></tr>
+<tr><td><a href="https://github.com/Destiny000621/RECAP" target="_blank" rel="noreferrer">Destiny000621/RECAP</a></td><td>复现 RECAP，基于 openpi / pistar，JAX</td><td>有，YAM 双臂真机</td><td>开源（见 Q16）</td></tr>
+<tr><td><a href="https://github.com/ashah1002/Psi0-Recap" target="_blank" rel="noreferrer">ashah1002/Psi0-Recap</a></td><td>RECAP 用在人形机器人 VLA（Psi0）上</td><td>有</td><td>开源，斯坦福 CS224R 课程项目</td></tr>
+<tr><td><a href="https://rlinf.readthedocs.io/en/latest/rst_source/examples/embodied/recap.html" target="_blank" rel="noreferrer">RLinf RECAP</a></td><td>RECAP 参考流程</td><td>有，仅仿真（LIBERO）</td><td>开源</td></tr>
+<tr><td><a href="https://arxiv.org/html/2610.14936" target="_blank" rel="noreferrer">CFG-Policy</a>（上海科技大学，2026-10）</td><td>同一个公式 v = v<sub>A</sub> + w(v<sub>B</sub> − v<sub>A</sub>) 组合两个策略</td><td>有，RoboTwin 机械臂任务</td><td><a href="https://zhy-liu.github.io/cfg-policy-page" target="_blank" rel="noreferrer">项目页</a></td></tr>
+</table>
+CFG-Policy 的两个分支不是「好 / 平均」，而是「探索 / 利用」两个策略：在线 RL 时冻住探索分支，VLA 后训练时冻住预训练分支。想上手，先看 Destiny000621/RECAP：有图像、有真机、基于 openpi，和 π0.5 代码最接近。</div>
+
+<div class="ans" id="a16"><b class="q">Q16 答</b><b>它没公布任何成功率。</b>README、<a href="https://destiny000621.github.io/RECAP/" target="_blank" rel="noreferrer">文档网站</a>都没有数字；issue 一条都没有（2026-11-17 看时 12 star、0 fork）。所以有没有达到原论文效果不知道，100% 更谈不上。原论文也没到 100%：最难的任务上失败率大约减半，每小时完成数翻倍以上。
+<table>
+<tr><th>项</th><th>内容</th></tr>
+<tr><td>机器人</td><td>YAM 双臂，3 个相机（头顶 + 左右手腕），224×224</td></tr>
+<tr><td>任务</td><td>一只手抓纸杯，递给另一只手（配置名叫 vial）</td></tr>
+<tr><td>参考数据</td><td>10 条 episode，约 2.1 万帧，30 fps</td></tr>
+<tr><td>流程</td><td>DAgger 收数据 → π0.5 SFT → 加 Advantage token 微调 → 训价值网络 → 重标好/坏 → 再微调</td></tr>
+<tr><td>价值网络</td><td>SigLIP + Gemma3-270M，输出 201 格的分布（C51）</td></tr>
+<tr><td>好/坏</td><td>N 步优势 A = Σr + V(t+N) − V(t)，前 30% 记好；人接管的帧一律记好</td></tr>
+<tr><td>推理</td><td>固定给 <code>positive</code>，不做 w 组合，网络只跑一遍</td></tr>
+<tr><td>评估方法</td><td>50 次试验，人只看不碰，数成功次数（写了方法，没贴结果）</td></tr>
+</table>
+<b>它自己文档里写的坑：</b>
+<table>
+<tr><th>问题</th><th>说明</th></tr>
+<tr><td>上游跑不起来</td><td>基于 <code>ybpy/pistar</code>，价值网络那两步原本是坏的，打了 15 个补丁</td></tr>
+<tr><td>少一个目录</td><td><code>gemma/gm/data</code> 没提交，要自己从 <code>gemma==3.3.0</code> 拷</td></tr>
+<tr><td>版本冲突</td><td>重标那一步要 protobuf 4.25；新版 wandb 会拉 protobuf 7，直接崩</td></tr>
+<tr><td>内存</td><td>XLA 编译时主机内存冲到约 25 GB，30 GB 的机器会被杀掉</td></tr>
+<tr><td>显卡</td><td>RTX 5090 没有预编译内核，很慢，价值网络两步基本跑不动</td></tr>
+<tr><td>数据太少</td><td>10 条时价值网络过拟合，加它几乎没用；约 100 条才开始有用，300 条以上接近论文</td></tr>
+<tr><td>推理配置用错</td><td>不用 <code>_infer</code> 配置，Advantage token 约 90% 被随机丢掉，等于白训</td></tr>
+<tr><td>全是「好」标签</td><td>策略学不到「该避开什么」，部署时过分小心</td></tr>
+</table>
+一句话：这是一套能跑通的流程和踩坑记录，不是效果报告。另外它文档前后不一致：说默认取前 30%，示例命令却写 <code>--top_percent 50</code>；训练时 Advantage token 丢弃约 90%，也和上表 π*0.6 的 30% 不同。只读了 README 和文档网站，没读源码。</div>
 
 <h2 id="s9"><span class="no">09</span>架构图</h2>
 <p class="hint">图里文字可选中、复制。点右下角「✎ 编辑」后可直接改字，按「保存」或 ⌘/Ctrl+S 写回这个 HTML 文件（Chrome / Edge 第一次保存时选中本文件即可覆盖；其他浏览器会下载一份新文件）。编辑模式下点击 ⌗ 代码芯片可以改它指向的文件和行号。代码链接都指向 GitHub 上固定 commit 的源码，论文链接指向 arXiv，换台机器也能打开。</p>
