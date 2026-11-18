@@ -246,6 +246,12 @@ footer{margin-top:70px;font-size:13px;color:var(--ink-3)}
 <li>ExORL 和 OGBench 是什么？<a class="go" href="#a14">→ 答案</a></li>
 <li>有没有类似的方法加了图像、真机，还有开源代码？<a class="go" href="#a15">→ 答案</a></li>
 <li>开源复现 Destiny000621/RECAP 效果怎么样？做的什么任务，踩了哪些坑？<a class="go" href="#a16">→ 答案</a></li>
+<li>代码里的图像版是什么任务？图像 token 送进网络了吗？整体结构是什么样？<a class="go" href="#a17">→ 答案</a></li>
+<li>已经输入图像了，为什么还要输入目标位置？看图不就知道了吗？<a class="go" href="#a18">→ 答案</a></li>
+<li>IQL 全称是什么？Q 和 V 有什么区别？expectile 是什么？<a class="go" href="#a19">→ 答案</a></li>
+<li>「随优势单调变大」的是什么？w 是固定值，不是单调变大的呀？<a class="go" href="#a20">→ 答案</a></li>
+<li>classifier-free 说「不用分类」，这里哪里涉及分类了？<a class="go" href="#a21">→ 答案</a></li>
+<li>w 在理论里是指数，在代码里是系数，到底用在哪？为什么两者是一回事？（详细推导）<a class="go" href="#a22">→ 答案</a></li>
 </ol>
 
 <h2 id="s1"><span class="no">01</span>问题：BC 太老实，RL 太难训</h2>
@@ -303,6 +309,23 @@ V 偏低时罚得重，所以被推高，最后停在平均之上。取 0.5 时�
 <br><b>前提：</b>Q 和 V 要学得准。学不准，标成「好」的动作就不一定真好。真机上只标「最后成功没有」也能学，只是传得更慢、更不准。
 <br><b>OGBench 版不一样：</b>c 不是 0/1，而是目标 g。训练时 g 取同一条轨迹后面真到过的状态；推理时 c 放你想去的目标。</div>
 
+<div class="ans" id="a19"><b class="q">Q19 答</b><b>IQL = Implicit Q-Learning</b>（隐式 Q 学习；Kostrikov、Nair、Levine，ICLR 2022）。普通 Q 学习要算 max<sub>a</sub> Q(s', a)，就得试数据里没有的动作，那些动作的 Q 不可信。IQL 不算这个 max，用 expectile 去<b>逼近</b>它，全程只用数据里有的动作，所以叫「隐式」。
+<table>
+<tr><th></th><th>输入</th><th>回答的问题</th></tr>
+<tr><td>Q(s, a)</td><td>状态 + 动作</td><td>在 s <b>做 a</b>，以后能拿多少奖励</td></tr>
+<tr><td>V(s)</td><td>只有状态</td><td>在 s <b>一般</b>能拿多少奖励</td></tr>
+<tr><td>A = Q − V</td><td>—</td><td>这个动作比一般水平好多少</td></tr>
+</table>
+投篮例子：V = 站在这个位置一般能进几个；Q = 站在这里<b>用这种手法</b>投能进几个。
+<br><b>expectile（期望分位数）</b>是一种「不对称」的平均：V 偏低时罚 0.9，偏高时罚 0.1，所以 V 停在平均之上（代码见 Q11）。
+<table>
+<tr><th>τ</th><th>V 学到的</th></tr>
+<tr><td>0.5</td><td>普通平均</td></tr>
+<tr><td>0.9（代码）</td><td>偏上，接近数据里较好的动作</td></tr>
+<tr><td>接近 1</td><td>接近数据里最好的动作，即那个 max</td></tr>
+</table>
+它和分位数（如中位数）是一类：分位数用绝对误差，expectile 用平方误差，所以名字带 expect（期望）。两个网络互相当对方的目标：Q ← r + γ·V(s')，V ← Q 的 expectile 0.9，交替训练。</div>
+
 <h3 id="s2-2">2.2 定理：乘积策略不会变差</h3>
 <p>论文的出发点是这样一个新策略：在原策略上，按优势给每个动作重新加权。</p>
 <div class="eq">π(a|s) ∝ π̂(a|s) · f( A<sup>π̂</sup>(s,a) )        <span class="c">f ≥ 0 且单调递增</span></div>
@@ -316,6 +339,21 @@ f(A) 和 A 同增同减，所以它们的协方差 ≥ 0，即 E<sub>π̂</sub>[
 右边对每个 s 都 ≥ 0，所以整体 ≥ 0。这里 d<sup>π</sup> 是新策略访问到的状态分布。不管新策略走到哪些状态，每个状态上它都不比老习惯差。</li>
 </ol>
 <div class="ans" id="a1"><b class="q">Q1 答</b>因为 f 随优势单调递增，乘上 f 就是把概率从「比平均差」的动作挪到「比平均好」的动作上，所以每个状态下新策略的平均优势 ≥ 0（f(A) 和 A 的协方差非负）。再用性能差分引理，每个状态上都不差，整体回报 J 就不会下降。</div>
+<div class="ans" id="a20"><b class="q">Q20 答</b>「单调变大」说的不是 w，是 <b>f(A)</b>。它比较的是同一个状态下的<b>不同动作</b>：A 越大的动作，权重越大。w 是固定的指数，这不冲突。
+<table>
+<tr><th></th><th>是什么</th><th>随什么变</th></tr>
+<tr><td>A(s,a)</td><td>这个动作比一般水平好多少</td><td>每个动作不同</td></tr>
+<tr><td>f(A)</td><td>给这个动作的权重</td><td>A 越大 f 越大（这就是「单调变大」）</td></tr>
+<tr><td>w</td><td>f 的指数，推理时手动定</td><td>整次推理不变</td></tr>
+</table>
+例：一个状态三个动作，数据里各占 1/3。
+<table>
+<tr><th>动作</th><th>A</th><th>f(A) = p(好)</th><th>w = 1 权重</th><th>w = 3 权重</th></tr>
+<tr><td>甲</td><td>+0.2</td><td>0.8</td><td>0.8</td><td>0.51</td></tr>
+<tr><td>乙</td><td>0</td><td>0.5</td><td>0.5</td><td>0.13</td></tr>
+<tr><td>丙</td><td>−0.2</td><td>0.2</td><td>0.2</td><td>0.008</td></tr>
+</table>
+w 固定为 3，权重仍是「甲 &gt; 乙 &gt; 丙」，只是差距拉大。只要 w &gt; 0，f(A)<sup>w</sup> 仍随 A 单调变大，定理照样成立：原策略 E[A] = 0 → 新策略好动作权重大 → E<sub>新</sub>[A] ≥ 0 → J(新) ≥ J(原)。w 用在哪见 <a href="#a22">Q22</a>。</div>
 
 <div class="ans" id="a8"><b class="q">Q8 答</b>理论上不是。f 可以是任何非负、单调递增的函数，比如 AWR 用的 e<sup>A/β</sup>。代码里选了最简单的 0/1：<code>((q - v) &gt; 0)</code>，A &gt; 0 记 1，A ≤ 0 记 0（A 正好等于 0 也记 0，因为是严格大于）（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L157" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="157">iql_diffusion.py:157</a>）。代码在第 155 行先算了 <code>exp((q-v)*temperature)</code>，第 157 行又把它覆盖掉了，所以配置里的 <code>temperature</code> 实际不起作用。
 <br><b>为什么选 0/1：</b>f 只取 0 和 1 时，π̂(a|s)·𝟙[A&gt;0] ∝ π̂(a|s, o=好)，就是「只留下好动作的数据分布」。这正好是有条件分支学的东西，所以能直接用条件扩散模型实现（见第 03 节）。0/1 本身分不出「好一点」和「好很多」，这个区分交给 w：w 越大，越偏向 p(好|s,a) 高的动作（见 3.3）。</div>
@@ -404,6 +442,51 @@ f(A) 和 A 同增同减，所以它们的协方差 ≥ 0，即 E<sub>π̂</sub>[
 </table>
 能代替，是因为贝叶斯公式：∇log p(y|x) = ∇log p(x|y) − ∇log p(x)，右边两项正好是有条件模型和无条件模型。「free」就是不需要分类器。放到 CFGRL 里，那个「分类器」就是 p(好|s,a)，即「这个动作好不好」；CFGRL 不单独训练它，用两个策略的差代替。
 <br>注意：论文题目是《Diffusion Guidance Is a Controllable Policy Improvement Operator》，CFGRL 是 CFG + RL 的缩写，它借用了 CFG 这个方法。</div>
+
+<div class="ans" id="a21"><b class="q">Q21 答</b>这里的「分类」是判断<b>「这个动作是不是好动作」</b>，即 p(好 | s, a)。classifier-free 的意思是：不训练这样一个分类网络，也不用它的梯度去推动作。
+<table>
+<tr><th></th><th>classifier guidance</th><th>CFG（CFGRL 用的）</th></tr>
+<tr><td>做法</td><td>另训分类器 p(好 | s, x<sub>t</sub>)，每步 v = v<sub>平均</sub> + w·∇<sub>x</sub>log p(好 | s, x<sub>t</sub>)</td><td>v = v(c=空) + w·(v(c=好) − v(c=空))</td></tr>
+<tr><td>要不要另训分类器</td><td>要</td><td>不要</td></tr>
+<tr><td>分类器要看带噪的 x<sub>t</sub></td><td>要，很难训</td><td>不涉及</td></tr>
+<tr><td>推理时「往好推」靠什么</td><td>分类器的梯度</td><td>同一个网络跑两次，相减</td></tr>
+</table>
+图像里一样：classifier guidance 另训一个「这张噪声图像不像猫」的分类器，用梯度把像素往「猫」推。能顶替的依据是贝叶斯：∇log p(好|x) = ∇log p(x|好) − ∇log p(x)，右边两项就是有条件、无条件两个分支（推导见 Q22 第 3 步）。
+<br><b>容易混的一点：</b>CFGRL 里还是有「判断好坏」：A = Q − V &gt; 0 记「好」。但它只在<b>训练前给数据打标签</b>时用，是个固定规则，不是要求梯度的分类网络，采样时完全不出场。</div>
+
+<div class="ans" id="a22"><b class="q">Q22 答</b><b>论文理论里 w 在指数上，代码里 w 是乘在速度差上的系数，两者是同一件事。</b>代码里 w 只出现在一处：推理时的组合。训练时没有 w。
+<table>
+<tr><th>地方</th><th>写法</th><th>w 的位置</th><th>什么时候用</th></tr>
+<tr><td>2.4（理论一）</td><td>π ∝ π̂ · f(A)<sup>w</sup></td><td>指数</td><td>不用，只是理论</td></tr>
+<tr><td>3.2（理论二）</td><td>π ∝ π̂ · p(好|s,a)<sup>w</sup></td><td>指数</td><td>不用，只是理论</td></tr>
+<tr><td>代码</td><td>v = v<sub>unc</sub> + w·(v<sub>cond</sub> − v<sub>unc</sub>)</td><td>系数</td><td><b>推理时每个去噪步</b>（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/agents/cfgrl.py#L94" target="_blank" rel="noreferrer" data-path="ogbench/agents/cfgrl.py" data-line="94">cfgrl.py:94</a>；ExORL 版在 <a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/rlbase/algs_offline/iql_diffusion.py#L211" target="_blank" rel="noreferrer" data-path="rlbase/algs_offline/iql_diffusion.py" data-line="211">iql_diffusion.py:211-212</a> 两次前向之后）</td></tr>
+</table>
+<b>要证明：</b>按 v = v<sub>unc</sub> + w·(v<sub>cond</sub> − v<sub>unc</sub>) 去噪，得到的分布就是 π<sub>w</sub>(a|s) ∝ π̂(a|s)·p(好|s,a)<sup>w</sup>。
+<ol class="steps">
+<li><b>扩散网络学的是「梯度」。</b>分布 p(a) 的 score = ∇<sub>a</sub> log p(a)，一个和动作同维的向量，指向概率变大最快的方向。速度 v 本质上就是 score 换个写法（第 6 步）。用 log 再求梯度有两个好处：乘法变加法、指数变系数；和 a 无关的常数求梯度后消失。</li>
+<li><b>去掉「∝」里的常数。</b>π<sub>w</sub> = π̂(a|s)·p(好|s,a)<sup>w</sup> / Z(s)。取 log：log π<sub>w</sub> = log π̂(a|s) + w·log p(好|s,a) − log Z(s)。Z(s) 和 a 无关，求梯度为 0：
+<div class="eq">∇<sub>a</sub>log π<sub>w</sub> = ∇<sub>a</sub>log π̂(a|s) + w·∇<sub>a</sub>log p(好|s,a)　　(*)</div>
+<b>指数 w 在这里变成了系数 w。</b></li>
+<li><b>用贝叶斯换掉分类器。</b>p(好|s,a) = π̂(a|s,好)·p(好|s) / π̂(a|s)。π̂(a|s,好) 是只看「好」数据时 a 的概率；π̂(a|s) 是看全部数据；p(好|s) 是这个状态下好样本的比例，和 a 无关。取 log 再求梯度，最后一项消失：
+<div class="eq">∇<sub>a</sub>log p(好|s,a) = ∇<sub>a</sub>log π̂(a|s,好) − ∇<sub>a</sub>log π̂(a|s)</div>
+分类器的梯度 = 好策略的 score − 平均策略的 score。classifier-free 说的就是这一步。</li>
+<li><b>代回 (*)。</b>
+<div class="eq">∇log π<sub>w</sub> = ∇log π̂(a|s) + w·(∇log π̂(a|s,好) − ∇log π̂(a|s)) = (1−w)·∇log π̂(a|s) + w·∇log π̂(a|s,好)</div>
+两项权重 (1−w) 和 w 加起来等于 1，第 6 步要用。</li>
+<li><b>两个 score 由谁给。</b>c = 空 的分支给 ∇log π̂(a|s)，用全部样本训；c = 好 的分支给 ∇log π̂(a|s,好)，只用 A &gt; 0 的样本训。f 的 0/1 就在这里起作用：它挑出哪些样本进 c = 好 的分支。</li>
+<li><b>score 换成速度。</b>流匹配里 x<sub>t</sub> = (1−t)x<sub>0</sub> + t·x<sub>1</sub>，v = E[x<sub>1</sub> − x<sub>0</sub> | x<sub>t</sub>]。由 score = −E[x<sub>0</sub>|x]/(1−t) 和 x = (1−t)E[x<sub>0</sub>|x] + t·E[x<sub>1</sub>|x] 消去 E[x<sub>1</sub>|x]，得：
+<div class="eq">v<sub>t</sub>(x) = ( x + (1−t)·∇<sub>x</sub>log p<sub>t</sub>(x) ) / t</div>
+两个分支系数相同，权重和为 1，x/t 项组合后不变，所以 score 的组合直接变成速度的组合：v = (1−w)·v<sub>unc</sub> + w·v<sub>cond</sub> = v<sub>unc</sub> + w·(v<sub>cond</sub> − v<sub>unc</sub>)。这就是代码那一行。</li>
+</ol>
+<b>能算出来的例子：</b>平均策略 π̂(a|s) = N(0,1)，好策略 π̂(a|s,好) = N(1,1)。score 分别是 −a 和 −(a−1)，组合后 −a + w·1 = −(a − w)，对应 <b>N(w, 1)</b>。直接按理论算也一样：p(好|a) ∝ N(1,1)/N(0,1) ∝ e<sup>a</sup>，π̂·p<sup>w</sup> ∝ e<sup>−a²/2 + wa</sup> = N(w,1)。
+<table>
+<tr><th>w</th><th>分布</th><th>说明</th></tr>
+<tr><td>0</td><td>N(0,1)</td><td>平均，就是 BC</td></tr>
+<tr><td>1</td><td>N(1,1)</td><td>就是好策略本身</td></tr>
+<tr><td>3</td><td>N(3,1)</td><td>继续往好推，已超出两个分布的主要范围（外推，见 Q7）</td></tr>
+</table>
+<b>p(好|s,a) 什么时候用：</b>代码从不直接算它，它藏在两个网络的差里：v<sub>cond</sub> − v<sub>unc</sub> 对应 ∇log p(好|s,a)。<b>f 的 0/1 什么时候用：</b>只在训练时挑数据，不碰 w。纯理论里 1<sup>w</sup> = 1、0<sup>w</sup> = 0，w 不改变什么；实际上网络把相似的 (s,a) 平滑连在一起，学出的 p(好|s,a) 是 0 到 1 的软值，w &gt; 1 才能继续锐化（3.3）。
+<br><b>一个近似：</b>第 6 步要求每个噪声水平 t 都成立。严格说「先相乘再加噪」和「先加噪再相乘」不完全相等，所以中间的 t 上 CFG 只是近似，只有 t = 1（干净动作）精确。这是 CFG 的通病，图像生成里也一样。</div>
 
 <h3 id="s3-3">3.3 一个容易忽略的细节：硬标签为什么还能继续锐化</h3>
 <div class="box mine"><h4>说明：这一段是笔者的分析，不是论文原文</h4>
@@ -583,6 +666,56 @@ actor_loss = mean((pred - vel) ** <span class="k">2</span>)                     
 <tr><td>输入</td><td>状态向量</td><td>默认状态向量，也有图像版（visual-*）</td></tr>
 </table>
 一句话：ExORL 测「有奖励时能不能学得比数据好」，OGBench 测「给一个目标，能不能走到」。</div>
+
+<div class="ans" id="a17"><b class="q">Q17 答</b><b>没有图像 token。</b>图像先被一个小 CNN 压成<b>一条 512 维向量</b>，再和别的输入拼起来送进 MLP，整个模型里没有 Transformer。
+<table>
+<tr><th>项</th><th>内容</th></tr>
+<tr><td>任务</td><td><code>visual-cube-single-play-oraclerep-v0</code>（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/README.md#L56" target="_blank" rel="noreferrer" data-path="README.md" data-line="56">README:56-57</a>）：OGBench 仿真，一个机械臂把桌上一个方块推或搬到指定位置</td></tr>
+<tr><td>观测 s</td><td>图像（OGBench 图像版规格为 64×64 RGB，不在本仓库代码里）</td></tr>
+<tr><td>目标 g</td><td>不是图像：<code>oraclerep</code> 直接给方块目标位置的数字（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/utils/datasets.py#L244" target="_blank" rel="noreferrer" data-path="ogbench/utils/datasets.py" data-line="244">datasets.py:244-246</a>）</td></tr>
+<tr><td>训练</td><td>batch 256，50 万步；一半 batch 做随机裁剪增强 <code>p_aug=0.5</code>（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/utils/datasets.py#L257" target="_blank" rel="noreferrer" data-path="ogbench/utils/datasets.py" data-line="257">datasets.py:257-259</a>）</td></tr>
+</table>
+<b>结构</b>（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/utils/networks.py#L520" target="_blank" rel="noreferrer" data-path="ogbench/utils/networks.py" data-line="520">networks.py:520-555</a>，<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/utils/encoders.py#L60" target="_blank" rel="noreferrer" data-path="ogbench/utils/encoders.py" data-line="60">encoders.py:60-98</a>）：
+<pre>图像 s ──> Impala CNN（3 组卷积 16/32/32 通道，每组 1 个残差块）
+          ──> 拉平 ──> MLP ──> 512 维向量
+                                   │
+目标 g（方块位置）或 无条件向量 ────┤
+带噪动作 x_t ──────────────────────┤  拼接（networks.py:554）
+进度 t ────────────────────────────┘
+                                   ▼
+                      MLP 512-512-512-512 ──> 速度 v</pre>
+<b>训练</b>（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/agents/cfgrl.py#L27" target="_blank" rel="noreferrer" data-path="ogbench/agents/cfgrl.py" data-line="27">cfgrl.py:27-38</a>）：编码器和 MLP 一起训，只有一个流匹配 MSE 损失，没有单独的图像预训练；10% 样本把 g 换成可学习的无条件向量（:33-35）。
+<br><b>推理</b>（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/agents/cfgrl.py#L79" target="_blank" rel="noreferrer" data-path="ogbench/agents/cfgrl.py" data-line="79">cfgrl.py:79-96</a>）：
+<pre>图像 ──> 编码器，只算一次（:79-80）
+重复 16 步（:89）:
+    v_unc  = MLP(特征, 无条件向量, x, t)   # :92
+    v_cond = MLP(特征, g,          x, t)   # :93
+    v = v_unc + 3.0·(v_cond − v_unc)       # :94，默认 w = 3
+    x = x + v/16</pre>
+<code>is_encoded=True</code> 让 MLP 跳过编码器，所以跑两遍的只有后面的 MLP。
+<table>
+<tr><th></th><th>CFGRL 图像版</th><th>π*0.6</th></tr>
+<tr><td>图像怎么进</td><td>CNN 压成 1 条向量</td><td>SigLIP 切成很多 token</td></tr>
+<tr><td>主干</td><td>MLP</td><td>VLM（Transformer）+ action expert</td></tr>
+<tr><td>只算一次的部分</td><td>编码器</td><td>图像和文字的 KV cache</td></tr>
+<tr><td>目标 / 条件</td><td>方块位置（数字）</td><td>文字 token</td></tr>
+<tr><td>预训练</td><td>没有，从零训</td><td>大规模预训练</td></tr>
+</table>
+注意：只有观测是图像，目标还是给的准确位置，真机上不容易拿到。编码器在 <code>actor_flow</code> 和 <code>actor_flow_encoder</code> 两处按 Flax 写法应共享同一份参数，未逐行核对。</div>
+
+<div class="ans" id="a18"><b class="q">Q18 答</b>图像告诉网络方块<b>现在</b>在哪，目标 g 告诉它方块<b>要去</b>哪。两件事不一样。
+<table>
+<tr><th>输入</th><th>回答的问题</th><th>当前图像看得出吗</th></tr>
+<tr><td>图像 s</td><td>方块现在在哪？手臂在哪？</td><td>能</td></tr>
+<tr><td>目标 g</td><td>方块要放到哪？</td><td>不能，桌上没有标记</td></tr>
+</table>
+同一张图，目标可以是桌子左边，也可以是右边，只看图网络不知道往哪推。目标有两种给法（<a class="cl" href="https://github.com/kvfrans/cfgrl/blob/14bd57b53bea27a3951687387520f11fbbe44abb/ogbench/utils/datasets.py#L244" target="_blank" rel="noreferrer" data-path="ogbench/utils/datasets.py" data-line="244">datasets.py:244-249</a>）：
+<table>
+<tr><th>版本</th><th>目标 g</th></tr>
+<tr><td><code>visual-cube-single-play-v0</code></td><td>一张<b>目标图像</b>：方块放好以后的画面</td></tr>
+<tr><td><code>…-oraclerep-v0</code>（README 用的）</td><td>方块目标位置的<b>数字</b></td></tr>
+</table>
+代码先看数据里有没有 <code>oracle_reps</code>：有就用数字，没有就取未来那一帧的图像当目标。README 用数字版，是因为目标图里手臂姿势、光照等和任务无关的东西会干扰网络，数字版更简单、比较更干净。真机上通常给一张目标图，或像 π*0.6 那样用一句话描述任务。</div>
 
 <h2 id="s8"><span class="no">08</span>和 π*0.6 RECAP 的关系</h2>
 <p>Physical Intelligence 的 <a class="concept-link" href="pi0.6-论文解读.html#concept-recap">RECAP</a> 用的就是 CFGRL 这套理论，并把它放到了 VLA 上。</p>
