@@ -134,6 +134,8 @@
   footer{margin-top:60px; padding-top:18px; border-top:1.5px solid var(--line); font-size:13px; color:var(--ink-3); display:flex; justify-content:space-between; flex-wrap:wrap; gap:10px;}
   footer a{color:var(--ink); font-weight:700; text-decoration:none;}
   .katex-display{overflow-x:auto;overflow-y:hidden;padding:.25em 0;max-width:100%;}
+.ans{margin:12px 0;padding:10px 14px;border-radius:10px;background:#fff4e0;border:1px solid #efc9b8;font-size:14.5px}
+.ans b.q{font-family:"IBM Plex Mono",monospace;color:#c0632b;margin-right:6px}
 </style>
 <link rel="stylesheet" href="concepts.css">
 <link rel="stylesheet" href="assets/katex/katex.min.css">
@@ -164,6 +166,8 @@
     <li>RTC 的核心想法是什么？ <a class="reading-goto" href="#rq-2">读这一节 ↓</a></li>
     <li>RTC 改了模型权重吗？ <a class="reading-goto" href="#rq-3">读这一节 ↓</a></li>
     <li>LeRobot 的引导和论文完全一样吗？ <a class="reading-goto" href="#rq-3b">读这一节 ↓</a></li>
+    <li>去噪时新块怎么接上旧块？能用大白话说吗？ <a class="reading-goto" href="#a5">看答案 ↓</a></li>
+    <li>一个去噪步具体怎么算？w 为什么两头大、中间小？ <a class="reading-goto" href="#a6">看答案 ↓</a></li>
   </ol>
 </div>
 <figure class="kb-arch" id="kb-arch">
@@ -427,6 +431,34 @@
 <h2 id="rq-3b"><span class="no">3.5</span>细讲：去噪时的衔接，对照论文与代码</h2>
 <p class="sub">先用一个关节的小数字走一遍，再写公式，最后逐行对到 LeRobot 和 Kinetix 的代码。</p>
 
+<div class="ans" id="a5">
+  <p><b class="q">Q5</b><b>先用大白话：新块怎么接上旧块</b></p>
+  <p><b>要解决什么。</b>机器人正按旧的一串动作走，新的一串还在算。算好时，旧串的前几步已经走掉了。所以新串的开头必须和旧串一样，不一样手臂就会猛跳一下。</p>
+  <p><b>新串怎么来。</b>新串一开始是一团乱数（噪声）。网络一步一步把它擦干净，比如擦 5 次。每擦一次，它就更像一串动作。</p>
+  <p><b>每擦一次，多做三件小事：</b></p>
+  <div class="tbl-wrap"><table>
+    <tr><th>小事</th><th>在做什么</th><th>例子（位置 0）</th></tr>
+    <tr><td>① 偷看结局</td><td>猜擦完会是多少</td><td>猜 0.25</td></tr>
+    <tr><td>② 对答案</td><td>和旧串比，差多少</td><td>旧串 0.30，差 0.05</td></tr>
+    <tr><td>③ 推一下</td><td>往旧串那边挪一点</td><td>这次多走 0.022</td></tr>
+  </table></div>
+  <p>擦完 5 次，开头就贴上旧串了。后面的位置不比，新串自己定。</p>
+  <p><b>打个比方：接着别人画线。</b></p>
+  <div class="tbl-wrap"><table>
+    <tr><th>比方</th><th>真实的东西</th></tr>
+    <tr><td>别人画了半条线</td><td>旧串 Y</td></tr>
+    <tr><td>你从一张糊纸开始画</td><td>噪声 A<sup>τ</sup></td></tr>
+    <tr><td>每次描清一点</td><td>一步去噪</td></tr>
+    <tr><td>先想好画完的样子</td><td>猜终点 Â¹</td></tr>
+    <tr><td>接头处必须对上</td><td>权重 W = 1</td></tr>
+    <tr><td>远处随你画</td><td>权重 W = 0</td></tr>
+    <tr><td>每次手往接头靠一点</td><td>加上 w·误差</td></tr>
+    <tr><td>靠多用力</td><td>系数 w</td></tr>
+  </table></div>
+  <p><b>两个“为什么”：</b>① 为什么拿猜的结局去比？糊纸上全是乱点，直接比没意义；猜的结局是干净的，才好对。② 为什么用力有大有小？刚开始纸很糊，大改也不怕；中间网络在定形状，所以轻推；最后步数快用完，又得用力补齐。</p>
+  <p>一句话：每擦一次，先猜结局，跟旧串对一对，差多少推多少。数字版见 <a href="#a6">Q6</a>。</p>
+</div>
+
 <h3>一个小例子：H = 8，d = 2，重叠到第 5 步</h3>
 <p>单个关节，块长 H = 8，推理慢了 d = 2 步。LeRobot 的 <code>execution_horizon</code> 默认是 10，这里改成 5 方便算。表中 Â¹ 是某个去噪步“猜出的终点”。</p>
 <div class="tbl-wrap"><table>
@@ -469,6 +501,38 @@
   <tr><td>原始 w</td><td>∞</td><td>9.11</td><td>4.25</td><td>2.17</td><td>2.00</td><td>2.17</td><td>4.25</td><td>9.11</td></tr>
 </table></div>
 <p>n = 5 时 τ 取 0、0.2、0.4、0.6、0.8，只有第一步被 β = 5 截断。n = 10 时最后一步（τ = 0.9）也会被截断。</p>
+
+<div class="ans" id="a6">
+  <p><b class="q">Q6</b><b>一个去噪步，用数字算一遍</b></p>
+  <p>设 n = 5，每步 Δτ = 0.2，现在走到 τ = 0.4（第 3 步）。看位置 i = 0（W = 1，必须对齐）。</p>
+  <div class="tbl-wrap"><table>
+    <tr><th>步骤</th><th>算式</th><th>数字</th></tr>
+    <tr><td>当前带噪动作</td><td>A<sup>τ</sup></td><td>0.10</td></tr>
+    <tr><td>网络给的速度</td><td>v</td><td>0.25</td></tr>
+    <tr><td>① 猜终点</td><td>Â¹ = A<sup>τ</sup> + (1−τ)·v</td><td>0.10 + 0.6×0.25 = <b>0.25</b></td></tr>
+    <tr><td>旧块的值</td><td>Y</td><td>0.30</td></tr>
+    <tr><td>② 带权误差</td><td>e = (Y − Â¹)·W</td><td>(0.30−0.25)×1 = <b>0.05</b></td></tr>
+    <tr><td>③ 引导系数</td><td>w(0.4)</td><td><b>2.17</b>（没超过 β = 5）</td></tr>
+    <tr><td>④ 修正后速度</td><td>v + w·e</td><td>0.25 + 2.17×0.05 = <b>0.358</b></td></tr>
+    <tr><td>欧拉走一步</td><td>A<sup>τ</sup> + Δτ·v′</td><td>0.10 + 0.2×0.358 = <b>0.172</b></td></tr>
+    <tr><td>不引导时</td><td>A<sup>τ</sup> + Δτ·v</td><td>0.15</td></tr>
+  </table></div>
+  <p>引导让这一步多走 0.022，方向朝着旧块的 0.30。位置 i = 6 的 W = 0，所以 e = 0，速度不变，由新块自由生成。</p>
+  <p><b>为什么拿 Â¹ 比，不拿 A<sup>τ</sup> 比。</b>τ = 0.4 时 A<sup>τ</sup> 里 40% 是动作、60% 是噪声。拿 0.10 和 0.30 比，量到的差大多来自噪声。Â¹ 先用速度把噪声“走完”，得到干净动作的估计，和 Y 在同一个空间里，相减才有意义。</p>
+  <p><b>w 的含义：这一步补上缺口的几成。</b>暂时当 v 不变，走完一步后猜的终点变成 Â¹ + Δτ·w·e，所以 Δτ·w 就是这一步补上的缺口比例（n = 5，β = 5）：</p>
+  <div class="tbl-wrap"><table>
+    <tr><th>τ</th><th>0</th><th>0.2</th><th>0.4</th><th>0.6</th><th>0.8</th></tr>
+    <tr><td>原始 w</td><td>∞</td><td>4.25</td><td>2.17</td><td>2.17</td><td>4.25</td></tr>
+    <tr><td>截断后 w</td><td>5</td><td>4.25</td><td>2.17</td><td>2.17</td><td>4.25</td></tr>
+    <tr><td>补上缺口 Δτ·w</td><td>100%</td><td>85%</td><td>43%</td><td>43%</td><td>85%</td></tr>
+  </table></div>
+  <ul>
+    <li>开头（τ ≈ 0）：A<sup>τ</sup> 几乎全是噪声，改它没有代价，一次补满。</li>
+    <li>中间：网络自己在定形状，只轻轻推。</li>
+    <li>末尾：剩下步数少，残差要尽快补上。</li>
+  </ul>
+  <p>这是近似：实际每一步都会重算 v，不会正好补满。对应代码：Â¹ 在 <a href="https://github.com/huggingface/lerobot/blob/b00571809f7cab69abeee19744d8dd3c18977aa2/src/lerobot/policies/rtc/modeling_rtc.py#L220" target="_blank" rel="noreferrer">modeling_rtc.py L220</a>，e 在 <a href="https://github.com/huggingface/lerobot/blob/b00571809f7cab69abeee19744d8dd3c18977aa2/src/lerobot/policies/rtc/modeling_rtc.py#L221" target="_blank" rel="noreferrer">L221</a>，w 在 <a href="https://github.com/huggingface/lerobot/blob/b00571809f7cab69abeee19744d8dd3c18977aa2/src/lerobot/policies/rtc/modeling_rtc.py#L228-L231" target="_blank" rel="noreferrer">L228-231</a>，v + w·e 在 <a href="https://github.com/huggingface/lerobot/blob/b00571809f7cab69abeee19744d8dd3c18977aa2/src/lerobot/policies/rtc/modeling_rtc.py#L233" target="_blank" rel="noreferrer">L233</a>（LeRobot 时间方向相反，所以是减号，见下表）。</p>
+</div>
 
 <h3>对到 LeRobot 代码</h3>
 <p>LeRobot 的时间方向与论文相反：<code>time = 1</code> 是噪声，<code>time = 0</code> 是干净动作。代码见 <a href="https://github.com/huggingface/lerobot/blob/b00571809f7cab69abeee19744d8dd3c18977aa2/src/lerobot/policies/rtc/modeling_rtc.py#L170-L233" target="_blank" rel="noreferrer">modeling_rtc.py · denoise_step</a>。</p>
@@ -718,6 +782,9 @@
         <li><p><b>机器人为什么会“卡”？</b></p><p>不是模型不准，而是“想”和“做”没排好队：同步执行要停下等推理；朴素异步时新块从纯噪声生成，不知道机器人此刻在哪，接缝处会跳。 <a class="reading-goto" href="#rq-1">回到原文 ↑</a></p></li>
         <li><p><b>RTC 的核心想法是什么？</b></p><p>把块间衔接当成图像补全：新块的前 d 步是已执行、不可改的动作，相当于已知像素，其余部分去噪生成并与前缀连贯。 <a class="reading-goto" href="#rq-2">回到原文 ↑</a></p></li>
         <li><p><b>RTC 改了模型权重吗？</b></p><p>没有，只改 flow 的采样过程：每个去噪步都估计干净终点，算与已知动作的加权误差，再把修正“拉回”当前状态。 <a class="reading-goto" href="#rq-3">回到原文 ↑</a></p></li>
+        <li><p><b>LeRobot 的引导和论文完全一样吗？</b></p><p>不完全一样。LeRobot 先算速度再开梯度，雅可比变成单位阵，实际做的是 v + w·(Y − Â¹)⊙W；论文和 Kinetix 用 vjp 真算雅可比。 <a class="reading-goto" href="#rq-3b">回到原文 ↑</a></p></li>
+        <li><p><b>去噪时新块怎么接上旧块？</b></p><p>每擦一次噪声：先猜擦完的样子，和旧串对一对，差多少就往旧串推一点。接头处 W = 1 必须对上，远处 W = 0 随新块定。 <a class="reading-goto" href="#a5">回到原文 ↑</a></p></li>
+        <li><p><b>一个去噪步怎么算？w 为什么两头大？</b></p><p>Â¹ = A<sup>τ</sup> + (1−τ)v，e = (Y − Â¹)·W，v′ = v + w·e，再走欧拉步。Δτ·w 是这一步补上缺口的比例：开头噪声多、改了没代价，末尾步数少要补齐，中间网络在定形状所以轻推。 <a class="reading-goto" href="#a6">回到原文 ↑</a></p></li>
     </ol>
   </details>
   <ol class="reading-ex">
@@ -725,6 +792,8 @@
     <li><p>为什么引导权重用软掩码，而不是只约束前 d 步？</p><details><summary>看答案</summary><p>只约束前 d 步引导太弱，后面的部分仍可能“换一个策略”；让所有与旧块重叠的位置都参与、权重递减，衔接更稳。</p></details></li>
     <li><p>为什么要把引导系数裁剪在 β（实验中为 5）？</p><details><summary>看答案</summary><p>去噪最开始时引导系数趋于无穷大，数值不稳定；裁剪只影响最早几步。</p></details></li>
     <li><p>思考：RTC 和 temporal ensembling（TE）的根本区别？</p><details><summary>看答案</summary><p>TE 事后把几个预测平均，是时间上的平滑；RTC 事前约束新预测与已知动作一致，所以延迟变大时仍能稳定。</p></details></li>
+    <li><p>τ = 0.4、A<sup>τ</sup> = 0.10、v = 0.25、Y = 0.30、W = 1、w = 2.17、Δτ = 0.2，引导后这一步走到多少？</p><details><summary>看答案</summary><p>Â¹ = 0.10 + 0.6×0.25 = 0.25；e = 0.05；v′ = 0.25 + 2.17×0.05 = 0.358；新值 = 0.10 + 0.2×0.358 ≈ 0.172（不引导是 0.15）。 <a href="#a6">回到 Q6 ↑</a></p></details></li>
+    <li><p>为什么误差用猜的终点 Â¹ 去和旧块比，而不是用当前的 A<sup>τ</sup>？</p><details><summary>看答案</summary><p>A<sup>τ</sup> 里还混着大量噪声，和干净的旧块不在同一空间；Â¹ 是干净动作的估计，相减才有意义。 <a href="#a6">回到 Q6 ↑</a> · <a href="https://github.com/huggingface/lerobot/blob/b00571809f7cab69abeee19744d8dd3c18977aa2/src/lerobot/policies/rtc/modeling_rtc.py#L220" target="_blank" rel="noreferrer">modeling_rtc.py L220</a></p></details></li>
   </ol>
 </div>
   <aside class="concept-related" aria-label="相关概念">
