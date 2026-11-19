@@ -252,6 +252,7 @@ footer{margin-top:70px;font-size:13px;color:var(--ink-3)}
 <li>「随优势单调变大」的是什么？w 是固定值，不是单调变大的呀？<a class="go" href="#a20">→ 答案</a></li>
 <li>classifier-free 说「不用分类」，这里哪里涉及分类了？<a class="go" href="#a21">→ 答案</a></li>
 <li>w 在理论里是指数，在代码里是系数，到底用在哪？为什么两者是一回事？（详细推导）<a class="go" href="#a22">→ 答案</a></li>
+<li>AWR 实际训练时怎么做？是把数据分成好、坏几组，再用不同的抽样概率吗？<a class="go" href="#a23">→ 答案</a></li>
 </ol>
 
 <h2 id="s1"><span class="no">01</span>问题：BC 太老实，RL 太难训</h2>
@@ -511,6 +512,29 @@ actor_loss = -(exp_a * log_probs).mean()</pre>
 <tr><td>额外开销</td><td>无</td><td>推理时每个去噪步多一次前向（有条件 + 无条件）</td></tr>
 </table>
 <div class="ans" id="a4"><b class="q">Q4 答</b>AWR 把改进写进样本权重，想改得多就要把温度调小，结果大部分样本权重接近 0，有效数据变少，而且每换一个温度都得重训。CFGRL 两个分支都用正常的监督学习训练，改进幅度 w 放到推理时调，还能直接用表达力更强的扩散/流策略。论文摘要说它比常用的加权策略提取方法更有效。代价是推理时每步多一次前向。</div>
+<div class="ans" id="a23"><b class="q">Q23 答</b><b>AWR 不分组，也不改抽样概率。</b>每个样本算一个连续权重 exp(βA)，乘在 BC 的损失上。数据照常均匀抽样，和 BC 一样。
+<pre><span class="c"># 训练一步（Q、V 先用 IQL 学好，这里冻住不训）</span>
+s, a = batch                          <span class="c"># 均匀抽样</span>
+adv = Q(s, a) - V(s)
+w = jnp.exp(beta * adv)               <span class="c"># 好得越多，权重越大</span>
+w = jnp.minimum(w, 100.0)             <span class="c"># 截断</span>
+loss = -(w * log_pi(a | s)).mean()    <span class="c"># 加权 BC</span></pre>
+<table>
+<tr><th>A</th><th>exp(3·A)</th><th>效果</th></tr>
+<tr><td>+1</td><td>20</td><td>学得很重</td></tr>
+<tr><td>0</td><td>1</td><td>和 BC 一样</td></tr>
+<tr><td>−1</td><td>0.05</td><td>几乎不学</td></tr>
+</table>
+β 越大，越只学最好的样本。IQL 常用 3 或 10。代码里这个参数叫 <code>temperature</code>，但它是乘在 A 上的，所以其实是 β。CFGRL 的 <code>iql_diffusion.py:155</code> 算的就是这个，<code>:157</code> 又换成了 0/1（见 <a href="#a8">Q8</a>）。
+<table>
+<tr><th>做法</th><th>怎么用好坏</th><th>是谁</th></tr>
+<tr><td>连续权重乘在损失上</td><td>每个样本一个 exp(βA)</td><td>AWR</td></tr>
+<tr><td>按权重抽样</td><td>好样本抽得多，损失不加权</td><td>期望上和 AWR 等价，另一种实现</td></tr>
+<tr><td>只留好的（0/1 权重）</td><td>A &gt; 0 才学，其余丢掉</td><td>filtered BC</td></tr>
+<tr><td>分组，组名当条件输入</td><td>好 / 坏各一个标签，网络都学</td><td>CFGRL、π*0.6 RECAP</td></tr>
+</table>
+分组当条件的写法不算 AWR。AWR 只训一个策略，权重写进损失；CFGRL 和 RECAP 把「好/坏」当输入，推理时还能用 w 调改进幅度。<br>
+扩散策略用 AWR 有个麻烦：log π(a|s) 算不出来。实际做法是把权重乘在去噪损失上，作为近似：<code>loss = (w * ||v_pred - v_target||²).mean()</code>。</div>
 
 <h2 id="s5"><span class="no">05</span>理论三：不学价值函数，目标条件 BC 就是 CFGRL</h2>
 <h3>5.1 目标条件 BC 在做什么</h3>
