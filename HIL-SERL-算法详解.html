@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HIL-SERL · 人在环真机强化学习 · 论文与 LeRobot 实现图解</title>
+<link rel="stylesheet" href="concepts.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Noto+Serif+SC:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{--paper:#f1f4f6;--surface:#fbfcfd;--surface-2:#eaf0f4;--ink:#16222e;--ink-2:#51626f;--ink-3:#83919c;
+ --train:#c4572a;--train-bg:#fbeee7;--infer:#0e6e8a;--infer-bg:#e3f1f5;--human:#7a4fb0;--human-bg:#f1eafa;--ok:#2f7d4f;--ok-bg:#e6f4ec;
+ --line:#d8e1e7;--line-strong:#c3d0d9;--shadow:0 1px 2px rgba(22,34,46,.04),0 14px 34px rgba(22,34,46,.07)}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans",-apple-system,"PingFang SC","Microsoft YaHei",sans-serif;line-height:1.75;font-size:16px;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;background-image:linear-gradient(rgba(22,34,46,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(22,34,46,.05) 1px,transparent 1px);background-size:28px 28px}
+.wrap{max-width:980px;margin:0 auto;padding:0 22px 100px}
+.wide{max-width:1120px;margin:0 auto;padding:0 16px}
+header.hero{padding:56px 0 28px}
+.kicker{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-2)}
+.kicker b{color:var(--infer)}
+h1{font-family:"Noto Serif SC",serif;font-size:38px;line-height:1.3;margin:10px 0 12px}
+.lede{font-size:17.5px;color:var(--ink-2);max-width:780px}
+.lede b{color:var(--ink)}
+.facts{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:24px 0 0}
+.fact{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.fact .n{font-family:"IBM Plex Mono",monospace;font-size:22px;font-weight:600;color:var(--infer)}
+.fact .l{font-size:13px;color:var(--ink-2);line-height:1.5}
+h2{font-family:"Noto Serif SC",serif;font-size:27px;margin:64px 0 6px;padding-top:10px}
+h2 .no{font-family:"IBM Plex Mono",monospace;font-size:14px;color:var(--ink-3);display:block;letter-spacing:.12em}
+h3{font-size:19px;margin:34px 0 8px}
+p{margin:10px 0}
+a{color:var(--infer)}
+code,.mono{font-family:"IBM Plex Mono",ui-monospace,monospace;font-size:.88em}
+p code,li code,td code{background:var(--surface-2);padding:1px 5px;border-radius:4px}
+pre{background:#14202b;color:#dbe6ee;padding:14px 16px;border-radius:10px;overflow-x:auto;font-size:13px;line-height:1.6}
+pre .c{color:#7f97a8}
+pre .k{color:#f0b37e}
+pre .h{color:#9fd8a8}
+table{width:100%;border-collapse:collapse;margin:14px 0;font-size:14.5px;background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+th,td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{background:var(--surface-2);font-weight:600;font-size:13.5px}
+tr:last-child td{border-bottom:none}
+.box{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 20px;margin:16px 0;box-shadow:var(--shadow)}
+.box.warn{border-left:4px solid var(--train)}
+.box.note{border-left:4px solid var(--infer)}
+.box h4{margin:0 0 6px;font-size:15.5px}
+.src{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:22px 0 0}
+.src .box{margin:0}
+.src b{font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.1em;color:var(--ink-2)}
+.pill{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:12px;padding:0 8px;border-radius:999px;border:1px solid}
+.pill.a{color:var(--infer);background:var(--infer-bg);border-color:#b9dbe5}
+.pill.p{color:var(--ink-2);background:var(--surface-2);border-color:var(--line-strong)}
+.pill.c{color:var(--human);background:var(--human-bg);border-color:#d8c6ef}
+.steps{counter-reset:s;list-style:none;padding:0;margin:14px 0}
+.steps>li{counter-increment:s;position:relative;padding:12px 16px 12px 58px;background:var(--surface);border:1px solid var(--line);border-radius:10px;margin:10px 0}
+.steps>li::before{content:counter(s);position:absolute;left:16px;top:12px;width:30px;height:30px;border-radius:50%;background:var(--ink);color:#fff;display:flex;align-items:center;justify-content:center;font-family:"IBM Plex Mono",monospace;font-weight:600;font-size:14px}
+.steps pre{margin:8px 0 2px}
+
+/* ---------- 代码 / 论文链接芯片 ---------- */
+a.cl,a.pl{display:inline-block;font-family:"IBM Plex Mono",monospace;font-size:11.5px;line-height:1.5;text-decoration:none;padding:0 6px;margin:1px 2px 1px 0;border-radius:5px;border:1px solid #b9dbe5;background:var(--infer-bg);color:var(--infer);white-space:nowrap}
+a.pl{border-color:#efc9b8;background:var(--train-bg);color:var(--train)}
+a.cl:hover,a.pl:hover{filter:brightness(.95);text-decoration:underline}
+a.cl::before{content:"⌗ "}
+a.pl::before{content:"¶ "}
+
+/* ---------- 架构图 ---------- */
+.dg-scroll{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);margin:16px 0}
+.dg{position:relative;width:1060px;height:720px;margin:0 auto}
+.dg svg.wires{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.wires path{fill:none;stroke:#6f8291;stroke-width:1.8}
+.wires path.loop{stroke:var(--train);stroke-width:2.4}
+.wires path.dash{stroke-dasharray:5 5;stroke:#9aa9b4}
+.wires path.h{stroke:var(--human)}
+.nd{position:absolute;background:#fff;border:1.5px solid var(--line-strong);border-radius:10px;padding:8px 11px;font-size:13px;line-height:1.5;box-shadow:0 1px 2px rgba(22,34,46,.05)}
+.nd .nt{font-weight:700;font-size:14px;margin-bottom:3px}
+.nd .nb{color:var(--ink-2)}
+.nd .nb b{color:var(--ink)}
+.nd .nl{margin-top:6px}
+.nd.data{border-color:#b9dbe5;background:#f6fbfd}
+.nd.train{border-color:#efc9b8;background:#fff8f4}
+.nd.human{border-color:#d8c6ef;background:#faf7fe}
+.nd.paper{border-style:dashed;background:var(--surface-2)}
+.nd.st{border-width:2px}
+.nd.st.a{border-color:var(--infer)}
+.nd.st.p{border-color:var(--ink-3)}
+.nd.st.c{border-color:var(--human)}
+.frame{position:absolute;border:1.5px dashed var(--line-strong);border-radius:14px;background:rgba(234,240,244,.45)}
+.frame .ft{position:absolute;left:14px;top:6px;font-family:"IBM Plex Mono",monospace;font-size:12px;letter-spacing:.06em;color:var(--ink-2)}
+.wl{position:absolute;font-family:"IBM Plex Mono",monospace;font-size:11.5px;color:var(--ink-2);background:var(--surface);padding:0 4px;border-radius:4px;white-space:nowrap}
+.wl.loop{color:var(--train);font-weight:600}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13px;color:var(--ink-2);margin:8px 2px}
+.legend i{display:inline-block;width:14px;height:14px;border-radius:4px;vertical-align:-2px;margin-right:5px;border:1.5px solid}
+
+/* ---------- 编辑模式 ---------- */
+.kb-tools{position:fixed;right:18px;bottom:18px;z-index:50;display:flex;gap:8px;align-items:center;background:var(--surface);border:1px solid var(--line-strong);border-radius:12px;padding:8px 10px;box-shadow:var(--shadow);font-size:13px}
+.kb-tools button,.kb-tools select{font:inherit;font-size:13px;border:1px solid var(--line-strong);background:#fff;color:var(--ink);border-radius:8px;padding:4px 10px;cursor:pointer}
+.kb-tools button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.kb-tools .st{color:var(--ink-3);min-width:64px}
+body.editing #doc [contenteditable]{outline:none}
+body.editing #doc .nd,body.editing #doc .wl,body.editing #doc p,body.editing #doc td,body.editing #doc li{outline:1px dashed rgba(14,110,138,.35);outline-offset:1px}
+body.editing a.cl,body.editing a.pl{cursor:context-menu}
+.hint{font-size:13px;color:var(--ink-3)}
+.qs{counter-reset:q;list-style:none;padding:0;margin:12px 0}
+.qs>li{counter-increment:q;position:relative;padding:8px 14px 8px 52px;background:var(--surface);border:1px solid var(--line);border-radius:10px;margin:8px 0}
+.qs>li::before{content:"Q" counter(q);position:absolute;left:12px;top:8px;font-family:"IBM Plex Mono",monospace;font-weight:600;color:var(--train)}
+.qs .go{font-size:12.5px;margin-left:6px}
+.ans{margin:12px 0;padding:10px 14px;border-radius:10px;background:var(--train-bg);border:1px solid #efc9b8;font-size:14.5px}
+.ans b.q{font-family:"IBM Plex Mono",monospace;color:var(--train);margin-right:6px}
+.quiz{counter-reset:z;list-style:none;padding:0;margin:12px 0}
+.quiz>li{counter-increment:z;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:10px 16px;margin:10px 0}
+.quiz>li>p:first-child::before{content:"题 " counter(z) "　";font-family:"IBM Plex Mono",monospace;font-weight:600;color:var(--infer)}
+.quiz details{margin-top:4px;font-size:14.5px}
+.quiz summary{cursor:pointer;color:var(--infer);font-size:13.5px}
+.quiz details>div{margin-top:6px;padding:8px 12px;background:var(--surface-2);border-radius:8px}
+footer{margin-top:70px;font-size:13px;color:var(--ink-3)}
+@media (max-width:760px){.facts{grid-template-columns:repeat(2,1fr)}.src{grid-template-columns:1fr}h1{font-size:30px}}
+@media print{.kb-tools{display:none}}
+</style>
+</head>
+<body>
+<div id="doc">
+<div class="wrap">
+
+<header class="hero">
+  <div class="kicker">Real-World RL · <b>HIL-SERL</b> · 论文 + LeRobot 实现</div>
+  <h1>HIL-SERL：人在旁边扶一把，机器人在真机上自己练成</h1>
+<p class="kb-nick" style="margin:6px 0 14px;font-size:15px;line-height:1.6;color:var(--ink-2,#51626f);text-align:inherit"><span style="display:inline-block;padding:1px 10px;margin-right:8px;border:1px dashed var(--signal,#c4572a);border-radius:999px;color:var(--signal,#c4572a);font-weight:700;white-space:nowrap">外号 · 「陪练教练」</span>机器人自己试错，快出事时人扶一把，裁判只说成没成</p>
+  <p class="lede">在真机上直接做强化学习（RL）一向很难：试一次要几十秒，奖励不好写，乱动还会撞坏东西。<b>HIL-SERL 把四样东西拼在一起：几十条人类示教、一个“看图判成败”的奖励分类器、人随时接管纠正、一个很省样本的离线策略 RL 算法（基于 RLPD 的 SAC）。</b>结果是 1 到 2.5 小时真机训练，多数任务成功率接近 100%。</p>
+  <div class="facts">
+    <div class="fact"><div class="n">1–2.5 h</div><div class="l">每个任务的真机训练时长</div></div>
+    <div class="fact"><div class="n">≈2×</div><div class="l">成功率，对比同样数据量的模仿学习（论文平均）</div></div>
+    <div class="fact"><div class="n">1.8×</div><div class="l">动作更快，周期时间比人遥操作的示教还短</div></div>
+    <div class="fact"><div class="n">2 个进程</div><div class="l">LeRobot：actor 在机器人旁跑，learner 在 GPU 上训</div></div>
+  </div>
+
+  <div class="src">
+    <div class="box">
+      <b>原始论文</b>
+      <p style="margin:4px 0"><i>Precise and Dexterous Robotic Manipulation via Human-in-the-Loop Reinforcement Learning</i>，Luo、Xu、Wu、Levine（UC Berkeley）</p>
+      <a class="pl" href="https://arxiv.org/abs/2410.21845" target="_blank" rel="noreferrer">arXiv:2410.21845</a>
+      <a class="pl" href="https://arxiv.org/html/2410.21845v3" target="_blank" rel="noreferrer">HTML 全文</a>
+      <a class="pl" href="https://hil-serl.github.io/" target="_blank" rel="noreferrer">项目主页</a>
+      <a class="pl" href="https://github.com/rail-berkeley/hil-serl" target="_blank" rel="noreferrer">官方代码（JAX）</a>
+    </div>
+    <div class="box">
+      <b>代码</b>
+      <p style="margin:4px 0">这里对照 LeRobot 的 PyTorch 实现（commit <code>b6ec006</code>）。策略叫 <code>gaussian_actor</code>，算法在 <code>rl/algorithms/sac/</code>，真机流程在 <code>rl/actor.py</code> 和 <code>rl/learner.py</code>。</p>
+      <a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/actor.py#L230" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/actor.py" data-line="230">actor.py:230</a>
+      <a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/learner.py#L271" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/learner.py" data-line="271">learner.py:271</a>
+      <a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/algorithms/sac/sac_algorithm.py#L47" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/algorithms/sac/sac_algorithm.py" data-line="47">sac_algorithm.py:47</a>
+      <a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/docs/source/hilserl.mdx?plain=1#L1" target="_blank" rel="noreferrer" data-path="docs/source/hilserl.mdx" data-line="1">hilserl.mdx</a>
+    </div>
+  </div>
+</header>
+
+<h2 id="s0"><span class="no">00</span>带着问题读</h2>
+<p>先想一想这几个问题。答案在正文里用 <span class="ans" style="display:inline;padding:1px 6px;margin:0"><b class="q">Q</b>答</span> 标出来了。</p>
+<ol class="qs">
+<li>真机 RL 难在哪？HIL-SERL 各用什么零件去解决？<a class="go" href="#a1">→ 答案</a></li>
+<li>没人写奖励函数，奖励从哪来？<a class="go" href="#a2">→ 答案</a></li>
+<li>人什么时候插手？插手时录下的数据去了哪里？<a class="go" href="#a3">→ 答案</a></li>
+<li>为什么 1–2 小时就够？示教数据在训练里怎么用？<a class="go" href="#a4">→ 答案</a></li>
+<li>夹爪为什么要单独用一个网络管？<a class="go" href="#a5">→ 答案</a></li>
+<li>LeRobot 里 actor 和 learner 怎么分工、怎么通信？<a class="go" href="#a6">→ 答案</a></li>
+</ol>
+
+<h2 id="s1"><span class="no">01</span>先用学骑车打个比方</h2>
+<p>想象你在学骑自行车，旁边有个教练。</p>
+<table>
+<tr><th>学骑车</th><th>HIL-SERL 里的零件</th><th>它做什么</th></tr>
+<tr><td>教练先骑几圈给你看</td><td>示教数据（几十条）</td><td>告诉策略“成功大概长什么样”</td></tr>
+<tr><td>你自己骑，摇摇晃晃</td><td>策略探索（SAC）</td><td>自己试动作，好坏都记下来</td></tr>
+<tr><td>快摔时教练扶一把</td><td>人工干预</td><td>人用手柄接管，把车拉回正路</td></tr>
+<tr><td>终点线上的裁判</td><td>奖励分类器</td><td>看相机画面，只说“成了 / 没成”</td></tr>
+<tr><td>晚上回想今天哪下骑得好</td><td>回放缓冲区 + 反复训练</td><td>旧经验反复拿出来学</td></tr>
+</table>
+<p>和“照着教练学”（模仿学习）不同，这里最后看的是裁判的成败。所以你可以骑得比教练还快。论文里策略的动作周期，平均比人遥操作快 1.8 倍。</p>
+
+<h2 id="s2"><span class="no">02</span>问题：真机 RL 为什么难</h2>
+<div class="ans" id="a1"><b class="q">Q1</b>三个难处，每个配一个零件：
+<table>
+<tr><th>难处</th><th>具体是什么</th><th>HIL-SERL 的办法</th></tr>
+<tr><td>样本贵</td><td>一次尝试几十秒，一小时只有几百次</td><td>离线策略 RL（RLPD 风格 SAC）：每条经验进缓冲区反复用；示教和在线数据各采一半</td></tr>
+<tr><td>奖励难写</td><td>“内存条插好了没”很难写成公式</td><td>用几百张成功 / 失败图片训一个二分类器当奖励</td></tr>
+<tr><td>探索又慢又危险</td><td>从零乱试，很久碰不到一次成功，还可能撞坏</td><td>人随时接管纠正；底层阻抗控制器限制力和工作空间</td></tr>
+</table>
+另外两个系统细节也很重要：视觉用<b>预训练、冻结</b>的图像编码器（训练稳）；夹爪单独用离散动作管（见 <a href="#a5">Q5</a>）。
+<a class="pl" href="https://arxiv.org/html/2410.21845v3#S3.SS3" target="_blank" rel="noreferrer">论文 §3.3</a></div>
+
+<h2 id="s3"><span class="no">03</span>四个零件，一个一个看</h2>
+
+<h3 id="s3-1">3.1 裁判：奖励分类器</h3>
+<p>先用遥操作录一些画面。有的帧任务成功，标 1；有的没成功，标 0。拿这些图训一个小的图像分类器。训练 RL 时，每一步把相机画面喂给它，它说成功，这一步奖励就是 1，episode 结束。</p>
+<div class="ans" id="a2"><b class="q">Q2</b>奖励来自一个二分类器，输入是相机图像，输出“成功的概率”。超过阈值就算成功，给奖励 <code>success_reward</code>，并结束这一回合。其他时候奖励是 0。所以这是<b>稀疏奖励</b>：只有成功那一下有分。
+人也可以用手柄直接按“成功”，这时奖励由人给。
+<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/processor/hil_processor.py#L611" target="_blank" rel="noreferrer" data-path="src/lerobot/processor/hil_processor.py" data-line="611">分类器打分:611</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/processor/hil_processor.py#L619" target="_blank" rel="noreferrer" data-path="src/lerobot/processor/hil_processor.py" data-line="619">判成功:619</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/processor/hil_processor.py#L517" target="_blank" rel="noreferrer" data-path="src/lerobot/processor/hil_processor.py" data-line="517">人按成功:517</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rewards/classifier/modeling_classifier.py#L279" target="_blank" rel="noreferrer" data-path="src/lerobot/rewards/classifier/modeling_classifier.py" data-line="279">predict_reward:279</a><a class="pl" href="https://arxiv.org/html/2410.21845v3#S3.SS3" target="_blank" rel="noreferrer">论文 §3.3 Reward</a></div>
+
+<h3 id="s3-2">3.2 陪练：人工干预</h3>
+<p>训练时，人手里拿着手柄或键盘。机器人在自己跑。人看它要出错（比如要撞桌子、卡住不动），就按住接管键，用手柄推着它走。松开键，控制权还给策略。</p>
+<p>代码里只做了一件事：如果这一帧“人在干预”，就把策略的动作<b>替换</b>成人的动作，然后把 <code>is_intervention=True</code> 记进这条数据。</p>
+<div class="ans" id="a3"><b class="q">Q3</b>人在策略要犯大错时插手，短时间纠正后马上放手。插手那几帧的数据（动作是人的）会进<b>两个</b>缓冲区：在线缓冲区，和装示教的离线缓冲区。其他帧只进在线缓冲区。
+这样人的纠正和示教一样，会在每个 batch 里被多次采到。
+<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/processor/hil_processor.py#L494" target="_blank" rel="noreferrer" data-path="src/lerobot/processor/hil_processor.py" data-line="494">替换动作:494</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/actor.py#L357" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/actor.py" data-line="357">读干预标记:357</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/learner.py#L982" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/learner.py" data-line="982">进在线:982</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/learner.py#L985" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/learner.py" data-line="985">干预也进离线:985</a><a class="pl" href="https://arxiv.org/html/2410.21845v3#S3.SS4" target="_blank" rel="noreferrer">论文 §3.4</a></div>
+<div class="box note"><h4>怎么干预才好</h4>
+LeRobot 文档给的建议：刚开始让策略自己探索几回合；不要长时间接管，只在跑偏时纠正一下；策略开始会做之后，只做“帮它抓一下”这种很短的干预。健康的训练里，<b>干预率</b>（人接管的步数 ÷ 总步数）会逐渐降到 0。
+<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/docs/source/hilserl.mdx?plain=1#L902" target="_blank" rel="noreferrer" data-path="docs/source/hilserl.mdx" data-line="902">mdx:902</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/actor.py#L402" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/actor.py" data-line="402">干预率:402</a></div>
+
+<svg viewBox="0 0 640 220" style="width:100%;max-width:640px;display:block;margin:10px auto;background:var(--surface);border:1px solid var(--line);border-radius:10px" role="img" aria-label="干预率与成功率随训练时间变化示意">
+  <line x1="60" y1="180" x2="610" y2="180" stroke="#83919c"/><line x1="60" y1="20" x2="60" y2="180" stroke="#83919c"/>
+  <text x="330" y="210" font-size="12" fill="#51626f" text-anchor="middle">训练时间（示意，0 → 2 小时）</text>
+  <text x="54" y="24" font-size="11" fill="#51626f" text-anchor="end">100%</text><text x="54" y="184" font-size="11" fill="#51626f" text-anchor="end">0</text>
+  <path d="M60 60 C160 70 220 120 300 150 S480 176 610 178" fill="none" stroke="#7a4fb0" stroke-width="2.5"/>
+  <path d="M60 178 C150 176 220 140 300 90 S480 30 610 26" fill="none" stroke="#2f7d4f" stroke-width="2.5"/>
+  <text x="120" y="56" font-size="12" fill="#7a4fb0">干预率</text>
+  <text x="500" y="22" font-size="12" fill="#2f7d4f">成功率</text>
+</svg>
+<p class="hint" style="text-align:center">示意图：人插手越来越少，成功率越来越高。真实曲线见论文附录 E 和 LeRobot 文档的干预率图。</p>
+
+<h3 id="s3-3">3.3 示教 + 混合采样：为什么学得快</h3>
+<p>训练开始前，先录几十条成功的示教，放进<b>离线缓冲区</b>。机器人自己跑出的经验放进<b>在线缓冲区</b>。每次训练取一个 batch，一半从在线取，一半从离线取。这是 RLPD 的“对称采样”。</p>
+<svg viewBox="0 0 640 90" style="width:100%;max-width:640px;display:block;margin:8px auto" role="img" aria-label="一个 batch 一半在线一半离线">
+  <rect x="20" y="20" width="300" height="40" rx="6" fill="#e3f1f5" stroke="#0e6e8a"/>
+  <rect x="320" y="20" width="300" height="40" rx="6" fill="#fbeee7" stroke="#c4572a"/>
+  <text x="170" y="45" font-size="13" text-anchor="middle" fill="#0e6e8a">在线：自己跑的 128 条</text>
+  <text x="470" y="45" font-size="13" text-anchor="middle" fill="#c4572a">离线：示教 + 人纠正 128 条</text>
+  <text x="320" y="82" font-size="12" text-anchor="middle" fill="#51626f">batch_size = 256，online_ratio = 0.5</text>
+</svg>
+<div class="ans" id="a4"><b class="q">Q4</b>快的原因有三个：
+<ol style="margin:4px 0 4px 18px;padding:0">
+<li><b>离线策略</b>：每条经验存进缓冲区，可以被拿出来训很多次，不是用一次就扔。</li>
+<li><b>示教一直在 batch 里</b>：一半样本来自示教和人纠正，critic 一开始就见到“成功的路”，不用靠乱试撞上。</li>
+<li><b>人纠正</b>：把策略从坏状态拉回来，少浪费尝试。论文的消融里，去掉人干预的任务成功率掉得很多。</li>
+</ol>
+LeRobot 里 <code>online_ratio</code> 默认 0.5；<code>utd_ratio</code>（每收一批数据做几次梯度更新）默认 1，可以调大。
+<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/data_sources/data_mixer.py#L62" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/data_sources/data_mixer.py" data-line="62">n_online:62</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/train_rl.py#L41" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/train_rl.py" data-line="41">online_ratio=0.5:41</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/algorithms/sac/configuration_sac.py#L80" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/algorithms/sac/configuration_sac.py" data-line="80">utd_ratio:80</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/algorithms/sac/sac_algorithm.py#L201" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/algorithms/sac/sac_algorithm.py" data-line="201">UTD 循环:201</a><a class="pl" href="https://arxiv.org/abs/2302.02948" target="_blank" rel="noreferrer">RLPD 论文</a></div>
+
+<h3 id="s3-4">3.4 学习的核心：SAC 怎么更新（逐步推）</h3>
+<p>先说大白话：有两个网络。<b>critic</b> 是“打分员”，给（画面，动作）打分，分数代表“这么做以后大概能拿多少奖励”。<b>actor</b> 是“出手的人”，学着选打分员给高分的动作，同时别太死板。</p>
+<p>符号先列清楚：</p>
+<table>
+<tr><th>符号</th><th>意思</th><th>代码里</th></tr>
+<tr><td><code>s, s'</code></td><td>这一步和下一步的观测（图像 + 关节）</td><td><code>observations / next_observations</code></td></tr>
+<tr><td><code>a</code></td><td>这一步的动作（末端 Δx, Δy, Δz）</td><td><code>actions</code></td></tr>
+<tr><td><code>r</code></td><td>奖励，成功是 1，否则 0</td><td><code>rewards</code></td></tr>
+<tr><td><code>done</code></td><td>这一步后回合是否结束</td><td><code>done</code></td></tr>
+<tr><td><code>γ</code></td><td>折扣，未来奖励打几折</td><td><code>discount=0.99</code></td></tr>
+<tr><td><code>Q₁, Q₂</code></td><td>两个 critic（打分员）</td><td><code>num_critics=2</code></td></tr>
+<tr><td><code>Q̄₁, Q̄₂</code></td><td>它们的“慢速副本”（目标网络）</td><td><code>critic_target</code></td></tr>
+<tr><td><code>π(a|s)</code></td><td>actor 给出的动作分布（tanh 压缩的高斯）</td><td><code>GaussianActorPolicy</code></td></tr>
+<tr><td><code>α</code></td><td>温度，奖励“随机性”的力度</td><td><code>log_alpha.exp()</code></td></tr>
+<tr><td><code>H̄</code></td><td>目标熵，默认 −动作维度/2</td><td><code>target_entropy</code></td></tr>
+</table>
+
+<p><b>critic 的更新</b>（目标：让 Q(s,a) 等于“这一步奖励 + 以后的价值”）</p>
+<ol class="steps">
+<li><b>在下一状态抽一个动作。</b>用当前 actor 在 <code>s'</code> 抽 <code>a' ~ π(·|s')</code>，同时得到 <code>log π(a'|s')</code>。为什么：要估“下一步之后还能拿多少”，需要知道下一步大概会怎么做。</li>
+<li><b>两个目标网络打分，取小的那个。</b><code>q̄ = min(Q̄₁(s',a'), Q̄₂(s',a'))</code>。为什么：单个网络爱高估，取小更保守。<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/algorithms/sac/sac_algorithm.py#L303" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/algorithms/sac/sac_algorithm.py" data-line="303">min:303</a></li>
+<li><b>减掉熵项。</b><code>q̄ ← q̄ − α·log π(a'|s')</code>。为什么：<code>−log π</code> 越大表示越随机，这一项等于把“保持随机”也算作一种收益。<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/algorithms/sac/sac_algorithm.py#L305" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/algorithms/sac/sac_algorithm.py" data-line="305">熵项:305</a></li>
+<li><b>拼出目标值。</b><code>y = r + γ·(1 − done)·q̄</code>。为什么：回合结束了就没有“以后”，所以乘 <code>(1−done)</code>。<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/algorithms/sac/sac_algorithm.py#L307" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/algorithms/sac/sac_algorithm.py" data-line="307">td_target:307</a></li>
+<li><b>让两个 critic 都去拟合 y。</b>损失是 <code>(Q₁(s,a) − y)² + (Q₂(s,a) − y)²</code> 的平均。<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/algorithms/sac/sac_algorithm.py#L271" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/algorithms/sac/sac_algorithm.py" data-line="271">critic loss:271</a></li>
+</ol>
+<div class="box"><h4>算一个数</h4>
+设 <code>r=0, done=0, γ=0.99, α=0.1</code>，两个目标网络给 0.8 和 0.7，<code>log π(a'|s') = −1</code>。<br>
+第 2 步：取小 → 0.7。第 3 步：0.7 − 0.1×(−1) = 0.8。第 4 步：y = 0 + 0.99×1×0.8 = <b>0.792</b>。<br>
+如果 Q₁(s,a) 现在是 0.6，误差是 0.6 − 0.792 = −0.192，梯度会把它往上推。</div>
+
+<p><b>actor 的更新</b>（目标：选打分高的动作，但别太死板）</p>
+<ol class="steps">
+<li><b>在当前状态抽动作。</b><code>a ~ π(·|s)</code>，带着梯度（重参数化），得到 <code>log π(a|s)</code>。</li>
+<li><b>两个 critic 打分取小。</b><code>q = min(Q₁(s,a), Q₂(s,a))</code>。</li>
+<li><b>损失 = α·log π(a|s) − q</b>，取平均。为什么：要让 q 变大（减号），也要让 <code>log π</code> 变小、即更随机（α 控制力度）。<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/algorithms/sac/sac_algorithm.py#L407" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/algorithms/sac/sac_algorithm.py" data-line="407">actor loss:407</a></li>
+</ol>
+
+<p><b>温度 α 的更新</b>（自动调“随机性”的力度）</p>
+<ol class="steps">
+<li><b>损失 = −α·(log π(a|s) + H̄)</b>。<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/algorithms/sac/sac_algorithm.py#L419" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/algorithms/sac/sac_algorithm.py" data-line="419">temperature loss:419</a></li>
+<li><b>怎么读：</b>如果策略太确定，<code>log π</code> 偏大，<code>log π + H̄ &gt; 0</code>，梯度让 α 变大，更鼓励随机。反过来太随机，α 变小。默认 <code>H̄ = −动作维度/2</code>。<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/algorithms/sac/sac_algorithm.py#L125" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/algorithms/sac/sac_algorithm.py" data-line="125">target_entropy:125</a></li>
+</ol>
+
+<p><b>目标网络慢慢跟</b>：<code>θ̄ ← 0.005·θ + 0.995·θ̄</code>。每次只挪一小步，目标值 y 不会乱跳，训练更稳。<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/algorithms/sac/sac_algorithm.py#L422" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/algorithms/sac/sac_algorithm.py" data-line="422">soft update:422</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/algorithms/sac/configuration_sac.py#L58" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/algorithms/sac/configuration_sac.py" data-line="58">0.005:58</a></p>
+
+<h3 id="s3-5">3.5 夹爪：单独一个离散 critic</h3>
+<p>手臂移动是连续的（往哪挪几毫米）。夹爪本质上只有三种选择：闭、不动、开。用连续高斯去学“开 / 关”很别扭，常常抖来抖去。</p>
+<div class="ans" id="a5"><b class="q">Q5</b>论文把夹爪当成<b>离散动作</b>，单独用一个 DQN 式的 critic 学：给“闭 / 不动 / 开”各打一个分，选最高的。目标值是 <code>r + 夹爪惩罚 + γ·Q̄_g(s', 下一步最好的夹爪动作)</code>。
+夹爪惩罚很小（默认 −0.02）：夹爪已经开着还下令“开”，或已经关着还下令“关”，就扣一点，防止它没事乱动夹爪。
+<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/algorithms/sac/sac_algorithm.py#L335" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/algorithms/sac/sac_algorithm.py" data-line="335">discrete critic:335</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/algorithms/sac/sac_algorithm.py#L354" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/algorithms/sac/sac_algorithm.py" data-line="354">读惩罚:354</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/processor/hil_processor.py#L368" target="_blank" rel="noreferrer" data-path="src/lerobot/processor/hil_processor.py" data-line="368">penalty=-0.02:368</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/policies/gaussian_actor/configuration_gaussian_actor.py#L141" target="_blank" rel="noreferrer" data-path="src/lerobot/policies/gaussian_actor/configuration_gaussian_actor.py" data-line="141">num_discrete_actions:141</a><a class="pl" href="https://arxiv.org/html/2410.21845v3#S3.SS3" target="_blank" rel="noreferrer">论文 §3.3 Gripper</a></div>
+
+<h3 id="s3-6">3.6 眼睛：预训练图像编码器 + 裁剪</h3>
+<p>图像先过一个在大数据上预训练好的编码器（论文用 ResNet-10），参数冻结不训。为什么：从零学视觉特征太慢，也容易让 RL 不稳。再把画面裁到任务相关的区域、缩小（比如 128×128），网络只看要紧的地方。actor 和 critic 默认共用同一个编码器。</p>
+<p><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/policies/gaussian_actor/configuration_gaussian_actor.py#L133" target="_blank" rel="noreferrer" data-path="src/lerobot/policies/gaussian_actor/configuration_gaussian_actor.py" data-line="133">vision_encoder_name:133</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/policies/gaussian_actor/configuration_gaussian_actor.py#L135" target="_blank" rel="noreferrer" data-path="src/lerobot/policies/gaussian_actor/configuration_gaussian_actor.py" data-line="135">freeze:135</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/policies/gaussian_actor/configuration_gaussian_actor.py#L139" target="_blank" rel="noreferrer" data-path="src/lerobot/policies/gaussian_actor/configuration_gaussian_actor.py" data-line="139">shared_encoder:139</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/processor/hil_processor.py#L175" target="_blank" rel="noreferrer" data-path="src/lerobot/processor/hil_processor.py" data-line="175">裁剪缩放:175</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/crop_dataset_roi.py#L1" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/crop_dataset_roi.py" data-line="1">选 ROI 工具</a><a class="pl" href="https://arxiv.org/html/2410.21845v3#S3.SS3" target="_blank" rel="noreferrer">论文 §3.3 Backbone</a></p>
+
+<h2 id="s4"><span class="no">04</span>真机上怎么跑：七步</h2>
+<ol class="steps">
+<li><b>定工作空间边界。</b>遥操作把末端移到能到的角落，记下 xyz 上下限。策略的动作会被限制在这个盒子里，不会撞出去。<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/docs/source/hilserl.mdx?plain=1#L299" target="_blank" rel="noreferrer" data-path="docs/source/hilserl.mdx" data-line="299">mdx:299</a></li>
+<li><b>录示教。</b>用手柄或主从臂录几十条成功的回合，存成 LeRobotDataset。<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/docs/source/hilserl.mdx?plain=1#L349" target="_blank" rel="noreferrer" data-path="docs/source/hilserl.mdx" data-line="349">mdx:349</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/gym_manipulator.py#L613" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/gym_manipulator.py" data-line="613">control_loop:613</a></li>
+<li><b>选裁剪区域。</b>在录好的画面上框出任务区域。<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/docs/source/hilserl.mdx?plain=1#L534" target="_blank" rel="noreferrer" data-path="docs/source/hilserl.mdx" data-line="534">mdx:534</a></li>
+<li><b>训奖励分类器。</b>用示教里的成功 / 失败帧训二分类器。<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/docs/source/hilserl.mdx?plain=1#L604" target="_blank" rel="noreferrer" data-path="docs/source/hilserl.mdx" data-line="604">mdx:604</a></li>
+<li><b>启动 learner。</b>在 GPU 机器上开 gRPC 服务，等 actor 连。<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/docs/source/hilserl.mdx?plain=1#L817" target="_blank" rel="noreferrer" data-path="docs/source/hilserl.mdx" data-line="817">mdx:817</a></li>
+<li><b>启动 actor。</b>连上机器人，开始自己跑；人拿手柄在旁边看。</li>
+<li><b>边看边纠正。</b>盯着干预率往下走，成功率往上走。<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/docs/source/hilserl.mdx?plain=1#L902" target="_blank" rel="noreferrer" data-path="docs/source/hilserl.mdx" data-line="902">mdx:902</a></li>
+</ol>
+
+<h2 id="s5"><span class="no">05</span>架构图：actor 和 learner</h2>
+<div class="ans" id="a6"><b class="q">Q6</b>两个进程，用 gRPC 通信：
+<b>actor</b> 在机器人旁边，每一帧用当前策略出动作，人可以替换它，真机执行，奖励分类器打分，打包成一条经验 <code>(s, a, r, s', done, is_intervention)</code>，攒一批发给 learner。
+<b>learner</b> 在 GPU 上，收到经验就放进缓冲区，按一半在线一半离线采 batch，做 SAC 更新，每隔几秒（默认 4 秒）把最新权重推回 actor。
+所以机器人从不等训练，训练也从不等机器人。
+<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/learner_service.py#L69" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/learner_service.py" data-line="69">StreamParameters:69</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/learner_service.py#L106" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/learner_service.py" data-line="106">SendTransitions:106</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/policies/gaussian_actor/configuration_gaussian_actor.py#L59" target="_blank" rel="noreferrer" data-path="src/lerobot/policies/gaussian_actor/configuration_gaussian_actor.py" data-line="59">push 频率:59</a><a class="pl" href="https://arxiv.org/html/2410.21845v3#S3.SS2" target="_blank" rel="noreferrer">论文 §3.2 系统概览</a></div>
+<p class="hint">图里文字可选中、复制。点右下角「✎ 编辑」后可直接改字，按「保存」或 ⌘/Ctrl+S 写回这个 HTML 文件（Chrome / Edge 第一次保存时选中本文件即可覆盖；其他浏览器会下载一份新文件）。编辑模式下点击 ⌗ 代码芯片可以改它指向的文件和行号。代码链接都指向 GitHub 上固定 commit 的源码，论文链接指向 arXiv。</p>
+</div><!-- /wrap -->
+
+<div class="wide">
+<div class="legend">
+  <span><i style="background:#f6fbfd;border-color:#b9dbe5"></i>数据</span>
+  <span><i style="background:#fff8f4;border-color:#efc9b8"></i>训练</span>
+  <span><i style="background:#faf7fe;border-color:#d8c6ef"></i>人</span>
+  <span><i style="background:#fff;border-color:#c3d0d9"></i>机器人 / 策略</span>
+  <span style="color:var(--train)">━ 红线：经验和权重在两个进程间流动</span>
+</div>
+<div class="dg-scroll">
+<div class="dg" id="hilserl-diagram" style="height:740px">
+<svg class="wires" viewBox="0 0 1060 740" aria-hidden="true">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#6f8291"/></marker>
+    <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#c4572a"/></marker>
+    <marker id="arh" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#7a4fb0"/></marker>
+  </defs>
+  <!-- actor 内部 -->
+  <path class="h" d="M135 184 L135 228" marker-end="url(#arh)"/>
+  <path d="M375 184 L375 228" marker-end="url(#ar)"/>
+  <path d="M260 322 L260 348" marker-end="url(#ar)"/>
+  <path d="M150 442 L150 468" marker-end="url(#ar)"/>
+  <path d="M375 442 L375 468" marker-end="url(#ar)"/>
+  <path d="M150 572 L150 598" marker-end="url(#ar)"/>
+  <path d="M375 572 L375 598" marker-end="url(#ar)"/>
+  <!-- actor → learner：经验 -->
+  <path class="loop" d="M482 645 L530 645 L530 110 L578 110" marker-end="url(#arr)"/>
+  <!-- learner 内部 -->
+  <path d="M685 184 L685 228" marker-end="url(#ar)"/>
+  <path class="h" d="M760 184 L760 205 L880 205 L880 228" marker-end="url(#arh)"/>
+  <path d="M960 184 L960 228" marker-end="url(#ar)"/>
+  <path d="M685 322 L685 348" marker-end="url(#ar)"/>
+  <path d="M915 322 L915 348" marker-end="url(#ar)"/>
+  <path class="loop" d="M800 442 L800 468" marker-end="url(#arr)"/>
+  <path class="loop" d="M800 592 L800 618" marker-end="url(#arr)"/>
+  <!-- learner → actor：权重 -->
+  <path class="loop" d="M1022 665 L1046 665 L1046 14 L375 14 L375 58" marker-end="url(#arr)"/>
+</svg>
+
+<div class="frame" style="left:20px;top:28px;width:480px;height:700px"><div class="ft">ACTOR 进程 · 机器人旁</div></div>
+<div class="frame" style="left:560px;top:28px;width:478px;height:700px"><div class="ft">LEARNER 进程 · GPU</div></div>
+
+<!-- actor -->
+<div class="nd human" style="left:40px;top:60px;width:200px;min-height:124px">
+  <div class="nt">① 人 · 手柄 / 键盘</div>
+  <div class="nb">按住接管键 = 干预；也能按「成功 / 失败 / 重录」。</div>
+  <div class="nl"><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/teleoperators/gamepad/teleop_gamepad.py#L147" target="_blank" rel="noreferrer" data-path="src/lerobot/teleoperators/gamepad/teleop_gamepad.py" data-line="147">teleop_gamepad.py:147</a><a class="pl" href="https://arxiv.org/html/2410.21845v3#S3.SS4" target="_blank" rel="noreferrer">§3.4</a></div>
+</div>
+<div class="nd" style="left:262px;top:60px;width:218px;min-height:124px">
+  <div class="nt">② 策略 π 出动作</div>
+  <div class="nb">冻结的预训练编码器 → 高斯 actor → Δxyz；夹爪由离散 critic 选。</div>
+  <div class="nl"><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/actor.py#L314" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/actor.py" data-line="314">actor.py:314</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/policies/gaussian_actor/modeling_gaussian_actor.py#L77" target="_blank" rel="noreferrer" data-path="src/lerobot/policies/gaussian_actor/modeling_gaussian_actor.py" data-line="77">select_action:77</a></div>
+</div>
+<div class="nd human" style="left:40px;top:230px;width:440px;min-height:92px">
+  <div class="nt">③ 干预替换</div>
+  <div class="nb">人在干预 → 动作换成人的，标 <b>is_intervention=True</b>；否则用策略动作。</div>
+  <div class="nl"><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/processor/hil_processor.py#L494" target="_blank" rel="noreferrer" data-path="src/lerobot/processor/hil_processor.py" data-line="494">hil_processor.py:494</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/processor/hil_processor.py#L451" target="_blank" rel="noreferrer" data-path="src/lerobot/processor/hil_processor.py" data-line="451">InterventionActionProcessorStep:451</a></div>
+</div>
+<div class="nd" style="left:40px;top:350px;width:440px;min-height:92px">
+  <div class="nt">④ 真机执行一步</div>
+  <div class="nb">限制在工作空间盒子里；读回相机图像和关节，裁剪缩放。</div>
+  <div class="nl"><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/actor.py#L329" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/actor.py" data-line="329">actor.py:329</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/gym_manipulator.py#L532" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/gym_manipulator.py" data-line="532">gym_manipulator.py:532</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/gym_manipulator.py#L255" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/gym_manipulator.py" data-line="255">RobotEnv.step:255</a></div>
+</div>
+<div class="nd data" style="left:40px;top:470px;width:212px;min-height:102px">
+  <div class="nt">⑤ 奖励分类器</div>
+  <div class="nb">看图判成败：成功 r=1 并结束，否则 r=0。</div>
+  <div class="nl"><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/processor/hil_processor.py#L611" target="_blank" rel="noreferrer" data-path="src/lerobot/processor/hil_processor.py" data-line="611">hil_processor.py:611</a><a class="pl" href="https://arxiv.org/html/2410.21845v3#S3.SS3" target="_blank" rel="noreferrer">§3.3</a></div>
+</div>
+<div class="nd data" style="left:268px;top:470px;width:212px;min-height:102px">
+  <div class="nt">⑥ 夹爪惩罚</div>
+  <div class="nb">没必要的开 / 关扣 0.02，记进 discrete_penalty。</div>
+  <div class="nl"><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/processor/hil_processor.py#L352" target="_blank" rel="noreferrer" data-path="src/lerobot/processor/hil_processor.py" data-line="352">hil_processor.py:352</a></div>
+</div>
+<div class="nd data" style="left:40px;top:600px;width:440px;min-height:92px">
+  <div class="nt">⑦ 打包经验，攒批发送</div>
+  <div class="nb">(s, a, r, s′, done, <b>is_intervention</b>, discrete_penalty) → 队列 → gRPC。统计干预率。</div>
+  <div class="nl"><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/actor.py#L357" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/actor.py" data-line="357">actor.py:357</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/actor.py#L390" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/actor.py" data-line="390">push:390</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/actor.py#L540" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/actor.py" data-line="540">send_transitions:540</a></div>
+</div>
+
+<!-- learner -->
+<div class="nd train" style="left:580px;top:60px;width:210px;min-height:124px">
+  <div class="nt">⑧ 收经验</div>
+  <div class="nb">gRPC 收到后去掉含 NaN 的，逐条入库。</div>
+  <div class="nl"><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/learner_service.py#L106" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/learner_service.py" data-line="106">learner_service.py:106</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/learner.py#L952" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/learner.py" data-line="952">process_transitions:952</a></div>
+</div>
+<div class="nd data paper" style="left:810px;top:60px;width:210px;min-height:124px">
+  <div class="nt">示教数据集</div>
+  <div class="nb">训练前录的几十条成功回合（LeRobotDataset）。</div>
+  <div class="nl"><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/learner.py#L836" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/learner.py" data-line="836">learner.py:836</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/docs/source/hilserl.mdx?plain=1#L349" target="_blank" rel="noreferrer" data-path="docs/source/hilserl.mdx" data-line="349">mdx:349</a></div>
+</div>
+<div class="nd data" style="left:580px;top:230px;width:210px;min-height:92px">
+  <div class="nt">⑨ 在线缓冲区</div>
+  <div class="nb">所有经验都进。</div>
+  <div class="nl"><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/learner.py#L982" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/learner.py" data-line="982">learner.py:982</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/buffer.py#L81" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/buffer.py" data-line="81">ReplayBuffer:81</a></div>
+</div>
+<div class="nd data" style="left:810px;top:230px;width:210px;min-height:92px">
+  <div class="nt">⑩ 离线缓冲区</div>
+  <div class="nb">示教 + <b>人干预的帧</b>。</div>
+  <div class="nl"><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/learner.py#L985" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/learner.py" data-line="985">learner.py:985</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/buffer.py#L411" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/buffer.py" data-line="411">from_lerobot_dataset:411</a></div>
+</div>
+<div class="nd train" style="left:580px;top:350px;width:440px;min-height:92px">
+  <div class="nt">⑪ 混合采样（RLPD 对称采样）</div>
+  <div class="nb">batch 里 <b>online_ratio=0.5</b> 来自在线，其余来自离线；在线攒够 <b>online_step_before_learning</b> 条才开训。</div>
+  <div class="nl"><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/data_sources/data_mixer.py#L62" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/data_sources/data_mixer.py" data-line="62">data_mixer.py:62</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/learner.py#L359" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/learner.py" data-line="359">learner.py:359</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/learner.py#L413" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/learner.py" data-line="413">开训门槛:413</a></div>
+</div>
+<div class="nd train" style="left:580px;top:470px;width:440px;min-height:122px">
+  <div class="nt">⑫ SAC 更新（每步重复 utd_ratio 次 critic）</div>
+  <div class="nb">critic：y = r + γ(1−done)(min Q̄ − α log π)；actor：α log π − min Q；温度 α 自动调；离散夹爪 critic；目标网络软更新 0.005。</div>
+  <div class="nl"><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/algorithms/sac/sac_algorithm.py#L179" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/algorithms/sac/sac_algorithm.py" data-line="179">update:179</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/algorithms/sac/sac_algorithm.py#L307" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/algorithms/sac/sac_algorithm.py" data-line="307">td:307</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/algorithms/sac/sac_algorithm.py#L407" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/algorithms/sac/sac_algorithm.py" data-line="407">actor:407</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/algorithms/sac/sac_algorithm.py#L419" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/algorithms/sac/sac_algorithm.py" data-line="419">α:419</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/algorithms/sac/sac_algorithm.py#L335" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/algorithms/sac/sac_algorithm.py" data-line="335">夹爪:335</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/algorithms/sac/sac_algorithm.py#L422" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/algorithms/sac/sac_algorithm.py" data-line="422">soft:422</a><a class="pl" href="https://arxiv.org/abs/2302.02948" target="_blank" rel="noreferrer">RLPD</a></div>
+</div>
+<div class="nd train" style="left:580px;top:620px;width:440px;min-height:90px">
+  <div class="nt">⑬ 推权重回 actor</div>
+  <div class="nb">每隔 <b>policy_parameters_push_frequency</b>（默认 4 秒）推一次；actor 收到后替换策略参数。</div>
+  <div class="nl"><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/learner.py#L423" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/learner.py" data-line="423">learner.py:423</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/learner_service.py#L69" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/learner_service.py" data-line="69">StreamParameters:69</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/actor.py#L698" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/actor.py" data-line="698">update_policy_parameters:698</a></div>
+</div>
+
+<div class="wl" style="left:143px;top:196px">人的动作</div>
+<div class="wl" style="left:383px;top:196px">策略动作</div>
+<div class="wl loop" style="left:504px;top:380px;writing-mode:vertical-rl;padding:4px 0">经验 gRPC</div>
+<div class="wl" style="left:770px;top:208px;color:var(--human)">仅干预帧</div>
+<div class="wl loop" style="left:620px;top:2px">新权重（gRPC）→ ② 策略</div>
+</div>
+</div>
+</div><!-- /wide -->
+
+<div class="wrap">
+<h2 id="s6"><span class="no">06</span>和 BC、DAgger 比一比</h2>
+<table>
+<tr><th></th><th>行为克隆 BC</th><th>DAgger / HG-DAgger</th><th>HIL-SERL</th></tr>
+<tr><td>学什么</td><td>模仿示教动作</td><td>模仿人在策略跑到的状态上给的动作</td><td>让奖励最大（RL）</td></tr>
+<tr><td>人的纠正怎么用</td><td>不用</td><td>当作要模仿的标签</td><td>当作好经验放进缓冲区，critic 去评分</td></tr>
+<tr><td>需要奖励吗</td><td>不要</td><td>不要</td><td>要（分类器）</td></tr>
+<tr><td>能超过人吗</td><td>基本不能</td><td>基本不能</td><td>能，论文里比示教快 1.8×</td></tr>
+<tr><td>失败的尝试有用吗</td><td>没用</td><td>只用来知道“在哪里要人教”</td><td>有用，critic 从失败里学到“这样不行”</td></tr>
+</table>
+<p>相关页面：<a href="DAgger-算法详解.html">DAgger 详解</a>、<a href="RLinf-RL原理对比.html#concept-rlpd">RLPD</a>、<a href="RLinf-RL原理对比.html">SAC</a>。</p>
+
+<h2 id="s7"><span class="no">07</span>代码索引</h2>
+<table>
+<tr><th>功能</th><th>位置</th></tr>
+<tr><td>actor 主循环：出动作、执行、打包</td><td><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/actor.py#L230" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/actor.py" data-line="230">act_with_policy:230</a></td></tr>
+<tr><td>learner 主循环：入库、训练、推权重</td><td><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/learner.py#L271" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/learner.py" data-line="271">add_actor_information_and_train:271</a></td></tr>
+<tr><td>gRPC 服务</td><td><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/learner_service.py#L46" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/learner_service.py" data-line="46">LearnerService:46</a></td></tr>
+<tr><td>回放缓冲区</td><td><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/buffer.py#L81" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/buffer.py" data-line="81">ReplayBuffer:81</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/buffer.py#L234" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/buffer.py" data-line="234">sample:234</a></td></tr>
+<tr><td>在线 / 离线混合</td><td><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/data_sources/data_mixer.py#L43" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/data_sources/data_mixer.py" data-line="43">OnlineOfflineMixer:43</a></td></tr>
+<tr><td>SAC 算法与默认超参</td><td><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/algorithms/sac/sac_algorithm.py#L47" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/algorithms/sac/sac_algorithm.py" data-line="47">SACAlgorithm:47</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/algorithms/sac/configuration_sac.py#L30" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/algorithms/sac/configuration_sac.py" data-line="30">SACAlgorithmConfig:30</a></td></tr>
+<tr><td>策略网络（高斯 actor + 编码器）</td><td><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/policies/gaussian_actor/modeling_gaussian_actor.py#L35" target="_blank" rel="noreferrer" data-path="src/lerobot/policies/gaussian_actor/modeling_gaussian_actor.py" data-line="35">GaussianActorPolicy:35</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/policies/gaussian_actor/modeling_gaussian_actor.py#L148" target="_blank" rel="noreferrer" data-path="src/lerobot/policies/gaussian_actor/modeling_gaussian_actor.py" data-line="148">Encoder:148</a></td></tr>
+<tr><td>干预、奖励、夹爪惩罚、裁剪、时限</td><td><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/processor/hil_processor.py#L451" target="_blank" rel="noreferrer" data-path="src/lerobot/processor/hil_processor.py" data-line="451">Intervention:451</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/processor/hil_processor.py#L553" target="_blank" rel="noreferrer" data-path="src/lerobot/processor/hil_processor.py" data-line="553">RewardClassifier:553</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/processor/hil_processor.py#L352" target="_blank" rel="noreferrer" data-path="src/lerobot/processor/hil_processor.py" data-line="352">GripperPenalty:352</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/processor/hil_processor.py#L175" target="_blank" rel="noreferrer" data-path="src/lerobot/processor/hil_processor.py" data-line="175">Crop:175</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/processor/hil_processor.py#L266" target="_blank" rel="noreferrer" data-path="src/lerobot/processor/hil_processor.py" data-line="266">TimeLimit:266</a></td></tr>
+<tr><td>奖励分类器模型</td><td><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rewards/classifier/modeling_classifier.py#L100" target="_blank" rel="noreferrer" data-path="src/lerobot/rewards/classifier/modeling_classifier.py" data-line="100">Classifier:100</a></td></tr>
+<tr><td>真机环境与录示教</td><td><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/gym_manipulator.py#L123" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/gym_manipulator.py" data-line="123">RobotEnv:123</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/gym_manipulator.py#L613" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/gym_manipulator.py" data-line="613">control_loop:613</a></td></tr>
+<tr><td>文档：完整流程</td><td><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/docs/source/hilserl.mdx?plain=1#L61" target="_blank" rel="noreferrer" data-path="docs/source/hilserl.mdx" data-line="61">mdx:61</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/docs/source/hilserl.mdx?plain=1#L928" target="_blank" rel="noreferrer" data-path="docs/source/hilserl.mdx" data-line="928">调参:928</a></td></tr>
+</table>
+
+<h2 id="s8"><span class="no">08</span>读完做几道题</h2>
+<p class="hint">先自己想，再点开看答案。</p>
+<ol class="quiz">
+<li><p>奖励分类器把一个失败画面误判成成功，会发生什么？</p>
+<details><summary>看答案</summary><div>这一步拿到奖励 1，回合也结束。critic 会学到“走到这种画面就好”，策略可能学会“骗过裁判”而不是真的完成任务。所以分类器要多喂难分的失败帧，阈值也要调。见 <a href="#a2">Q2</a>。<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/processor/hil_processor.py#L619" target="_blank" rel="noreferrer" data-path="src/lerobot/processor/hil_processor.py" data-line="619">hil_processor.py:619</a></div></details></li>
+<li><p>人干预的那几帧，为什么还要多放一份进离线缓冲区？</p>
+<details><summary>看答案</summary><div>离线缓冲区固定占每个 batch 的一半，而它的数据量小，所以里面每条被采到的次数多。人纠正的帧放进去，就会像示教一样被反复学到。见 <a href="#a3">Q3</a>。<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/learner.py#L985" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/learner.py" data-line="985">learner.py:985</a></div></details></li>
+<li><p>critic 目标值里，为什么要乘 <code>(1 − done)</code>？</p>
+<details><summary>看答案</summary><div>回合结束（成功或超时）后没有“下一步”，以后的价值是 0，目标值只剩 r。见 <a href="#s3-4">3.4 第 4 步</a>。<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/algorithms/sac/sac_algorithm.py#L307" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/algorithms/sac/sac_algorithm.py" data-line="307">sac_algorithm.py:307</a></div></details></li>
+<li><p>按 3.4 的例子，如果两个目标网络给 0.9 和 0.5，其他不变，y 是多少？</p>
+<details><summary>看答案</summary><div>取小 → 0.5；减熵项 0.5 + 0.1 = 0.6；y = 0.99 × 0.6 = 0.594。</div></details></li>
+<li><p>策略越来越确定，温度 α 会怎么变？</p>
+<details><summary>看答案</summary><div><code>log π</code> 变大，<code>log π + H̄</code> 变正，温度损失的梯度让 α 变大，更鼓励随机。见 <a href="#s3-4">3.4 温度</a>。<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/algorithms/sac/sac_algorithm.py#L419" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/algorithms/sac/sac_algorithm.py" data-line="419">sac_algorithm.py:419</a></div></details></li>
+<li><p>HIL-SERL 和 HG-DAgger 都有人接管。最大的不同在哪？</p>
+<details><summary>看答案</summary><div>HG-DAgger 把人的动作当标签去模仿，上限是人。HIL-SERL 把人的动作当成一条好经验，最终按奖励学，失败的尝试也有用，可以比人更快。见 <a href="#s6">第 06 节</a>。</div></details></li>
+<li><p>actor 连不上 learner 的那几秒，机器人会停下来吗？</p>
+<details><summary>看答案</summary><div>不会。actor 用手里最后一版权重继续跑，经验先进本地队列，连上后再发。权重和经验各走各的线程。见 <a href="#a6">Q6</a>。<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/actor.py#L720" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/actor.py" data-line="720">actor.py:720</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/rl/actor.py#L486" target="_blank" rel="noreferrer" data-path="src/lerobot/rl/actor.py" data-line="486">receive_policy:486</a></div></details></li>
+</ol>
+
+<footer>论文：Luo, Xu, Wu, Levine. Precise and Dexterous Robotic Manipulation via Human-in-the-Loop Reinforcement Learning，arXiv:2410.21845。代码：<a href="https://github.com/huggingface/lerobot/tree/b6ec0060779550c0a157ae34feb89e0cf86012a8" target="_blank" rel="noreferrer">github.com/huggingface/lerobot @ b6ec006</a>；原版：<a href="https://github.com/rail-berkeley/hil-serl" target="_blank" rel="noreferrer">rail-berkeley/hil-serl</a>。</footer>
+</div>
+</div><!-- /doc -->
+
+<div class="kb-tools" id="kb-tools">
+  <button type="button" id="btn-edit">✎ 编辑</button>
+  <button type="button" id="btn-save">保存</button>
+  <span class="st" id="kb-st"></span>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  var COMMIT='b6ec0060779550c0a157ae34feb89e0cf86012a8';
+  var GH='https://github.com/huggingface/lerobot/blob/'+COMMIT+'/';
+  var doc=document.getElementById('doc'), body=document.body;
+  var st=document.getElementById('kb-st'), btnEdit=document.getElementById('btn-edit');
+  var headSnap=new Set(Array.prototype.slice.call(document.head.children));
+  var bodyClass=body.getAttribute('class'), dirty=false, handle=null;
+
+  /* ---------- 代码链接 ---------- */
+  function hrefOf(a){
+    var p=a.getAttribute('data-path'), l=a.getAttribute('data-line')||'1';
+    return GH+p+(/\.mdx?$/.test(p)?'?plain=1':'')+'#L'+l;
+  }
+  /* 链接已直接写在 HTML 里；编辑后按 data-path / data-line 重新生成 GitHub 地址 */
+  function applyLinks(){
+    document.querySelectorAll('a.cl').forEach(function(a){a.setAttribute('href',hrefOf(a));a.setAttribute('target','_blank');a.setAttribute('rel','noreferrer');});
+    document.querySelectorAll('a.pl').forEach(function(a){a.setAttribute('target','_blank');a.setAttribute('rel','noreferrer');});
+  }
+  applyLinks();
+
+  /* ---------- 编辑 ---------- */
+  function setEdit(on){
+    body.classList.toggle('editing',on);
+    btnEdit.classList.toggle('on',on);
+    btnEdit.textContent=on?'✓ 完成编辑':'✎ 编辑';
+    if(on) doc.setAttribute('contenteditable','true'); else doc.removeAttribute('contenteditable');
+  }
+  btnEdit.addEventListener('click',function(){setEdit(!body.classList.contains('editing'));});
+  doc.addEventListener('input',function(){dirty=true;st.textContent='未保存';});
+  doc.addEventListener('click',function(e){
+    if(!body.classList.contains('editing')) return;
+    var a=e.target.closest('a.cl,a.pl'); if(!a) return;
+    e.preventDefault();
+    if(a.classList.contains('cl')){
+      var cur=a.getAttribute('data-path')+':'+a.getAttribute('data-line');
+      var v=prompt('代码位置（仓库内路径:行号）',cur); if(!v||v===cur) return;
+      var m=v.trim().match(/^(.+?):(\d+)$/); if(!m){alert('格式应为 path/to/file.py:123');return;}
+      a.setAttribute('data-path',m[1]); a.setAttribute('data-line',m[2]);
+    }else{
+      var h=prompt('链接地址',a.getAttribute('href')); if(!h) return; a.setAttribute('href',h);
+    }
+    applyLinks(); dirty=true; st.textContent='未保存';
+  });
+  /* 粘贴只保留纯文本，避免带进别处样式 */
+  doc.addEventListener('paste',function(e){
+    if(!body.classList.contains('editing')) return;
+    e.preventDefault();
+    document.execCommand('insertText',false,(e.clipboardData||window.clipboardData).getData('text/plain'));
+  });
+
+  /* ---------- 保存 ---------- */
+  function serialize(){
+    var live=document.documentElement, c=live.cloneNode(true);
+    var lh=document.head.children, ch=c.querySelector('head').children;
+    for(var i=lh.length-1;i>=0;i--){ if(!headSnap.has(lh[i])) ch[i].remove(); }
+    c.querySelectorAll('.kb-root').forEach(function(n){n.remove();});
+    var cb=c.querySelector('body');
+    if(bodyClass===null) cb.removeAttribute('class'); else cb.setAttribute('class',bodyClass);
+    c.querySelectorAll('[contenteditable]').forEach(function(n){n.removeAttribute('contenteditable');});
+    var cs=c.querySelector('#kb-st'); if(cs) cs.textContent='';
+    var ce=c.querySelector('#btn-edit'); if(ce){ce.textContent='✎ 编辑';ce.classList.remove('on');}
+    c.querySelectorAll('a.cl').forEach(function(a){a.setAttribute('href',hrefOf(a));a.setAttribute('target','_blank');a.setAttribute('rel','noreferrer');});
+    return '<!DOCTYPE html>\n'+c.outerHTML+'\n';
+  }
+  /* 文件句柄存进 IndexedDB，刷新后仍能直接覆盖原文件 */
+  function idb(mode,val){
+    return new Promise(function(res){
+      try{
+        var r=indexedDB.open('hilserl-page',1);
+        r.onupgradeneeded=function(){r.result.createObjectStore('h');};
+        r.onsuccess=function(){
+          var tx=r.result.transaction('h',mode), s=tx.objectStore('h');
+          var q=mode==='readonly'?s.get(location.pathname):s.put(val,location.pathname);
+          q.onsuccess=function(){res(q.result);}; q.onerror=function(){res(null);};
+        };
+        r.onerror=function(){res(null);};
+      }catch(e){res(null);}
+    });
+  }
+  async function save(){
+    var html=serialize(), name=decodeURIComponent(location.pathname.split('/').pop()||'HIL-SERL-算法详解.html');
+    if(window.showSaveFilePicker){
+      try{
+        if(!handle) handle=await idb('readonly');
+        if(handle && handle.requestPermission){
+          var ok=await handle.queryPermission({mode:'readwrite'});
+          if(ok!=='granted') ok=await handle.requestPermission({mode:'readwrite'});
+          if(ok!=='granted') handle=null;
+        }
+        if(!handle){
+          handle=await window.showSaveFilePicker({suggestedName:name,types:[{description:'HTML',accept:{'text/html':['.html']}}]});
+          idb('readwrite',handle);
+        }
+        var w=await handle.createWritable(); await w.write(html); await w.close();
+        dirty=false; st.textContent='已保存 '+new Date().toLocaleTimeString(); return;
+      }catch(e){ if(e&&e.name==='AbortError'){st.textContent='已取消';return;} console.warn(e); }
+    }
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([html],{type:'text/html'})); a.download=name;
+    document.body.appendChild(a); a.click(); a.remove();
+    dirty=false; st.textContent='已下载，替换原文件即可';
+  }
+  document.getElementById('btn-save').addEventListener('click',save);
+  document.addEventListener('keydown',function(e){ if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='s'){e.preventDefault();save();} });
+  window.addEventListener('beforeunload',function(e){ if(dirty){e.preventDefault();e.returnValue='';} });
+})();
+</script>
+<script src="nav.js"></script>
+</body>
+</html>
