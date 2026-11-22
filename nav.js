@@ -8,6 +8,7 @@
     {
       id: 'MAP', name: 'VLA 总览', items: [
         { t: 'VLA 发展史｜从模块化到闭环具身', h: 'VLA-发展历程.html' },
+        { t: '半年进展观测记录｜2026 年 5—11 月', h: '半年进展-2026下半年.html' },
         { t: 'Google / DeepMind 的 VLA 发展史', h: 'Google-VLA-发展历程.html' },
         { t: 'Physical Intelligence（π）的工作全景', h: 'PI-工作全景.html' },
         { t: '具身世界模型发展史｜从 Dreamer 到 WAM', h: '具身世界模型-发展历程.html' },

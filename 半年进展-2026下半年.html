@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>半年进展观测记录 · 2026 年 5 月—11 月的机器人学习</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,800&family=Noto+Serif+SC:wght@400;600;900&family=Noto+Sans+SC:wght@400;500;700&family=Spline+Sans+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* 配色取自气象观测记录本：深靛蓝墨水、等压线灰、预警琥珀、雷达绿 */
+:root{
+  --paper:#eef1f4;
+  --sheet:#fbfcfd;
+  --ink:#16233a;
+  --ink-2:#44536b;
+  --ink-3:#7c8aa0;
+  --grid:#d7dee7;
+  --isobar:#b6c2d1;
+  --front:#2f5d8a;      /* VLA 主干 */
+  --rl:#1f7a5a;          /* 强化学习 */
+  --wam:#7a3e9d;         /* 世界模型 */
+  --rt:#b4531f;          /* 实时推理 */
+  --data:#8a6a12;        /* 数据 */
+  --amber:#e69a28;       /* 答案框 */
+  --amber-bg:#fff5e4;
+  --amber-line:#f0c987;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}*{animation:none!important;transition:none!important}}
+body{margin:0;background:var(--paper);color:var(--ink);font:16.5px/1.85 "Noto Sans SC",system-ui,sans-serif;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:28px 28px;background-position:-1px -1px}
+a{color:var(--front)}
+:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.wrap{max-width:760px;margin:0 auto;padding:0 22px}
+.wide{max-width:1120px;margin:0 auto;padding:0 22px}
+.sheet{background:var(--sheet);border:1px solid var(--isobar);box-shadow:0 1px 0 #fff inset;padding:34px 38px;margin:28px 0}
+@media(max-width:640px){.sheet{padding:22px 18px}}
+
+/* ---------- 封面：一张"天气图" ---------- */
+.hero{position:relative;padding:56px 0 26px}
+.hero .stamp{font-family:"Spline Sans Mono",monospace;font-size:13px;color:var(--ink-3);letter-spacing:.02em}
+.hero h1{font-family:"Noto Serif SC",serif;font-weight:900;font-size:clamp(34px,6vw,58px);line-height:1.12;margin:10px 0 14px;letter-spacing:-.01em}
+.hero h1 .en{display:block;font-family:"Fraunces",serif;font-weight:400;font-style:italic;font-size:.42em;color:var(--ink-2);margin-top:10px;letter-spacing:0}
+.hero .lede{font-size:18px;color:var(--ink-2);max-width:640px}
+.chart{position:relative;height:300px;margin:26px 0 8px;background:var(--sheet);border:1px solid var(--isobar);overflow:hidden}
+.chart svg{position:absolute;inset:0;width:100%;height:100%}
+.chart .iso{fill:none;stroke:var(--isobar);stroke-width:1.2}
+.chart .frontline{fill:none;stroke-width:2.6;stroke-linecap:round}
+.chart .lbl{position:absolute;font-size:13px;line-height:1.35;background:var(--sheet);padding:3px 7px;border-left:3px solid}
+.chart .lbl b{display:block;font-family:"Noto Serif SC",serif;font-size:15px}
+.chart .H{position:absolute;font-family:"Fraunces",serif;font-weight:800;font-size:34px;line-height:1}
+.chart .axis{position:absolute;bottom:6px;left:0;right:0;display:flex;justify-content:space-between;padding:0 14px;font-family:"Spline Sans Mono",monospace;font-size:11.5px;color:var(--ink-3)}
+@media(max-width:700px){.chart{height:auto;padding:14px}.chart svg,.chart .H,.chart .axis{display:none}.chart .lbl{position:static;display:block;margin:6px 0}}
+.legend-note{font-size:13.5px;color:var(--ink-3)}
+
+/* ---------- 正文 ---------- */
+h2{font-family:"Noto Serif SC",serif;font-weight:900;font-size:30px;line-height:1.3;margin:0 0 6px}
+h2 .sym{display:inline-block;width:14px;height:14px;border-radius:50%;margin-right:12px;vertical-align:4px}
+.sub{color:var(--ink-3);font-size:14.5px;margin:0 0 22px}
+h3{font-family:"Noto Serif SC",serif;font-size:20px;margin:28px 0 8px}
+p{margin:12px 0}
+.plain{border-left:4px solid var(--ink);padding:4px 0 4px 16px;margin:18px 0;font-size:17.5px;font-family:"Noto Serif SC",serif}
+.plain small{display:block;font-family:"Noto Sans SC",sans-serif;font-size:13px;color:var(--ink-3);margin-bottom:2px}
+.why{background:#f3f6fa;border:1px dashed var(--isobar);padding:12px 16px;margin:16px 0;font-size:15.5px}
+.why b{color:var(--ink)}
+
+/* 观测卡：每篇工作一张 */
+.obs{border-top:1px solid var(--grid);padding:18px 0 6px;display:grid;grid-template-columns:118px 1fr;gap:4px 18px}
+.obs:first-of-type{border-top:0}
+.obs .when{font-family:"Spline Sans Mono",monospace;font-size:12.5px;color:var(--ink-3);padding-top:4px}
+.obs .when i{display:block;font-style:normal;color:var(--ink-2)}
+.obs h4{margin:0;font-size:18px;font-family:"Noto Serif SC",serif}
+.obs h4 small{font-family:"Noto Sans SC",sans-serif;font-weight:400;font-size:13px;color:var(--ink-3);margin-left:6px}
+.obs .body p{margin:6px 0}
+.obs .special{font-size:15px;margin:8px 0}
+.obs .special::before{content:"特别在哪";display:inline-block;font-size:12px;font-weight:700;color:#fff;background:var(--ink-2);padding:0 6px;margin-right:8px;border-radius:2px;vertical-align:1px}
+.obs .num{font-family:"Spline Sans Mono",monospace;font-size:14px;color:var(--ink)}
+.obs .caveat{font-size:14px;color:var(--ink-3)}
+@media(max-width:640px){.obs{grid-template-columns:1fr}}
+.front-vla .obs h4{color:var(--front)}
+.front-rl .obs h4{color:var(--rl)}
+.front-wam .obs h4{color:var(--wam)}
+.front-rt .obs h4{color:var(--rt)}
+.front-data .obs h4{color:var(--data)}
+
+table.cmp{border-collapse:collapse;width:100%;font-size:14.5px;margin:14px 0}
+table.cmp th,table.cmp td{border:1px solid var(--grid);padding:7px 10px;text-align:left;vertical-align:top}
+table.cmp th{background:#f1f4f8;font-weight:600}
+.scroll-x{overflow-x:auto}
+
+/* 链接芯片（功能沿用样板） */
+a.cl,a.pl{display:inline-block;font-family:"Spline Sans Mono",monospace;font-size:11.5px;line-height:1.5;text-decoration:none;padding:0 6px;margin:1px 3px 1px 0;border-radius:3px;border:1px solid #bcd0e4;background:#eef4fa;color:var(--front);white-space:nowrap}
+a.pl{border-color:#e3cfa8;background:#fbf4e6;color:#8a5a12}
+a.cl:hover,a.pl:hover{filter:brightness(.96)}
+
+/* 问答 */
+.qlist{counter-reset:q;list-style:none;padding:0;margin:14px 0}
+.qlist li{counter-increment:q;padding:8px 0 8px 44px;position:relative;border-bottom:1px dotted var(--isobar)}
+.qlist li::before{content:"Q" counter(q);position:absolute;left:0;top:8px;font-family:"Fraunces",serif;font-weight:800;color:var(--amber);font-size:18px}
+.qlist a{text-decoration:none;color:var(--ink)}
+.qlist a:hover{text-decoration:underline}
+.ans{margin:16px 0;padding:12px 16px;border-radius:4px;background:var(--amber-bg);border:1px solid var(--amber-line);border-left:5px solid var(--amber);font-size:15.5px;scroll-margin-top:24px}
+.ans b.q{font-family:"Fraunces",serif;color:#a8640c;margin-right:8px}
+.ans:target{box-shadow:0 0 0 3px rgba(230,154,40,.35)}
+details.ex{border:1px solid var(--grid);background:#fff;margin:10px 0;padding:10px 14px}
+details.ex summary{cursor:pointer;font-weight:500}
+details.ex[open] summary{margin-bottom:6px}
+details.ex .back{font-size:13px}
+
+/* ---------- 架构图 ---------- */
+.dg-scroll{overflow-x:auto;border:1px solid var(--isobar);background:var(--sheet)}
+.dg{position:relative;width:1080px;height:880px}
+.dg svg.wires{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.wires path{fill:none;stroke:#8696ab;stroke-width:1.7}
+.wires path.rl{stroke:var(--rl);stroke-width:2.2}
+.wires path.wam{stroke:var(--wam);stroke-width:2.2;stroke-dasharray:6 4}
+.wires path.rt{stroke:var(--rt);stroke-width:2.2}
+.wires text{font:12px "Noto Sans SC",sans-serif;fill:var(--ink-3)}
+.nd{position:absolute;background:#fff;border:1.5px solid var(--isobar);padding:9px 11px;font-size:13px;line-height:1.5}
+.nd .nt{font-family:"Noto Serif SC",serif;font-weight:900;font-size:14.5px;margin-bottom:3px}
+.nd .nb{color:var(--ink-2)}
+.nd .nl{margin-top:6px}
+.nd.data{border-color:var(--data);background:#fdf9ee}
+.nd.vla{border-color:var(--front);background:#f2f6fb}
+.nd.wam{border-color:var(--wam);background:#f8f3fb}
+.nd.rt{border-color:var(--rt);background:#fdf4ee}
+.nd.rl{border-color:var(--rl);background:#eff8f4}
+.nd.ag{border-color:var(--ink);border-style:dashed}
+.dg .band{position:absolute;left:0;right:0;font-family:"Spline Sans Mono",monospace;font-size:11.5px;color:var(--ink-3);padding-left:10px;border-top:1px dashed var(--grid)}
+.hint{font-size:14px;color:var(--ink-3)}
+.legend{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13px;color:var(--ink-2);margin:12px 0}
+.legend i{display:inline-block;width:14px;height:10px;border:1.5px solid;margin-right:6px;vertical-align:-1px}
+
+/* 编辑工具条（功能沿用样板） */
+.kb-tools{position:fixed;right:18px;bottom:18px;z-index:50;display:flex;gap:6px;align-items:center;background:var(--sheet);border:1px solid var(--isobar);padding:6px 8px;box-shadow:0 4px 14px rgba(22,35,58,.12)}
+.kb-tools button{font:13px "Noto Sans SC",sans-serif;border:1px solid var(--isobar);background:#fff;color:var(--ink);padding:4px 10px;cursor:pointer}
+.kb-tools button.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+.kb-tools .st{font-size:12px;color:var(--ink-3);min-width:0}
+body.editing #doc [contenteditable]{outline:none}
+body.editing #doc .nd,body.editing #doc p,body.editing #doc td,body.editing #doc li{outline:1px dashed rgba(47,93,138,.35);outline-offset:1px}
+body.editing a.cl,body.editing a.pl{cursor:context-menu}
+
+footer{font-size:13px;color:var(--ink-3);padding:30px 0 90px}
+</style>
+</head>
+<body>
+<div id="doc">
+
+<header class="wrap hero">
+  <div class="stamp">观测时段 2026-05-22 → 2026-11-22 · 记录于 2026-11-22</div>
+  <h1>半年进展观测记录<span class="en">What moved in robot learning, May–November 2026</span></h1>
+  <p class="lede">这半年里，知识库关心的几条线（π 系列与通用 VLA、VLA 上的强化学习、动作分块与实时推理、具身世界模型、机器人数据）都有新东西。这页把它们按“锋面”排开：每条线先用大白话说清楚变了什么，再一篇篇讲特别在哪、数字是多少、该打几折。</p>
+
+  <div class="chart" aria-label="半年进展总图：五条锋面">
+    <svg viewBox="0 0 1000 300" preserveAspectRatio="none" aria-hidden="true">
+      <path class="iso" d="M0 60 C200 30 380 90 560 50 S880 40 1000 70"/>
+      <path class="iso" d="M0 120 C180 100 420 150 600 110 S860 100 1000 130"/>
+      <path class="iso" d="M0 180 C220 160 400 210 620 170 S860 160 1000 190"/>
+      <path class="iso" d="M0 240 C200 220 420 260 600 230 S880 220 1000 250"/>
+      <path class="frontline" stroke="#7a3e9d" d="M40 250 C260 200 520 150 960 60"/>
+      <path class="frontline" stroke="#8a6a12" d="M40 210 C300 200 560 170 960 130"/>
+      <path class="frontline" stroke="#1f7a5a" d="M40 150 C300 160 600 140 960 170"/>
+      <path class="frontline" stroke="#b4531f" d="M40 100 C320 120 600 200 960 220"/>
+    </svg>
+    <div class="H" style="left:62%;top:14%;color:var(--wam)">H</div>
+    <div class="lbl" style="left:66%;top:8%;border-color:var(--wam)"><b>世界动作模型成了主流</b>GR00T 2、GO-3、LaST0.5、Z-sight</div>
+    <div class="lbl" style="left:4%;top:12%;border-color:var(--front)"><b>大厂 VLA 换代</b>Gemini Robotics 2 / 2.5、Helix 2.5、Pi API</div>
+    <div class="lbl" style="left:38%;top:36%;border-color:var(--data)"><b>人类视频当主料</b>40 万小时第一视角、Figure Index</div>
+    <div class="lbl" style="left:6%;top:56%;border-color:var(--rl)"><b>真机 RL 进入“小时级”</b>RT-EXPO-FT、RAPolicy、FlowPRO</div>
+    <div class="lbl" style="left:58%;top:62%;border-color:var(--rt)"><b>RTC 之后</b>FlashVLA、RAVEL、FreeBar、PTS</div>
+    <div class="axis"><span>2026-05</span><span>06</span><span>07</span><span>08</span><span>09</span><span>10</span><span>11</span></div>
+  </div>
+  <p class="legend-note">线条只是示意走向。紫色是世界模型，赭色是数据，绿色是强化学习，橙褐色是实时推理，蓝色是通用 VLA。</p>
+</header>
+
+<main>
+<div class="wrap">
+<section class="sheet" id="qs">
+  <h2>带着问题读</h2>
+  <p class="sub">读完正文，这几个问题都应该能自己答上来。点问题会跳到正文里对应的橙色答案框。</p>
+  <ol class="qlist">
+    <li><a href="#a1">“世界动作模型”（WAM）和我们熟悉的 VLA 到底差在哪？为什么半年里一下子冒出这么多？</a></li>
+    <li><a href="#a2">Fast-WAM 说“推理时不用画未来视频也行”，那视频预测的好处到底来自哪里？</a></li>
+    <li><a href="#a3">这半年 Physical Intelligence 没发 π0.8，它在做什么？π 系列的思路被别人怎么用了？</a></li>
+    <li><a href="#a4">真机强化学习从“几天”缩到“几十分钟”，主要靠哪几个手法？</a></li>
+    <li><a href="#a5">RTC 之后的实时推理工作，抓住了 RTC 的哪个弱点？</a></li>
+    <li><a href="#a6">“人类视频能代替机器人数据”这件事，现在有哪些硬证据，又该打几折？</a></li>
+  </ol>
+</section>
+
+<section class="sheet">
+  <h2>先用一段话看全局</h2>
+  <p>半年前，主流配方还是“一个看图懂话的大模型（VLM）+ 一个画动作的小头（flow matching 动作专家）”，也就是 π0 / π0.5 那种结构。这半年最大的变化是：<b>很多团队把“动作头”接到了视频生成模型上</b>，让模型一边想象接下来画面会怎么变，一边出动作。NVIDIA 的 GR00T 2、智元的 GO-3 都换成了这种结构。</p>
+  <p>第二个变化是<b>数据从“遥操作为主”转向“人类第一视角视频为主”</b>。GR00T 2 预训练用了 40 万小时人类视频，遥操作只有 2.35 万小时；Figure 的 Helix 2.5 干脆完全从人类视频预训练起步。</p>
+  <p>另外三条线是在已有路线上往前推：真机强化学习更快更稳，实时推理在 RTC 的基础上继续压延迟，评测从“各报各的”走向公共榜单（RoboDojo）和“用世界模型当考场”。</p>
+  <div class="why"><b>读法建议：</b>如果你只有 15 分钟，读 ① 世界动作模型 和 ⑤ 数据两节就够了，这两件事是这半年真正改变方向的。其余三节是“同一方向上的进步”，可以当索引用。</div>
+</section>
+</div>
+
+<!-- ============ ① 世界动作模型 ============ -->
+<div class="wrap">
+<section class="sheet front-wam" id="s-wam">
+  <h2><span class="sym" style="background:var(--wam)"></span>① 世界动作模型：动作头接到视频模型上</h2>
+  <p class="sub">知识库相关页：<a href="具身世界模型-发展历程.html">具身世界模型发展史</a> · <a href="两条主干-拆机手册.html">两条主干拆机手册</a></p>
+
+  <div class="plain"><small>大白话</small>以前的 VLA 像一个看照片答题的学生：看一眼现在的画面，直接说“手往左移 3 厘米”。世界动作模型像一个先在脑子里放一段小电影的学生：先想“我这样做之后，画面会变成什么样”，再根据这段想象出动作。</div>
+
+  <p>为什么这样做会更好？视频模型在海量视频上学过“东西被推会滑、杯子倒了水会洒”这类物理常识。把动作头接上去，等于借来了这些常识。更关键的是：<b>人类视频里没有机器人动作标签，但有“画面怎么变”</b>。只要模型的训练目标里有“预测未来画面”这一项，人类视频就能直接拿来训练。这是它和数据那条线绑在一起的原因。</p>
+
+  <div class="ans" id="a1"><b class="q">Q1 答</b>VLA 只学“现在的画面 → 动作”；WAM 同时学“现在的画面 → 未来画面 + 动作”，通常在同一个扩散 Transformer 里把未来视频和动作一起去噪。多出来的“预测未来画面”让模型能吃没有动作标签的人类视频，也能借用视频生成模型学到的物理常识。半年里大量出现，是因为 Cosmos、Wan2.2 这类开源视频底座成熟了，而“人类视频能转化成机器人能力”在 GR00T 2、Helix 2.5 上第一次有了大规模证据。</div>
+
+  <article class="obs">
+    <div class="when">2026-11-09<i>NVIDIA</i></div>
+    <div class="body">
+      <h4>GR00T 2 <small>从 VLA 换成 WAM 的第一个大厂开放模型</small></h4>
+      <p>一个 2B 参数的扩散 Transformer，从 NVIDIA 的视频模型 Cosmos-Predict2.5 初始化。输入最近 0.8 秒、最多 4 路相机的画面、关节状态和一句指令，同时去噪出“未来几帧视频 + 一段动作”。每种机器人有一个很小的输出头，把同一份计划翻译成各自的电机指令。</p>
+      <p class="special">GR00T N1 系列还是 VLA，这一代整体换成了 WAM。它提出 “X-Adapt”：只给人类示范、或者只用手持 UMI 夹爪示范，机器人自己没练过，也能做。例如只看人做过，双五指手机器人给漏斗垫滤纸成功 65%。</p>
+      <p class="num">50 个目标机器人没见过的任务：零样本 40%，每任务 1 条示范 71%，5 条示范（不到 3 分钟数据、单张 RTX 5090 微调 30 分钟）95%。小号 Turbo 版在 Unitree G1 自带的 Jetson Thor 上 124 ms 出一次预测。</p>
+      <p class="caveat">要打的折扣：白皮书自己承认，这 50 个任务是从“5 条示范能学到 80% 以上”的任务里挑的，95% 有一部分是选出来的。大多数任务只测了 20 次以内。权重说 12 月才放。</p>
+      <p><a class="pl" href="https://research.nvidia.com/labs/gear/gr00t-2/">GR00T 2 项目页</a><a class="pl" href="https://roboticaguide.com/nvidia-gr00t-2-world-action-model-human-video/">第三方解读（含折扣）</a></p>
+    </div>
+  </article>
+
+  <article class="obs">
+    <div class="when">2026-10-29<i>智元 AgiBot</i></div>
+    <div class="body">
+      <h4>GO-3 Preview <small>WRAM：理解 → 预测 → 动作</small></h4>
+      <p>架构叫 WRAM（World Reasoning Action Model）。三个部件：CoAE 是“为控制而设计的图像编码器”，保留物体位置和形状；SVP 一步生成完整的未来状态预测；KASO 在训练时从多个可能的未来里，挑出和真实动作对得上的那个，避免“同一指令有多种做法”把模型搞糊涂。</p>
+      <p class="special">它把“预训练 → 后训练 → 部署后继续学”连成一条线：后训练用 100 台真机 + 仿真 + 世界模型一起练，部署后的经验再回流。便利店流程任务从第一天 28.6% 涨到第五天 85.7%。</p>
+      <p class="caveat">要打的折扣：三个榜单第一都是自报，没有技术报告；RoboDojo 上拿第一的是更轻的 Nano 版；年底才开源。</p>
+      <p><a class="pl" href="https://agibot.com/news/newsroom/post-133">智元官方发布</a></p>
+    </div>
+  </article>
+
+  <article class="obs">
+    <div class="when">2026-03-17<i>清华 · 赵行组</i></div>
+    <div class="body">
+      <h4>Fast-WAM <small>半年里被引用最多的 WAM 论文之一，LeRobot 已集成</small></h4>
+      <p>它问了一个很实在的问题：WAM 好，到底是因为<b>推理时真的画了未来</b>，还是因为<b>训练时学过画未来</b>？做法是同一个模型（Wan2.2-5B 视频 DiT + 1B 动作专家）分三种用法对比：先画视频再出动作、视频动作一起去噪、以及推理时完全不画视频，只把当前画面过一遍视频模型就出动作。</p>
+      <p class="special">结论很干脆：三种用法成绩差不多，但<b>训练时去掉视频预测</b>，成绩掉得多（RoboTwin 91.8% → 83.8%，真机叠毛巾掉到 10%）。所以好处主要来自“训练时学画未来”塑造出的表征，推理时不必真画。</p>
+      <p class="num">推理 190 ms，先画视频的版本要 810 ms。论文是 3 月出的，但这半年的大量 WAM（UniWALM、LAW、Z-sight）都拿它当基线或沿用它的思路，LeRobot 也在这期间把它收了进去。</p>
+      <p><a class="pl" href="https://arxiv.org/abs/2603.16666">arXiv:2603.16666</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/policies/fastwam/wan/modular.py#L1414" data-path="src/lerobot/policies/fastwam/wan/modular.py" data-line="1414">视频+动作两项损失:1414</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/policies/fastwam/wan/modular.py#L1234" data-path="src/lerobot/policies/fastwam/wan/modular.py" data-line="1234">动作只看第一帧:1234</a></p>
+    </div>
+  </article>
+
+  <div class="ans" id="a2"><b class="q">Q2 答</b>来自训练。看 LeRobot 里的实现：训练损失是 <code>λ_video·loss_video + λ_action·loss_action</code>（<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/policies/fastwam/wan/modular.py#L1414" data-path="src/lerobot/policies/fastwam/wan/modular.py" data-line="1414">modular.py:1414</a>），而注意力掩码规定动作 token 只能看当前第一帧，看不到未来视频 token（<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/policies/fastwam/wan/modular.py#L1234" data-path="src/lerobot/policies/fastwam/wan/modular.py" data-line="1234">modular.py:1234</a>）。所以推理时把视频分支整个去掉，动作也拿不到“未来画面”的信息，靠的只是视频损失在训练时把共享表征练得更懂物理。去掉视频损失，成绩掉 8 个点；去掉推理时的视频生成，几乎不掉。</div>
+
+  <h3>同一方向上的其他工作</h3>
+  <div class="scroll-x">
+  <table class="cmp">
+    <tr><th>工作</th><th>时间 · 机构</th><th>和别人不同的地方</th><th>关键数字</th></tr>
+    <tr><td>LaST0.5 <a class="pl" href="https://arxiv.org/abs/2611.14048">arXiv</a></td><td>11-10 · 北大 / 港中文</td><td>在“世界专家”和“动作专家”中间插一个“交互专家”，专门表示手和物体之间发生了什么，而不是整张画面怎么变；同时预测进度值，进度不对就重新采样未来。</td><td>LIBERO 99.5%，10 个 RLBench 任务 88%（π0.5 为 65%），预训练 1.4 万小时</td></tr>
+    <tr><td>Z-sight <a class="pl" href="https://arxiv.org/abs/2611.24940">arXiv</a></td><td>11-18</td><td>不生成像素，直接在 VLM 自己“看画面用的那套 token”里预测未来。省掉了视频生成的开销，又不用外挂编码器。</td><td>SIMPLE 81.9%（比最强基线 +9.6），G1 六任务 73.3%，每段动作 110 ms</td></tr>
+    <tr><td>UniWALM <a class="pl" href="https://arxiv.org/abs/2610.28626">arXiv</a></td><td>10-20 · Brown / Amazon</td><td>视频、动作、语言三种模态在同一次去噪里一起生成，生成的文字被当成“记忆”下一步再读进来，解决需要记住东西的任务。</td><td>真机“找东西”任务：生成文字记忆让成功率 11.1% → 61.1%</td></tr>
+    <tr><td>LAW <a class="pl" href="https://arxiv.org/abs/2610.23334">arXiv</a></td><td>10-16</td><td>VLM 负责拆子任务、WAM 负责生成多个候选动作、价值专家挑最好的。价值按子任务边界截断，失败轨迹里已完成的子任务也能算正样本。</td><td>RoboTwin 50 任务 94.21%；三个长程真机任务 65%（π0.5 为 28.3%）</td></tr>
+    <tr><td>WAM 异步部署实测 <a class="pl" href="https://arxiv.org/abs/2608.01880">arXiv</a></td><td>08-11 · Fast-WAM 原班</td><td>对比 6 种异步部署策略：时间对齐是前提，训练时学“接着上一段往下写”（prefix 条件）效果最好。</td><td>最好的方法细操作得分 96</td></tr>
+  </table>
+  </div>
+</section>
+</div>
+
+<!-- ============ ② 通用 VLA 与 π 系列 ============ -->
+<div class="wrap">
+<section class="sheet front-vla" id="s-vla">
+  <h2><span class="sym" style="background:var(--front)"></span>② 大厂 VLA 换代与 π 系列的去向</h2>
+  <p class="sub">知识库相关页：<a href="PI-工作全景.html">π 工作全景</a> · <a href="Google-VLA-发展历程.html">Google VLA 发展史</a> · <a href="pi0.7-论文解读.html">π0.7 精读</a></p>
+
+  <div class="plain"><small>大白话</small>半年里，闭源大厂在比谁先进工厂和家庭：Google 把机器人送进奔驰产线，Figure 进了 30 个陌生家庭。π 没有发新模型，而是把模型做成了 API。开源这边，π0.5 成了所有人对比的“标尺”。</div>
+
+  <article class="obs">
+    <div class="when">2026-10-13<i>Physical Intelligence</i></div>
+    <div class="body">
+      <h4>Pi API beta <small>π 这半年唯一的公开发布</small></h4>
+      <p>π0.7（4 月）之后，π 没有发 π0.8 或 π1，而是开放了 API：上传数据、在 π 的算力上微调、通过托管网关推理。官方说 API 背后的模型比 π0.5 微调更省数据，会持续换成最新模型。</p>
+      <p class="special">这是一次商业形态的转变。它意味着最新的 π 模型可能不再开源权重，openpi 里停留在 π0 / π0.5。</p>
+      <p><a class="pl" href="https://www.pi.website/blog/api-beta">π 官方博客</a></p>
+    </div>
+  </article>
+
+  <div class="ans" id="a3"><b class="q">Q3 答</b>π 这半年在做 API 商业化（10-13 开放 beta），没有新论文级模型。但它的思路在别人那里开花：Recap（π*0.6 的优势条件 RL）被 ViVa、FlowPRO 拿去当基线或改进对象；RTC 被 FlashVLA、RAVEL、FreeBar 当作要超过的对象；π0.7 的“多模态提示消除歧义”在 GR00T 2 的“视觉标注引导”里能看到影子。几乎每篇开源 VLA 论文都拿 π0.5 当对照组。</div>
+
+  <article class="obs">
+    <div class="when">07-30 → 11-10<i>Google DeepMind</i></div>
+    <div class="body">
+      <h4>Gemini Robotics 2 → 2.5 <small>三个月两代</small></h4>
+      <p>7 月的 Gemini Robotics 2 第一次用一个 VLA 控制整台人形机器人（走、蹲、伸手、抓），同一份权重驱动五指手和二指夹爪。配套的 On-Device 2 能在机器人本地跑，用不到 200 条示范、几小时适配新机型。11 月的 2.5 在 200 个任务上比上一代成功率高 30%–100%、快 20%–30%。</p>
+      <p class="special">真实工厂试点：Apptronik Apollo 2 人形机器人在奔驰两座工厂做零件分拣配套，成功率 96%。另一个特别处是安全：推理时加安全引导，绕障碍安全完成率 +33%、人旁边 +43%；开源了 ASIMOV-Jailbreak 基准，专测“伪装成正常请求的危险指令”。</p>
+      <p class="caveat">要打的折扣：没有技术报告；2.5 仍在云端跑；DeepMind 自己说 96% 到 99.9% 是“很陡的路”。</p>
+      <p><a class="pl" href="https://deepmind.google/blog/gemini-robotics-2-brings-whole-body-intelligence-to-robots/">GR 2 官方</a><a class="pl" href="https://deepmind.google/blog/gemini-robotics-2-5-accelerates-real-world-physical-intelligence/">GR 2.5 官方</a></p>
+    </div>
+  </article>
+
+  <article class="obs">
+    <div class="when">2026-09-17<i>Figure</i></div>
+    <div class="body">
+      <h4>Helix 2.5 <small>完全从人类视频预训练</small></h4>
+      <p>和 Helix 02 不同，Helix 2.5 不从现成的 VLM 起步，而是从随机初始化开始，只在 Figure 自建的人类行为数据集 Index 上预训练。然后用别处采的数据教会三件事（收拾客厅、叠毛巾、铺床），直接进 30 个从没去过的湾区家庭测。</p>
+      <p class="special">控制变量做得干净：同样的任务数据，从零训练零样本成功 9%，用 Index 预训练后 56%。还测出一条“人类数据 → 机器人动作”的缩放律，用小规模实验预测最大一次训练的损失，准到小数点后四位。</p>
+      <p class="num">420 次试验成功 237 次；铺床 94/140，叠毛巾 87/140，收拾客厅 56/140。</p>
+      <p class="caveat">要打的折扣：“零样本”只是指家和物体没见过，任务本身是教过的；只看完整成功，没有部分得分；评测是 Figure 自己做的。</p>
+      <p><a class="pl" href="https://www.figure.ai/news/helix-2-5-zero-shot-30-home-generalization">Figure 官方</a></p>
+    </div>
+  </article>
+
+  <h3>开源 VLA：几个有代表性的新做法</h3>
+  <div class="scroll-x">
+  <table class="cmp">
+    <tr><th>工作</th><th>时间 · 机构</th><th>特别在哪</th><th>关键数字</th></tr>
+    <tr><td>ScaleVLA <a class="pl" href="https://arxiv.org/abs/2611.21607">arXiv</a></td><td>11-16 · 清华 / 北大 / 银河通用</td><td>把 552B 的 DeepSeek-V4.1-Flash 当 VLM 主干，从 2B 到 552B 系统比较。回答“前沿大模型的表征对机器人有没有用”。</td><td>10 条示范胜过 2B 主干用 50 条；充电器插入 4/10 → 9/10；每段动作仍只要 216 ms</td></tr>
+    <tr><td>Meituan-Robotics-0 <a class="pl" href="https://arxiv.org/abs/2611.08577">arXiv</a></td><td>11-05 · 美团</td><td>三段式训练：先离散动作 token 预训练，再换 flow matching，最后真机后训练。提出 Rollback：把被替换的策略片段和人工纠正配成对，用于 CFG-DAgger。</td><td>RoboTwin 2.0 93.6%；网线插入 70%，不用价值函数</td></tr>
+    <tr><td>Fast-VLA <a class="pl" href="https://arxiv.org/abs/2610.21389">arXiv</a></td><td>10-15 · 华为</td><td>“一个回合只想一次”：4B VLM 每回合只跑一次，把任务理解存成固定的 KV 记忆；之后轻量 actor 反复查这份记忆出动作。</td><td>推理时间降 10.9–17.1 倍；RoboTwin 92.4%</td></tr>
+    <tr><td>OVOA-VLA <a class="pl" href="https://arxiv.org/abs/2611.26161">arXiv</a></td><td>11-19 · 中山大学</td><td>让每个相机在自己的坐标系里预测动作，同一个动作就有了多种“视角对齐”的监督，换相机位置不再崩。</td><td>空间分布偏移下真机 28.3%（π0.5）→ 58.3%</td></tr>
+    <tr><td>GroundingPI <a class="pl" href="https://arxiv.org/abs/2609.39601">arXiv</a></td><td>10 月 · 小鹏 / 北大等</td><td>专门做“指哪打哪”的 4B 视觉定位底座，再当 VLA 的视觉主干。</td><td>RoboTwin 分布外设定下比最强主干相对高 24.8%</td></tr>
+  </table>
+  </div>
+</section>
+</div>
+
+<!-- ============ ③ 强化学习 ============ -->
+<div class="wrap">
+<section class="sheet front-rl" id="s-rl">
+  <h2><span class="sym" style="background:var(--rl)"></span>③ VLA 上的强化学习：从“能做”到“快、稳”</h2>
+  <p class="sub">知识库相关页：<a href="VLA-RL-路线图.html">VLA × RL 路线图</a> · <a href="HIL-SERL-算法详解.html">HIL-SERL</a> · <a href="pi0.6-论文解读.html">π*0.6</a> · <a href="RL-Token-论文解读.html">RL Token</a> · <a href="piRL-论文解读.html">πRL</a></p>
+
+  <div class="plain"><small>大白话</small>半年前，真机 RL 的难点是“怎么在大 VLA 上做 RL”。现在大家默认能做了，开始比三件事：花多少分钟、会不会越练越坏、奖励信号从哪来。</div>
+
+  <article class="obs">
+    <div class="when">2026-09-16<i>Black · Galliker · Levine</i></div>
+    <div class="body">
+      <h4>Real-Time EXPO-FT <small>RTC 的作者把 RL 和实时控制接上了</small></h4>
+      <p>大 VLA 推理慢，等动作执行时，看到的画面已经过时了。以前的异步执行方法（比如 RTC）都是模仿学习，没法越练越好。这篇把动作分成两层：大 VLA 慢慢提议一段动作，一个小的“修改策略”看最新画面，快速对动作做小幅修正，RL 只训练这个小修改策略。</p>
+      <p class="special">把“延迟”这个工程问题和“RL 提升可靠性”合在一起解决。四个动态真机任务（递物体、平衡球、桌上足球、抓运动物体）不需要人工干预。</p>
+      <p class="num">真机在线数据封顶 10 分钟，平均成功率 42% → 97%（29/30）。Kinetix 10 个环境全部最好。</p>
+      <p><a class="pl" href="https://arxiv.org/abs/2609.18207">arXiv:2609.18207</a></p>
+    </div>
+  </article>
+
+  <article class="obs">
+    <div class="when">2026-06-03<i>腾讯 Robotics X</i></div>
+    <div class="body">
+      <h4>FlowPRO <small>不要奖励函数，也不要价值网络</small></h4>
+      <p>真机上最难做的是奖励和价值函数。FlowPRO 绕开它们：操作员在机器人出错时接管，并把状态回滚到出错前。这样一次接管就自然产生一对“好轨迹 / 坏轨迹”。然后用一种为 flow matching 动作头改造的偏好优化（RPRO）训练，加了一个“近端”正则，防止 Flow-DPO 常见的奖励作弊。</p>
+      <p class="special">直接和 π*0.6（Recap）、DAgger 正面比，且每格 3 个种子 × 100 次试验，统计做得比多数真机论文扎实。</p>
+      <p class="num">四个双臂长程任务，以 π0.5 为底座：Pack 99%、Cap 99%、USB 95%、Case 93%，全部高于 π*0.6 方法（92%/94%/93%/88%）。</p>
+      <p class="caveat">只在一个平台（Dobot XTrainer）上测过。</p>
+      <p><a class="pl" href="https://arxiv.org/abs/2606.05468">arXiv:2606.05468</a></p>
+    </div>
+  </article>
+
+  <div class="ans" id="a4"><b class="q">Q4 答</b>主要靠三招。① 只训一个小东西：Real-Time EXPO-FT 只训“动作修改策略”，RL Token 只训一个小 actor，大 VLA 冻住。② 用人做引导：VLA-Precision 先靠人工干预快速拉高成功率，再转自主探索；FlowPRO 用接管加回滚直接造出偏好对。③ 把旧数据锚住：RAPolicy 的 critic 只在回放过的动作上学，不去估计没见过的动作，actor 复用 rollout 时存下的初始噪声，训练和执行用同一个映射。这样 1–2 小时就能把成功率从 52% 拉到 88%。</div>
+
+  <h3>同一方向上的其他工作</h3>
+  <div class="scroll-x">
+  <table class="cmp">
+    <tr><th>工作</th><th>时间</th><th>特别在哪</th><th>关键数字</th></tr>
+    <tr><td>VLA-Precision <a class="pl" href="https://arxiv.org/abs/2609.04355">arXiv</a></td><td>09-18 · Luo / Levine</td><td>两个时间尺度：早期靠人工干预做行为学习，后期靠回报传播 + 局部偏好排序校准价值；配套流式训练架构，吞吐提升最高 10.9 倍。</td><td>9 个化学实验高精度任务，平均 98.3%，每任务 45.8 分钟</td></tr>
+    <tr><td>RAPolicy <a class="pl" href="https://arxiv.org/abs/2609.22888">arXiv</a></td><td>09-19 · 复旦</td><td>rollout 和学习并行；critic 按动作块学价值，不预测下一步动作；单步 flow actor 复用存下的噪声。</td><td>每任务只用 10 条示范起步，1–2 小时在线训练；多任务 52% → 88%</td></tr>
+    <tr><td>GR00T 2 真机 RL</td><td>11-09 · NVIDIA</td><td>只用任务级成功信号，GRPO 诱导的自模仿。</td><td>三个接触密集任务 40–76% → 88–96%</td></tr>
+    <tr><td>RoboFFT <a class="pl" href="https://arxiv.org/abs/2609.32236">arXiv</a></td><td>09-26 · 北大</td><td>对采到的动作做“前向加噪”，用加权 flow matching 损失构造 PPO 需要的概率比，绕开扩散策略算不了似然的问题。</td><td>真机抓茄子：离线 18/20，在线 20/20</td></tr>
+    <tr><td>Outcome-Balanced PPO <a class="pl" href="https://arxiv.org/abs/2611.22878">arXiv</a></td><td>11-17 · 清华</td><td>在 RLinf 的 Flow-SDE PPO 上改：按任务成功率给正优势重新加权，并定期按当前策略重新拟合 flow。</td><td>真机 100 次：32% → 43%</td></tr>
+    <tr><td>任务崩塌研究 <a class="pl" href="https://arxiv.org/abs/2609.28838">arXiv</a></td><td>09-23</td><td>一个“负面结果”很有价值：SmolVLA 在线 RL 时，总分看着正常，单个任务却在悄悄崩掉。不确定性门控的探索噪声能避免。</td><td>固定噪声 3 个种子里 2 个崩，门控 0 个崩</td></tr>
+  </table>
+  </div>
+
+  <h3>奖励从哪来：价值 / 进度模型成了独立的一条小线</h3>
+  <p>上面这些 RL 方法都需要一个信号告诉它“现在做得怎么样”。半年里出现了一批专门做这件事的“价值底座”，思路各不相同：</p>
+  <div class="scroll-x">
+  <table class="cmp">
+    <tr><th>工作</th><th>怎么造标签</th><th>效果</th></tr>
+    <tr><td>RynnValue <a class="pl" href="https://arxiv.org/abs/2608.09853">arXiv</a> · 08-10</td><td>不标进度、不标偏好，直接用时间戳算“离完成还要多久”。所以能扩到 7000 小时、约 300 万段。</td><td>当密集奖励用：真机在线 52.5% → 72.5%，离线 63.8% → 82.5%</td></tr>
+    <tr><td>PF-RL <a class="pl" href="https://arxiv.org/abs/2609.32634">arXiv</a> · 09-26</td><td>不预测一个进度数，而是把当前状态和目标映射到同一空间，用距离当价值，相邻两步的价值差就是每步的优势。</td><td>LIBERO、RoboTwin、真机双臂均优于 SFT 和其他进度方法</td></tr>
+    <tr><td>Feat2Go <a class="pl" href="https://arxiv.org/abs/2605.30795">arXiv</a> · 05 月</td><td>用 V-JEPA 2 特征算每帧和子目标的相似度，自动切阶段，得到单调上升的进度。</td><td>ManiSkill3 分布外：OpenVLA-OFT 17.5% → 82.9%</td></tr>
+    <tr><td>VICTR <a class="pl" href="https://arxiv.org/abs/2611.08698">arXiv</a> · 11-05</td><td>给一条参考示范视频，估计“我现在做到示范的哪一步”，再取出对应阶段的示范片段喂给 π0.5 做上下文学习。</td><td>未见过的任务：6.2% → 23.8%</td></tr>
+  </table>
+  </div>
+</section>
+</div>
+
+<!-- ============ ④ 实时推理 ============ -->
+<div class="wrap">
+<section class="sheet front-rt" id="s-rt">
+  <h2><span class="sym" style="background:var(--rt)"></span>④ 动作分块与实时推理：RTC 之后</h2>
+  <p class="sub">知识库相关页：<a href="RTC-实时动作分块-论文解读.html">RTC 实时动作分块</a> · <a href="RTC-训练时-论文解读.html">训练时 RTC</a> · <a href="Realtime-VLA-论文解读.html">Realtime-VLA FLASH</a> · <a href="DynamicVLA-论文解读.html">DynamicVLA</a></p>
+
+  <div class="plain"><small>大白话</small>RTC 解决的是“换段时别抖”：边执行这一段边算下一段，算好的新段和旧段重叠的部分用 inpainting 对齐。新一批工作发现，“不抖”不等于“反应快”。乒乓球飞过来，机器人要的是第一个动作尽快出来，而 RTC 为了对齐，每一步去噪还要多算一次反向梯度。</div>
+
+  <p>LeRobot 里 RTC 的核心就是这一行：拿上一段剩下的动作和这次预测的差，对 <code>x_t</code> 求一次梯度当修正量（<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/policies/rtc/modeling_rtc.py#L224" data-path="src/lerobot/policies/rtc/modeling_rtc.py" data-line="224">modeling_rtc.py:224</a>），前缀权重由 <code>get_prefix_weights</code> 生成（<a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/policies/rtc/modeling_rtc.py#L256" data-path="src/lerobot/policies/rtc/modeling_rtc.py" data-line="256">modeling_rtc.py:256</a>）。这次额外的反向计算，就是后来者想省掉的开销。</p>
+
+  <div class="ans" id="a5"><b class="q">Q5 答</b>两个弱点。① 额外开销：RTC 每一步去噪都要做一次向量–雅可比积（上面那行 <code>autograd.grad</code>），RAVEL 测到 RTC 的观测“年龄”中位数 465 ms，比不做异步还慢；FreeBar 用闭式解替代反向传播，单段延迟降 45% 以上。② 只管平滑、不管反应：FASTER 指出反应时间由“第一个动作多久出来”决定，于是让近处的动作先去噪完（一步就出），远处的慢慢去噪；FlashVLA 和 RAVEL 都用“不同噪声水平的多段滚动缓冲”，每推理一步就吐出一段可执行动作。</div>
+
+  <div class="scroll-x">
+  <table class="cmp">
+    <tr><th>工作</th><th>时间 · 机构</th><th>核心手法</th><th>关键数字</th></tr>
+    <tr><td>FASTER <a class="pl" href="https://arxiv.org/abs/2603.19199">arXiv</a></td><td>05-16 v3 · 港大</td><td>证明反应时间服从由“首个动作时间 + 执行长度”决定的均匀分布；按距离安排去噪进度，近处动作一步完成。</td><td>近端反应去噪压缩 10 倍；真机打乒乓</td></tr>
+    <tr><td>FlashVLA <a class="pl" href="https://arxiv.org/abs/2608.27384">arXiv</a></td><td>08-27 · UCSD</td><td>缓冲区里放多段处于不同噪声水平的动作，按段因果注意力解码，每步推理产出一段干净动作；因果结构自带连续性，不需要额外对齐。</td><td>单 GPU ≥30 Hz；LIBERO 单步 53.8 → 22.1 ms；真机得分 80.0% → 84.4%</td></tr>
+    <tr><td>FreeBar <a class="pl" href="https://arxiv.org/abs/2610.14997">arXiv</a></td><td>10-10 · 北林</td><td>借控制屏障函数（CBF）的思路，把“新段要接住旧段”写成约束，闭式求解，免训练插件。</td><td>比朴素异步高 10–15%；比 RTC 单段延迟低 45% 以上</td></tr>
+    <tr><td>RAVEL <a class="pl" href="https://arxiv.org/abs/2609.34170">arXiv</a></td><td>11-19 · 浙大</td><td>部分去噪的未来动作在滚动缓冲里往前带，近端动作只再去噪一步；VLM 编码和动作生成拆成两个进程，另开一条“快观测通道”。</td><td>乒乓回球 75%（VLASH 25%、RTC 0%）；传送带抓取 95%</td></tr>
+    <tr><td>PTS <a class="pl" href="https://arxiv.org/abs/2611.01390">arXiv</a></td><td>11-01</td><td>把“机器人怎么动”拆成路径和时间：路径只在新观测来时改，时间层负责加速，并推导出“加速何时划算”的成功率盈亏点。</td><td>吞吐：π0.5 +33%，SmolVLA +104%，成功率不降</td></tr>
+  </table>
+  </div>
+</section>
+</div>
+
+<!-- ============ ⑤ 数据与评测 ============ -->
+<div class="wrap">
+<section class="sheet front-data" id="s-data">
+  <h2><span class="sym" style="background:var(--data)"></span>⑤ 数据与评测：人类视频当主料，榜单开始可信</h2>
+  <p class="sub">知识库相关页：<a href="InternData-A1-论文解读.html">InternData-A1</a> · <a href="openpi-reproduction.html">复现 OpenPI</a></p>
+
+  <div class="plain"><small>大白话</small>遥操作一小时要人和机器人一起花一小时；戴个头戴相机干活，一小时数据几乎不额外花钱。这半年的问题从“人类视频能不能用”变成了“要多少、怎么洗、能换来多少机器人成功率”。</div>
+
+  <div class="scroll-x">
+  <table class="cmp">
+    <tr><th>数据集 / 研究</th><th>时间 · 机构</th><th>规模</th><th>特别在哪</th></tr>
+    <tr><td>GR00T 2 预训练配比</td><td>11-09 · NVIDIA</td><td>人类视频 402,730 h · UMI 10,184 h · 遥操作 23,500 h</td><td>开放了其中 10 万小时（Human-1M-100K，CC BY 4.0）。只换人类视频比例（0/1%/10%/100%），72 个真机任务进度 50% → 70%。</td></tr>
+    <tr><td>Figure Index</td><td>08-25 · Figure</td><td>每秒新增约 30–35 分钟人类视频</td><td>手机 App 众包，付费给拍摄者（累计 1500 万美元）。流水线五步：过滤、防作弊、去重、再平衡、自动字幕。</td></tr>
+    <tr><td>Open-HumanWAM-50K <a class="pl" href="https://arxiv.org/abs/2611.06817">arXiv</a></td><td>11-10</td><td>50,000 h（从 10.4 万小时洗出来）</td><td>第一个完全开放的“人类视频预训练 WAM”配方，测出“预训练小时数 vs 机器人成功率”的对数线性关系。纯人类视频预训练后 RoboTwin 92.08%。</td></tr>
+    <tr><td>HubEgo-100K v1.0 <a class="pl" href="https://arxiv.org/abs/2611.21938">arXiv</a></td><td>11-16</td><td>10,124 h · 12,227 人 · 15,548 个环境</td><td>83% 是工作场所里的熟练作业，带 100 Hz IMU，直接给 LeRobot 格式。</td></tr>
+    <tr><td>LAPT-Scale <a class="pl" href="https://arxiv.org/abs/2610.13732">arXiv</a></td><td>10-09</td><td>23.3K h</td><td>人类视频没有动作标签，就用潜在动作模型从相邻帧推出“连续潜在动作”当标签。标注视频从 1K 到 5K 小时，真机 63.3% → 85.0%。</td></tr>
+    <tr><td>λ0 / HUMANVERSE <a class="pl" href="https://arxiv.org/abs/2610.18950">arXiv</a></td><td>10-13</td><td>500 h 全身动作</td><td>不只拍手，还同步记录身体和走路，专门给人形机器人的“边走边操作”。</td></tr>
+  </table>
+  </div>
+
+  <div class="ans" id="a6"><b class="q">Q6 答</b>硬证据有三类：① 控制变量的对比，Helix 2.5 同样的任务数据，从零训练 9%，用人类视频预训练 56%；GR00T 2 只改人类视频比例，真机进度 50% → 70%。② 缩放曲线，Figure 用小规模实验预测大规模损失到小数点后四位；Open-HumanWAM 测出对数线性律。③ 只看人做过就能做，GR00T 2 的 X-Adapt 成功 60–65%。要打的折扣：几乎全是公司自测；Figure 的缩放律量的是“动作预测损失”，没公布对应的真机成功率曲线；GR00T 2 的 95% 有选任务的成分。</div>
+
+  <h3>评测：从“各报各的”到公共考场</h3>
+  <article class="obs">
+    <div class="when">2026-07-08<i>港大等</i></div>
+    <div class="body">
+      <h4>RoboDojo <small>这半年最常被引用的新基准</small></h4>
+      <p>42 个仿真任务 + 18 个真机任务，分五个能力维度：泛化、记忆、精度、长程、开放指令。“开放”维度的任务不给训练数据，专测技能重组。真机部分标准化了硬件、复位流程，还能远程云端提交测评。</p>
+      <p class="special">它把当时的 SOTA 打回原形：发布时 30 个策略最好的仿真平均成功率只有 8.80%，π0.5 是 6.91%，而人类遥操作专家是 76%。三个月后 GO-3 Nano 自报 56.42%，GPT-6 Astra 直接当策略用拿到 22.48%。</p>
+      <p><a class="pl" href="https://arxiv.org/abs/2607.04434">arXiv:2607.04434</a></p>
+    </div>
+  </article>
+  <article class="obs">
+    <div class="when">2026-11-15<i>NVIDIA / 智元等</i></div>
+    <div class="body">
+      <h4>WorldOracle <small>给“世界模型当考场”出考卷</small></h4>
+      <p>用世界模型评测策略是热门方向（Veo 评测 Gemini Robotics、Runway GWM 与真实排名 Pearson 0.95）。WorldOracle 指出问题：视频看起来很真，结果可能是错的，比如真夹爪没抓到，模型却“画”成抓到了。它用成对的“同一串动作在真机执行 vs 在世界模型里生成”，测模型是否连失败也照实模拟。</p>
+      <p class="special">结论：短时表现好不等于长时也好；跟得上机械臂轨迹，不代表抓握和物体运动也对。</p>
+      <p><a class="pl" href="https://arxiv.org/abs/2610.18826">arXiv:2610.18826</a></p>
+    </div>
+  </article>
+</section>
+</div>
+
+<!-- ============ 架构图 ============ -->
+<div class="wrap">
+<section class="sheet" id="s-arch" style="margin-bottom:12px">
+  <h2>一张图：2026 年下半年的典型“机器人大脑”</h2>
+  <p class="sub">把这半年各家的新部件拼进同一张流水线图。每个框标了它来自哪篇工作，能查到代码的框链到 LeRobot 固定 commit 的源码行。</p>
+  <p class="hint">图里文字可选中、复制。点右下角「✎ 编辑」后可以直接改字，按「保存」或 ⌘/Ctrl+S 写回这个 HTML 文件（Chrome / Edge 第一次保存时选中本文件即可覆盖，其他浏览器会下载新文件）。编辑模式下点击代码芯片可以改它指向的文件和行号。</p>
+</section>
+</div>
+<div class="wide">
+<div class="legend">
+  <span><i style="border-color:var(--data);background:#fdf9ee"></i>数据</span>
+  <span><i style="border-color:var(--front);background:#f2f6fb"></i>VLM / 理解</span>
+  <span><i style="border-color:var(--wam);background:#f8f3fb"></i>世界动作模型</span>
+  <span><i style="border-color:var(--rt);background:#fdf4ee"></i>实时执行</span>
+  <span><i style="border-color:var(--rl);background:#eff8f4"></i>强化学习 / 价值</span>
+  <span><i style="border-color:var(--ink);border-style:dashed"></i>上层智能体</span>
+</div>
+<div class="dg-scroll">
+<div class="dg" id="arch-diagram">
+<svg class="wires" viewBox="0 0 1080 880" aria-hidden="true">
+  <defs>
+    <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#8696ab"/></marker>
+    <marker id="arg" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#1f7a5a"/></marker>
+    <marker id="arp" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#7a3e9d"/></marker>
+    <marker id="aro" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="#b4531f"/></marker>
+  </defs>
+  <!-- 数据 → 预训练 -->
+  <path d="M190 150 L190 214" marker-end="url(#ar)"/>
+  <path d="M540 150 L540 214" marker-end="url(#ar)"/>
+  <path d="M890 150 L890 214" marker-end="url(#ar)"/>
+  <!-- 预训练内部 -->
+  <path class="wam" d="M368 300 L432 300" marker-end="url(#arp)"/>
+  <path class="wam" d="M708 300 L770 300" marker-end="url(#arp)"/>
+  <!-- 预训练 → 执行 -->
+  <path class="rt" d="M880 372 L880 440" marker-end="url(#aro)"/>
+  <path class="rt" d="M770 512 L708 512" marker-end="url(#aro)"/>
+  <path class="rt" d="M432 512 L368 512" marker-end="url(#aro)"/>
+  <!-- 执行 → 真机 → RL 回路 -->
+  <path d="M190 580 L190 630" marker-end="url(#ar)"/>
+  <path class="rl" d="M368 690 L432 690" marker-end="url(#arg)"/>
+  <path class="rl" d="M708 690 L770 690" marker-end="url(#arg)"/>
+  <path class="rl" d="M1040 690 L1060 690 L1060 300 L1012 300" marker-end="url(#arg)"/>
+  <text x="1066" y="500" transform="rotate(90 1066 500)">RL 更新回到动作专家</text>
+  <!-- 上层智能体 -->
+  <path d="M40 812 L18 812 L18 300 L38 300" stroke-dasharray="4 4" marker-end="url(#ar)"/>
+  <path d="M18 512 L38 512" stroke-dasharray="4 4" marker-end="url(#ar)"/>
+  <text x="24" y="600" transform="rotate(-90 24 600)">调用 / 标注目标</text>
+</svg>
+
+<div class="band" style="top:6px">数据层</div>
+<div class="nd data" style="left:40px;top:28px;width:300px;min-height:122px">
+  <div class="nt">人类第一视角视频</div>
+  <div class="nb">占预训练的大头：GR00T 2 用 40 万小时，Open-HumanWAM 5 万小时。没有动作标签，靠“预测未来画面”这个目标吃进去。</div>
+  <div class="nl"><a class="pl" href="https://arxiv.org/abs/2611.06817">Open-HumanWAM</a><a class="pl" href="https://arxiv.org/abs/2611.21938">HubEgo-100K</a></div>
+</div>
+<div class="nd data" style="left:390px;top:28px;width:300px;min-height:122px">
+  <div class="nt">手持 / 穿戴设备示范</div>
+  <div class="nb">UMI 夹爪、DexUMI 手套：比遥操作便宜，又有接近机器人的动作。GR00T 2 有 1 万小时。</div>
+  <div class="nl"><a class="pl" href="https://research.nvidia.com/labs/gear/gr00t-2/">GR00T 2 数据配比</a></div>
+</div>
+<div class="nd data" style="left:740px;top:28px;width:300px;min-height:122px">
+  <div class="nt">机器人遥操作 + 自主轨迹</div>
+  <div class="nb">占比变小但仍是“最后一公里”：教会具体身体怎么动。失败轨迹也保留，给价值模型用。</div>
+  <div class="nl"><a class="pl" href="https://arxiv.org/abs/2608.09853">RynnValue 用失败数据</a></div>
+</div>
+
+<div class="band" style="top:196px">模型层（预训练）</div>
+<div class="nd vla" style="left:40px;top:220px;width:328px;min-height:152px">
+  <div class="nt">VLM / 视觉底座</div>
+  <div class="nb">理解指令、定位目标。新动向：主干变大（ScaleVLA 552B）、专做定位（GroundingPI）、一个回合只算一次（Fast-VLA）。</div>
+  <div class="nl"><a class="pl" href="https://arxiv.org/abs/2611.21607">ScaleVLA</a><a class="pl" href="https://arxiv.org/abs/2610.21389">Fast-VLA</a></div>
+</div>
+<div class="nd wam" style="left:432px;top:220px;width:276px;min-height:152px">
+  <div class="nt">视频专家（世界模型）</div>
+  <div class="nb">从视频生成模型初始化（Cosmos、Wan2.2）。训练时预测未来画面；推理时可以只读当前帧（Fast-WAM）。</div>
+  <div class="nl"><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/policies/fastwam/wan/modular.py#L695" data-path="src/lerobot/policies/fastwam/wan/modular.py" data-line="695">prefill_video_cache:695</a><a class="pl" href="https://arxiv.org/abs/2603.16666">Fast-WAM</a></div>
+</div>
+<div class="nd wam" style="left:770px;top:220px;width:242px;min-height:152px">
+  <div class="nt">动作专家</div>
+  <div class="nb">和视频专家共享注意力（MoT），用 flow matching 去噪出一段动作。只看当前帧，看不到未来视频 token。</div>
+  <div class="nl"><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/policies/fastwam/wan/modular.py#L1214" data-path="src/lerobot/policies/fastwam/wan/modular.py" data-line="1214">注意力掩码:1214</a><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/policies/fastwam/wan/modular.py#L1414" data-path="src/lerobot/policies/fastwam/wan/modular.py" data-line="1414">两项损失:1414</a></div>
+</div>
+
+<div class="band" style="top:418px">执行层（实时）</div>
+<div class="nd rt" style="left:770px;top:440px;width:242px;min-height:140px">
+  <div class="nt">滚动动作缓冲</div>
+  <div class="nb">多段动作处于不同噪声水平，近处先去噪完，每推理一步吐一段（FlashVLA、RAVEL、FASTER）。</div>
+  <div class="nl"><a class="pl" href="https://arxiv.org/abs/2608.27384">FlashVLA</a><a class="pl" href="https://arxiv.org/abs/2609.34170">RAVEL</a></div>
+</div>
+<div class="nd rt" style="left:432px;top:440px;width:276px;min-height:140px">
+  <div class="nt">换段对齐</div>
+  <div class="nb">RTC 用梯度引导；FreeBar 改成闭式约束、免反向传播；PTS 把路径和时间分开调速。</div>
+  <div class="nl"><a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/policies/rtc/modeling_rtc.py#L224" data-path="src/lerobot/policies/rtc/modeling_rtc.py" data-line="224">RTC 引导梯度:224</a><a class="pl" href="https://arxiv.org/abs/2610.14997">FreeBar</a></div>
+</div>
+<div class="nd rt" style="left:40px;top:440px;width:328px;min-height:140px">
+  <div class="nt">每机型小输出头 → 电机</div>
+  <div class="nb">同一份计划翻译成各自的关节指令。人形机器人再接全身控制器（GR00T 2 Turbo + SONIC，50 Hz）。</div>
+  <div class="nl"><a class="pl" href="https://research.nvidia.com/labs/gear/gr00t-2/">GR00T 2 Turbo</a></div>
+</div>
+
+<div class="band" style="top:608px">改进层（部署后）</div>
+<div class="nd rl" style="left:40px;top:630px;width:328px;min-height:116px">
+  <div class="nt">真机 rollout + 人工接管</div>
+  <div class="nb">接管时回滚状态，一次接管得到一对好/坏轨迹（FlowPRO、美团 Rollback）。</div>
+  <div class="nl"><a class="pl" href="https://arxiv.org/abs/2606.05468">FlowPRO</a><a class="pl" href="https://arxiv.org/abs/2611.08577">MR0</a></div>
+</div>
+<div class="nd rl" style="left:432px;top:630px;width:276px;min-height:116px">
+  <div class="nt">价值 / 进度模型</div>
+  <div class="nb">时间距离（RynnValue）、目标距离（PF-RL）、视频生成式价值（ViVa）给出每步的好坏。</div>
+  <div class="nl"><a class="pl" href="https://arxiv.org/abs/2608.09853">RynnValue</a><a class="pl" href="https://arxiv.org/abs/2609.32634">PF-RL</a></div>
+</div>
+<div class="nd rl" style="left:770px;top:630px;width:270px;min-height:116px">
+  <div class="nt">只训小模块的 RL</div>
+  <div class="nb">大模型冻住，只训动作修改策略或小 actor；10 分钟到 2 小时见效。</div>
+  <div class="nl"><a class="pl" href="https://arxiv.org/abs/2609.18207">RT-EXPO-FT</a><a class="pl" href="https://arxiv.org/abs/2609.22888">RAPolicy</a></div>
+</div>
+
+<div class="band" style="top:768px">调度层</div>
+<div class="nd ag" style="left:40px;top:790px;width:1000px;min-height:48px;background:#fff">
+  <div class="nt">上层推理智能体</div>
+  <div class="nb">把长任务拆成子任务、检查进度、在相机画面上标出“抓哪里、放哪里”，再把指令交给下面的动作模型（Gemini Robotics ER 2、GR00T 2 的 WAM API、LAW 的规划专家）。</div>
+</div>
+</div>
+</div>
+<p class="hint" style="margin-top:8px">FastWAM 和 RTC 的链接指向 <a href="https://github.com/huggingface/lerobot/tree/b6ec0060779550c0a157ae34feb89e0cf86012a8">huggingface/lerobot @ b6ec006</a>，行号已在该 commit 上核对。其余框链到论文或官方页面，因为这些工作大多还没有公开代码。</p>
+</div>
+
+<!-- ============ 题目 ============ -->
+<div class="wrap">
+<section class="sheet" id="quiz">
+  <h2>读完做几道题</h2>
+  <p class="sub">先自己想，再点开看答案。</p>
+
+  <details class="ex"><summary>1. 一个 WAM 推理时不生成未来视频，它和一个普通 VLA 还有区别吗？区别在哪？</summary>
+    <p>有区别。推理接口一样（当前画面 → 动作），但它的视觉表征是在“预测未来画面”这个目标下训练出来的，并且主干从视频生成模型初始化。Fast-WAM 的实验说明，这部分训练带来的好处是主要的，去掉后 RoboTwin 掉 8 个点。</p>
+    <p class="back"><a href="#a2">回到 Q2 答案</a> · <a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/policies/fastwam/wan/modular.py#L1414" data-path="src/lerobot/policies/fastwam/wan/modular.py" data-line="1414">modular.py:1414</a></p>
+  </details>
+
+  <details class="ex"><summary>2. GR00T 2 报告“5 条示范 95%”。为什么不能直接说“任意新任务 5 条示范就能 95%”？</summary>
+    <p>因为 50 个评测任务是从“5 条示范能达到 80% 以上”的任务里挑出来的，白皮书自己写了“部分是构造出来的”。零样本 40% 这个数受挑选影响小，更值得参考。另外多数任务只测了 20 次以内，NVIDIA 自己算过区分 95% 和 99% 需要约 285 次。</p>
+    <p class="back"><a href="#s-wam">回到 ① 世界动作模型</a></p>
+  </details>
+
+  <details class="ex"><summary>3. Helix 2.5 的“9% → 56%”是一个什么样的实验？它证明了什么、没证明什么？</summary>
+    <p>两份模型用完全相同的任务数据、架构和评测，唯一差别是有没有 Index 人类视频预训练。证明了人类视频预训练对“换到没见过的家”有很大帮助。没证明：能做没教过的任务（任务是教过的）；缩放律对应的真机成功率怎么变（只公布了损失）。</p>
+    <p class="back"><a href="#a6">回到 Q6 答案</a></p>
+  </details>
+
+  <details class="ex"><summary>4. RTC 的修正量为什么需要一次反向传播？FreeBar 怎么省掉它？</summary>
+    <p>RTC 要让“这次预测的去噪终点”和上一段剩下的动作对齐，终点 <code>x1 = x_t + t·v_t</code> 依赖网络输出，所以对 <code>x_t</code> 求梯度要过一遍网络的反向。FreeBar 把对齐写成动作空间里的一个约束，直接在动作上做闭式修正，不对网络求导。</p>
+    <p class="back"><a href="#a5">回到 Q5 答案</a> · <a class="cl" href="https://github.com/huggingface/lerobot/blob/b6ec0060779550c0a157ae34feb89e0cf86012a8/src/lerobot/policies/rtc/modeling_rtc.py#L224" data-path="src/lerobot/policies/rtc/modeling_rtc.py" data-line="224">modeling_rtc.py:224</a></p>
+  </details>
+
+  <details class="ex"><summary>5. FlowPRO 和 π*0.6 的 Recap 都在用“人工纠正”数据，两者用法有什么不同？</summary>
+    <p>Recap 训练一个价值函数，算出每步的优势，再把“好/坏”作为条件输入给策略。FlowPRO 不训价值函数：接管时回滚，直接得到一对好/坏轨迹，用偏好优化让策略偏向好的那条，并加近端正则防止奖励作弊。</p>
+    <p class="back"><a href="#s-rl">回到 ③ 强化学习</a> · <a href="pi0.6-论文解读.html">π*0.6 精读</a></p>
+  </details>
+
+  <details class="ex"><summary>6. RynnValue 为什么能扩到 7000 小时数据，而大多数进度模型扩不上去？</summary>
+    <p>它的标签是“离完成还要多少时间”，直接由时间戳算出，不需要人工标进度或标偏好。代价是要防“偷懒”：模型可能只学会看时间不看画面，所以加了随机时间采样、打乱时间顺序等手段，确保它对失败和倒退敏感。</p>
+    <p class="back"><a href="#s-rl">回到奖励小节</a></p>
+  </details>
+
+  <details class="ex"><summary>7. RoboDojo 发布时最好成绩才 8.80%，三个月后有人自报 56%。读这个数时要注意什么？</summary>
+    <p>一是谁报的：GO-3 的成绩是自报，拿第一的是 Nano 版而不是完整版，且没有技术报告。二是怎么测的：官方榜单是 3 个种子各 50 次；有些第三方提交只跑 1 个种子。三是比较对象：发布时的 8.80% 是“当时 30 个策略里最好的”，不是某个具体模型的旧成绩。</p>
+    <p class="back"><a href="#s-data">回到 ⑤ 数据与评测</a></p>
+  </details>
+</section>
+</div>
+
+<footer class="wrap">
+  资料检索于 2026-11-22，用 Exa 搜索 arXiv、官方博客和新闻报道，只收 2026-05-22 之后发布（或这期间成为主流的）工作。公司自报的数字都在正文里标了折扣。代码：<a href="https://github.com/huggingface/lerobot/tree/b6ec0060779550c0a157ae34feb89e0cf86012a8">github.com/huggingface/lerobot @ b6ec006</a>。
+</footer>
+</main>
+</div><!-- /doc -->
+
+<div class="kb-tools" id="kb-tools">
+  <button type="button" id="btn-edit">✎ 编辑</button>
+  <button type="button" id="btn-save">保存</button>
+  <span class="st" id="kb-st"></span>
+</div>
+
+<script>
+(function(){
+  'use strict';
+  var COMMIT='b6ec0060779550c0a157ae34feb89e0cf86012a8';
+  var GH='https://github.com/huggingface/lerobot/blob/'+COMMIT+'/';
+  var doc=document.getElementById('doc'), body=document.body;
+  var st=document.getElementById('kb-st'), btnEdit=document.getElementById('btn-edit');
+  var headSnap=new Set(Array.prototype.slice.call(document.head.children));
+  var bodyClass=body.getAttribute('class'), dirty=false, handle=null;
+
+  /* ---------- 代码链接 ---------- */
+  function hrefOf(a){
+    var p=a.getAttribute('data-path'), l=a.getAttribute('data-line')||'1';
+    return GH+p+(/\.mdx?$/.test(p)?'?plain=1':'')+'#L'+l;
+  }
+  /* 链接已直接写在 HTML 里；编辑后按 data-path / data-line 重新生成 GitHub 地址 */
+  function applyLinks(){
+    document.querySelectorAll('a.cl').forEach(function(a){a.setAttribute('href',hrefOf(a));a.setAttribute('target','_blank');a.setAttribute('rel','noreferrer');});
+    document.querySelectorAll('a.pl').forEach(function(a){a.setAttribute('target','_blank');a.setAttribute('rel','noreferrer');});
+  }
+  applyLinks();
+
+  /* ---------- 编辑 ---------- */
+  function setEdit(on){
+    body.classList.toggle('editing',on);
+    btnEdit.classList.toggle('on',on);
+    btnEdit.textContent=on?'✓ 完成编辑':'✎ 编辑';
+    if(on) doc.setAttribute('contenteditable','true'); else doc.removeAttribute('contenteditable');
+  }
+  btnEdit.addEventListener('click',function(){setEdit(!body.classList.contains('editing'));});
+  doc.addEventListener('input',function(){dirty=true;st.textContent='未保存';});
+  doc.addEventListener('click',function(e){
+    if(!body.classList.contains('editing')) return;
+    var a=e.target.closest('a.cl,a.pl'); if(!a) return;
+    e.preventDefault();
+    if(a.classList.contains('cl')){
+      var cur=a.getAttribute('data-path')+':'+a.getAttribute('data-line');
+      var v=prompt('代码位置（仓库内路径:行号）',cur); if(!v||v===cur) return;
+      var m=v.trim().match(/^(.+?):(\d+)$/); if(!m){alert('格式应为 path/to/file.py:123');return;}
+      a.setAttribute('data-path',m[1]); a.setAttribute('data-line',m[2]);
+    }else{
+      var h=prompt('链接地址',a.getAttribute('href')); if(!h) return; a.setAttribute('href',h);
+    }
+    applyLinks(); dirty=true; st.textContent='未保存';
+  });
+  /* 粘贴只保留纯文本，避免带进别处样式 */
+  doc.addEventListener('paste',function(e){
+    if(!body.classList.contains('editing')) return;
+    e.preventDefault();
+    document.execCommand('insertText',false,(e.clipboardData||window.clipboardData).getData('text/plain'));
+  });
+
+  /* ---------- 保存 ---------- */
+  function serialize(){
+    var live=document.documentElement, c=live.cloneNode(true);
+    var lh=document.head.children, ch=c.querySelector('head').children;
+    for(var i=lh.length-1;i>=0;i--){ if(!headSnap.has(lh[i])) ch[i].remove(); }
+    c.querySelectorAll('.kb-root').forEach(function(n){n.remove();});
+    var cb=c.querySelector('body');
+    if(bodyClass===null) cb.removeAttribute('class'); else cb.setAttribute('class',bodyClass);
+    c.querySelectorAll('[contenteditable]').forEach(function(n){n.removeAttribute('contenteditable');});
+    var cs=c.querySelector('#kb-st'); if(cs) cs.textContent='';
+    var ce=c.querySelector('#btn-edit'); if(ce){ce.textContent='✎ 编辑';ce.classList.remove('on');}
+    c.querySelectorAll('a.cl').forEach(function(a){a.setAttribute('href',hrefOf(a));a.setAttribute('target','_blank');a.setAttribute('rel','noreferrer');});
+    return '<!DOCTYPE html>\n'+c.outerHTML+'\n';
+  }
+  /* 文件句柄存进 IndexedDB，刷新后仍能直接覆盖原文件 */
+  function idb(mode,val){
+    return new Promise(function(res){
+      try{
+        var r=indexedDB.open('halfyear-2026h2-page',1);
+        r.onupgradeneeded=function(){r.result.createObjectStore('h');};
+        r.onsuccess=function(){
+          var tx=r.result.transaction('h',mode), s=tx.objectStore('h');
+          var q=mode==='readonly'?s.get(location.pathname):s.put(val,location.pathname);
+          q.onsuccess=function(){res(q.result);}; q.onerror=function(){res(null);};
+        };
+        r.onerror=function(){res(null);};
+      }catch(e){res(null);}
+    });
+  }
+  async function save(){
+    var html=serialize(), name=decodeURIComponent(location.pathname.split('/').pop()||'半年进展-2026下半年.html');
+    if(window.showSaveFilePicker){
+      try{
+        if(!handle) handle=await idb('readonly');
+        if(handle && handle.requestPermission){
+          var ok=await handle.queryPermission({mode:'readwrite'});
+          if(ok!=='granted') ok=await handle.requestPermission({mode:'readwrite'});
+          if(ok!=='granted') handle=null;
+        }
+        if(!handle){
+          handle=await window.showSaveFilePicker({suggestedName:name,types:[{description:'HTML',accept:{'text/html':['.html']}}]});
+          idb('readwrite',handle);
+        }
+        var w=await handle.createWritable(); await w.write(html); await w.close();
+        dirty=false; st.textContent='已保存 '+new Date().toLocaleTimeString(); return;
+      }catch(e){ if(e&&e.name==='AbortError'){st.textContent='已取消';return;} console.warn(e); }
+    }
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(new Blob([html],{type:'text/html'})); a.download=name;
+    document.body.appendChild(a); a.click(); a.remove();
+    dirty=false; st.textContent='已下载，替换原文件即可';
+  }
+  document.getElementById('btn-save').addEventListener('click',save);
+  document.addEventListener('keydown',function(e){ if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='s'){e.preventDefault();save();} });
+  window.addEventListener('beforeunload',function(e){ if(dirty){e.preventDefault();e.returnValue='';} });
+})();
+</script>
+<script src="nav.js"></script>
+</body>
+</html>
