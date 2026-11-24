@@ -3,147 +3,770 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="结合 Fast-WAM 论文和官方代码，解释视频联合训练、首帧注意力、MoT 双专家与 KV 缓存推理，附可编辑架构图和理解测验。">
-<title>FastWAM · 训练时想象，执行时直达动作</title>
+<meta name="description" content="Fast-WAM 论文与官方代码对照精读：两变量对照设计、token 账、首帧注意力 mask、shift 噪声调度、首帧 K/V 缓存推理与实验边界，附泄漏检测、噪声调度和推理账本三个小实验及可编辑架构图。">
+<title>Fast-WAM · 执行时还要先做梦吗？论文 × 代码精读</title>
 <link rel="stylesheet" href="concepts.css">
+<link rel="stylesheet" href="assets/katex/katex.min.css">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800;900&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,800;1,9..144,500&family=Noto+Sans+SC:wght@400;500;700&family=ZCOOL+XiaoWei&family=Zhi+Mang+Xing&display=swap" rel="stylesheet">
 <style>
-:root{--paper:#f2f0fa;--white:#fff;--ink:#27283e;--muted:#62647c;--blue:#4145a7;--lilac:#e3dff4;--mint:#d8eee7;--green:#286551;--line:#ceccdf;--orange:#a94c19;--ans:#fff0e2;--signal:#4145a7}
-*{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:78px}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.85 "Noto Sans SC","Microsoft YaHei",sans-serif;-webkit-font-smoothing:antialiased}a{color:var(--blue);text-underline-offset:3px}a:focus-visible,button:focus-visible{outline:3px solid var(--blue);outline-offset:4px}button{font:inherit;cursor:pointer}p{margin:12px 0}b,strong{font-weight:700}h1,h2,h3{line-height:1.4}h2{font-size:29px;margin:0 0 22px;letter-spacing:-.035em}h3{font-size:20px;margin:30px 0 10px}code,pre{font-family:Consolas,"Cascadia Code",monospace;font-size:.87em}p code,td code,li code{background:#e8e6f1;padding:2px 4px;border-radius:3px}small,.note{font-size:13px;color:var(--muted)}.wrap{max-width:1120px;margin:auto;padding:0 40px}.chapter{padding:54px 0;border-top:1px solid var(--line)}.read{max-width:860px}section[id],div[id]{scroll-margin-top:78px}.hero{padding:54px 0 38px}.hero-top{display:flex;justify-content:space-between;gap:20px;font-size:13px;color:var(--muted);padding-bottom:18px;border-bottom:1px solid var(--line)}.hero h1{font-family:Archivo,sans-serif;font-size:clamp(64px,11vw,120px);font-weight:900;letter-spacing:-.075em;line-height:1.1;margin:34px 0 12px}.hero h1 span{display:inline-block;font-size:14px;font-weight:500;letter-spacing:0;vertical-align:top;margin:15px 0 0 15px}.hero .subtitle{font-size:clamp(26px,4vw,40px);font-weight:600;line-height:1.5;margin:0 0 24px;letter-spacing:-.035em}.lede{max-width:770px;font-size:18px;color:var(--muted)}.kb-nick{display:inline-block;background:var(--lilac);color:var(--blue);padding:2px 12px;border-radius:20px;font-size:13px}.hero-links{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:22px 0}.hero-links a{font-size:13px}.film{margin-top:32px;padding:24px;background:var(--ink);color:#fff;border-radius:12px 12px 3px 3px;position:relative;overflow:hidden}.film::before,.film::after{content:"";display:block;height:6px;background:repeating-linear-gradient(90deg,#a7a4bd 0 13px,transparent 13px 25px);opacity:.55}.film-track{display:grid;grid-template-columns:1.2fr 2fr 1.2fr;gap:24px;padding:24px 0;align-items:center}.film-label{font-size:12px;color:#c3bfd9;margin:0 0 10px}.now-frame{height:103px;background:var(--lilac);border-radius:3px;position:relative;overflow:hidden;color:var(--ink)}.now-frame::before{content:"";position:absolute;width:60px;height:18px;background:var(--blue);left:25%;top:30px;transform:rotate(-28deg);border-radius:12px;box-shadow:42px 22px 0 -2px var(--blue)}.now-frame::after{content:"";position:absolute;width:26px;height:26px;background:#85b3a5;left:64%;bottom:14px;border-radius:4px}.now-frame span{position:absolute;left:10px;bottom:5px;font-size:11px}.future-strip{display:flex;gap:7px}.future{height:103px;flex:1;border:1px dashed #88849e;border-radius:3px;background:repeating-linear-gradient(135deg,transparent 0 9px,#ffffff07 9px 10px);display:flex;align-items:center;justify-content:center;font-size:14px;color:#b7b1cc}.action-strip{display:flex;gap:5px;align-items:center;height:103px;justify-content:center;background:#34384a;border-radius:3px}.action-strip i{width:14px;background:#9cd9c3;border-radius:2px;height:var(--h)}.film-foot{display:flex;justify-content:space-between;gap:20px;font-size:13px;color:#d9d6e8;margin:12px 0 20px}.film-foot b{color:#b2e8d4}.byline{display:flex;flex-wrap:wrap;gap:5px 24px;color:var(--muted);font-size:12px;margin-top:20px}.jumpbar{display:flex;gap:20px;flex-wrap:wrap;margin:28px 0 0;font-size:13px}.qs{list-style:none;padding:0;counter-reset:q;display:grid;grid-template-columns:1fr 1fr;gap:0 32px}.qs li{counter-increment:q;border-bottom:1px solid var(--line);padding:18px 0;display:flex;gap:12px}.qs li::before{content:"Q" counter(q);color:var(--blue);font-family:Archivo,sans-serif;font-weight:700}.qs a{text-decoration:none;color:var(--ink)}.qs a:hover{text-decoration:underline}.ans{background:var(--ans);border-left:4px solid #cf763a;padding:16px 20px;margin:26px 0;color:#6b3b20;border-radius:0 7px 7px 0;font-size:15px}.ans .q{display:block;color:var(--orange);margin-bottom:4px}.two-col{display:grid;grid-template-columns:1fr 1fr;gap:26px}.side-note{background:var(--lilac);padding:22px;border-radius:6px;font-size:14px}.side-note h3{margin-top:0}.math{padding:22px;background:#fff;border-radius:7px;font:20px/1.8 Georgia,"Noto Sans SC",serif;margin:20px 0;overflow-x:auto}.math small{display:block;font:13px/1.8 "Noto Sans SC",sans-serif;margin-top:10px}.table-scroll{overflow-x:auto;margin:20px 0}table{border-collapse:collapse;width:100%;font-size:14px;text-align:left}th{font-weight:600;background:var(--lilac)}td,th{border-bottom:1px solid var(--line);padding:12px 14px;vertical-align:top}tbody tr.highlight{background:#e3efe9}td strong{color:var(--green)}.path{font:12px/1.65 Consolas,monospace;overflow-wrap:anywhere;color:var(--muted);margin-bottom:5px}a.cl,a.pl{display:inline-block;max-width:100%;overflow-wrap:anywhere;font:12px/1.65 Consolas,"Noto Sans SC",monospace;padding:2px 6px;border-radius:3px;text-decoration:none;margin:3px 5px 3px 0;border:1px solid #d0c9e9;background:#f7f5fd;color:var(--blue)}a.pl{background:#eef5f2;border-color:#bcd7cd;color:var(--green)}a.cl:hover,a.pl:hover{text-decoration:underline;background:#e5e0f7}pre{background:var(--ink);color:#e8e4fa;padding:22px;overflow-x:auto;line-height:1.8;border-radius:7px}.comment{color:#b9d8cd}.experiment{background:var(--white);border:1px solid var(--line);padding:26px;border-radius:8px;margin:24px 0}.experiment h3{margin:0 0 10px}.mode-tabs{display:flex;gap:6px;flex-wrap:wrap;margin:18px 0}.mode-tabs button{border:1px solid var(--line);border-radius:5px;padding:7px 12px;background:transparent;font-size:13px;color:var(--ink)}.mode-tabs button[aria-pressed="true"]{background:var(--blue);color:white;border-color:var(--blue)}.mask-demo{display:grid;grid-template-columns:260px 1fr;gap:30px;align-items:start}.mask-grid{display:grid;grid-template-columns:70px repeat(3,52px);gap:4px;font-size:12px;align-items:center;text-align:center}.mask-grid .cell{height:42px;display:flex;align-items:center;justify-content:center;background:#eeedf4;color:#77728e;border-radius:3px}.mask-grid .cell.allow{background:var(--blue);color:white}.mask-grid .row-label{text-align:left;font-size:12px}.mode-output{font-size:14px}.mode-output p{margin:6px 0}.mode-output strong{color:var(--blue)}.step-list{padding-left:22px}.step-list li{padding:5px 0}.compare-callout{border-top:2px solid var(--blue);padding-top:16px;margin-top:22px}.wide{max-width:1240px;margin:auto;padding:0 24px}.dg-scroll{overflow-x:auto;border:1px solid var(--line);border-radius:8px;background:#fcfbff;margin:20px 0}.dg{position:relative;width:1140px;height:1115px;margin:0 auto;background-image:radial-gradient(#d4cee6 .7px,transparent .7px);background-size:16px 16px}.wires{position:absolute;inset:0;pointer-events:none;width:1140px;height:1115px}.wires path{fill:none;stroke:#78748f;stroke-width:2}.wires .train-wire{stroke:#7865ad}.wires .infer-wire{stroke:#34735d}.wires .dash{stroke-dasharray:5 5}.band{position:absolute;left:20px;width:1100px;border:1px solid #d9d3e9;border-radius:8px;background:#ece8f650}.band.live{border-color:#c3dbd0;background:#e5f0e950}.band-title{position:absolute;left:40px;font-size:16px;font-weight:700;color:var(--blue)}.band-title.live{color:var(--green)}.nd{position:absolute;padding:13px 15px;background:#fff;border:1.5px solid #c8bfdd;border-radius:7px;font-size:13px;line-height:1.65;min-height:100px}.nd .nt{font-size:15px;font-weight:700;margin-bottom:5px}.nd .nb{color:var(--muted)}.nd .nl{margin-top:7px}.nd.video{background:#eeebfa;border-color:#ae9fce}.nd.action{background:#e9f5ee;border-color:#94c3af}.nd.loss{background:#fff4e8;border-color:#dfba96}.nd a.cl{font-size:10.5px}.nd .path{font-size:10px}.wl{position:absolute;font-size:12px;background:#fcfbff;padding:0 5px;color:var(--muted);line-height:1.8}.legend{display:flex;flex-wrap:wrap;gap:20px;font-size:13px;color:var(--muted)}.legend i{width:12px;height:12px;border-radius:3px;display:inline-block;margin-right:6px;vertical-align:-1px;background:var(--lilac);border:1px solid #ae9fce}.legend i.action{background:var(--mint);border-color:#94c3af}.legend i.loss{background:var(--ans);border-color:#dfba96}.quiz{list-style:none;padding:0;counter-reset:quiz}.quiz>li{counter-increment:quiz;padding:20px 0;border-bottom:1px solid var(--line)}.quiz>li>p{font-weight:500;margin-top:0}.quiz>li>p::before{content:counter(quiz,decimal-leading-zero);font-family:Archivo,sans-serif;font-weight:700;color:var(--blue);margin-right:15px}.quiz summary{color:var(--blue);cursor:pointer;font-size:13px}.quiz details>div{margin-top:12px;padding:15px 20px;background:var(--white);font-size:14px;border-radius:5px}.kb-tools{position:fixed;right:18px;bottom:18px;z-index:200;display:flex;gap:7px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px;box-shadow:0 5px 20px #27283e15}.kb-tools button{font-size:13px;padding:6px 12px;background:#fff;color:var(--blue);border:1px solid var(--line);border-radius:4px}.kb-tools button.on{background:var(--blue);color:white}.kb-tools .st{font-size:11px;color:var(--muted);max-width:160px}body.editing #doc[contenteditable]{outline:none}body.editing .nd,body.editing p,body.editing li,body.editing td{outline:1px dashed #8377ae;outline-offset:2px}footer{color:var(--muted);font-size:12px;padding:38px 0 110px}.source-list td:first-child{min-width:130px}.source-list td:last-child{word-break:break-word}.reduced{font-size:13px;color:var(--muted)}@media(max-width:760px){body{font-size:15px}.wrap{padding:0 22px}.wide{padding:0 12px}.hero{padding-top:30px}.hero-top{font-size:11px}.hero h1 span{display:block;margin:8px 0;font-size:12px}.hero .subtitle{font-size:28px}.lede{font-size:16px}.film{padding:16px}.film-track{grid-template-columns:1fr 1.1fr 1fr;gap:10px}.now-frame,.future,.action-strip{height:84px}.future-strip .future:last-child{display:none}.action-strip{gap:3px}.action-strip i{width:9px}.film-foot{display:block;font-size:11px}.qs,.two-col,.mask-demo{grid-template-columns:1fr}.qs{gap:0}.chapter{padding:38px 0}h2{font-size:25px}.mask-demo{gap:18px}.experiment{padding:18px}.kb-tools{right:10px;bottom:10px;max-width:calc(100vw - 20px)}.kb-tools .st{max-width:100px}td,th{padding:9px}.hero-links{gap:8px}.jumpbar{gap:12px}.hero h1{margin-top:25px}.path{font-size:11px}}
-@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}@media print{.kb-tools,.kb-root{display:none}.dg-scroll{overflow:visible}.dg{transform-origin:top left;zoom:.65}.chapter{break-inside:avoid}}
+:root{
+  --paper:#f5f2e8;--card:#fdfbf5;--grid:rgba(60,98,160,.09);
+  --ink:#1f2a40;--muted:#5b6376;--pen:#2a4b98;--pen-soft:#e4eaf6;
+  --red:#c23b2a;--green:#2b7154;--green-soft:#e1efe7;--tape:rgba(230,212,160,.82);
+  --hl:#f5df72;--line:#d3ccb9;--ans:#fff0dd;--ans-b:#d47b2a;--ans-ink:#673813;
+  --serif:"Fraunces","ZCOOL XiaoWei","Noto Serif SC",serif;
+  --type:"Courier Prime","Courier New",ui-monospace,monospace;
+  --hand:"Zhi Mang Xing","Kaiti SC","STKaiti",cursive;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;scroll-padding-top:72px}
+body{margin:0;color:var(--ink);background-color:var(--paper);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:22px 22px;font:16px/1.85 "Noto Sans SC","Microsoft YaHei","PingFang SC",sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--pen);text-underline-offset:3px}
+a:focus-visible,button:focus-visible,input:focus-visible{outline:3px solid var(--pen);outline-offset:3px}
+button{font:inherit;cursor:pointer}
+p{margin:12px 0}
+b,strong{font-weight:700}
+mark{background:linear-gradient(transparent 52%,var(--hl) 52%);color:inherit;padding:0 1px}
+code{font-family:var(--type);font-size:.88em;background:var(--pen-soft);padding:1px 5px;border-radius:2px;overflow-wrap:anywhere}
+small,.note{font-size:13px;color:var(--muted)}
+.sheet{max-width:960px;margin:0 auto;padding:0 40px 0 76px;position:relative}
+.sheet::before{content:"";position:absolute;left:44px;top:0;bottom:0;border-left:1.5px solid rgba(194,59,42,.42)}
+.chapter{padding:48px 0 30px}
+.chapter+.chapter{border-top:1px dashed rgba(42,75,152,.28)}
+section[id],div[id]{scroll-margin-top:72px}
+h1,h2,h3{line-height:1.35}
+h2{font-family:var(--serif);font-weight:600;font-size:30px;margin:0 0 20px;letter-spacing:-.01em;position:relative}
+h2 .no{position:absolute;left:-66px;top:4px;width:52px;text-align:right;font:700 15px var(--type);color:var(--red);letter-spacing:.02em}
+h3{font-family:var(--serif);font-weight:600;font-size:20px;margin:30px 0 10px}
+.kicker{font:700 12px var(--type);letter-spacing:.14em;text-transform:uppercase;color:var(--red);margin:0 0 6px}
+
+/* ---------- hero ---------- */
+.hero{padding:40px 0 28px}
+.stamp-row{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;font:13px var(--type);color:var(--muted);border-bottom:1.5px solid var(--ink);padding-bottom:10px}
+.stamp-row b{color:var(--ink)}
+.hero h1{font-family:"Fraunces",serif;font-weight:800;font-size:clamp(60px,10vw,112px);letter-spacing:-.045em;line-height:1;margin:34px 0 8px}
+.hero h1 .arx{display:inline-block;vertical-align:top;margin:12px 0 0 14px;font:400 14px var(--type);letter-spacing:0;color:var(--muted)}
+.subtitle{font-family:"ZCOOL XiaoWei","Noto Serif SC",serif;font-size:clamp(25px,4vw,36px);line-height:1.45;margin:4px 0 16px}
+.kb-nick{display:inline-block;font:13px var(--type);color:var(--red);border:1.5px dashed var(--red);padding:1px 12px;border-radius:999px;transform:rotate(-1.5deg)}
+.lede{font-size:17.5px;color:#39425a;max-width:780px}
+.hero-links{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:18px 0 6px}
+.byline{font-size:12.5px;color:var(--muted);margin-top:8px}
+.jumpbar{display:flex;gap:8px;flex-wrap:wrap;margin:22px 0 0}
+.jumpbar a{font:13px var(--type);text-decoration:none;color:var(--ink);background:var(--card);border:1px solid var(--line);border-bottom:3px solid var(--pen);padding:3px 10px}
+.jumpbar a:hover{border-bottom-color:var(--red)}
+
+/* ---------- cards / tape ---------- */
+.card{position:relative;background:var(--card);border:1px solid var(--line);padding:22px 24px;margin:26px 0;box-shadow:0 1px 0 rgba(0,0,0,.03),0 14px 28px -22px rgba(31,42,64,.5)}
+.tape::before{content:"";position:absolute;top:-12px;left:50%;width:128px;height:24px;margin-left:-64px;background:var(--tape);transform:rotate(-2.2deg);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.tilt{transform:rotate(-.35deg)}
+.sticky{background:#fbf1b8;border:none;box-shadow:0 12px 20px -16px rgba(80,60,0,.55);transform:rotate(.4deg)}
+.sticky h3{margin-top:0}
+.scribble{font-family:var(--hand);color:var(--red);font-size:22px;line-height:1.3;display:inline-block;transform:rotate(-2deg)}
+
+/* ---------- 2x2 design card ---------- */
+.design{margin-top:30px}
+.dc-head{font:700 13px var(--type);letter-spacing:.08em;color:var(--muted);margin-bottom:12px}
+.dc-grid{display:grid;grid-template-columns:118px 1fr 1fr;gap:0;border:1.5px solid var(--ink)}
+.dc-grid>div{padding:12px 14px;border-right:1px solid var(--ink);border-bottom:1px solid var(--ink);font-size:14.5px;line-height:1.6}
+.dc-grid>div:nth-child(3n){border-right:none}
+.dc-grid>div:nth-last-child(-n+3){border-bottom:none}
+.dc-corner{font:12px var(--type);color:var(--muted)}
+.dc-col,.dc-row{font-weight:700;background:var(--pen-soft)}
+.dc-row{font-size:13.5px}
+.dc-cell b{font-family:var(--serif);font-size:17px}
+.dc-cell small{display:block;font:12.5px var(--type);color:var(--muted)}
+.dc-cell.hit{background:#fff7d6}
+.dc-cell.low{background:#fbe9e5}
+.dc-cell.void{color:var(--muted);font-size:13px;background:repeating-linear-gradient(135deg,transparent 0 9px,rgba(31,42,64,.06) 9px 10px)}
+.dc-note{margin:14px 0 0;font-size:14px}
+.dc-note .scribble{font-size:20px;margin-right:6px}
+
+/* ---------- questions / answers ---------- */
+.qs{list-style:none;padding:0;margin:0;counter-reset:q}
+.qs li{counter-increment:q;display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:baseline;padding:12px 0;border-bottom:1px solid rgba(42,75,152,.22)}
+.qs li::before{content:"Q" counter(q);font:700 15px var(--type);color:var(--red)}
+.qs .go{font:12.5px var(--type);white-space:nowrap;text-decoration:none}
+.ans{background:var(--ans);border:1px solid #edc9a2;border-left:5px solid var(--ans-b);padding:15px 20px;margin:24px 0;color:var(--ans-ink);font-size:15px;line-height:1.8}
+.ans .q{display:block;color:#a24f12;font:700 13px var(--type);letter-spacing:.06em;margin-bottom:4px}
+.ans a.cl,.ans a.pl{background:#fff8ee}
+
+/* ---------- tables, code, math ---------- */
+.table-scroll{overflow-x:auto;margin:18px 0}
+table{border-collapse:collapse;width:100%;font-size:14px;background:var(--card)}
+th,td{border:1px solid #c9c2ae;padding:8px 11px;text-align:left;vertical-align:top}
+th{font:700 12.5px var(--type);background:var(--pen-soft);letter-spacing:.02em}
+td.num,th.num{text-align:right;font-family:var(--type);white-space:nowrap}
+tr.me td{background:#fff7d6}
+tr.drop td{background:#fbeeea}
+pre{background:#fffef8;border:1px solid var(--line);border-left:4px solid var(--pen);padding:16px 18px;overflow-x:auto;font:13.5px/1.75 var(--type);margin:18px 0;color:#1d2840}
+pre .c{color:#2b7154}
+pre .k{color:var(--red);font-weight:700}
+.texd{margin:16px 0;padding:10px 14px;background:var(--card);border:1px dashed #b9b19b;overflow-x:auto;overflow-y:hidden}
+.tex .katex{font-size:1.04em}
+.formula-note{font-size:14px;color:var(--muted);margin-top:-6px}
+
+/* ---------- source links ---------- */
+a.cl,a.pl{display:inline-block;max-width:100%;overflow-wrap:anywhere;font:12px/1.6 var(--type);padding:1px 6px;margin:2px 4px 2px 0;text-decoration:none;border:1px solid #b7c3e2;background:#f1f4fb;color:var(--pen);border-radius:2px;vertical-align:baseline}
+a.pl{border-color:#b9d5c7;background:#ecf5f0;color:var(--green)}
+a.cl:hover,a.pl:hover{text-decoration:underline;background:#e1e8f8}
+.src{font:12px var(--type);color:var(--muted)}
+
+/* ---------- token strip ---------- */
+.tokbar{display:flex;height:58px;border:1.5px solid var(--ink);margin:16px 0 6px;font:12px var(--type)}
+.tokbar>div{display:flex;flex-direction:column;justify-content:center;align-items:center;border-right:1.5px solid var(--ink);text-align:center;line-height:1.3;padding:0 4px;min-width:0}
+.tokbar>div:last-child{border-right:none}
+.tokbar b{font-size:15px}
+.tk-c{flex:98;background:#dfe6f6}
+.tk-f{flex:98;background:repeating-linear-gradient(135deg,#eef1f8 0 7px,#dfe4f0 7px 9px);color:#3b4766}
+.tk-a{flex:32;background:var(--green-soft);color:var(--green)}
+.tok-label{display:flex;font:12px var(--type);color:var(--muted)}
+.tok-label span{text-align:center}
+
+/* ---------- static mask figure ---------- */
+.maskfig{display:grid;grid-template-columns:auto auto;gap:20px 34px;align-items:start}
+.mgrid{display:grid;grid-template-columns:76px repeat(3,58px);gap:4px;font:12.5px var(--type);text-align:center;align-items:center}
+.mgrid .h{font-weight:700}
+.mgrid .rl{text-align:left}
+.mgrid .on,.mgrid .off{height:40px;display:flex;align-items:center;justify-content:center;border:1.5px solid}
+.mgrid .on{background:#dbe4f7;border-color:var(--pen);color:var(--pen)}
+.mgrid .on.ac{background:#d9eee2;border-color:var(--green);color:var(--green)}
+.mgrid .off{background:transparent;border-color:#bdb6a2;color:#9c957f}
+
+/* ---------- labs ---------- */
+.lab{background:var(--card);border:1.5px solid var(--ink);padding:22px 24px;margin:28px 0;position:relative;box-shadow:6px 6px 0 rgba(31,42,64,.12)}
+.lab .lab-tag{position:absolute;top:-13px;left:18px;background:var(--ink);color:var(--paper);font:700 12px var(--type);letter-spacing:.1em;padding:3px 10px}
+.lab h3{margin-top:4px}
+.lab .hint{font-size:13px;color:var(--muted);margin-top:0}
+.btnrow{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0}
+.btnrow button{border:1.5px solid var(--ink);background:transparent;padding:5px 11px;font:13px "Noto Sans SC",sans-serif;color:var(--ink)}
+.btnrow button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.leak{display:grid;grid-template-columns:auto 1fr;gap:24px;align-items:start}
+.lgrid{display:grid;grid-template-columns:68px repeat(3,62px);gap:5px;font:12.5px var(--type);text-align:center;align-items:center}
+.lgrid .h{font-weight:700}
+.lgrid .rl{text-align:left}
+.lgrid button{height:44px;border:1.5px solid #bdb6a2;background:transparent;color:#9c957f;font:12px var(--type);padding:0}
+.lgrid button.on{background:#dbe4f7;border-color:var(--pen);color:var(--pen)}
+.lgrid button.diag{cursor:default;opacity:.7}
+.verdicts{list-style:none;padding:0;margin:0;font-size:14.5px}
+.verdicts li{padding:8px 0 8px 30px;border-bottom:1px dashed #cfc7b1;position:relative}
+.verdicts li::before{position:absolute;left:0;top:7px;font:700 16px var(--type)}
+.verdicts li.ok::before{content:"✓";color:var(--green)}
+.verdicts li.bad::before{content:"✗";color:var(--red)}
+.verdicts li.info::before{content:"·";color:var(--muted)}
+.path{font:13px var(--type);color:var(--red)}
+.plot{width:100%;height:auto;display:block;background:#fffef9;border:1px solid var(--line)}
+.plot .ax{stroke:#8a8371;stroke-width:1}
+.plot .gl{stroke:#e5dfcf;stroke-width:1}
+.plot text{font:11px "Courier Prime",monospace;fill:#5b6376}
+.readout{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px 18px;margin:12px 0 4px;font-size:13.5px}
+.readout div{border-left:3px solid var(--pen);padding-left:9px}
+.readout b{display:block;font:700 17px var(--type)}
+.slider{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:14px;margin:10px 0}
+.slider input{width:220px;accent-color:var(--pen)}
+.slider output{font:700 15px var(--type);min-width:34px}
+.legend{display:flex;flex-wrap:wrap;gap:6px 18px;font-size:12.5px;color:var(--muted);margin:8px 0 0}
+.legend i{display:inline-block;width:20px;height:0;border-top:3px solid;vertical-align:4px;margin-right:6px}
+.ledger-row{display:grid;grid-template-columns:120px 1fr 112px;gap:12px;align-items:center;padding:7px 0;border-bottom:1px dashed #d4ccb6;font-size:13.5px}
+.ledger-row .bar{height:16px;background:var(--pen);min-width:2px}
+.ledger-row .bar.a{background:var(--green)}
+.ledger-row .val{font:12.5px var(--type);text-align:right}
+.ledger-head{font:700 12px var(--type);color:var(--muted);margin-top:12px}
+
+/* ---------- results ---------- */
+.deltas{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.delta{border-top:3px solid var(--red);padding-top:10px}
+.delta.keep{border-top-color:var(--green)}
+.delta h3{margin:0 0 6px;font-size:18px}
+.delta ul{margin:6px 0;padding-left:20px;font-size:14.5px}
+.rw{display:grid;grid-template-columns:1.25fr 1fr;gap:22px;align-items:start}
+.hbars{font-size:13px}
+.hbars .r{display:grid;grid-template-columns:116px 1fr 56px;gap:8px;align-items:center;margin:7px 0}
+.hbars .b{height:15px;background:#9aa9cf}
+.hbars .b.me{background:var(--pen)}
+.hbars .b.vla{background:#c9c1a8}
+.hbars .v{font:12.5px var(--type);text-align:right}
+
+/* ---------- pitfalls ---------- */
+.pit{counter-reset:p;list-style:none;padding:0}
+.pit>li{counter-increment:p;padding:14px 0 14px 46px;border-bottom:1px dashed #cdc5ae;position:relative}
+.pit>li::before{content:counter(p,decimal-leading-zero);position:absolute;left:0;top:13px;font:700 18px var(--type);color:var(--red)}
+.pit>li>b:first-child{display:block;font-family:var(--serif);font-size:17px;margin-bottom:2px}
+
+/* ---------- architecture diagram ---------- */
+.wide{max-width:1240px;margin:0 auto;padding:0 24px}
+.wide h2{margin-left:52px}
+.wide .intro{max-width:880px;margin-left:52px}
+.dg-legend{display:flex;flex-wrap:wrap;gap:6px 20px;font-size:13px;color:var(--muted);margin:10px 0 0 52px}
+.dg-legend i{display:inline-block;width:14px;height:14px;border:1.5px solid;margin-right:6px;vertical-align:-2px}
+.dg-scroll{overflow-x:auto;border:1.5px solid var(--ink);background:#fffef9;margin:16px 0}
+.dg{position:relative;width:1140px;height:1240px;margin:0 auto}
+.wires{position:absolute;inset:0;width:1140px;height:1240px;pointer-events:none}
+.wires path{fill:none;stroke:#6f6a5b;stroke-width:1.8}
+.wires .v{stroke:var(--pen)}
+.wires .a{stroke:var(--green)}
+.wires .d{stroke-dasharray:6 5}
+.band{position:absolute;left:12px;width:1116px;border:1.5px dashed #b6ae97}
+.band.run{border-color:#8fb9a3;background:rgba(225,239,231,.35)}
+.band-title{position:absolute;left:30px;font:700 15px var(--type);color:var(--pen);background:#fffef9;padding:0 6px}
+.band-title.run{color:var(--green)}
+.nd{position:absolute;background:var(--card);border:1.5px solid #b9b19b;border-top:5px solid #8b8473;padding:9px 12px 8px;font-size:12.5px;line-height:1.6;box-shadow:0 8px 16px -14px rgba(31,42,64,.6)}
+.nd .nt{font-weight:700;font-size:14.5px;margin-bottom:3px;line-height:1.4}
+.nd .nb{color:#4d5569}
+.nd .nl{margin-top:5px}
+.nd a.cl{font-size:10px}
+.nd.v{border-top-color:var(--pen)}
+.nd.a{border-top-color:var(--green)}
+.nd.l{border-top-color:var(--ans-b);background:#fff7ec}
+.nd.c{border-top-color:#8b8473}
+.nd.n{background:#fbf1b8;border-color:#e2d48a;border-top-color:#d9c25a}
+.wl{position:absolute;font:11.5px var(--type);color:var(--muted);background:#fffef9;padding:0 4px;line-height:1.5}
+.wl.hand{font-family:var(--hand);font-size:17px;color:var(--red);background:transparent}
+
+/* ---------- quiz ---------- */
+.quiz{list-style:none;padding:0;counter-reset:z}
+.quiz>li{counter-increment:z;padding:16px 0;border-bottom:1px dashed #cdc5ae}
+.quiz>li>p{margin:0 0 6px;font-weight:500}
+.quiz>li>p::before{content:counter(z,decimal-leading-zero) "  ";font:700 15px var(--type);color:var(--red)}
+.quiz summary{cursor:pointer;font:13px var(--type);color:var(--pen)}
+.quiz details>div{margin-top:10px;padding:12px 16px;background:var(--card);border:1px solid var(--line);font-size:14.5px}
+
+/* ---------- tools ---------- */
+.kb-tools{position:fixed;right:16px;bottom:16px;z-index:200;display:flex;gap:6px;align-items:center;background:var(--card);border:1.5px solid var(--ink);padding:7px;box-shadow:4px 4px 0 rgba(31,42,64,.15)}
+.kb-tools button{font:13px var(--type);padding:5px 11px;background:transparent;color:var(--ink);border:1.5px solid var(--ink)}
+.kb-tools button.on{background:var(--ink);color:var(--paper)}
+.kb-tools .st{font:11px var(--type);color:var(--muted);max-width:170px}
+body.editing [contenteditable="true"]{outline:1px dashed rgba(42,75,152,.6);outline-offset:2px}
+footer{font-size:12.5px;color:var(--muted);padding:30px 0 110px;border-top:1.5px solid var(--ink);margin-top:20px}
+
+@media (max-width:760px){
+  body{font-size:15px}
+  .sheet{padding:0 18px 0 34px}
+  .sheet::before{left:18px}
+  h2{font-size:24px}
+  h2 .no{position:static;display:block;width:auto;text-align:left;margin-bottom:2px}
+  .hero h1 .arx{display:block;margin:10px 0 0}
+  .lede{font-size:16px}
+  .dc-grid{grid-template-columns:76px 1fr 1fr}
+  .dc-grid>div{padding:9px 8px;font-size:13px}
+  .dc-cell b{font-size:15px}
+  .qs li{grid-template-columns:36px 1fr}
+  .qs .go{grid-column:2}
+  .maskfig,.leak,.rw,.deltas{grid-template-columns:1fr}
+  .lab{padding:18px 14px}
+  .lgrid{grid-template-columns:58px repeat(3,54px)}
+  .ledger-row{grid-template-columns:84px 1fr 92px;gap:8px}
+  .wide{padding:0 10px}
+  .wide h2,.wide .intro,.dg-legend{margin-left:0}
+  .kb-tools{right:8px;bottom:8px}
+  .kb-tools .st{max-width:96px}
+  .card{padding:18px 16px}
+}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+@media print{.kb-tools,.kb-root{display:none}.dg-scroll{overflow:visible}}
 </style>
 </head>
 <body>
 <div id="doc">
-<div class="wrap">
+<div class="sheet">
+
 <header class="hero">
-<div class="hero-top"><span>机器人学习研究笔记</span><span>论文 × 官方实现 · 2026.11 核对</span></div>
-<h1>FastWAM<span>arXiv 2603.16666</span></h1>
-<p class="subtitle">训练时想象，执行时直达动作。</p>
-<span class="kb-nick">外号 ·「跳过脑内电影」</span>
-<p class="lede">机器人学会预测世界之后，每次行动还要把未来画出来吗？Fast-WAM 把这两件事拆开：<b>训练时一起学视频和动作；推理时只读当前画面，直接生成动作块。</b>理解它的关键，是看清哪些 token 可以互相注意。</p>
-<div class="hero-links"><a class="pl" href="https://arxiv.org/html/2603.16666v2" target="_blank" rel="noreferrer">论文全文 · v2</a><a class="pl" href="https://arxiv.org/pdf/2603.16666v2" target="_blank" rel="noreferrer">公开 PDF</a><a href="https://github.com/yuantianyuan01/FastWAM/tree/7faa71108368fbb3b6885649f112af607427a2d4" target="_blank" rel="noreferrer">官方代码 @ 7faa711</a><a href="#architecture">查看完整架构图</a></div>
-<div class="film" aria-label="FastWAM 推理概念图：当前帧保留，未来帧跳过，输出动作块">
-<div class="film-track"><div><p class="film-label">当前观察 · 保留</p><div class="now-frame"><span>多相机观测的示意</span></div></div><div><p class="film-label">未来画面 · 推理时跳过</p><div class="future-strip"><div class="future">t + 1</div><div class="future">t + 2</div><div class="future">t + …</div></div></div><div><p class="film-label">动作块 · 继续去噪</p><div class="action-strip" aria-hidden="true"><i style="--h:24px"></i><i style="--h:38px"></i><i style="--h:48px"></i><i style="--h:61px"></i><i style="--h:56px"></i><i style="--h:40px"></i><i style="--h:30px"></i></div></div></div>
-<div class="film-foot"><span>视频知识留在参数里</span><span>当前帧 K/V 编码一次</span><span><b>动作仍然多步生成</b></span></div>
-</div>
-<div class="byline"><span>论文：Yuan / Dong / Liu / Zhao，2026.03，v2</span><span>实现：Wan2.2-TI2V-5B + 动作专家</span><span>范围：Fast-WAM 主路径；另列后续代码更新</span></div>
-<nav class="jumpbar" aria-label="本页目录"><a href="#questions">带着问题读</a><a href="#mechanism">双专家与注意力</a><a href="#training">训练与损失</a><a href="#inference">缓存推理</a><a href="#evidence">实验证据</a><a href="#architecture">架构图</a><a href="#quiz">巩固题</a></nav>
+  <div class="stamp-row"><span>实验记录 · <b>FW-2603.16666</b></span><span>论文 v2（2026-03-23）× 官方代码 <b>7faa711</b> · 2026-11 复核</span></div>
+  <h1>Fast-WAM<span class="arx">arXiv 2603.16666</span></h1>
+  <p class="subtitle">世界动作模型，执行时还要先“做梦”吗？</p>
+  <span class="kb-nick">外号 ·「跳过脑内电影」</span>
+  <p class="lede">多数世界动作模型（WAM）先生成一段未来视频，再根据它出动作。Fast-WAM 把这里面的两件事拆开检验：训练时照样让模型预测未来视频；执行时只把当前画面过一遍视频网络，就直接去噪出动作块。论文的回答是：<mark>收益主要来自训练时的视频监督，执行时的想象贡献小得多</mark>。</p>
+  <div class="hero-links">
+    <a class="pl" href="https://arxiv.org/abs/2603.16666v2" target="_blank" rel="noreferrer">arXiv 2603.16666 v2</a>
+    <a class="pl" href="https://arxiv.org/html/2603.16666v2" target="_blank" rel="noreferrer">论文 HTML 全文</a>
+    <a class="pl" href="https://yuantianyuan01.github.io/FastWAM/" target="_blank" rel="noreferrer">项目主页</a>
+    <a href="https://github.com/yuantianyuan01/FastWAM/tree/7faa71108368fbb3b6885649f112af607427a2d4" target="_blank" rel="noreferrer">官方代码 @ 7faa711</a>
+  </div>
+  <p class="byline">Tianyuan Yuan, Zibin Dong, Yicheng Liu, Hang Zhao · 清华大学交叉信息研究院 / Galaxea AI · 骨干 Wan2.2-5B 视频 DiT + 1B 动作专家，共约 6B 参数</p>
+
+  <div class="card tape design" id="design">
+    <div class="dc-head">对照设计 · 论文 Fig. 1 与 §3.3（数字：LIBERO 平均 · RoboTwin 平均 · 真机延迟）</div>
+    <div class="dc-grid">
+      <div class="dc-corner">训练时 ↓<br>执行时 →</div>
+      <div class="dc-col">不想象，直接出动作</div>
+      <div class="dc-col">先想象未来，再出动作</div>
+      <div class="dc-row">有视频监督</div>
+      <div class="dc-cell hit"><b>Fast-WAM</b><small>97.6 · 91.8 · 190 ms</small></div>
+      <div class="dc-cell"><b>Joint</b><small>98.5 · 90.6 · 580 ms</small><b>IDM</b><small>98.0 · 91.3 · 810 ms</small></div>
+      <div class="dc-row">无视频监督</div>
+      <div class="dc-cell low"><b>w/o video co-train</b><small>93.5 · 83.8 · 190 ms</small></div>
+      <div class="dc-cell void">论文没有测这一格。去掉训练时的视频损失后，视频专家仍保留 Wan2.2 的生成先验，原则上能想象，但没有实验。</div>
+    </div>
+    <p class="dc-note"><span class="scribble">横着比</span>只差“想不想象”，两个基准上最多相差 1.2 个点。<span class="scribble">竖着比</span>只差“有没有视频监督”，相差 4.1 到 8.0 个点。</p>
+  </div>
+
+  <nav class="jumpbar" aria-label="本页目录">
+    <a href="#questions">§0 问题</a><a href="#s1">§1 两个变量</a><a href="#s2">§2 token 账</a><a href="#s3">§3 接线</a><a href="#s4">§4 训练</a><a href="#s5">§5 执行</a><a href="#s6">§6 结果</a><a href="#s7">§7 易混点</a><a href="#architecture">§8 架构图</a><a href="#code-index">§9 代码索引</a><a href="#quiz">§10 自测</a>
+  </nav>
 </header>
+
 <section class="chapter" id="questions">
-<h2>带着问题读</h2>
-<ol class="qs"><li><a href="#a1">不生成未来画面，还能叫世界动作模型吗？</a></li><li><a href="#a2">动作不看未来，视频训练怎么帮到动作？</a></li><li><a href="#a3">注意力 mask 怎样防止未来信息偷偷流进动作？</a></li><li><a href="#a4">视频与动作的噪声、损失，是否共用一套？</a></li><li><a href="#a5">推理到底省掉了什么，为什么还能缓存？</a></li><li><a href="#a6">实验支持什么结论，190 ms 又是哪种设置？</a></li></ol>
+  <h2><span class="no">§0</span>带着问题读</h2>
+  <ol class="qs">
+    <li><span>论文怎么把“训练时学视频”和“执行时想象”拆开比较？</span><a class="go" href="#a1">→ 答案</a></li>
+    <li><span>为什么首帧也不许看未来？只挡住“动作 → 未来”不够吗？</span><a class="go" href="#a2">→ 答案</a></li>
+    <li><span>动作看不到未来视频，未来视频的损失怎么帮到动作？</span><a class="go" href="#a3">→ 答案</a></li>
+    <li><span>论文写噪声时间服从 logit-normal，代码里的 shift 5、shift 1 又是什么？</span><a class="go" href="#a4">→ 答案</a></li>
+    <li><span>执行时把未来 token 整个删掉，动作的计算为什么和训练时完全一样？</span><a class="go" href="#a5">→ 答案</a></li>
+    <li><span>190 ms 是什么口径？省下的是哪部分计算，和 π0.5 比快吗？</span><a class="go" href="#a6">→ 答案</a></li>
+  </ol>
 </section>
-<section class="chapter" id="idea">
-<div class="read"><h2>把“学会世界”与“当场想象”拆开</h2>
-<p>先看一个抓杯子的例子。传统 imagine-then-execute 路线先从当前画面生成“手伸向杯子、杯子被拿起”的未来视频，再预测动作。视频里有大量空间 token，迭代去噪会拖慢一次决策。</p>
-<p>Fast-WAM 的问题是：如果训练时已经用未来视频教过视觉主干，执行时能否直接读取它对<b>当前观察的表示</b>？论文据此保留视频训练目标，同时切断动作读取未来视频 token 的通路。<a class="pl" href="https://arxiv.org/html/2603.16666v2" target="_blank" rel="noreferrer">论文全文 · v2</a></p>
-<div class="ans" id="a1"><b class="q">Q1 答</b>Fast-WAM 在训练阶段仍然建模未来视频。执行时跳过显式未来生成，使用视频专家学到的当前帧表示来预测动作。这是论文研究的世界动作模型变体；它没有在每次动作前生成或搜索一棵未来轨迹树。</div>
-<div class="two-col"><div><h3>训练时</h3><p>输入当前观察、带噪未来视频和带噪动作。视频专家学视觉动态，动作专家学控制，两者在同一系统里联合优化。</p></div><div><h3>执行时</h3><p>输入当前观察、语言指令和本体状态。编码首帧并缓存各层 K/V，只对动作块做多步流匹配采样。</p></div></div>
-<p class="note">这里的“首帧”是一次策略调用的当前时刻；可以由多台相机横向拼接，并非只用一台相机。</p></div>
+
+<section class="chapter" id="s1">
+  <p class="kicker">假设</p>
+  <h2><span class="no">§1</span>WAM 的好处，可能来自两个地方</h2>
+  <p>普通的视觉运动策略直接建模 <span class="tex"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">p</span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal">a</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3283em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">1</span><span class="mrel mtight">:</span><span class="mord mathnormal mtight" style="margin-right:0.08125em;">H</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">∣</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">o</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.01968em;">l</span><span class="mclose">)</span></span></span></span></span>：看当前观测 <i>o</i> 和指令 <i>l</i>，输出 <i>H</i> 步动作。多数 <a class="concept-link" href="concepts.html#world-model">世界模型</a>路线的 WAM 在中间插入未来画面 <i>v</i>：</p>
+  <div class="texd"><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">p</span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal">a</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3283em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">1</span><span class="mrel mtight">:</span><span class="mord mathnormal mtight" style="margin-right:0.08125em;">H</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">∣</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">o</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.01968em;">l</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:2.2222em;vertical-align:-0.8622em;"></span><span class="mop op-symbol large-op" style="margin-right:0.44445em;position:relative;top:-0.0011em;">∫</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">p</span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3283em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">1</span><span class="mrel mtight">:</span><span class="mord mathnormal mtight" style="margin-right:0.13889em;">T</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">∣</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">o</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.01968em;">l</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mord mathnormal">p</span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal">a</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3283em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">1</span><span class="mrel mtight">:</span><span class="mord mathnormal mtight" style="margin-right:0.08125em;">H</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">∣</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">o</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.01968em;">l</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3283em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">1</span><span class="mrel mtight">:</span><span class="mord mathnormal mtight" style="margin-right:0.13889em;">T</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mord mathnormal">d</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">v</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3283em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">1</span><span class="mrel mtight">:</span><span class="mord mathnormal mtight" style="margin-right:0.13889em;">T</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span></span></div>
+  <p class="formula-note">先想象未来画面，再在想象出的未来上出动作。实现上有两种：视频和动作在同一个模型里一起去噪（Fig. 1A，对应 Joint），或先生成视频、再交给逆动力学模块出动作（Fig. 1B，对应 IDM）。</p>
+  <p>Fast-WAM 执行时的接口退回普通策略：</p>
+  <div class="texd"><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathnormal">p</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.02778em;">θ</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal">a</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3283em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">1</span><span class="mrel mtight">:</span><span class="mord mathnormal mtight" style="margin-right:0.08125em;">H</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">∣</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal">o</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.01968em;">l</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1.2em;vertical-align:-0.35em;"></span><span class="mord"><span class="mord mathnormal">p</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.02778em;">θ</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mord"><span class="delimsizing size1">(</span></span><span class="mord"><span class="mord mathnormal">a</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3283em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">1</span><span class="mrel mtight">:</span><span class="mord mathnormal mtight" style="margin-right:0.08125em;">H</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">∣</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1.2em;vertical-align:-0.35em;"></span><span class="mord mathnormal" style="margin-right:0.04398em;">z</span><span class="mopen">(</span><span class="mord mathnormal">o</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.01968em;">l</span><span class="mclose">)</span><span class="mord"><span class="delimsizing size1">)</span></span></span></span></span></span></div>
+  <p class="formula-note"><i>z</i>(<i>o</i>,<i>l</i>) 是视频主干对当前上下文的一次前向编码，里面没有采样或去噪未来画面这一步。</p>
+  <p>论文的出发点是：WAM 的收益可能来自 ① 训练时“预测未来视频”这个目标，它逼主干学会物理动态；也可能来自 ② 执行时显式生成的未来，它给动作提供预见。现有 WAM 两样都做，功劳分不清。论文在同一套骨干、同样的数据和训练步数下搭了四个变体（§3.3）。</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>变体</th><th>训练时视频损失</th><th>执行时生成未来</th><th>动作读取什么</th></tr></thead>
+    <tbody>
+      <tr class="me"><td><b>Fast-WAM</b></td><td>有</td><td>无</td><td>当前帧的视频特征</td></tr>
+      <tr><td>Fast-WAM-Joint</td><td>有</td><td>视频与动作一起去噪 10 步</td><td>整段（带噪的）视频</td></tr>
+      <tr><td>Fast-WAM-IDM</td><td>有</td><td>先把视频去噪 10 步，再去噪动作</td><td>生成好的整段视频</td></tr>
+      <tr class="drop"><td>w/o video co-train</td><td>无</td><td>无</td><td>当前帧的视频特征</td></tr>
+    </tbody>
+  </table></div>
+  <div class="ans" id="a1"><b class="q">Q1 答</b>以 Fast-WAM 为中心做两次单变量比较。它和 Joint、IDM 都有视频损失，只差执行时想不想象，差值归给“想象”；它和 w/o video co-train 执行时都不想象，只差训练时有没有视频损失，差值归给“视频监督”。开头那张 2×2 表的右下角是空的：论文没有测“去掉视频损失、却仍然想象”的组合。另外，论文比较的是一次生成一个动作块的设定，没有测把多次想象串成的长时程 rollout（§3.1）。</div>
 </section>
-<section class="chapter" id="mechanism">
-<h2>两个专家，在注意力空间里接线</h2>
-<div class="two-col"><div><h3>视频专家</h3><p>基于预训练 Wan2.2 视频 DiT。默认配置宽度 3072、30 层；视频经 VAE 编码后变成时空 patch token。它保留视频建模能力。</p><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/configs/model/fastwam.yaml#L14" data-path="configs/model/fastwam.yaml" data-line="14" target="_blank" rel="noreferrer">fastwam.yaml:14</a></div><div><h3>动作专家</h3><p>独立的动作 DiT，隐藏宽度 1024、30 层。动作序列映射成 token；与视频专家投影到兼容的注意力头空间后交互。</p><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/configs/model/fastwam.yaml#L38" data-path="configs/model/fastwam.yaml" data-line="38" target="_blank" rel="noreferrer">fastwam.yaml:38</a></div></div>
-<p>MoT（Mixture of Transformers）在对应层把两路 Q/K/V 放进同一次注意力运算，再分别回到各自的输出投影与前馈网络。<b>两路隐藏宽度可以不同，注意力接口必须对齐。</b>这里也没有给 token 选择专家的 MoE 路由器。</p>
-<p class="path">src/fastwam/models/wan22/mot.py</p><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/mot.py#L632" data-path="src/fastwam/models/wan22/mot.py" data-line="632" target="_blank" rel="noreferrer">mot.py:632</a>
-<div class="ans" id="a2"><b class="q">Q2 答</b>动作读取的是视频专家的首帧特征。未来视频的重建损失会训练视频专家共享的参数，改善它对当前画面的表示；动作损失也经允许的注意力连接学习控制所需特征。视频知识通过参数与首帧表示影响动作，训练时仍能产生价值。</div>
-<h3>关键连接：动作只读首帧</h3>
-<p>把 token 分成 C（当前帧）、F（未来视频）、A（动作）。默认 Fast-WAM 的读取关系如下。注意行是“谁在读”，列是“读谁”；语言和本体状态通过另一条 context 通路提供条件，不在这张简化矩阵里。</p>
-<div class="experiment" id="mask-lab" contenteditable="false">
-<h3>切换变体，看看未来通路</h3>
-<p class="reduced">机制示意。矩阵只展示 C / F / A 的可见性；不模拟模型数值或性能。</p>
-<div class="mode-tabs" role="group" aria-label="模型变体"><button type="button" data-mode="fast" aria-pressed="true">Fast-WAM</button><button type="button" data-mode="joint" aria-pressed="false">Joint</button><button type="button" data-mode="idm" aria-pressed="false">IDM</button><button type="button" data-mode="novideo" aria-pressed="false">w/o video co-training</button></div>
-<div class="mask-demo"><div class="mask-grid" role="img" aria-label="Fast-WAM 注意力矩阵"><span>读取 ↓ / 来源 →</span><span>C 首帧</span><span>F 未来</span><span>A 动作</span><span class="row-label">C 首帧</span><span class="cell allow" data-cell="0">可见</span><span class="cell" data-cell="1">屏蔽</span><span class="cell" data-cell="2">屏蔽</span><span class="row-label">F 未来</span><span class="cell allow" data-cell="3">可见</span><span class="cell allow" data-cell="4">可见</span><span class="cell" data-cell="5">屏蔽</span><span class="row-label">A 动作</span><span class="cell allow" data-cell="6">可见</span><span class="cell" data-cell="7">屏蔽</span><span class="cell allow" data-cell="8">可见</span></div><div class="mode-output" aria-live="polite"><strong id="mode-title">Fast-WAM：动作仅依赖首帧视频</strong><p id="mode-detail">视频读视频，动作读首帧和动作；首帧不能读未来。训练保留视频损失，执行时可移除未来视频 token。</p><p id="mode-route">执行：当前观察 → 首帧 K/V → 动作去噪 → 动作块。</p></div></div>
-</div>
-<p class="path">src/fastwam/models/wan22/fastwam.py:397–418</p><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L397" data-path="src/fastwam/models/wan22/fastwam.py" data-line="397" target="_blank" rel="noreferrer">_build_mot_attention_mask:397</a>
-<pre>mask = zeros([N_video + N_action, N_video + N_action])
-mask[video, video] = first_frame_causal_mask
-mask[action, action] = True
-mask[action, first_frame] = True
-<span class="comment"># action → future_video 保持 False；video → action 也保持 False</span></pre>
-<div class="ans" id="a3"><b class="q">Q3 答</b>要同时挡住两条路：① 动作直接读取未来；② 首帧先读未来，再被动作读取。默认动作只看首帧，而视频专家的 first_frame_causal mask 禁止首帧看后续帧。未来视频因此无法经首帧间接泄漏。<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/wan_video_dit.py#L517" data-path="src/fastwam/models/wan22/wan_video_dit.py" data-line="517" target="_blank" rel="noreferrer">wan_video_dit.py:517</a></div>
-<p class="note">当前代码的 Joint 让动作读取完整视频，但视频不读动作；IDM 先生成视频再预测动作。图中的首帧保护对应这里核对的代码配置。无视频联合训练变体是论文消融，不等于简单在已训练 Fast-WAM 上隐藏一个输出。</p>
+
+<section class="chapter" id="s2">
+  <p class="kicker">样本</p>
+  <h2><span class="no">§2</span>一次调用里到底有多少 token</h2>
+  <p>后面讲 mask、缓存和计算量都要用到具体形状。先拿 LIBERO 配置算一遍。</p>
+  <ol>
+    <li>两路相机各 224×224，横向拼成一张 224×448 的图。<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/configs/data/libero_2cam.yaml#L31" data-path="configs/data/libero_2cam.yaml" data-line="31" target="_blank" rel="noreferrer">video_size:31</a></li>
+    <li>每个训练样本取 33 个连续时刻。动作用前 32 个（32 步 × 7 维）；视频每隔 4 步取一帧，即第 0、4、…、32 步，共 9 帧。<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/configs/data/libero_2cam.yaml#L28" data-path="configs/data/libero_2cam.yaml" data-line="28" target="_blank" rel="noreferrer">num_frames:28</a> <a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/datasets/lerobot/robot_video_dataset.py#L71" data-path="src/fastwam/datasets/lerobot/robot_video_dataset.py" data-line="71" target="_blank" rel="noreferrer">video_sample_indices:71</a></li>
+    <li>Wan2.2 的 VAE 空间压 16 倍、时间压 4 倍，第 0 帧单独成一个潜在帧：9 帧 → 1 + 8/4 = 3 个潜在帧，每个 14×28×48。<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/wan_video_vae.py#L1373" data-path="src/fastwam/models/wan22/wan_video_vae.py" data-line="1373" target="_blank" rel="noreferrer">upsampling_factor:1373</a></li>
+    <li>视频 DiT 按 1×2×2 切 patch：每个潜在帧 7×14 = <b>98 个 token</b>。<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/configs/model/fastwam.yaml#L15" data-path="configs/model/fastwam.yaml" data-line="15" target="_blank" rel="noreferrer">patch_size:15</a></li>
+  </ol>
+  <div class="tokbar" role="img" aria-label="LIBERO 一次训练前向的 326 个 token：当前帧 98、未来两个潜在帧各 98、动作 32">
+    <div class="tk-c"><b>C 98</b>当前帧</div>
+    <div class="tk-f"><b>F₁ 98</b>第 4–16 步</div>
+    <div class="tk-f"><b>F₂ 98</b>第 20–32 步</div>
+    <div class="tk-a"><b>A 32</b>动作</div>
+  </div>
+  <p class="note">训练时一次前向共 98 + 196 + 32 = 326 个 token，色块宽度按 token 数画。F₁ 由采样帧 1–4（第 4、8、12、16 步）压成，F₂ 由采样帧 5–8 压成。VAE 把第 0 帧单独编码，之后每 4 帧合成一个潜在帧，即 latent_t = (T−1)/4 + 1。<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam_idm.py#L416" data-path="src/fastwam/models/wan22/fastwam_idm.py" data-line="416" target="_blank" rel="noreferrer">latent_t:416</a></p>
+  <div class="table-scroll"><table>
+    <thead><tr><th></th><th>LIBERO</th><th>RoboTwin 2.0</th></tr></thead>
+    <tbody>
+      <tr><td>画面</td><td>2 路横拼，224×448</td><td>主相机 256×320 在上，左右两路相机各 128×160 并排在下，拼成 384×320 <a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/datasets/lerobot/robot_video_dataset.py#L192" data-path="src/fastwam/datasets/lerobot/robot_video_dataset.py" data-line="192" target="_blank" rel="noreferrer">robot_video_dataset.py:192</a></td></tr>
+      <tr><td>每个潜在帧</td><td class="num">98 token</td><td class="num">120 token</td></tr>
+      <tr><td>视频 token（C + F）</td><td class="num">98 + 196 = 294</td><td class="num">120 + 240 = 360</td></tr>
+      <tr><td>动作</td><td class="num">32 × 7</td><td class="num">32 × 14</td></tr>
+    </tbody>
+  </table></div>
+  <p>所以“9 帧视频”只是采样层的帧数。进到 DiT 的未来视频只有 2 个潜在帧，每个概括 4 个采样帧、16 个控制步。动作这边每一步就是一个 token：<code>action_encoder</code> 把 7 维动作线性映射到 1024 维。<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/action_dit.py#L73" data-path="src/fastwam/models/wan22/action_dit.py" data-line="73" target="_blank" rel="noreferrer">action_encoder:73</a></p>
 </section>
-<section class="chapter" id="training">
-<div class="read"><h2>训练：两套噪声，两个预测目标</h2>
-<p>以 LIBERO 配置为例：两路 224 × 224 图像横向拼成 224 × 448 画面；数据窗口包含当前时刻和随后 32 个动作时间点，视频每隔 4 步取一帧，形成 <b>9 帧视频 + 32 步动作</b>。这是数据采样层的帧数；VAE 还会压缩时间和空间，不能把 9 当作 DiT 中的潜在帧数。</p>
-<p class="path">configs/data/libero_2cam.yaml:28–39</p><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/configs/data/libero_2cam.yaml#L28" data-path="configs/data/libero_2cam.yaml" data-line="28" target="_blank" rel="noreferrer">libero_2cam.yaml:28</a>
-<ol class="step-list"><li>视频经过 VAE 编码；语言用缓存的 T5 embedding 或在线编码；本体状态投影后并入 context。</li><li>视频和动作分别采样噪声时间与高斯噪声。视频首帧被覆盖回干净观测，保持条件可靠。</li><li>两路在 MoT 中按 mask 联合前向，各自预测流匹配目标。</li><li>视频损失忽略条件首帧，动作损失忽略 padding；两路加权相加。</li></ol>
-<p><span>VAE 和 T5 保持冻结，训练更新两路专家及本体编码器。</span> <a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/trainer.py#L310" data-path="src/fastwam/trainer.py" data-line="310" target="_blank" rel="noreferrer">trainer.py:310</a></p><p>这里用的是<a class="concept-link" href="concepts.html#flow-matching">流匹配</a>。用数据 x 和噪声 ε 构造 x<sub>t</sub> = (1 − t)x + tε，训练网络预测 ε − x，采样时从噪声沿反方向积分回数据。</p>
-<div class="math">ℒ = λ<sub>v</sub> ℒ<sub>video</sub> + λ<sub>a</sub> ℒ<sub>action</sub><small>两项都是对各自流匹配目标的均方误差，并包含各自 scheduler 的训练权重和有效位置掩码。视频与动作的时间独立采样。</small></div>
-<p class="path">src/fastwam/models/wan22/fastwam.py:522–608</p><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L522" data-path="src/fastwam/models/wan22/fastwam.py" data-line="522" target="_blank" rel="noreferrer">training_loss:522</a> <a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L603" data-path="src/fastwam/models/wan22/fastwam.py" data-line="603" target="_blank" rel="noreferrer">fastwam.py:603</a>
-<div class="ans" id="a4"><b class="q">Q4 答</b>视频和动作各自有 scheduler、噪声时间和高斯噪声，分别回归各自目标。默认 λ<sub>v</sub>、λ<sub>a</sub> 都为 1；首帧是条件，不参与未来视频重建损失。当前代码的视频 shift 为 5、动作 shift 为 1，它们也不必相同。<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L39" data-path="src/fastwam/models/wan22/fastwam.py" data-line="39" target="_blank" rel="noreferrer">fastwam.py:39</a> <a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/configs/model/fastwam.yaml#L49" data-path="configs/model/fastwam.yaml" data-line="49" target="_blank" rel="noreferrer">fastwam.yaml:49</a></div>
-<p class="note">视频联合训练与已有的 <a class="concept-link" href="concepts.html#co-training">VLM co-training</a> 都属于联合目标训练，但训练模态与目标不同。Fast-WAM 用视频动态监督视觉专家，不涉及 RL 奖励优化。</p>
-</div></section>
-<section class="chapter" id="inference">
-<h2>执行：把首帧算一次，动作迭代算</h2>
-<div class="two-col"><div><h3>先构造条件缓存</h3><p>当前多相机画面经 VAE 和视频专家，得到每一层的 K/V。因为视频不读动作、首帧不读未来，首帧特征不依赖正在变化的动作噪声。</p><p class="path">fastwam.py:1120；mot.py 内的 prefill 实现</p><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L1120" data-path="src/fastwam/models/wan22/fastwam.py" data-line="1120" target="_blank" rel="noreferrer">fastwam.py:1120</a></div><div><h3>再循环生成动作</h3><p>从随机动作噪声出发，每一步动作专家都读取缓存的视觉 K/V、指令与本体条件，预测速度场，然后做 Euler 更新，得到最终动作块。</p><p class="path">fastwam.py:1139–1158</p><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L1139" data-path="src/fastwam/models/wan22/fastwam.py" data-line="1139" target="_blank" rel="noreferrer">fastwam.py:1139</a> <a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L1155" data-path="src/fastwam/models/wan22/fastwam.py" data-line="1155" target="_blank" rel="noreferrer">fastwam.py:1155</a></div></div>
-<pre>context ← text_embedding + projected_proprio
-C ← VAE(current_multicamera_image)
-K_video, V_video ← video_expert.prefill(C, context)   <span class="comment"># 每次策略调用只做一次</span>
-A ← Gaussian_noise([action_horizon, action_dim])
-for t, Δt in action_schedule:
-    velocity ← action_expert(A, t, context, K_video, V_video)
-    A ← A + Δt · velocity                           <span class="comment"># 从噪声积分回动作</span>
-return A</pre>
-<div class="ans" id="a5"><b class="q">Q5 答</b>省掉未来视频 token 的反复去噪与解码，也省掉每个动作采样步重复计算首帧视频专家的开销。首帧 K/V 在同一次策略调用内复用；新观察到来后重新编码。<b>动作本身仍需多步采样</b>，Fast-WAM 不是单步动作蒸馏模型。<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L1144" data-path="src/fastwam/models/wan22/fastwam.py" data-line="1144" target="_blank" rel="noreferrer">fastwam.py:1144</a></div>
-<p>动作块是一段未来控制序列。闭环系统通常执行其中一段后重新观察，这与<a class="concept-link" href="concepts.html#action-chunk">动作分块</a>、<a class="concept-link" href="concepts.html#receding-horizon">滚动执行</a>有关；模型单次生成耗时不能直接换算成机器人的伺服频率。</p>
-<aside class="side-note"><h3>读当前代码时要记住版本差异</h3><p>本页固定在 <code>7faa711</code>。它在论文发布后加入编译与缓存优化，以及 <b>Optional IDM</b>：一个模型支持 <code>idm</code> 和 <code>first_frame</code> 两种推理方式。基础 <code>fastwam</code> 依旧是动作只看首帧的主路径，Optional IDM 是单独的类与任务配置。</p><p>当前 README 报告 RTX 4090 端到端约 190 → 110 ms、H20 470 → 210 ms，并说明旧 checkpoint 复现原设置需 <code>EVALUATION.sigma_shift=5.0</code>。这些更新数字与论文实验分开阅读。<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/README.md?plain=1#L23" data-path="README.md" data-line="23" target="_blank" rel="noreferrer">README.md:23</a> <a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/configs/model/fastwam_optional_idm.yaml#L1" data-path="configs/model/fastwam_optional_idm.yaml" data-line="1" target="_blank" rel="noreferrer">fastwam_optional_idm.yaml:1</a></p></aside>
+
+<section class="chapter" id="s3">
+  <p class="kicker">接线</p>
+  <h2><span class="no">§3</span>两个专家，一次注意力，谁能看谁</h2>
+  <p>Fast-WAM 是两个 Transformer 拼成的 MoT（Mixture of Transformers）。视频专家是预训练的 Wan2.2 视频 DiT：30 层、宽 3072。动作专家是新加的 ActionDiT：30 层、宽 1024，约 1B 参数。<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/configs/model/fastwam.yaml#L17" data-path="configs/model/fastwam.yaml" data-line="17" target="_blank" rel="noreferrer">hidden_dim:17</a> <a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/configs/model/fastwam.yaml#L38" data-path="configs/model/fastwam.yaml" data-line="38" target="_blank" rel="noreferrer">hidden_dim:38</a></p>
+  <p>每一层里，两个专家各自用自己的权重算 Q/K/V，拼起来做<b>一次</b>注意力，结果再切回各自的输出投影、文本交叉注意力和 FFN。<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/mot.py#L632" data-path="src/fastwam/models/wan22/mot.py" data-line="632" target="_blank" rel="noreferrer">flash_attention:632</a> 这里没有 MoE 那种给 token 选专家的路由器：视频 token 永远走视频权重，动作 token 永远走动作权重。</p>
+  <p>能拼在一起，前提是注意力的头数和头宽对齐：两边都是 24 头 × 128。动作专家宽 1024，它的 Q/K/V 投影把 1024 维映射到 3072 维，视频专家是 3072 → 3072。<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/wan_video_dit.py#L178" data-path="src/fastwam/models/wan22/wan_video_dit.py" data-line="178" target="_blank" rel="noreferrer">self.q:178</a> 加载时会检查头数和头宽是否一致。<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L144" data-path="src/fastwam/models/wan22/fastwam.py" data-line="144" target="_blank" rel="noreferrer">num_heads:144</a></p>
+  <div class="card sticky">
+    <h3>论文没写的一步：动作专家也从 Wan2.2 初始化</h3>
+    <p>配置里的 <code>ActionDiT_linear_interp_Wan22_alphascale_1024hdim.pt</code> 来自 <code>scripts/preprocess_action_dit_backbone.py</code>：它把视频 DiT 的每个权重矩阵用线性插值缩到动作专家的尺寸（3072 → 1024，FFN 14336 → 4096），输入维被缩小的矩阵再乘 √(3072/1024) = √3，让输出量级大致不变。动作编码器和输出头不复制，随机初始化。<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/scripts/preprocess_action_dit_backbone.py#L53" data-path="scripts/preprocess_action_dit_backbone.py" data-line="53" target="_blank" rel="noreferrer">_interpolate_last_dim:53</a> <a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/scripts/preprocess_action_dit_backbone.py#L207" data-path="scripts/preprocess_action_dit_backbone.py" data-line="207" target="_blank" rel="noreferrer">alpha:207</a></p>
+  </div>
+
+  <h3>三组 token 的读取关系</h3>
+  <p>把 §2 的 326 个 token 分成三组：C（当前帧 98）、F（未来 196）、A（动作 32）。论文 Fig. 2 的注意力 mask 如下（示意），行是“读的一方”，列是“被读的一方”：</p>
+  <div class="maskfig">
+    <div class="mgrid" role="img" aria-label="Fast-WAM 训练注意力 mask：C 只读 C；F 读 C 和 F；A 读 C 和 A">
+      <span class="h">读 ↓ 被读 →</span><span class="h">C</span><span class="h">F</span><span class="h">A</span>
+      <span class="rl">C 当前帧</span><span class="on">✓</span><span class="off">—</span><span class="off">—</span>
+      <span class="rl">F 未来</span><span class="on">✓</span><span class="on">✓</span><span class="off">—</span>
+      <span class="rl">A 动作</span><span class="on ac">✓</span><span class="off">—</span><span class="on ac">✓</span>
+    </div>
+    <div>
+      <p style="margin-top:0">四条规则：</p>
+      <ul style="margin:0;padding-left:20px;font-size:15px">
+        <li>A 只读 C 和 A，<b>不读 F</b>；</li>
+        <li>C 只读自己，<b>也不读 F</b>；</li>
+        <li>F 读 C 和 F，用来学“从当前画面往后演”；</li>
+        <li>C、F 都不读 A，视频分支完全不受动作影响。</li>
+      </ul>
+      <p class="note">语言和本体状态不在这张表里，它们走另一条路：每个专家各自对 context 做交叉注意力。</p>
+    </div>
+  </div>
+  <pre><span class="c"># fastwam.py:404–417，再加 wan_video_dit.py:517–521</span>
+mask = zeros(326, 326)                  <span class="c"># 默认全部不可见</span>
+mask[video, video] = <span class="k">first_frame_causal</span>   <span class="c"># 视频内部全通，只有一处例外：</span>
+    video_mask[:98, 98:] = False        <span class="c"># C 不读 F</span>
+mask[action, action] = True             <span class="c"># A 读 A</span>
+mask[action, :98]    = True             <span class="c"># A 只读 C</span>
+<span class="c"># 没写到的格子保持 False：A 不读 F；C、F 不读 A</span></pre>
+  <p><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L397" data-path="src/fastwam/models/wan22/fastwam.py" data-line="397" target="_blank" rel="noreferrer">_build_mot_attention_mask:397</a> <a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/wan_video_dit.py#L517" data-path="src/fastwam/models/wan22/wan_video_dit.py" data-line="517" target="_blank" rel="noreferrer">first_frame_causal:517</a> 基础配置里 <code>action_conditioned: false</code>，视频专家的交叉注意力也拿不到真实动作。<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/configs/model/fastwam.yaml#L32" data-path="configs/model/fastwam.yaml" data-line="32" target="_blank" rel="noreferrer">action_conditioned:32</a></p>
+
+  <div class="lab" id="mask-lab">
+    <span class="lab-tag">实验 1 · 泄漏检测</span>
+    <h3>点格子改 mask，看未来信息能不能绕进动作</h3>
+    <p class="hint">注意力一层只走一步；叠 30 层，任何两三步的路径都会被走通。程序按你的 mask 搜路径，判断三件事。对角线（组内自注意力）固定打开。</p>
+    <div class="btnrow" role="group" aria-label="mask 预设">
+      <button type="button" data-preset="fast" aria-pressed="true">Fast-WAM</button>
+      <button type="button" data-preset="joint" aria-pressed="false">Joint（本仓库写法）</button>
+      <button type="button" data-preset="leak" aria-pressed="false">漏一处：C 可读 F</button>
+      <button type="button" data-preset="actread" aria-pressed="false">C 也读 A</button>
+    </div>
+    <div class="leak">
+      <div class="lgrid" id="lgrid"></div>
+      <div>
+        <ul class="verdicts" id="verdicts" aria-live="polite"></ul>
+        <p class="note" id="preset-note"></p>
+      </div>
+    </div>
+  </div>
+  <div class="ans" id="a2"><b class="q">Q2 答</b>注意力是逐层叠起来的。如果只挡 A → F，却让 C 读 F，那么第 1 层 C 吸收了未来的信息，第 2 层 A 再从 C 那里读到，未来就绕道进了动作。实验 1 里点“漏一处”，程序会找出 F → C → A 这条两跳路径。所以 C → F 也必须挡住（<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/wan_video_dit.py#L520" data-path="src/fastwam/models/wan22/wan_video_dit.py" data-line="520" target="_blank" rel="noreferrer">video_mask:520</a>）。这条规则还有第二个作用：C 的特征只取决于当前观测，执行时才能删掉 F（见 Q5）。</div>
 </section>
-<section class="chapter" id="evidence"><h2>实验证据：训练视频更关键，想象仍可能有用</h2>
-<p>论文用同一套骨架比较四种变体。下表取自 Table 1 / 2 和 Figure 4；成功率是各模拟基准的平均值，延迟为论文报告的单次推理耗时。</p>
-<div class="table-scroll"><table><thead><tr><th>变体</th><th>视频联合训练</th><th>测试未来生成</th><th>LIBERO</th><th>RoboTwin 2.0</th><th>推理延迟</th></tr></thead><tbody><tr class="highlight"><td><b>Fast-WAM</b></td><td>有</td><td>无</td><td><strong>97.6%</strong></td><td><strong>91.8%</strong></td><td><strong>190 ms</strong></td></tr><tr><td>Joint</td><td>有</td><td>视频 / 动作联合去噪</td><td>98.5%</td><td>90.6%</td><td>580 ms</td></tr><tr><td>IDM</td><td>有</td><td>先视频，再动作</td><td>98.0%</td><td>91.3%</td><td>810 ms</td></tr><tr><td>w/o video co-training</td><td>无</td><td>无</td><td>93.5%</td><td>83.8%</td><td>190 ms</td></tr></tbody></table></div>
-<p class="note">论文延迟口径：NVIDIA RTX 5090D V2 32GB，10 步去噪，CFG = 1.0，见 §4.1。LIBERO 含 40 个任务、2,000 次评测；RoboTwin 为 clean / randomized 两组的平均列。<a class="pl" href="https://arxiv.org/html/2603.16666v2" target="_blank" rel="noreferrer">论文全文 · v2</a></p>
-<div class="two-col"><div class="compare-callout"><h3>移除视频联合训练</h3><p>LIBERO 下降 <b>4.1 个百分点</b>，RoboTwin 下降 <b>8.0 个百分点</b>。这支持视频动态监督对表征有用。</p></div><div class="compare-callout"><h3>移除测试时未来生成</h3><p>Fast-WAM 在模拟任务仍有竞争力。推理速度约为 IDM 的 <b>4.26 倍</b>、Joint 的 <b>3.05 倍</b>，两者不应都写成“超过 4 倍”。</p></div></div>
-<div class="ans" id="a6"><b class="q">Q6 答</b>论文更强的证据是：这些受控设置中，去掉训练视频监督的损失，比去掉执行时的显式未来想象更大。190 ms 是论文报告的推理延迟，动作仍需多步生成；具体耗时取决于硬件和实现条件，不能直接套用到任意机器人。</div>
-<h3>读结论时保留三个边界</h3><ul><li><b>真机也有取舍。</b>论文真机任务是毛巾折叠；Figure 4 中 Fast-WAM 成功率约 75%，IDM 约 90%（图示读值）。显式想象可能在某些任务上继续有价值。</li><li><b>仍继承大模型预训练。</b>“无需具身预训练”指没有额外大规模机器人预训练，Wan2.2 的视频先验、VAE 和 T5 仍然存在。</li><li><b>模拟的小幅差异不等于普遍胜出。</b>结果受任务、数据、训练量和评测方差影响，不能推出所有控制场景都不需要未来想象。</li></ul>
+
+<section class="chapter" id="s4">
+  <p class="kicker">训练</p>
+  <h2><span class="no">§4</span>两份噪声，两个回归目标</h2>
+  <p>视频和动作都用<a class="concept-link" href="concepts.html#flow-matching">流匹配</a>（论文记作 <i>t</i>，代码叫 <code>sigma</code>，这里统一写 σ）：</p>
+  <div class="texd"><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.625em;vertical-align:-0.1944em;"></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">y</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.03588em;">σ</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord">1</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">σ</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">y</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">σ</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">ϵ</span><span class="mpunct">,</span><span class="mspace" style="margin-right:2em;"></span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathcal">L</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3283em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathrm mtight">FM</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.03588em;">y</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1.2em;vertical-align:-0.35em;"></span><span class="mord"><span class="mord mathbb">E</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mathnormal mtight" style="margin-right:0.03588em;">y</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight">ϵ</span><span class="mpunct mtight">,</span><span class="mord mathnormal mtight" style="margin-right:0.03588em;">σ</span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.2861em;"><span></span></span></span></span></span></span><span class="mord"><span class="delimsizing mult"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.85em;"><span style="top:-2.85em;"><span class="pstrut" style="height:3.2em;"></span><span style="width:0.556em;height:1.200em;"><svg xmlns="http://www.w3.org/2000/svg" width="0.556em" height="1.200em" viewBox="0 0 556 1200"><path d="M145 15 v585 v0 v585 c2.667,10,9.667,15,21,15
+c10,0,16.667,-5,20,-15 v-585 v0 v-585 c-2.667,-10,-9.667,-15,-21,-15
+c-10,0,-16.667,5,-20,15z M188 15 H145 v585 v0 v585 h43z
+M367 15 v585 v0 v585 c2.667,10,9.667,15,21,15
+c10,0,16.667,-5,20,-15 v-585 v0 v-585 c-2.667,-10,-9.667,-15,-21,-15
+c-10,0,-16.667,5,-20,15z M410 15 H367 v585 v0 v585 h43z"/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.35em;"><span></span></span></span></span></span></span><span class="mord"><span class="mord mathnormal" style="margin-right:0.10764em;">f</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:-0.1076em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.02778em;">θ</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em;">y</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:-0.0359em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight" style="margin-right:0.03588em;">σ</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">σ</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">o</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal" style="margin-right:0.01968em;">l</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mopen">(</span><span class="mord mathnormal">ϵ</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:1.4537em;vertical-align:-0.3997em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">y</span><span class="mclose">)</span><span class="mord"><span class="mord"><span class="delimsizing mult"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.85em;"><span style="top:-2.85em;"><span class="pstrut" style="height:3.2em;"></span><span style="width:0.556em;height:1.200em;"><svg xmlns="http://www.w3.org/2000/svg" width="0.556em" height="1.200em" viewBox="0 0 556 1200"><path d="M145 15 v585 v0 v585 c2.667,10,9.667,15,21,15
+c10,0,16.667,-5,20,-15 v-585 v0 v-585 c-2.667,-10,-9.667,-15,-21,-15
+c-10,0,-16.667,5,-20,15z M188 15 H145 v585 v0 v585 h43z
+M367 15 v585 v0 v585 c2.667,10,9.667,15,21,15
+c10,0,16.667,-5,20,-15 v-585 v0 v-585 c-2.667,-10,-9.667,-15,-21,-15
+c-10,0,-16.667,5,-20,15z M410 15 H367 v585 v0 v585 h43z"/></svg></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.35em;"><span></span></span></span></span></span></span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.054em;"><span style="top:-2.3003em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span><span style="top:-3.3029em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight">2</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.3997em;"><span></span></span></span></span></span></span></span></span></span></span></div>
+  <p class="formula-note"><i>y</i> 是动作块或未来视频的潜变量；σ = 0 是干净数据，σ = 1 是纯噪声；网络要预测从数据指向噪声的速度 ε − <i>y</i>。代码里的目标就是 <code>noise - sample</code>。<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/schedulers/scheduler_continuous.py#L59" data-path="src/fastwam/models/wan22/schedulers/scheduler_continuous.py" data-line="59" target="_blank" rel="noreferrer">training_target:59</a></p>
+  <p>一维小例子：某个动作分量真值 <i>y</i> = 0.4，抽到噪声 ε = −1.2、σ = 0.25，于是 <i>y</i><sub>σ</sub> = 0.75 × 0.4 + 0.25 × (−1.2) = 0，监督目标 ε − <i>y</i> = −1.6。网络只看到输入 0 和 σ = 0.25，要猜出 −1.6。</p>
+  <p>总损失：</p>
+  <div class="texd"><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.6833em;"></span><span class="mord mathcal">L</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:0.8333em;vertical-align:-0.15em;"></span><span class="mord"><span class="mord mathcal">L</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.2806em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathrm mtight">act</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.8444em;vertical-align:-0.15em;"></span><span class="mord mathnormal">λ</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord"><span class="mord mathcal">L</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.3361em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight"><span class="mord mathrm mtight">vid</span></span></span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span></span></span></span></span></div>
+  <p class="formula-note">代码写成 λ<sub>v</sub>ℒ<sub>vid</sub> + λ<sub>a</sub>ℒ<sub>act</sub>，两个系数从配置的 <code>loss</code> 里读，没写就是 1。<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/runtime.py#L157" data-path="src/fastwam/runtime.py" data-line="157" target="_blank" rel="noreferrer">lambda_video:157</a> <a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L603" data-path="src/fastwam/models/wan22/fastwam.py" data-line="603" target="_blank" rel="noreferrer">loss_total:603</a></p>
+
+  <h3>一步训练，代码里发生了什么</h3>
+  <div class="table-scroll"><table>
+    <thead><tr><th>#</th><th>做什么</th><th>源码</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>VAE 编码整段 9 帧，得到 3 个潜在帧（VAE 冻结）。</td><td><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L340" data-path="src/fastwam/models/wan22/fastwam.py" data-line="340" target="_blank" rel="noreferrer">input_latents:340</a></td></tr>
+      <tr><td>2</td><td>视频抽 σ<sub>v</sub> 并加噪，再把第 0 个潜在帧<b>覆盖回干净值</b>。</td><td><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L533" data-path="src/fastwam/models/wan22/fastwam.py" data-line="533" target="_blank" rel="noreferrer">timestep_video:533</a> <a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L542" data-path="src/fastwam/models/wan22/fastwam.py" data-line="542" target="_blank" rel="noreferrer">first_frame_latents:542</a></td></tr>
+      <tr><td>3</td><td>动作独立抽 σ<sub>a</sub> 并加噪。两份噪声、两个时间互不相关。</td><td><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L545" data-path="src/fastwam/models/wan22/fastwam.py" data-line="545" target="_blank" rel="noreferrer">timestep_action:545</a></td></tr>
+      <tr><td>4</td><td>首帧 98 个 token 的时间步<b>强制为 0</b>，所以视频专家眼里的 C 永远是“干净、σ = 0”，和执行时一样。</td><td><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/wan_video_dit.py#L562" data-path="src/fastwam/models/wan22/wan_video_dit.py" data-line="562" target="_blank" rel="noreferrer">token_timesteps:562</a></td></tr>
+      <tr><td>5</td><td>指令的 T5 embedding 后面接 1 个由当前本体状态投影来的 token，作为两个专家共用的 context。</td><td><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L238" data-path="src/fastwam/models/wan22/fastwam.py" data-line="238" target="_blank" rel="noreferrer">proprio_token:238</a></td></tr>
+      <tr><td>6</td><td>按 §3 的 mask 联合前向 30 层，各自输出预测。</td><td><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L562" data-path="src/fastwam/models/wan22/fastwam.py" data-line="562" target="_blank" rel="noreferrer">pred_video:562</a></td></tr>
+      <tr><td>7</td><td>视频损失丢掉首帧，只在 F 上算；动作损失跳过 padding 步；两边各乘一个随 σ 变化的权重。</td><td><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L576" data-path="src/fastwam/models/wan22/fastwam.py" data-line="576" target="_blank" rel="noreferrer">pred_video:576</a> <a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L590" data-path="src/fastwam/models/wan22/fastwam.py" data-line="590" target="_blank" rel="noreferrer">action_loss_token:590</a></td></tr>
+      <tr><td>8</td><td>只训练两个专家（<code>model.dit</code> 即 MoT）和状态投影层；VAE、T5 冻结。</td><td><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/trainer.py#L310" data-path="src/fastwam/trainer.py" data-line="310" target="_blank" rel="noreferrer">_apply_dit_only_train_mode:310</a></td></tr>
+    </tbody>
+  </table></div>
+  <div class="ans" id="a3"><b class="q">Q3 答</b>有两条路。第一，C 和 F 用的是同一套视频专家权重，视频损失更新的权重也就是计算 C 特征的权重。第二，F 在每一层都读 C 的 K/V，视频损失的梯度会沿 F → C 这条注意力流回 C 的表示；动作损失的梯度则沿 A → C 流回。C 的特征同时被“预测未来画面”和“预测动作”两个目标塑造，执行时动作读到的正是它。这和 VLA 的 <a class="concept-link" href="concepts.html#co-training">co-training</a> 是同一类做法：多加一个辅助目标来改善共享表示，只是这里的辅助目标换成了视频预测。</div>
+
+  <h3>论文与代码的对照</h3>
+  <div class="table-scroll"><table>
+    <thead><tr><th>项目</th><th>论文（§3.2、§4.1）</th><th>代码 7faa711</th></tr></thead>
+    <tbody>
+      <tr><td>回归目标</td><td>流匹配速度，预测 ε − <i>y</i></td><td>一致</td></tr>
+      <tr><td>损失系数</td><td>ℒ<sub>act</sub> + λℒ<sub>vid</sub></td><td>λ<sub>v</sub> = λ<sub>a</sub> = 1</td></tr>
+      <tr><td>噪声时间分布</td><td>logit-normal</td><td>u 均匀 → shift 变换 → 钟形损失权重（见下）</td></tr>
+      <tr><td>优化器</td><td>AdamW，lr 1e-4，wd 0.01，cosine，混合精度，梯度裁剪 1.0</td><td>lr 1e-4、wd 1e-2 <a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/configs/task/libero_uncond_2cam224_1e-4.yaml#L26" data-path="configs/task/libero_uncond_2cam224_1e-4.yaml" data-line="26" target="_blank" rel="noreferrer">weight_decay:26</a>；bf16、<code>max_grad_norm: 1.0</code> <a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/configs/train.yaml#L30" data-path="configs/train.yaml" data-line="30" target="_blank" rel="noreferrer">max_grad_norm:30</a></td></tr>
+      <tr><td>训练量</td><td>LIBERO 20k 步；RoboTwin、真机 30k 步</td><td>配置按 epoch 写（LIBERO 10、RoboTwin 5）</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>噪声时间：shift 与钟形权重</h3>
+  <p>代码不直接采 logit-normal。它先采 <i>u</i> ~ U(0, 1)，再做变换：</p>
+  <div class="texd"><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.4306em;"></span><span class="mord mathnormal" style="margin-right:0.03588em;">σ</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord"><span class="mord mathnormal">φ</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.1514em;"><span style="top:-2.55em;margin-left:0em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">s</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em;"><span></span></span></span></span></span></span><span class="mopen">(</span><span class="mord mathnormal">u</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:2.0436em;vertical-align:-0.936em;"></span><span class="mord"><span class="mopen nulldelimiter"></span><span class="mfrac"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:1.1076em;"><span style="top:-2.314em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord">1</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">+</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mopen">(</span><span class="mord mathnormal">s</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mord">1</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">u</span></span></span><span style="top:-3.23em;"><span class="pstrut" style="height:3em;"></span><span class="frac-line" style="border-bottom-width:0.04em;"></span></span><span style="top:-3.677em;"><span class="pstrut" style="height:3em;"></span><span class="mord"><span class="mord mathnormal">s</span><span class="mspace" style="margin-right:0.1667em;"></span><span class="mord mathnormal">u</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.936em;"><span></span></span></span></span></span><span class="mclose nulldelimiter"></span></span></span></span></span></span></div>
+  <p class="formula-note"><i>s</i> 就是 shift。<i>s</i> = 1 时 σ = <i>u</i>；<i>s</i> &gt; 1 时 σ 被推向 1，高噪声样本变多。<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/schedulers/scheduler_continuous.py#L18" data-path="src/fastwam/models/wan22/schedulers/scheduler_continuous.py" data-line="18" target="_blank" rel="noreferrer">_phi:18</a></p>
+  <p>每个样本的损失再乘一个钟形权重，两端为 0、σ = 0.5 处最大，并归一化到“在采样分布下均值为 1”：<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/schedulers/scheduler_continuous.py#L39" data-path="src/fastwam/models/wan22/schedulers/scheduler_continuous.py" data-line="39" target="_blank" rel="noreferrer">training_weight:39</a></p>
+  <div class="texd"><span class="katex-display"><span class="katex"><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em;"></span><span class="mord mathnormal" style="margin-right:0.02691em;">w</span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.03588em;">σ</span><span class="mclose">)</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mrel">∝</span><span class="mspace" style="margin-right:0.2778em;"></span><span class="mspace" style="margin-right:0.2778em;"></span></span><span class="base"><span class="strut" style="height:1.1202em;vertical-align:-0.0833em;"></span><span class="mord"><span class="mord mathnormal">e</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:1.0369em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">−</span><span class="mord mtight">2</span><span class="mopen mtight">(</span><span class="mord mathnormal mtight" style="margin-right:0.03588em;">σ</span><span class="mbin mtight">−</span><span class="mord mtight">0.5</span><span class="mclose mtight"><span class="mclose mtight">)</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8913em;"><span style="top:-2.931em;margin-right:0.0714em;"><span class="pstrut" style="height:2.5em;"></span><span class="sizing reset-size3 size1 mtight"><span class="mord mtight">2</span></span></span></span></span></span></span></span></span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222em;"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222em;"></span></span><span class="base"><span class="strut" style="height:0.8641em;"></span><span class="mord"><span class="mord mathnormal">e</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.8641em;"><span style="top:-3.113em;margin-right:0.05em;"><span class="pstrut" style="height:2.7em;"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">−</span><span class="mord mtight">0.5</span></span></span></span></span></span></span></span></span></span></span></span></span></div>
+  <p class="formula-note">“采样密度 × 权重”才是每个噪声水平实际分到的训练量，下图叫它“有效分布”。推理时 <i>u</i> 在 1 到 0 之间等分 10 段，同样经过 φ<sub><i>s</i></sub>。<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/schedulers/scheduler_continuous.py#L76" data-path="src/fastwam/models/wan22/schedulers/scheduler_continuous.py" data-line="76" target="_blank" rel="noreferrer">u_steps:76</a></p>
+
+  <div class="lab" id="noise-lab">
+    <span class="lab-tag">实验 2 · 噪声调度</span>
+    <h3>拖 shift，看训练分布和 10 步采样怎么变</h3>
+    <p class="hint">曲线由与 <code>scheduler_continuous.py</code> 相同的公式逐点算出。</p>
+    <div class="btnrow" role="group" aria-label="shift 预设">
+      <button type="button" data-shift="1" aria-pressed="true">动作 · 现在（1）</button>
+      <button type="button" data-shift="3" aria-pressed="false">README：1–3 相近（3）</button>
+      <button type="button" data-shift="5" aria-pressed="false">视频，或论文时的动作（5）</button>
+    </div>
+    <div class="slider"><label for="shift-in">shift <i>s</i></label><input id="shift-in" type="range" min="1" max="8" step="0.5" value="1"><output id="shift-out">1.0</output></div>
+    <svg class="plot" id="noise-plot" viewBox="0 0 520 250" role="img" aria-label="训练噪声分布、损失权重与推理采样点"></svg>
+    <div class="legend"><span><i style="border-color:#a39a82;border-top-style:dashed"></i>采样密度（超出部分截断）</span><span><i style="border-color:#7d93c9"></i>损失权重 w</span><span><i style="border-color:#2a4b98"></i>有效分布</span><span><i style="border-color:#c23b2a;border-top-style:dotted"></i>logit-normal(0,1) 参照</span><span><i style="border-color:#2b7154"></i>10 步推理的 σ</span></div>
+    <div class="readout" id="noise-readout"></div>
+  </div>
+  <div class="ans" id="a4"><b class="q">Q4 答</b>logit-normal 描述的是“各噪声水平训练得多少”。代码用“均匀采样 + shift + 钟形权重”达到相近的效果：shift = 1 时，有效分布在 σ = 0.1、0.3、0.5 处是 0.48、1.27、1.58，logit-normal(0, 1) 是 0.40、1.33、1.60。视频分支用 shift 5，训练时 55.6% 的样本 σ &gt; 0.8，推理前几步走得很密，最后一步从 0.357 直接跳到 0。动作分支论文发布时也是 5，2026-08 的提交 <code>0050a44</code> 改成 1。<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/configs/model/fastwam.yaml#L54" data-path="configs/model/fastwam.yaml" data-line="54" target="_blank" rel="noreferrer">train_shift:54</a> README 说 1 到 3 效果相近，评测旧 checkpoint 要加 <code>EVALUATION.sigma_shift=5.0</code> 才能复现原设置。<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/README.md?plain=1#L128" data-path="README.md" data-line="128" target="_blank" rel="noreferrer">README.md:128</a></div>
 </section>
-</div>
-<section class="wide" id="architecture"><h2>完整架构图：训练与执行，分开看</h2><p>实线表示数据流；虚线表示条件或特征读取。所有框内文字可选择、复制，也能用右下角编辑模式修改。源码链接固定在同一 commit。</p><div class="legend"><span><i></i>视频表示与联合训练</span><span><i class="action"></i>动作与执行</span><span><i class="loss"></i>监督目标</span><span>手机可在图内横向滚动</span></div>
-<div class="dg-scroll" tabindex="0" role="region" aria-label="可横向滚动的 FastWAM 架构图"><div class="dg">
-<div class="band" style="top:20px;height:566px"></div><div class="band live" style="top:610px;height:485px"></div><div class="band-title" style="top:36px">训练 · 未来视频提供监督，动作仅读取首帧</div><div class="band-title live" style="top:626px">执行 · 保留当前帧视频编码，不生成未来视频</div>
-<svg class="wires" viewBox="0 0 1140 1115" aria-hidden="true"><defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" style="fill:#78748f;stroke:none"/></marker><marker id="green-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 Z" style="fill:#34735d;stroke:none"/></marker></defs>
-<path class="train-wire" d="M245 155 H275 V210 H300" marker-end="url(#arr)"/><path class="train-wire" d="M245 320 H275 V280 H300" marker-end="url(#arr)"/><path d="M245 475 H275 V398 H620" marker-end="url(#arr)"/><path class="train-wire dash" d="M560 245 H590 V375 H620" marker-end="url(#arr)"/><path class="train-wire" d="M430 316 V440" marker-end="url(#arr)"/><path d="M870 415 H895 V475 H915" marker-end="url(#arr)"/><path d="M560 500 H585 V556 H895 V515 H915" marker-end="url(#arr)"/><path class="dash" d="M980 220 V240 H885 V352 H870" marker-end="url(#arr)"/><path class="dash" d="M870 150 H885 V90 H430 V180" marker-end="url(#arr)"/>
-<path class="infer-wire" d="M250 737 H300" marker-end="url(#green-arr)"/><path class="infer-wire" d="M550 737 H625" marker-end="url(#green-arr)"/><path class="infer-wire" d="M875 1000 H910 V800 H925" marker-end="url(#green-arr)"/><path class="infer-wire" d="M1012 830 V890" marker-end="url(#green-arr)"/><path class="infer-wire" d="M550 945 H585 V780 H625" marker-end="url(#green-arr)"/><path class="infer-wire" d="M750 811 V890" marker-end="url(#green-arr)"/><path class="infer-wire dash" d="M875 950 H900 V650 H750 V675" marker-end="url(#green-arr)"/><path class="infer-wire dash" d="M250 935 H270 V790 H300" marker-end="url(#green-arr)"/><path class="infer-wire dash" d="M1012 1065 V1080 H145 V833" marker-end="url(#green-arr)"/>
-</svg>
-<div class="nd video" style="left:40px;top:100px;width:205px"><div class="nt">当前多相机图像</div><div class="nb">VAE 编码首帧 C。训练加噪后，将首个潜在帧恢复为干净观测。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L541" data-path="src/fastwam/models/wan22/fastwam.py" data-line="541" target="_blank" rel="noreferrer">fastwam.py:541</a></div></div>
-<div class="nd video" style="left:40px;top:275px;width:205px"><div class="nt">真实未来视频 + εᵥ</div><div class="nb">独立采样视频噪声时间，构造带噪未来潜变量 Fₜ。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L531" data-path="src/fastwam/models/wan22/fastwam.py" data-line="531" target="_blank" rel="noreferrer">fastwam.py:531</a></div></div>
-<div class="nd action" style="left:40px;top:435px;width:205px"><div class="nt">示范动作 + εₐ</div><div class="nb">独立加噪，形成动作序列 Aₜ。LIBERO 默认 32 × 7。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L544" data-path="src/fastwam/models/wan22/fastwam.py" data-line="544" target="_blank" rel="noreferrer">fastwam.py:544</a></div></div>
-<div class="nd video" style="left:300px;top:180px;width:260px"><div class="nt">视频专家 · 30 层</div><div class="nb">Wan2.2 DiT，宽度 3072。C 只看 C；F 可看 C + F。视频不读动作。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/wan_video_dit.py#L517" data-path="src/fastwam/models/wan22/wan_video_dit.py" data-line="517" target="_blank" rel="noreferrer">wan_video_dit.py:517</a></div></div>
-<div class="nd " style="left:620px;top:150px;width:250px"><div class="nt">MoT 的注意力约束</div><div class="nb">各专家独立 Q/K/V 和 FFN；合并注意力，再分回各自分支。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/mot.py#L632" data-path="src/fastwam/models/wan22/mot.py" data-line="632" target="_blank" rel="noreferrer">mot.py:632</a></div></div>
-<div class="nd action" style="left:620px;top:350px;width:250px"><div class="nt">动作专家 · 30 层</div><div class="nb">宽度 1024；A 读 C + A，屏蔽 F。跨模态传递首帧的 K/V。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L414" data-path="src/fastwam/models/wan22/fastwam.py" data-line="414" target="_blank" rel="noreferrer">fastwam.py:414</a></div></div>
-<div class="nd " style="left:870px;top:100px;width:230px"><div class="nt">语言 + 本体状态</div><div class="nb">T5 embedding，加上投影为 context token 的当前状态；两专家各做 cross-attention。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L224" data-path="src/fastwam/models/wan22/fastwam.py" data-line="224" target="_blank" rel="noreferrer">fastwam.py:224</a></div></div>
-<div class="nd loss" style="left:300px;top:440px;width:260px"><div class="nt">视频流匹配损失 ℒᵥ</div><div class="nb">回归 εᵥ − V；首帧不计重建损失，有效帧与时间权重参与计算。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L574" data-path="src/fastwam/models/wan22/fastwam.py" data-line="574" target="_blank" rel="noreferrer">fastwam.py:574</a></div></div>
-<div class="nd loss" style="left:915px;top:420px;width:180px"><div class="nt">总训练目标</div><div class="nb">ℒ = λᵥℒᵥ + λₐℒₐ。动作回归 εₐ − A，并忽略 padding。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L590" data-path="src/fastwam/models/wan22/fastwam.py" data-line="590" target="_blank" rel="noreferrer">fastwam.py:590</a></div></div>
-<div class="wl" style="left:560px;top:281px">C 的 K/V</div><div class="wl" style="left:295px;top:366px">Aₜ</div><div class="wl" style="left:445px;top:396px">未来预测</div><div class="wl" style="left:590px;top:550px">视频监督更新共享的视觉参数</div>
-<div class="nd video" style="left:40px;top:675px;width:210px"><div class="nt">当前观察 → VAE</div><div class="nb">只编码当前拼接图像。不构造未来视频噪声，不解码未来视频。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L1035" data-path="src/fastwam/models/wan22/fastwam.py" data-line="1035" target="_blank" rel="noreferrer">fastwam.py:1035</a></div></div>
-<div class="nd video" style="left:300px;top:675px;width:250px"><div class="nt">首帧预填充 / K,V</div><div class="nb">视频专家单次前向，保存每层首帧 K/V，供本次动作生成复用。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/mot.py#L474" data-path="src/fastwam/models/wan22/mot.py" data-line="474" target="_blank" rel="noreferrer">mot.py:474</a></div></div>
-<div class="nd action" style="left:625px;top:675px;width:250px"><div class="nt">动作专家循环去噪</div><div class="nb">动作 Q 读取缓存视觉 K/V 与当前动作 K/V；每步仍读取文本 / 状态条件。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/mot.py#L562" data-path="src/fastwam/models/wan22/mot.py" data-line="562" target="_blank" rel="noreferrer">mot.py:562</a></div></div>
-<div class="nd action" style="left:925px;top:675px;width:175px"><div class="nt">输出动作块</div><div class="nb">默认预测 32 步；LIBERO 每步 7 维，反归一化后执行。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L1158" data-path="src/fastwam/models/wan22/fastwam.py" data-line="1158" target="_blank" rel="noreferrer">fastwam.py:1158</a></div></div>
-<div class="nd " style="left:40px;top:890px;width:210px"><div class="nt">任务文本 + 当前状态</div><div class="nb">缓存或编码任务文本，追加本体状态；提供给视频及动作分支。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L1061" data-path="src/fastwam/models/wan22/fastwam.py" data-line="1061" target="_blank" rel="noreferrer">fastwam.py:1061</a></div></div>
-<div class="nd action" style="left:300px;top:890px;width:250px"><div class="nt">动作高斯噪声 A₁</div><div class="nb">[1, horizon, action_dim]。当前配置通常做 10 步动作采样。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L1027" data-path="src/fastwam/models/wan22/fastwam.py" data-line="1027" target="_blank" rel="noreferrer">fastwam.py:1027</a></div></div>
-<div class="nd action" style="left:625px;top:890px;width:250px"><div class="nt">Euler 更新</div><div class="nb">A ← A + Δσ · v。σ 从 1 降到 0；到下一采样步继续动作去噪。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L1155" data-path="src/fastwam/models/wan22/fastwam.py" data-line="1155" target="_blank" rel="noreferrer">fastwam.py:1155</a></div></div>
-<div class="nd action" style="left:925px;top:890px;width:175px"><div class="nt">执行 → 再观察</div><div class="nb">LIBERO 默认执行前 10 步，再用新观察重算首帧缓存。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/experiments/libero/eval_libero_single.py#L535" data-path="experiments/libero/eval_libero_single.py" data-line="535" target="_blank" rel="noreferrer">eval_libero_single.py:535</a></div></div>
-<div class="wl" style="left:555px;top:705px">每层 K/V</div><div class="wl" style="left:912px;top:836px">完成采样</div><div class="wl" style="left:878px;top:859px">下一去噪步</div><div class="wl" style="left:365px;top:1051px">环境闭环 · 新观察重新编码</div>
-</div></div><p class="note">图中主路径对应基础 FastWAM；默认配置 <code>action_conditioned=false</code>，因此没有“真实动作 → 视频专家”的条件箭头。图中的 K/V 缓存属于本次动作生成，随新观察刷新。</p></section>
-<div class="wrap">
-<section class="chapter" id="code-index"><h2>沿着源码继续读</h2><p>每条链接都固定到 <code>7faa711</code>，显示的是仓库内路径及核对过的起始行。</p><div class="table-scroll"><table class="source-list"><thead><tr><th>要找什么</th><th>文件路径 / 行号</th></tr></thead><tbody><tr><td>双专家及兼容接口</td><td><div class="path">src/fastwam/models/wan22/mot.py</div><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/mot.py#L33" data-path="src/fastwam/models/wan22/mot.py" data-line="33" target="_blank" rel="noreferrer">mot.py:33</a></td></tr><tr><td>拼接 Q/K/V 的联合注意力</td><td><div class="path">src/fastwam/models/wan22/mot.py</div><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/mot.py#L632" data-path="src/fastwam/models/wan22/mot.py" data-line="632" target="_blank" rel="noreferrer">mot.py:632</a></td></tr><tr><td>首帧保护：避免间接未来泄漏</td><td><div class="path">src/fastwam/models/wan22/wan_video_dit.py</div><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/wan_video_dit.py#L517" data-path="src/fastwam/models/wan22/wan_video_dit.py" data-line="517" target="_blank" rel="noreferrer">wan_video_dit.py:517</a></td></tr><tr><td>Fast-WAM 动作可见性</td><td><div class="path">src/fastwam/models/wan22/fastwam.py</div><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L397" data-path="src/fastwam/models/wan22/fastwam.py" data-line="397" target="_blank" rel="noreferrer">fastwam.py:397</a></td></tr><tr><td>视频与动作联合训练</td><td><div class="path">src/fastwam/models/wan22/fastwam.py</div><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L522" data-path="src/fastwam/models/wan22/fastwam.py" data-line="522" target="_blank" rel="noreferrer">fastwam.py:522</a></td></tr><tr><td>首帧逐层 K/V 预填充</td><td><div class="path">src/fastwam/models/wan22/mot.py</div><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/mot.py#L474" data-path="src/fastwam/models/wan22/mot.py" data-line="474" target="_blank" rel="noreferrer">mot.py:474</a></td></tr><tr><td>动作读取缓存</td><td><div class="path">src/fastwam/models/wan22/mot.py</div><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/mot.py#L562" data-path="src/fastwam/models/wan22/mot.py" data-line="562" target="_blank" rel="noreferrer">mot.py:562</a></td></tr><tr><td>Euler 流匹配采样</td><td><div class="path">src/fastwam/models/wan22/schedulers/scheduler_continuous.py</div><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/schedulers/scheduler_continuous.py#L83" data-path="src/fastwam/models/wan22/schedulers/scheduler_continuous.py" data-line="83" target="_blank" rel="noreferrer">scheduler_continuous.py:83</a></td></tr><tr><td>Joint 变体的完整视频可见性</td><td><div class="path">src/fastwam/models/wan22/fastwam_joint.py</div><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam_joint.py#L29" data-path="src/fastwam/models/wan22/fastwam_joint.py" data-line="29" target="_blank" rel="noreferrer">fastwam_joint.py:29</a></td></tr><tr><td>IDM 的独立条件视频流</td><td><div class="path">src/fastwam/models/wan22/fastwam_idm.py</div><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam_idm.py#L28" data-path="src/fastwam/models/wan22/fastwam_idm.py" data-line="28" target="_blank" rel="noreferrer">fastwam_idm.py:28</a></td></tr><tr><td>后续 Optional IDM 训练可见性</td><td><div class="path">src/fastwam/models/wan22/fastwam_optional_idm.py</div><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam_optional_idm.py#L54" data-path="src/fastwam/models/wan22/fastwam_optional_idm.py" data-line="54" target="_blank" rel="noreferrer">fastwam_optional_idm.py:54</a></td></tr><tr><td>默认动作去噪步数</td><td><div class="path">configs/train.yaml</div><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/configs/train.yaml#L24" data-path="configs/train.yaml" data-line="24" target="_blank" rel="noreferrer">train.yaml:24</a></td></tr><tr><td>闭环重规划执行步数</td><td><div class="path">configs/sim_libero.yaml</div><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/configs/sim_libero.yaml#L25" data-path="configs/sim_libero.yaml" data-line="25" target="_blank" rel="noreferrer">sim_libero.yaml:25</a></td></tr></tbody></table></div><p class="note">论文 §4.1 概述 Joint 的视频与动作间允许注意力；本 commit 的 <code>fastwam_joint.py</code> 只放开“动作读取全部视频”，视频读取动作的区域仍为 False。上面的交互矩阵按当前代码画出，避免把论文概述当成逐行实现。</p></section>
-<section class="chapter" id="quiz"><h2>读完做几道题</h2>
-<ol class="quiz">
-<li><p>动作不能直接看未来，但首帧能看未来，能否安全删除未来 token？</p><details><summary>展开答案</summary><div>不能。未来会先写进首帧表示，再间接影响动作。删掉未来会改变训练与推理时的条件，因此还要保护首帧。<a href="#a3">回看注意力解释</a>。</div></details></li>
-<li><p>设动作要采样 10 步，视频专家为什么可以只跑一次？</p><details><summary>展开答案</summary><div>Fast-WAM 的首帧视频分支不依赖动作及其采样时间。在本次调用内，其逐层 K/V 不变，动作专家可以反复读取。这里的 10 步是假设例子。<a href="#inference">回看缓存推理</a>。</div></details></li>
-<li><p>训练视频分支会预测未来，为什么测试时拿掉它们还能工作？</p><details><summary>展开答案</summary><div>训练时动作已被限制为只依赖首帧；未来预测的作用通过共享视频专家的参数留下。它不要求执行时提供未来视频。<a href="#a2">回看视频训练的作用</a>。</div></details></li>
-<li><p>LIBERO 的“9 帧视频 + 32 步动作”是否意味着 DiT 有 9 个视频 token？</p><details><summary>展开答案</summary><div>不意味着。9 是图像采样层的帧数，视频还经过 VAE 的时空压缩与 patch 化，每个潜在帧通常有许多空间 token。<a href="#training">回看数据窗口</a>。</div></details></li>
-<li><p>把视频损失权重设为 0，就等于论文里“去掉推理未来想象”吗？</p><details><summary>展开答案</summary><div>不等价。权重设为 0 改变训练目标；Fast-WAM 保留视频监督，只在推理时不生成未来。论文正是要分开研究这两个因素。<a href="#evidence">回看对照实验</a>。</div></details></li>
-<li><p>190 ms 是否能证明机器人以约 5.3 Hz 的频率发每一个关节控制指令？</p><details><summary>展开答案</summary><div>不能。它是特定设置下每次生成一个动作块的耗时；动作执行频率、执行多少步后重规划、是否异步都另有设置。<a href="#a6">回看延迟口径</a>。</div></details></li>
-<li><p>当前代码中的 Optional IDM，能直接当成论文原版 Fast-WAM 吗？</p><details><summary>展开答案</summary><div>应区分。基础 Fast-WAM 的动作只看首帧；Optional IDM 是后续加入的单模型双模式实现，有单独类、mask 与配置。<a href="#inference">回看版本说明</a>。</div></details></li>
-</ol></section>
-<footer>来源：<a class="pl" href="https://arxiv.org/html/2603.16666v2" target="_blank" rel="noreferrer">论文全文 · v2</a> · <a href="https://github.com/yuantianyuan01/FastWAM/tree/7faa71108368fbb3b6885649f112af607427a2d4">官方 FastWAM @ 7faa711</a>。架构图为依据论文与代码重绘的机制图，非模型输出。<br>右下角可编辑文字并保存整页；Chrome / Edge 首次保存时选择同名原文件，此后可直接覆盖；不支持文件 API 的浏览器下载 HTML。Ctrl / ⌘ + S 同样可保存。</footer>
-</div></div>
+
+<section class="chapter" id="s5">
+  <p class="kicker">执行</p>
+  <h2><span class="no">§5</span>首帧算一次，动作算十次</h2>
+  <p>执行时调用 <code>FastWAM.infer_action</code>。<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L979" data-path="src/fastwam/models/wan22/fastwam.py" data-line="979" target="_blank" rel="noreferrer">infer_action:979</a> 去掉检查代码，主干是这样：</p>
+  <pre>z_C  = VAE(当前多相机画面)                  <span class="c"># :1035  只编码一帧 → 98 token</span>
+ctx  = [T5(指令) ; W_p · 当前状态]           <span class="c"># :1061  文本 token 后接 1 个状态 token</span>
+tok  = video_expert.prepare(z_C, σ=<span class="k">0</span>)          <span class="c"># :1067  时间步 0，和训练时的 C 一样</span>
+K[1..30], V[1..30] = prefill(tok, ctx)       <span class="c"># :1120  视频专家 30 层，只跑这一次</span>
+A = N(0, I)，形状 [1, 32, 7]                 <span class="c"># :1027</span>
+<span class="k">for</span> σ, Δσ <span class="k">in</span> schedule(10 步):                   <span class="c"># :1139</span>
+    v = action_expert(A, σ, ctx, K, V)       <span class="c"># :1144  每层 K = [缓存 K ; 动作 K]</span>
+    A = A + Δσ · v                           <span class="c"># :1155  Δσ 为负，从噪声走回动作</span>
+<span class="k">return</span> A                                     <span class="c"># 32 步动作</span></pre>
+  <p><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/mot.py#L474" data-path="src/fastwam/models/wan22/mot.py" data-line="474" target="_blank" rel="noreferrer">prefill_video_cache_tensor:474</a> 逐层跑视频专家并存下每层的 K、V；<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/mot.py#L562" data-path="src/fastwam/models/wan22/mot.py" data-line="562" target="_blank" rel="noreferrer">video_cache_k:562</a> 是动作专家每一层把缓存的 98 个视频 K 和 32 个动作 K 拼在一起，让动作的 query 去读。这就是 <a class="concept-link" href="concepts.html#kv-cache">KV 缓存</a>：被读的一方不变，就只算一次。</p>
+  <div class="ans" id="a5"><b class="q">Q5 答</b>对比 C 在训练和执行时经历的事。训练时：干净潜变量（<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L542" data-path="src/fastwam/models/wan22/fastwam.py" data-line="542" target="_blank" rel="noreferrer">first_frame_latents:542</a>）、时间步 0（<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/wan_video_dit.py#L562" data-path="src/fastwam/models/wan22/wan_video_dit.py" data-line="562" target="_blank" rel="noreferrer">token_timesteps:562</a>）、只读自己（<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/wan_video_dit.py#L520" data-path="src/fastwam/models/wan22/wan_video_dit.py" data-line="520" target="_blank" rel="noreferrer">video_mask:520</a>）、不读动作。执行时：同样干净、同样 σ = 0、同样只读自己。所以 30 层里 C 的每一个 K/V 都是同一个函数作用在同一个输入上，有没有 F 都一样；A 又只读 C 和 A。删掉 F 对动作没有任何影响（数学上严格成立）。代码里还留着一个自检：<code>FastWAM.infer_joint</code> 会把“视频和动作一起去噪”得到的动作与 <code>infer_action</code> 的结果比较，差超过 1e-2 就打警告。<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L792" data-path="src/fastwam/models/wan22/fastwam.py" data-line="792" target="_blank" rel="noreferrer">test_action_with_infer_action:792</a> <a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L967" data-path="src/fastwam/models/wan22/fastwam.py" data-line="967" target="_blank" rel="noreferrer">allclose:967</a></div>
+
+  <div class="lab" id="ledger">
+    <span class="lab-tag">实验 3 · 推理账本</span>
+    <h3>一次调用，视频专家要处理多少 token</h3>
+    <p class="hint">按各变体的推理代码数“token × 前向次数”。这是计算量的粗账，不是延迟。</p>
+    <div class="btnrow" role="group" aria-label="数据集">
+      <button type="button" data-ds="98" aria-pressed="true">LIBERO（98 token / 帧）</button>
+      <button type="button" data-ds="120" aria-pressed="false">RoboTwin（120 token / 帧）</button>
+    </div>
+    <div class="slider"><label for="steps-in">去噪步数</label><input id="steps-in" type="range" min="1" max="20" step="1" value="10"><output id="steps-out">10</output></div>
+    <div id="ledger-out"></div>
+    <p class="note" id="ledger-note"></p>
+  </div>
+  <p>三种做法的推理路径在代码里分别是：Fast-WAM 预填首帧后只循环动作（<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L1139" data-path="src/fastwam/models/wan22/fastwam.py" data-line="1139" target="_blank" rel="noreferrer">fastwam.py:1139</a>）；Joint 每一步把 294 个视频 token 和 32 个动作 token 一起送进 MoT（<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam_joint.py#L223" data-path="src/fastwam/models/wan22/fastwam_joint.py" data-line="223" target="_blank" rel="noreferrer">_predict_joint_noise:223</a>）；IDM 先只用视频专家去噪 10 步，再把生成的整段视频当作干净条件预填缓存，最后去噪动作（<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam_idm.py#L487" data-path="src/fastwam/models/wan22/fastwam_idm.py" data-line="487" target="_blank" rel="noreferrer">Stage 1:487</a> <a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam_idm.py#L507" data-path="src/fastwam/models/wan22/fastwam_idm.py" data-line="507" target="_blank" rel="noreferrer">Stage 2:507</a>）。</p>
+  <div class="ans" id="a6"><b class="q">Q6 答</b>论文的 190 ms 出自真机叠毛巾那一节（Fig. 4 右），单张 RTX 5090D V2 32GB，10 步去噪，CFG 1.0（§4.1）。同一张图里 Joint 580 ms、IDM 810 ms，Fast-WAM 比 IDM 快 4.26 倍、比 Joint 快 3.05 倍；摘要说比现有 imagine-then-execute WAM 快 4 倍以上；本图里只有 IDM 达到这个比例（4.26 倍），Joint 是 3.05 倍。省掉的是未来视频 token 的反复去噪：按实验 3 的账，视频专家的工作量少了 30 倍以上，延迟却只少了 3 到 4 倍，可见 190 ms 里有相当一部分是两种做法都要付的开销，比如动作专家的 10 步、VAE 与文本编码。和 VLA 比，同一张图里 π0.5 是 180 ms，Fast-WAM 并没有更快，它做到的是把 WAM 拉回 VLA 的速度档。</div>
+  <p>代码在论文之后又提速过：README 报告端到端（含文本和 VAE 编码）RTX 4090 从 190 ms 降到 110 ms，H20 从 470 ms 降到 210 ms。<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/README.md?plain=1#L28" data-path="README.md" data-line="28" target="_blank" rel="noreferrer">README.md:28</a> 这是另一块 GPU、另一套实现，不要和论文的 5090D 数字混着比。</p>
+  <p>还要分清“生成一个动作块的耗时”和控制频率。输出的 32 步是一个<a class="concept-link" href="concepts.html#action-chunk">动作块</a>，LIBERO 评测只执行前 10 步就重新观察、重算首帧缓存，属于<a class="concept-link" href="concepts.html#receding-horizon">滚动执行</a>。<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/configs/sim_libero.yaml#L25" data-path="configs/sim_libero.yaml" data-line="25" target="_blank" rel="noreferrer">replan_steps:25</a> <a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/experiments/libero/eval_libero_single.py#L535" data-path="experiments/libero/eval_libero_single.py" data-line="535" target="_blank" rel="noreferrer">pending_actions:535</a></p>
+</section>
+
+<section class="chapter" id="s6">
+  <p class="kicker">结果</p>
+  <h2><span class="no">§6</span>拿掉视频监督掉得多，拿掉想象掉得少</h2>
+  <h3>对照变体（论文 Table 1、2，成功率 %）</h3>
+  <div class="table-scroll"><table>
+    <thead><tr><th>变体</th><th class="num">Spatial</th><th class="num">Object</th><th class="num">Goal</th><th class="num">Long</th><th class="num">LIBERO 平均</th><th class="num">RoboTwin Clean</th><th class="num">Rand.</th><th class="num">RoboTwin 平均</th></tr></thead>
+    <tbody>
+      <tr class="me"><td><b>Fast-WAM</b></td><td class="num">98.2</td><td class="num">100.0</td><td class="num">97.0</td><td class="num">95.2</td><td class="num"><b>97.6</b></td><td class="num">91.88</td><td class="num">91.78</td><td class="num"><b>91.8</b></td></tr>
+      <tr><td>Joint</td><td class="num">99.6</td><td class="num">99.4</td><td class="num">98.2</td><td class="num">96.8</td><td class="num">98.5</td><td class="num">90.84</td><td class="num">90.32</td><td class="num">90.6</td></tr>
+      <tr><td>IDM</td><td class="num">98.8</td><td class="num">97.8</td><td class="num">97.8</td><td class="num">97.6</td><td class="num">98.0</td><td class="num">91.16</td><td class="num">91.34</td><td class="num">91.3</td></tr>
+      <tr class="drop"><td>w/o video co-train</td><td class="num">89.2</td><td class="num">99.2</td><td class="num">95.4</td><td class="num">90.0</td><td class="num">93.5</td><td class="num">82.76</td><td class="num">84.80</td><td class="num">83.8</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">LIBERO：四个套件各 10 个任务、500 条示范，训练 20k 步，共 2000 次评测。RoboTwin 2.0：50 多个双臂任务，2500 条干净场景 + 25000 条强随机化场景混合训练 30k 步，每个任务 clean / randomized 各评 100 次。</p>
+  <div class="deltas">
+    <div class="delta"><h3>去掉视频监督（Fast-WAM → w/o）</h3><ul><li>LIBERO −4.1，RoboTwin −8.0</li><li>LIBERO 里 Spatial 掉 9.0、Long 掉 5.2，Object 几乎不动</li><li>真机成功率 75% → 10%</li></ul></div>
+    <div class="delta keep"><h3>去掉想象（Joint / IDM → Fast-WAM）</h3><ul><li>LIBERO −0.9 / −0.4</li><li>RoboTwin +1.2 / +0.5（Fast-WAM 反而略高）</li><li>真机：比 IDM 低 15 个点，比 Joint 高 5 个点</li></ul></div>
+  </div>
+
+  <h3>和外部方法比（平均成功率 %）</h3>
+  <div class="table-scroll"><table>
+    <thead><tr><th>方法</th><th>具身预训练</th><th class="num">LIBERO</th><th class="num">RoboTwin</th></tr></thead>
+    <tbody>
+      <tr><td>OpenVLA</td><td>有</td><td class="num">76.5</td><td class="num">—</td></tr>
+      <tr><td>π0</td><td>有</td><td class="num">94.1</td><td class="num">62.2</td></tr>
+      <tr><td>π0.5</td><td>有</td><td class="num">96.9</td><td class="num">79.8</td></tr>
+      <tr><td>Motus</td><td>有</td><td class="num">97.7</td><td class="num">87.8</td></tr>
+      <tr><td>LingBot-VA</td><td>有</td><td class="num">98.5</td><td class="num">92.2</td></tr>
+      <tr><td>Motus from WAN2.2</td><td>无</td><td class="num">—</td><td class="num">77.3</td></tr>
+      <tr><td>LingBot-VA from WAN2.2</td><td>无</td><td class="num">—</td><td class="num">80.6（仅 clean）</td></tr>
+      <tr class="me"><td><b>Fast-WAM</b></td><td>无</td><td class="num">97.6</td><td class="num">91.8</td></tr>
+    </tbody>
+  </table></div>
+  <p>“无具身预训练”指没有在大规模机器人数据上预训练；Wan2.2 的视频生成预训练、T5、VAE 都还在。最公平的对照是同样从 Wan2.2 出发的两行：Motus 77.3、LingBot-VA 80.6，Fast-WAM 91.8。</p>
+
+  <h3>真机：一个任务，两张图</h3>
+  <p>真机只有叠毛巾一个任务：Galaxea R1 Lite 平台，60 小时遥操作数据，各模型训练 30k 步。论文同时报告成功率和平均完成时间，后者用来区分“靠反复纠错最终叠好”和“一次做对”。下面按 Fig. 4 重画，完成时间是从图上读的近似值。</p>
+  <div class="rw">
+    <figure class="card" style="margin:10px 0">
+      <svg class="plot" viewBox="0 0 480 290" role="img" aria-label="真机成功率与平均完成时间散点图">
+        <line class="gl" x1="50" y1="20" x2="450" y2="20"/><line class="gl" x1="50" y1="75" x2="450" y2="75"/><line class="gl" x1="50" y1="130" x2="450" y2="130"/><line class="gl" x1="50" y1="185" x2="450" y2="185"/>
+        <line class="ax" x1="50" y1="240" x2="450" y2="240"/><line class="ax" x1="50" y1="20" x2="50" y2="240"/>
+        <text x="44" y="24" text-anchor="end">100%</text><text x="44" y="79" text-anchor="end">75%</text><text x="44" y="134" text-anchor="end">50%</text><text x="44" y="189" text-anchor="end">25%</text><text x="44" y="244" text-anchor="end">0</text>
+        <text x="50" y="256" text-anchor="middle">100</text><text x="150" y="256" text-anchor="middle">140</text><text x="250" y="256" text-anchor="middle">180</text><text x="350" y="256" text-anchor="middle">220</text><text x="450" y="256" text-anchor="middle">260</text>
+        <text x="250" y="278" text-anchor="middle">平均完成时间（秒，越左越好）</text>
+        <circle cx="97.5" cy="20" r="7" fill="#e9e2cc" stroke="#1f2a40"/><text x="108" y="16">π0.5 · 100%</text>
+        <circle cx="180" cy="75" r="7" fill="#2a4b98" stroke="#1f2a40"/><text x="190" y="71" style="fill:#2a4b98;font-weight:700">Fast-WAM · 75%</text>
+        <circle cx="242.5" cy="42" r="7" fill="#7d93c9" stroke="#1f2a40"/><text x="253" y="38">IDM · 90%</text>
+        <circle cx="367.5" cy="86" r="7" fill="#7d93c9" stroke="#1f2a40"/><text x="296" y="108">Joint · 70%</text>
+        <circle cx="315" cy="152" r="7" fill="#e9e2cc" stroke="#1f2a40"/><text x="200" y="168">π0.5 无预训练 · 40%</text>
+        <circle cx="402.5" cy="218" r="7" fill="#c23b2a" stroke="#1f2a40"/><text x="300" y="212">w/o co-train · 10%</text>
+      </svg>
+      <figcaption class="note">点位：π0.5 约 119 s，Fast-WAM 约 152 s，IDM 约 177 s，π0.5 无预训练约 206 s，Joint 约 227 s，w/o co-train 约 241 s。成功率读数取图中刻度。</figcaption>
+    </figure>
+    <figure class="card" style="margin:10px 0">
+      <div class="hbars" role="img" aria-label="真机推理延迟">
+        <div class="r"><span>π0.5</span><span class="b vla" style="width:22.2%"></span><span class="v">180 ms</span></div>
+        <div class="r"><span><b>Fast-WAM</b></span><span class="b me" style="width:23.5%"></span><span class="v">190 ms</span></div>
+        <div class="r"><span>w/o co-train</span><span class="b" style="width:23.5%"></span><span class="v">190 ms</span></div>
+        <div class="r"><span>Joint</span><span class="b" style="width:71.6%"></span><span class="v">580 ms</span></div>
+        <div class="r"><span>IDM</span><span class="b" style="width:100%"></span><span class="v">810 ms</span></div>
+      </div>
+      <figcaption class="note">延迟柱按 810 ms 归一画出，数字为图中标注。</figcaption>
+    </figure>
+  </div>
+  <ul>
+    <li>最强的是有具身预训练的 π0.5：100% 成功，完成最快，延迟 180 ms。</li>
+    <li>Fast-WAM 家族里 IDM 成功率最高（90%）；Fast-WAM 是 75%，但完成更快（约 152 s 对 177 s）；Joint 70%，约 227 s。</li>
+    <li>去掉视频监督只剩 10%，完成时间也最长；同样没有具身预训练的 π0.5 是 40%。论文据此说视频监督带来了数据效率。</li>
+    <li>论文正文没给真机试验次数，这些百分比的误差范围无从判断。</li>
+  </ul>
+  <div class="card sticky">
+    <h3>论文之后的补充：同一份权重，两种推理</h3>
+    <p>2026-08 的 Optional IDM 模型训练时一半样本让动作读整段视频、一半只读首帧（<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam_optional_idm.py#L54" data-path="src/fastwam/models/wan22/fastwam_optional_idm.py" data-line="54" target="_blank" rel="noreferrer">use_idm_mask:54</a>），推理时可选 <code>idm</code> 或 <code>first_frame</code>（<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam_optional_idm.py#L79" data-path="src/fastwam/models/wan22/fastwam_optional_idm.py" data-line="79" target="_blank" rel="noreferrer">action_infer_mode:79</a>）。README 报告 LIBERO 平均：IDM 模式 98.55%，首帧模式 97.75%，差 0.8 个点。<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/README.md?plain=1#L123" data-path="README.md" data-line="123" target="_blank" rel="noreferrer">README.md:123</a> 这个比较连权重都相同，方向与论文一致。它是代码仓库的结果，不在论文里。</p>
+  </div>
+  <h3>结论的边界</h3>
+  <ul>
+    <li><b>想象并非没用。</b>真机上 IDM 比 Fast-WAM 高 15 个点，LIBERO 上两个想象变体也都略高。论文的措辞是视频预测的主要价值“may lie”在训练阶段。</li>
+    <li><b>设定是单个动作块。</b>论文比较的是一次生成一个动作块的设定；把多次想象串成的长时程 rollout 没有测。</li>
+    <li><b>真机只有一个任务</b>，且没有报告样本量。</li>
+    <li><b>视频先验仍来自大规模预训练。</b>“无具身预训练”不等于从零训练。</li>
+  </ul>
+</section>
+
+<section class="chapter" id="s7">
+  <p class="kicker">易混点</p>
+  <h2><span class="no">§7</span>容易读岔的地方</h2>
+  <ol class="pit">
+    <li><b>“单次前向”说的是视频主干</b>Fig. 1 说 Fast-WAM “in a single forward pass” 出动作，指的是视频 DiT 只跑一次。动作仍然是 10 步 Euler 去噪，它不是单步蒸馏模型。<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/configs/train.yaml#L24" data-path="configs/train.yaml" data-line="24" target="_blank" rel="noreferrer">eval_num_inference_steps:24</a></li>
+    <li><b>Joint 在代码里是单向的</b>论文 §4.1 说 Joint “allowing attention between video and action tokens”。本仓库只打开了“动作读全部视频”，视频行仍然不读动作。<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam_joint.py#L48" data-path="src/fastwam/models/wan22/fastwam_joint.py" data-line="48" target="_blank" rel="noreferrer">fastwam_joint.py:48</a></li>
+    <li><b>IDM 训练时有两条视频流</b>一条是带噪视频，用来算视频损失；另一条是真实未来视频做的条件流（teacher forcing），每个样本以 0.5 的概率再随机加噪，对应论文的 “p = 0.5 噪声增强”。动作只读条件流，两条视频流互不相看。<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam_idm.py#L28" data-path="src/fastwam/models/wan22/fastwam_idm.py" data-line="28" target="_blank" rel="noreferrer">_build_teacher_forcing_attention_mask:28</a> <a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/configs/model/fastwam_idm.yaml#L10" data-path="configs/model/fastwam_idm.yaml" data-line="10" target="_blank" rel="noreferrer">video_cond_noise_prob:10</a></li>
+    <li><b>w/o video co-train 没有单独配置</b>论文把它描述为去掉训练时的视频共训练目标（removing the video co-training objective）。代码里最接近的做法是 <code>model.loss.lambda_video=0</code>：未来 token 照样前向，但它的输出不被动作读取（mask），因此也不产生梯度。<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/runtime.py#L157" data-path="src/fastwam/runtime.py" data-line="157" target="_blank" rel="noreferrer">lambda_video:157</a></li>
+    <li><b>本体状态只用当前一帧</b>数据里有 33 个时刻的状态，模型只取第 0 个，投影成 context 末尾的 1 个 token，两个专家都通过交叉注意力读它。<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L372" data-path="src/fastwam/models/wan22/fastwam.py" data-line="372" target="_blank" rel="noreferrer">proprio:372</a></li>
+    <li><b>CFG = 1.0 等于没开</b>论文和评测配置都把 CFG scale 设为 1.0。<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/configs/sim_libero.yaml#L34" data-path="configs/sim_libero.yaml" data-line="34" target="_blank" rel="noreferrer">text_cfg_scale:34</a> 代码里的 <code>infer</code> 默认是 5.0，但评测脚本调用的是 <code>infer_action</code>，默认 1.0。<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/experiments/libero/eval_libero_single.py#L434" data-path="experiments/libero/eval_libero_single.py" data-line="434" target="_blank" rel="noreferrer">infer_action:434</a> <a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L1162" data-path="src/fastwam/models/wan22/fastwam.py" data-line="1162" target="_blank" rel="noreferrer">infer:1162</a> IDM 的 <code>infer_action</code> 直接忽略这个参数。<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam_idm.py#L383" data-path="src/fastwam/models/wan22/fastwam_idm.py" data-line="383" target="_blank" rel="noreferrer">del text_cfg_scale:383</a></li>
+    <li><b>两个 190 ms 不是一回事</b>论文的 190 ms 是 RTX 5090D V2；README 的“190 → 110 ms”是 RTX 4090 上的端到端时间。数字碰巧相同。</li>
+  </ol>
+</section>
+
+</div><!-- /sheet -->
+
+<section class="wide chapter" id="architecture">
+  <h2><span class="no">§8</span>完整架构图：训练与执行</h2>
+  <p class="intro">上半张是一步训练，下半张是一次执行调用，token 数按 LIBERO 配置标注。实线是数据流，虚线是条件读取或缓存读取。框里的文字可以选中复制，右下角「✎ 编辑」后可以直接改字并保存整页；每个框都链到固定 commit 的源码行。</p>
+  <div class="dg-legend"><span><i style="border-color:#2a4b98;background:#fdfbf5"></i>视频专家</span><span><i style="border-color:#2b7154;background:#fdfbf5"></i>动作专家</span><span><i style="border-color:#d47b2a;background:#fff7ec"></i>损失</span><span><i style="border-color:#d9c25a;background:#fbf1b8"></i>备注</span><span>手机上可在图内横向滚动</span></div>
+  <div class="dg-scroll" tabindex="0" role="region" aria-label="可横向滚动的 Fast-WAM 架构图"><div class="dg">
+    <div class="band" style="top:20px;height:615px"></div>
+    <div class="band run" style="top:665px;height:560px"></div>
+    <div class="band-title" style="top:10px">训练 · 一步 · 326 token 联合前向</div>
+    <div class="band-title run" style="top:655px">执行 · 一次调用 · 不建未来 token</div>
+    <svg class="wires" viewBox="0 0 1140 1240" aria-hidden="true">
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" style="fill:#6f6a5b;stroke:none"/></marker>
+        <marker id="ahv" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" style="fill:#2a4b98;stroke:none"/></marker>
+        <marker id="aha" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 Z" style="fill:#2b7154;stroke:none"/></marker>
+      </defs>
+      <path class="v" d="M260 145 H310" marker-end="url(#ahv)"/>
+      <path class="v" d="M260 300 H288 V195 H310" marker-end="url(#ahv)"/>
+      <path class="a" d="M260 490 H310" marker-end="url(#aha)"/>
+      <path class="d" d="M440 268 V229" marker-end="url(#ah)"/>
+      <path class="d" d="M440 372 V418" marker-end="url(#ah)"/>
+      <path class="v" d="M570 160 H595 V315 H620" marker-end="url(#ahv)"/>
+      <path class="a" d="M570 485 H595 V355 H620" marker-end="url(#aha)"/>
+      <path class="d" d="M740 214 V268" marker-end="url(#ah)"/>
+      <path class="v" d="M860 315 H880 V165 H900" marker-end="url(#ahv)"/>
+      <path class="a" d="M860 355 H880 V365 H900" marker-end="url(#aha)"/>
+      <path d="M1100 165 H1118 V535 H1102" marker-end="url(#ah)"/>
+      <path d="M1000 434 V478" marker-end="url(#ah)"/>
+      <path class="v" d="M260 790 H310" marker-end="url(#ahv)"/>
+      <path class="v" d="M570 790 H620" marker-end="url(#ahv)"/>
+      <path class="v d" d="M740 862 V950 H470 V1008" marker-end="url(#ahv)"/>
+      <path class="d" d="M260 925 H440 V869" marker-end="url(#ah)"/>
+      <path class="d" d="M260 960 H290 V1050 H310" marker-end="url(#ah)"/>
+      <path class="a" d="M260 1085 H310" marker-end="url(#aha)"/>
+      <path class="a" d="M570 1070 H620" marker-end="url(#aha)"/>
+      <path class="a" d="M740 1134 V1165 H440 V1144" marker-end="url(#aha)"/>
+      <path class="a" d="M860 1070 H900" marker-end="url(#aha)"/>
+      <path class="a d" d="M1000 1144 V1205 H25 V790 H40" marker-end="url(#aha)"/>
+    </svg>
+
+    <div class="nd v" style="left:40px;top:80px;width:220px"><div class="nt">当前帧 C · 98 token</div><div class="nb">224×448 画面 → VAE → 1 个潜在帧。始终是干净值，时间步记 0。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L542" data-path="src/fastwam/models/wan22/fastwam.py" data-line="542" target="_blank" rel="noreferrer">fastwam.py:542</a><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/wan_video_dit.py#L562" data-path="src/fastwam/models/wan22/wan_video_dit.py" data-line="562" target="_blank" rel="noreferrer">wan_video_dit.py:562</a></div></div>
+    <div class="nd v" style="left:40px;top:240px;width:220px"><div class="nt">未来视频 F · 196 token</div><div class="nb">后 8 帧压成 2 个潜在帧，按 σᵥ 加噪：(1−σ)x + σε。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L533" data-path="src/fastwam/models/wan22/fastwam.py" data-line="533" target="_blank" rel="noreferrer">fastwam.py:533</a></div></div>
+    <div class="nd a" style="left:40px;top:430px;width:220px"><div class="nt">示范动作 A · 32 token</div><div class="nb">32 步 × 7 维，每步一个 token；σₐ 与视频独立采样。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L545" data-path="src/fastwam/models/wan22/fastwam.py" data-line="545" target="_blank" rel="noreferrer">fastwam.py:545</a></div></div>
+
+    <div class="nd v" style="left:310px;top:95px;width:260px"><div class="nt">视频专家 · Wan2.2 DiT</div><div class="nb">30 层，宽 3072，24 头 × 128。C 和 F 共用这一套权重。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/configs/model/fastwam.yaml#L17" data-path="configs/model/fastwam.yaml" data-line="17" target="_blank" rel="noreferrer">fastwam.yaml:17</a></div></div>
+    <div class="nd c" style="left:310px;top:268px;width:260px"><div class="nt">语言 + 本体状态</div><div class="nb">T5 文本 token 后接 1 个状态 token；两个专家各自交叉注意力。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L238" data-path="src/fastwam/models/wan22/fastwam.py" data-line="238" target="_blank" rel="noreferrer">fastwam.py:238</a></div></div>
+    <div class="nd a" style="left:310px;top:420px;width:260px"><div class="nt">动作专家 · ActionDiT</div><div class="nb">30 层，宽 1024；Q/K/V 投到 24 × 128 = 3072，才能和视频 token 同场注意力。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L144" data-path="src/fastwam/models/wan22/fastwam.py" data-line="144" target="_blank" rel="noreferrer">fastwam.py:144</a></div></div>
+
+    <div class="nd c" style="left:620px;top:80px;width:240px"><div class="nt">结构化 mask</div><div class="nb">C 只读 C；F 读 C、F；A 读 C、A。视频行都不读动作。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L397" data-path="src/fastwam/models/wan22/fastwam.py" data-line="397" target="_blank" rel="noreferrer">fastwam.py:397</a><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/wan_video_dit.py#L520" data-path="src/fastwam/models/wan22/wan_video_dit.py" data-line="520" target="_blank" rel="noreferrer">wan_video_dit.py:520</a></div></div>
+    <div class="nd" style="left:620px;top:270px;width:240px"><div class="nt">每层一次混合注意力</div><div class="nb">两路 Q/K/V 拼成 326 个 token 算一次注意力，再切回各自的输出投影和 FFN。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/mot.py#L632" data-path="src/fastwam/models/wan22/mot.py" data-line="632" target="_blank" rel="noreferrer">mot.py:632</a></div></div>
+
+    <div class="nd l" style="left:900px;top:100px;width:200px"><div class="nt">视频损失 ℒ_vid</div><div class="nb">回归 ε − x；去掉首帧，只算 F；乘钟形权重。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L576" data-path="src/fastwam/models/wan22/fastwam.py" data-line="576" target="_blank" rel="noreferrer">fastwam.py:576</a></div></div>
+    <div class="nd l" style="left:900px;top:300px;width:200px"><div class="nt">动作损失 ℒ_act</div><div class="nb">回归 ε − a；padding 步不计；乘钟形权重。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L590" data-path="src/fastwam/models/wan22/fastwam.py" data-line="590" target="_blank" rel="noreferrer">fastwam.py:590</a></div></div>
+    <div class="nd l" style="left:900px;top:480px;width:200px"><div class="nt">总损失</div><div class="nb">ℒ = λᵥℒ_vid + λₐℒ_act，默认都是 1。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L603" data-path="src/fastwam/models/wan22/fastwam.py" data-line="603" target="_blank" rel="noreferrer">fastwam.py:603</a></div></div>
+
+    <div class="wl" style="left:600px;top:226px">Q·K·V</div>
+    <div class="wl" style="left:600px;top:420px">Q·K·V</div>
+    <div class="wl" style="left:858px;top:262px">C、F 输出</div>
+    <div class="wl hand" style="left:300px;top:578px">两个损失的梯度都流回 C 的表示：一路经 F → C，一路经 A → C</div>
+
+    <div class="nd v" style="left:40px;top:735px;width:220px"><div class="nt">当前观测 → VAE</div><div class="nb">只编码当前一帧，得到 98 token；不建未来噪声。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L1035" data-path="src/fastwam/models/wan22/fastwam.py" data-line="1035" target="_blank" rel="noreferrer">fastwam.py:1035</a></div></div>
+    <div class="nd c" style="left:40px;top:890px;width:220px"><div class="nt">语言 + 当前状态</div><div class="nb">与训练时相同的 context，动作每一步都读。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L1061" data-path="src/fastwam/models/wan22/fastwam.py" data-line="1061" target="_blank" rel="noreferrer">fastwam.py:1061</a></div></div>
+    <div class="nd a" style="left:40px;top:1030px;width:220px"><div class="nt">动作噪声</div><div class="nb">[1, 32, 7] 高斯噪声，从 σ = 1 出发。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L1027" data-path="src/fastwam/models/wan22/fastwam.py" data-line="1027" target="_blank" rel="noreferrer">fastwam.py:1027</a></div></div>
+
+    <div class="nd v" style="left:310px;top:735px;width:260px"><div class="nt">首帧前向一次</div><div class="nb">时间步 0，跑完视频专家 30 层。C 只读自己，算法与训练时完全相同。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L1120" data-path="src/fastwam/models/wan22/fastwam.py" data-line="1120" target="_blank" rel="noreferrer">fastwam.py:1120</a></div></div>
+    <div class="nd a" style="left:310px;top:1010px;width:260px"><div class="nt">动作专家一步</div><div class="nb">动作 query 读 [缓存 K ; 动作 K]，再读文本和状态，预测速度 v。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/mot.py#L562" data-path="src/fastwam/models/wan22/mot.py" data-line="562" target="_blank" rel="noreferrer">mot.py:562</a></div></div>
+
+    <div class="nd v" style="left:620px;top:735px;width:240px"><div class="nt">K/V 缓存</div><div class="nb">每层存一份 98 × 3072 的 K 和 V，共 30 层。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/mot.py#L524" data-path="src/fastwam/models/wan22/mot.py" data-line="524" target="_blank" rel="noreferrer">mot.py:524</a></div></div>
+    <div class="nd a" style="left:620px;top:1010px;width:240px"><div class="nt">Euler 更新</div><div class="nb">A ← A + Δσ · v。shift 1 时 σ 每步降 0.1。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L1155" data-path="src/fastwam/models/wan22/fastwam.py" data-line="1155" target="_blank" rel="noreferrer">fastwam.py:1155</a></div></div>
+
+    <div class="nd n" style="left:900px;top:735px;width:200px"><div class="nt">本次调用的计算量</div><div class="nb">视频专家：98 token × 1 次。动作专家：32 token × 10 次。不解码视频。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L1139" data-path="src/fastwam/models/wan22/fastwam.py" data-line="1139" target="_blank" rel="noreferrer">fastwam.py:1139</a></div></div>
+    <div class="nd a" style="left:900px;top:1010px;width:200px"><div class="nt">输出动作块</div><div class="nb">32 步动作，反归一化后执行前 10 步。</div><div class="nl"><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/experiments/libero/eval_libero_single.py#L535" data-path="experiments/libero/eval_libero_single.py" data-line="535" target="_blank" rel="noreferrer">eval_libero_single.py:535</a></div></div>
+
+    <div class="wl" style="left:574px;top:768px">K,V</div>
+    <div class="wl" style="left:500px;top:953px">每一步都读同一份缓存</div>
+    <div class="wl" style="left:470px;top:1168px">下一步 · 共 10 步</div>
+    <div class="wl" style="left:864px;top:1048px">σ = 0</div>
+    <div class="wl" style="left:380px;top:1208px">执行 10 步 → 新观测，重算缓存</div>
+  </div></div>
+  <p class="intro note">图中是基础 <code>fastwam</code> 配置：<code>action_conditioned: false</code>，所以没有“真实动作 → 视频专家”的箭头；K/V 缓存只在本次调用内有效，新观测到来就重算。</p>
+</section>
+
+<div class="sheet">
+<section class="chapter" id="code-index">
+  <h2><span class="no">§9</span>沿着源码继续读</h2>
+  <p>全部链接固定在 <code>7faa711</code>。mask、首帧时间步和调度器的核心逻辑在 2026-03 的初始提交里已经存在；之后的改动主要是推理加速、Optional IDM，以及动作 shift（2026-08 改为 1.0）。</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>要找什么</th><th>位置</th></tr></thead>
+    <tbody>
+      <tr><td>Fast-WAM 的注意力 mask</td><td><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L397" data-path="src/fastwam/models/wan22/fastwam.py" data-line="397" target="_blank" rel="noreferrer">_build_mot_attention_mask:397</a></td></tr>
+      <tr><td>首帧不读后续帧</td><td><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/wan_video_dit.py#L517" data-path="src/fastwam/models/wan22/wan_video_dit.py" data-line="517" target="_blank" rel="noreferrer">first_frame_causal:517</a></td></tr>
+      <tr><td>首帧时间步置 0</td><td><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/wan_video_dit.py#L562" data-path="src/fastwam/models/wan22/wan_video_dit.py" data-line="562" target="_blank" rel="noreferrer">token_timesteps:562</a></td></tr>
+      <tr><td>MoT 每层的混合注意力</td><td><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/mot.py#L580" data-path="src/fastwam/models/wan22/mot.py" data-line="580" target="_blank" rel="noreferrer">_forward_joint_layer:580</a></td></tr>
+      <tr><td>联合训练损失</td><td><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L522" data-path="src/fastwam/models/wan22/fastwam.py" data-line="522" target="_blank" rel="noreferrer">training_loss:522</a></td></tr>
+      <tr><td>shift 变换与钟形权重</td><td><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/schedulers/scheduler_continuous.py#L18" data-path="src/fastwam/models/wan22/schedulers/scheduler_continuous.py" data-line="18" target="_blank" rel="noreferrer">_phi:18</a> <a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/schedulers/scheduler_continuous.py#L39" data-path="src/fastwam/models/wan22/schedulers/scheduler_continuous.py" data-line="39" target="_blank" rel="noreferrer">training_weight:39</a></td></tr>
+      <tr><td>首帧预填 K/V</td><td><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/mot.py#L474" data-path="src/fastwam/models/wan22/mot.py" data-line="474" target="_blank" rel="noreferrer">prefill_video_cache_tensor:474</a></td></tr>
+      <tr><td>动作读缓存</td><td><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/mot.py#L528" data-path="src/fastwam/models/wan22/mot.py" data-line="528" target="_blank" rel="noreferrer">forward_action_with_video_cache_tensor:528</a></td></tr>
+      <tr><td>执行入口</td><td><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L979" data-path="src/fastwam/models/wan22/fastwam.py" data-line="979" target="_blank" rel="noreferrer">infer_action:979</a></td></tr>
+      <tr><td>联合去噪与动作一致性自检</td><td><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam.py#L771" data-path="src/fastwam/models/wan22/fastwam.py" data-line="771" target="_blank" rel="noreferrer">infer_joint:771</a></td></tr>
+      <tr><td>Joint 变体的 mask</td><td><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam_joint.py#L29" data-path="src/fastwam/models/wan22/fastwam_joint.py" data-line="29" target="_blank" rel="noreferrer">_build_mot_attention_mask:29</a></td></tr>
+      <tr><td>IDM 的两路视频训练</td><td><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam_idm.py#L175" data-path="src/fastwam/models/wan22/fastwam_idm.py" data-line="175" target="_blank" rel="noreferrer">training_loss:175</a></td></tr>
+      <tr><td>IDM 两阶段推理</td><td><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/fastwam_idm.py#L365" data-path="src/fastwam/models/wan22/fastwam_idm.py" data-line="365" target="_blank" rel="noreferrer">infer_action:365</a></td></tr>
+      <tr><td>动作专家从 Wan2.2 插值初始化</td><td><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/scripts/preprocess_action_dit_backbone.py#L196" data-path="scripts/preprocess_action_dit_backbone.py" data-line="196" target="_blank" rel="noreferrer">backbone_keys:196</a></td></tr>
+      <tr><td>LIBERO 数据形状</td><td><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/configs/data/libero_2cam.yaml#L28" data-path="configs/data/libero_2cam.yaml" data-line="28" target="_blank" rel="noreferrer">num_frames:28</a></td></tr>
+      <tr><td>模型尺寸与两个 shift</td><td><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/configs/model/fastwam.yaml#L13" data-path="configs/model/fastwam.yaml" data-line="13" target="_blank" rel="noreferrer">video_dit_config:13</a> <a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/configs/model/fastwam.yaml#L53" data-path="configs/model/fastwam.yaml" data-line="53" target="_blank" rel="noreferrer">action_scheduler:53</a></td></tr>
+      <tr><td>LIBERO 评测：每块执行 10 步</td><td><a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/configs/sim_libero.yaml#L25" data-path="configs/sim_libero.yaml" data-line="25" target="_blank" rel="noreferrer">replan_steps:25</a></td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="chapter" id="quiz">
+  <h2><span class="no">§10</span>读完做几道题</h2>
+  <ol class="quiz">
+    <li><p>训练时如果首帧 token 的时间步不置 0，而是和未来帧一样用 σᵥ，执行时会出什么问题？</p><details><summary>看答案</summary><div>执行时首帧的时间步是 0，训练时却带着随机 σᵥ 的时间嵌入，C 的特征在训练和执行时就不再是同一个函数的输出。Q5 里“删掉 F 不影响动作”的论证依赖 C 的输入完全一致，这一条就断了。代码靠 <code>token_timesteps[:, 0, :] = 0</code> 保证一致。<a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/models/wan22/wan_video_dit.py#L562" data-path="src/fastwam/models/wan22/wan_video_dit.py" data-line="562" target="_blank" rel="noreferrer">token_timesteps:562</a> <a href="#a5">回看 Q5</a></div></details></li>
+    <li><p>只挡 A → F、不挡 C → F，未来信息最少经过几层就能到达动作？</p><details><summary>看答案</summary><div>两层：第 1 层 C 读 F，第 2 层 A 读 C。网络有 30 层，这条路一定会被走通。<a href="#mask-lab">回实验 1 点“漏一处”</a></div></details></li>
+    <li><p>如果让视频行可以读动作（C → A 打开），执行时还能缓存首帧 K/V 吗？</p><details><summary>看答案</summary><div>不能。C 的特征会随带噪动作变化，而动作每个去噪步都在变，视频专家就得每步重算。视频预测也会依赖动作噪声。<a href="#mask-lab">回实验 1 点“C 也读 A”</a></div></details></li>
+    <li><p>LIBERO 配置里，送进视频专家的未来视频有几个潜在帧、多少 token？</p><details><summary>看答案</summary><div>2 个潜在帧，196 个 token；加上首帧共 294 个。9 帧只是采样层的帧数，VAE 时间压 4 倍且首帧单独编码。<a href="#s2">回 §2</a></div></details></li>
+    <li><p>把 <code>model.loss.lambda_video</code> 设成 0，得到的是哪个变体？它和“执行时不想象”是一回事吗？</p><details><summary>看答案</summary><div>得到的是 w/o video co-train 的近似：架构和推理不变，只少了视频损失。“执行时不想象”是 Fast-WAM 本来就有的推理方式，λ = 0 改的是训练目标。这正是论文要分开的两个变量。<a href="#a1">回看 Q1</a> <a class="cl" href="https://github.com/yuantianyuan01/FastWAM/blob/7faa71108368fbb3b6885649f112af607427a2d4/src/fastwam/runtime.py#L157" data-path="src/fastwam/runtime.py" data-line="157" target="_blank" rel="noreferrer">lambda_video:157</a></div></details></li>
+    <li><p>Joint 的视频专家工作量是 Fast-WAM 的多少倍？为什么实测延迟只差约 3 倍？</p><details><summary>看答案</summary><div>每次调用 294 × 10 = 2940 对 98 × 1，即 30 倍，与分辨率无关。实测 580 / 190 ≈ 3.05 倍，说明 Fast-WAM 的 190 ms 里有不少开销与未来视频无关，比如动作专家的 10 步、VAE 和文本编码。<a href="#ledger">回实验 3</a></div></details></li>
+    <li><p>动作 shift 从 5 改成 1 以后，10 步推理的 σ 序列怎么变？</p><details><summary>看答案</summary><div>shift 5：1、0.978、0.952、0.921、0.882、0.833、0.769、0.682、0.556、0.357、0，前面步子很小，最后一步跨 0.357。shift 1：每步均匀降 0.1。<a href="#noise-lab">回实验 2</a></div></details></li>
+    <li><p>真机实验能说明“执行时想象没用”吗？</p><details><summary>看答案</summary><div>不能。真机上 IDM（90%）高于 Fast-WAM（75%），有预训练的 π0.5 是 100%。论文能支持的是：去掉视频监督的影响（75% → 10%）远大于去掉想象的影响。<a href="#s6">回 §6</a></div></details></li>
+  </ol>
+</section>
+
+<footer>来源：<a class="pl" href="https://arxiv.org/abs/2603.16666v2" target="_blank" rel="noreferrer">Fast-WAM, arXiv 2603.16666 v2</a> · <a href="https://github.com/yuantianyuan01/FastWAM/tree/7faa71108368fbb3b6885649f112af607427a2d4" target="_blank" rel="noreferrer">官方代码 @ 7faa711</a>。真机图按论文 Fig. 4 重画，完成时间为读图近似值；架构图依据论文与代码重绘。<br>右下角「✎ 编辑」可改字，「保存」或 Ctrl / ⌘ + S 把整页写回原文件：Chrome / Edge 首次保存时选同名原文件，之后直接覆盖；其他浏览器会下载 HTML。</footer>
+</div><!-- /sheet -->
+</div><!-- /doc -->
+
 <div class="kb-tools" id="kb-tools"><button type="button" id="btn-edit">✎ 编辑</button><button type="button" id="btn-save">保存</button><span class="st" id="kb-st" role="status" aria-live="polite"></span></div>
+
 <script>
 (function(){
   'use strict';
@@ -153,7 +776,9 @@ return A</pre>
   var st=document.getElementById('kb-st'), btnEdit=document.getElementById('btn-edit');
   var headSnap=new Set(Array.prototype.slice.call(document.head.children));
   var bodyClass=body.getAttribute('class'), dirty=false, handle=null, saving=false;
-  var initialLab=document.getElementById('mask-lab').outerHTML;
+  /* 交互实验的初始 HTML：保存时还原，避免把运行时状态写进文件 */
+  var labSnap={};
+  document.querySelectorAll('.lab').forEach(function(n){labSnap[n.id]=n.outerHTML;});
 
   /* ---------- 代码链接 ---------- */
   function hrefOf(a){
@@ -168,17 +793,25 @@ return A</pre>
   applyLinks();
 
   /* ---------- 编辑 ---------- */
+  var EDITABLE='h1,h2,h3,p,li,td,th,pre,figcaption,.nt,.nb,.wl,.band-title,.ans,.kb-nick,.stamp-row span,.dc-head,.dc-cell,.dc-row,.dc-col,.dc-corner,.tokbar>div,footer';
+  function editableNodes(){
+    return Array.prototype.filter.call(doc.querySelectorAll(EDITABLE),function(n){
+      if(n.closest('.lab')) return false;
+      if(n.tagName==='LI' && n.closest('.quiz')) return false;
+      return true;
+    });
+  }
   function setEdit(on){
     body.classList.toggle('editing',on);
     btnEdit.classList.toggle('on',on);
     btnEdit.textContent=on?'✓ 完成编辑':'✎ 编辑';
-    doc.querySelectorAll('h1,h2,h3,p,td,th,.step-list>li,.qs>li,.nd .nt,.nd .nb,.wl,.band-title,.hero-top span,.byline span,.ans,.math,.quiz details>div,footer,.kb-nick').forEach(function(n){if(n.closest('#mask-lab'))return;if(on)n.setAttribute('contenteditable','true');else n.removeAttribute('contenteditable');});
+    editableNodes().forEach(function(n){ if(on) n.setAttribute('contenteditable','true'); else n.removeAttribute('contenteditable'); });
   }
   btnEdit.addEventListener('click',function(){setEdit(!body.classList.contains('editing'));});
-  doc.addEventListener('input',function(){dirty=true;st.textContent='未保存';});
+  doc.addEventListener('input',function(e){ if(e.target.closest && e.target.closest('.lab')) return; dirty=true;st.textContent='未保存';});
   doc.addEventListener('click',function(e){
     if(!body.classList.contains('editing')) return;
-    var a=e.target.closest('a'); if(!a) return; e.preventDefault(); if(!a.matches('a.cl,a.pl')) return;
+    var a=e.target.closest('a.cl,a.pl'); if(!a) return;
     e.preventDefault();
     if(a.classList.contains('cl')){
       var cur=a.getAttribute('data-path')+':'+a.getAttribute('data-line');
@@ -200,14 +833,17 @@ return A</pre>
   /* ---------- 保存 ---------- */
   function serialize(){
     var live=document.documentElement, c=live.cloneNode(true);
-    var lab=c.querySelector('#mask-lab'), initial=new DOMParser().parseFromString(initialLab,'text/html').body.firstElementChild;
-    if(lab && initial) lab.replaceWith(initial);
     var lh=document.head.children, ch=c.querySelector('head').children;
     for(var i=lh.length-1;i>=0;i--){ if(!headSnap.has(lh[i])) ch[i].remove(); }
     c.querySelectorAll('.kb-root').forEach(function(n){n.remove();});
+    Object.keys(labSnap).forEach(function(id){
+      var n=c.querySelector('#'+id); if(!n) return;
+      var t=document.createElement('template'); t.innerHTML=labSnap[id];
+      n.replaceWith(t.content.firstElementChild);
+    });
     var cb=c.querySelector('body');
     if(bodyClass===null) cb.removeAttribute('class'); else cb.setAttribute('class',bodyClass);
-    c.querySelectorAll('[contenteditable]').forEach(function(n){n.removeAttribute('contenteditable');});
+    c.querySelectorAll('[contenteditable="true"]').forEach(function(n){n.removeAttribute('contenteditable');});
     var cs=c.querySelector('#kb-st'); if(cs) cs.textContent='';
     var ce=c.querySelector('#btn-edit'); if(ce){ce.textContent='✎ 编辑';ce.classList.remove('on');}
     c.querySelectorAll('a.cl').forEach(function(a){a.setAttribute('href',hrefOf(a));a.setAttribute('target','_blank');a.setAttribute('rel','noreferrer');});
@@ -230,54 +866,191 @@ return A</pre>
   }
   async function save(){
     if(saving) return; saving=true; st.textContent='正在保存…';
-    try {
-    var html=serialize(), name=decodeURIComponent(location.pathname.split('/').pop()||'FastWAM-论文解读.html');
-    if(window.showSaveFilePicker){
-      try{
-        if(!handle) handle=await idb('readonly');
-        if(handle && handle.requestPermission){
-          var ok=await handle.queryPermission({mode:'readwrite'});
-          if(ok!=='granted') ok=await handle.requestPermission({mode:'readwrite'});
-          if(ok!=='granted') handle=null;
-        }
-        if(!handle){
-          handle=await window.showSaveFilePicker({suggestedName:name,types:[{description:'HTML',accept:{'text/html':['.html']}}]});
-          idb('readwrite',handle);
-        }
-        var w=await handle.createWritable(); await w.write(html); await w.close();
-        dirty=false; st.textContent='已保存 '+new Date().toLocaleTimeString(); return;
-      }catch(e){ if(e&&e.name==='AbortError'){st.textContent='已取消';return;} console.warn(e); }
-    }
-    var a=document.createElement('a');
-    a.href=URL.createObjectURL(new Blob([html],{type:'text/html'})); a.download=name;
-    document.body.appendChild(a); a.click(); a.remove();
-    setTimeout(function(){URL.revokeObjectURL(a.href);},1000);
-    dirty=false; st.textContent='已下载，替换原文件即可';
-    } catch(e) { st.textContent='保存失败：'+e.message; console.error(e); } finally { saving=false; }
+    try{
+      var html=serialize(), name=decodeURIComponent(location.pathname.split('/').pop()||'FastWAM-论文解读.html');
+      if(window.showSaveFilePicker){
+        try{
+          if(!handle) handle=await idb('readonly');
+          if(handle && handle.requestPermission){
+            var ok=await handle.queryPermission({mode:'readwrite'});
+            if(ok!=='granted') ok=await handle.requestPermission({mode:'readwrite'});
+            if(ok!=='granted') handle=null;
+          }
+          if(!handle){
+            handle=await window.showSaveFilePicker({suggestedName:name,types:[{description:'HTML',accept:{'text/html':['.html']}}]});
+            idb('readwrite',handle);
+          }
+          var w=await handle.createWritable(); await w.write(html); await w.close();
+          dirty=false; st.textContent='已保存 '+new Date().toLocaleTimeString(); return;
+        }catch(e){ if(e&&e.name==='AbortError'){st.textContent='已取消';return;} console.warn(e); handle=null; }
+      }
+      var a=document.createElement('a');
+      a.href=URL.createObjectURL(new Blob([html],{type:'text/html'})); a.download=name;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){URL.revokeObjectURL(a.href);},1000);
+      dirty=false; st.textContent='已下载，替换原文件即可';
+    }catch(e){ st.textContent='保存失败：'+e.message; console.error(e); }
+    finally{ saving=false; }
   }
   document.getElementById('btn-save').addEventListener('click',save);
   document.addEventListener('keydown',function(e){ if((e.metaKey||e.ctrlKey)&&e.key.toLowerCase()==='s'){e.preventDefault();save();} });
   window.addEventListener('beforeunload',function(e){ if(dirty){e.preventDefault();e.returnValue='';} });
 })();
 </script>
+
 <script>
+/* ---------- 实验 1：泄漏检测 ---------- */
 (function(){
   'use strict';
-  var root=document.getElementById('mask-lab');root.setAttribute('contenteditable','false');
-  var variants={
-    fast:{matrix:[1,0,0,1,1,0,1,0,1],title:'Fast-WAM：动作仅依赖首帧视频',detail:'视频读视频，动作读首帧和动作；首帧不能读未来。训练保留视频损失，执行时可移除未来视频 token。',route:'执行：当前观察 → 首帧 K/V → 动作去噪 → 动作块。'},
-    joint:{matrix:[1,0,0,1,1,0,1,1,1],title:'Joint：动作读取整段带噪视频',detail:'按当前代码，动作可读首帧、未来视频与动作；视频仍不读动作。测试时视频和动作一起迭代去噪，未来生成留在关键路径上。',route:'执行：视频与动作噪声 → 联合去噪 → 视频 / 动作。'},
-    idm:{matrix:[1,0,0,1,1,0,1,1,1],title:'IDM：先得到未来，再据此生成动作',detail:'此处 F 表示动作读取的条件视频流。训练另有独立的带噪视频预测流；这张三组矩阵省略了它，不能当作完整 IDM 训练 mask。',route:'执行：先生成未来视频 → 缓存完整视频 → 动作去噪。'},
-    novideo:{matrix:[1,0,0,0,0,0,1,0,1],title:'无视频联合训练：移除未来监督',detail:'未来 F 组在此消融中不提供视频训练目标；保留首帧和动作计算。与 Fast-WAM 的关键区别发生在训练阶段。',route:'执行：首帧 → 动作；训练不再包含未来视频重建损失。'}
+  var root=document.getElementById('mask-lab'); if(!root) return;
+  var G=['C','F','A'], NAME={C:'C 当前帧',F:'F 未来',A:'A 动作'};
+  var PRESETS={
+    fast:{m:[[1,0,0],[1,1,0],[1,0,1]],note:'论文 Fig. 2 的 mask 与 fastwam.py:397 的写法一致。'},
+    joint:{m:[[1,0,0],[1,1,0],[1,1,1]],note:'fastwam_joint.py:48：动作读整段视频，视频仍不读动作。执行时 F 必须和动作一起去噪。'},
+    leak:{m:[[1,1,0],[1,1,0],[1,0,1]],note:'A 不直接读 F，但 C 读了 F。未来经两跳进入动作。'},
+    actread:{m:[[1,0,1],[1,1,0],[1,0,1]],note:'C 读 A 后，首帧特征随带噪动作变化，每个去噪步都得重跑视频专家。'}
   };
-  root.querySelectorAll('[data-mode]').forEach(function(btn){btn.addEventListener('click',function(){
-    var key=btn.dataset.mode,v=variants[key];
-    root.querySelectorAll('[data-mode]').forEach(function(b){b.setAttribute('aria-pressed',String(b===btn));});
-    root.querySelectorAll('[data-cell]').forEach(function(c,i){c.classList.toggle('allow',!!v.matrix[i]);c.textContent=v.matrix[i]?'可见':(key==='novideo'&&(i===1||i===3||i===4||i===5||i===7)?'移除':'屏蔽');});
-    document.getElementById('mode-title').textContent=v.title;document.getElementById('mode-detail').textContent=v.detail;document.getElementById('mode-route').textContent=v.route;
-    root.querySelector('.mask-grid').setAttribute('aria-label',btn.textContent+' 注意力读取示意');
+  var M=PRESETS.fast.m.map(function(r){return r.slice();});
+  var grid=root.querySelector('#lgrid'), out=root.querySelector('#verdicts'), note=root.querySelector('#preset-note');
+
+  function build(){
+    var h='<span class="h">读 ↓ 被读 →</span>'+G.map(function(g){return '<span class="h">'+g+'</span>';}).join('');
+    for(var r=0;r<3;r++){
+      h+='<span class="rl">'+NAME[G[r]]+'</span>';
+      for(var c=0;c<3;c++){
+        h+='<button type="button" data-r="'+r+'" data-c="'+c+'"'+(r===c?' class="diag" disabled':'')+' aria-label="'+G[r]+' 读 '+G[c]+'"></button>';
+      }
+    }
+    grid.innerHTML=h;
+    grid.querySelectorAll('button').forEach(function(b){
+      b.addEventListener('click',function(){
+        var r=+b.dataset.r,c=+b.dataset.c; if(r===c) return;
+        M[r][c]=M[r][c]?0:1;
+        root.querySelectorAll('[data-preset]').forEach(function(p){p.setAttribute('aria-pressed','false');});
+        note.textContent='自定义 mask。';
+        render();
+      });
+    });
+  }
+  /* 信息从被读的一方流向读的一方：src → dst 当且仅当 M[dst][src] 为 1。返回最短路径。 */
+  function path(src,dst){
+    var prev={}, seen={}, q=[src]; seen[src]=1;
+    while(q.length){
+      var u=q.shift(); if(u===dst) break;
+      for(var v=0;v<3;v++){ if(v!==u && M[v][u] && !seen[v]){seen[v]=1;prev[v]=u;q.push(v);} }
+    }
+    if(!seen[dst]) return null;
+    var p=[dst]; while(p[0]!==src) p.unshift(prev[p[0]]);
+    return p;
+  }
+  function fmt(p){ return p.map(function(i){return G[i];}).join(' → ')+'，'+(p.length-1)+' 层'; }
+  function render(){
+    grid.querySelectorAll('button').forEach(function(b){
+      var on=M[+b.dataset.r][+b.dataset.c];
+      b.classList.toggle('on',!!on); b.textContent=on?'✓':'—';
+      b.setAttribute('aria-pressed',String(!!on));
+    });
+    var fa=path(1,2), fc=path(1,0), ac=path(2,0), af=path(2,1), ca=path(0,2);
+    var items=[];
+    items.push(ca?['ok','动作能看到当前画面：<span class="path">'+fmt(ca)+'</span>']:['bad','动作读不到当前画面，策略是“盲”的。']);
+    items.push(fa?['bad','未来信息会流进动作：<span class="path">'+fmt(fa)+'</span>。执行时删掉 F 会改变动作，只能先把 F 生成出来。']:['ok','未来信息到不了动作。执行时可以直接删掉 F，动作的计算不变。']);
+    var dep=[]; if(fc) dep.push('F（'+fmt(fc)+'）'); if(ac) dep.push('A（'+fmt(ac)+'）');
+    items.push(dep.length?['bad','C 的特征依赖 '+dep.join('、')+'，不再只由当前观测决定，首帧 K/V 不能原样跨步复用。']:['ok','C 的特征只由当前观测决定，首帧 K/V 可以在 10 个动作步之间复用。']);
+    items.push(af||ac?['info','视频分支会受带噪动作影响。']:['info','视频分支完全不受动作影响。']);
+    out.innerHTML=items.map(function(it){return '<li class="'+it[0]+'">'+it[1]+'</li>';}).join('');
+  }
+  root.querySelectorAll('[data-preset]').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var p=PRESETS[btn.dataset.preset];
+      M=p.m.map(function(r){return r.slice();});
+      root.querySelectorAll('[data-preset]').forEach(function(b){b.setAttribute('aria-pressed',String(b===btn));});
+      note.textContent=p.note; render();
+    });
+  });
+  build(); note.textContent=PRESETS.fast.note; render();
+})();
+
+/* ---------- 实验 2：噪声调度（与 scheduler_continuous.py 同式） ---------- */
+(function(){
+  'use strict';
+  var root=document.getElementById('noise-lab'); if(!root) return;
+  var svg=root.querySelector('#noise-plot'), inp=root.querySelector('#shift-in'), outv=root.querySelector('#shift-out'), ro=root.querySelector('#noise-readout');
+  var X0=40,X1=500,Y0=200,Y1=20,YMAX=3.2;
+  function phi(u,s){return s*u/(1+(s-1)*u);}
+  function stats(s){
+    var N=1000, ys=[], i, ymin=Infinity, norm=0;
+    for(i=0;i<N;i++){var u=1-i/N, t=phi(u,s)*N, y=Math.exp(-2*Math.pow((t-N/2)/N,2)); ys.push(y); if(y<ymin) ymin=y;}
+    for(i=0;i<N;i++) norm+=ys[i]-ymin;
+    return {ymin:ymin,norm:norm/N};
+  }
+  function weight(x,stt){ return Math.max(0,(Math.exp(-2*Math.pow(x-0.5,2))-stt.ymin)/(stt.norm+1e-10)); }
+  function dens(x,s){ return s/Math.pow(s-(s-1)*x,2); }
+  function logitn(x){ var l=Math.log(x/(1-x)); return Math.exp(-l*l/2)/(Math.sqrt(2*Math.PI)*x*(1-x)); }
+  function X(x){return X0+(X1-X0)*x;}
+  function Y(v){return Y0-(Y0-Y1)*Math.min(v,YMAX)/YMAX;}
+  function curve(f){ var d='',k; for(k=1;k<200;k++){var x=k/200; d+=(k===1?'M':'L')+X(x).toFixed(1)+' '+Y(f(x)).toFixed(1);} return d; }
+  function draw(s){
+    var stt=stats(s), sig=[], k, h='';
+    for(k=0;k<=10;k++) sig.push(phi(1-k/10,s));
+    [0,1,2,3].forEach(function(v){h+='<line class="gl" x1="'+X0+'" y1="'+Y(v)+'" x2="'+X1+'" y2="'+Y(v)+'"/><text x="'+(X0-6)+'" y="'+(Y(v)+4)+'" text-anchor="end">'+v+'</text>';});
+    h+='<line class="ax" x1="'+X0+'" y1="'+Y0+'" x2="'+X1+'" y2="'+Y0+'"/>';
+    [0,0.25,0.5,0.75,1].forEach(function(x){h+='<text x="'+X(x)+'" y="'+(Y0+14)+'" text-anchor="middle">'+x+'</text>';});
+    h+='<text x="'+X1+'" y="'+(Y0+14)+'" dx="14" text-anchor="start">σ</text>';
+    h+='<path d="'+curve(function(x){return dens(x,s);})+'" fill="none" stroke="#a39a82" stroke-width="1.6" stroke-dasharray="5 4"/>';
+    h+='<path d="'+curve(logitn)+'" fill="none" stroke="#c23b2a" stroke-width="1.6" stroke-dasharray="2 3"/>';
+    h+='<path d="'+curve(function(x){return weight(x,stt);})+'" fill="none" stroke="#7d93c9" stroke-width="1.6"/>';
+    h+='<path d="'+curve(function(x){return dens(x,s)*weight(x,stt);})+'" fill="none" stroke="#2a4b98" stroke-width="2.8"/>';
+    h+='<text x="'+X0+'" y="236">推理 σ：</text>';
+    sig.forEach(function(v){h+='<line x1="'+X(v).toFixed(1)+'" y1="222" x2="'+X(v).toFixed(1)+'" y2="240" stroke="#2b7154" stroke-width="2"/>';});
+    svg.innerHTML=h;
+    var eff=function(x){return dens(x,s)*weight(x,stt);};
+    var pHigh=1-0.8/(s-(s-1)*0.8);
+    ro.innerHTML=[
+      ['训练 σ 中位数',phi(0.5,s).toFixed(3)],
+      ['训练中 σ &gt; 0.8 的比例',(pHigh*100).toFixed(1)+'%'],
+      ['有效分布 @ σ=0.1 / 0.3 / 0.5',eff(0.1).toFixed(2)+' / '+eff(0.3).toFixed(2)+' / '+eff(0.5).toFixed(2)],
+      ['推理第 1 步 Δσ',(sig[1]-sig[0]).toFixed(3)],
+      ['推理最后一步',sig[9].toFixed(3)+' → 0']
+    ].map(function(r){return '<div>'+r[0]+'<b>'+r[1]+'</b></div>';}).join('');
+  }
+  function set(s){ inp.value=s; outv.textContent=(+s).toFixed(1); draw(+s);
+    root.querySelectorAll('[data-shift]').forEach(function(b){b.setAttribute('aria-pressed',String(+b.dataset.shift===+s));}); }
+  inp.addEventListener('input',function(){set(inp.value);});
+  root.querySelectorAll('[data-shift]').forEach(function(b){b.addEventListener('click',function(){set(b.dataset.shift);});});
+  set(1);
+})();
+
+/* ---------- 实验 3：推理账本 ---------- */
+(function(){
+  'use strict';
+  var root=document.getElementById('ledger'); if(!root) return;
+  var inp=root.querySelector('#steps-in'), outv=root.querySelector('#steps-out'), box=root.querySelector('#ledger-out'), note=root.querySelector('#ledger-note');
+  var tpf=98;
+  function render(){
+    var N=+inp.value, A=32*N, LAT=3; outv.textContent=N;
+    var rows=[
+      {k:'Fast-WAM',v:tpf,how:'首帧 '+tpf+' × 1 次'},
+      {k:'Joint',v:LAT*tpf*N,how:(LAT*tpf)+' × '+N+' 步'},
+      {k:'IDM',v:LAT*tpf*N+LAT*tpf,how:(LAT*tpf)+' × '+N+' 步 + 预填 '+(LAT*tpf)}
+    ];
+    var max=rows[2].v, h='<div class="ledger-head">视频专家：token × 前向次数</div>';
+    rows.forEach(function(r){
+      h+='<div class="ledger-row"><span>'+r.k+'</span><span class="bar" style="width:'+(100*r.v/max).toFixed(1)+'%"></span><span class="val">'+r.v+(r.k==='Fast-WAM'?'':'（'+(r.v/rows[0].v).toFixed(0)+'×）')+'</span></div>';
+    });
+    h+='<div class="ledger-head">动作专家：三种做法相同</div>';
+    h+='<div class="ledger-row"><span>都一样</span><span class="bar a" style="width:'+(100*A/max).toFixed(1)+'%"></span><span class="val">32 × '+N+' = '+A+'</span></div>';
+    h+='<div class="ledger-head">论文实测延迟（真机设置，RTX 5090D，10 步）</div>';
+    h+='<div class="ledger-row"><span>190 / 580 / 810</span><span class="note" style="margin:0">Fast-WAM / Joint / IDM，比值 1 : 3.05 : 4.26</span><span class="val">ms</span></div>';
+    box.innerHTML=h;
+    note.textContent='视频专家工作量之比为 1 : '+(LAT*N)+' : '+(LAT*N+LAT)+'，只取决于潜在帧数（3）和步数，与分辨率无关；Joint 的视频 token 和动作 token 在同一次前向里，IDM 第二阶段把生成的视频当干净条件再预填一次。';
+  }
+  inp.addEventListener('input',render);
+  root.querySelectorAll('[data-ds]').forEach(function(b){b.addEventListener('click',function(){
+    tpf=+b.dataset.ds; root.querySelectorAll('[data-ds]').forEach(function(x){x.setAttribute('aria-pressed',String(x===b));}); render();
   });});
+  render();
 })();
 </script>
 <script src="nav.js"></script>
-</body></html>
+</body>
+</html>
