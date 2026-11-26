@@ -275,7 +275,7 @@ footer{font-size:12.5px;color:var(--muted);padding:30px 0 110px;border-top:1.5px
   <div class="stamp-row"><span>实验记录 · <b>FW-2603.16666</b></span><span>论文 v2（2026-03-23）× 官方代码 <b>7faa711</b> · 2026-11 复核</span></div>
   <h1>Fast-WAM<span class="arx">arXiv 2603.16666</span></h1>
   <p class="subtitle">世界动作模型，执行时还要先“做梦”吗？</p>
-  <span class="kb-nick">外号 ·「跳过脑内电影」</span>
+  <span class="kb-nick">外号 ·「练时做梦，用时不做」</span>
   <p class="lede">多数世界动作模型（WAM）先生成一段未来视频，再根据它出动作。Fast-WAM 把这里面的两件事拆开检验：训练时照样让模型预测未来视频；执行时只把当前画面过一遍视频网络，就直接去噪出动作块。论文的回答是：<mark>收益主要来自训练时的视频监督，执行时的想象贡献小得多</mark>。</p>
   <div class="hero-links">
     <a class="pl" href="https://arxiv.org/abs/2603.16666v2" target="_blank" rel="noreferrer">arXiv 2603.16666 v2</a>
@@ -302,7 +302,7 @@ footer{font-size:12.5px;color:var(--muted);padding:30px 0 110px;border-top:1.5px
   </div>
 
   <nav class="jumpbar" aria-label="本页目录">
-    <a href="#questions">§0 问题</a><a href="#s1">§1 两个变量</a><a href="#s2">§2 token 账</a><a href="#s3">§3 接线</a><a href="#s4">§4 训练</a><a href="#s5">§5 执行</a><a href="#s6">§6 结果</a><a href="#s7">§7 易混点</a><a href="#architecture">§8 架构图</a><a href="#code-index">§9 代码索引</a><a href="#quiz">§10 自测</a>
+    <a href="#questions">§0 问题</a><a href="#abbr">缩写表</a><a href="#s1">§1 两个变量</a><a href="#s2">§2 token 账</a><a href="#s3">§3 接线</a><a href="#s4">§4 训练</a><a href="#s5">§5 执行</a><a href="#s6">§6 结果</a><a href="#s7">§7 易混点</a><a href="#architecture">§8 架构图</a><a href="#code-index">§9 代码索引</a><a href="#quiz">§10 自测</a>
   </nav>
 </header>
 
@@ -316,6 +316,56 @@ footer{font-size:12.5px;color:var(--muted);padding:30px 0 110px;border-top:1.5px
     <li><span>执行时把未来 token 整个删掉，动作的计算为什么和训练时完全一样？</span><a class="go" href="#a5">→ 答案</a></li>
     <li><span>190 ms 是什么口径？省下的是哪部分计算，和 π0.5 比快吗？</span><a class="go" href="#a6">→ 答案</a></li>
   </ol>
+
+  <h3 id="abbr">缩写速查：本页出现的每个缩写</h3>
+  <p class="note">按“模型 → 网络部件 → 训练推理 → 基准硬件 → 页面记号”排。不是缩写的专名（π0、Motus、Galaxea 等）也一并说明来历。</p>
+  <div class="table-scroll"><table>
+    <thead><tr><th>缩写</th><th>全称</th><th>本页里的意思</th></tr></thead>
+    <tbody>
+      <tr><td><b>WAM</b></td><td>World Action Model</td><td>世界动作模型：在出动作之前或同时预测未来画面的策略。</td></tr>
+      <tr><td><b>Fast-WAM</b></td><td>Fast World Action Model</td><td>本文模型。Fast 指执行时不生成未来视频，所以快。</td></tr>
+      <tr><td><b>Joint</b></td><td>Fast-WAM-Joint（joint generation，联合生成）</td><td>对照变体：未来视频和动作在同一个模型里一起去噪。</td></tr>
+      <tr><td><b>IDM</b></td><td>Inverse Dynamics Model</td><td>逆动力学模型：看前后画面反推中间的动作。本页的 IDM 指对照变体 Fast-WAM-IDM：先生成未来视频，再据此出动作。</td></tr>
+      <tr><td><b>w/o video co-train</b></td><td>without video co-training</td><td>对照变体：去掉训练时的未来视频损失，其余不变。w/o = without。</td></tr>
+      <tr><td><b>co-train</b></td><td>co-training</td><td>共训练：主任务（出动作）之外再加一个辅助任务（预测视频）一起训练。</td></tr>
+      <tr><td><b>VLA</b></td><td>Vision-Language-Action model</td><td>视觉-语言-动作模型：看图读指令，直接出动作，不预测未来画面。</td></tr>
+      <tr><td><b>OpenVLA</b></td><td>Open Vision-Language-Action</td><td>斯坦福等发布的开源 7B VLA，表里作基线。</td></tr>
+      <tr><td><b>π0 / π0.5</b></td><td>pi-zero / pi-zero-point-five</td><td>Physical Intelligence 公司的 VLA。不是缩写，0.5 是版本号。</td></tr>
+      <tr><td><b>Motus</b></td><td>Motus: A Unified Latent Action World Model</td><td>对照用的 WAM（<a class="pl" href="https://arxiv.org/abs/2512.13030" target="_blank" rel="noreferrer">arXiv 2512.13030</a>）。名字不是缩写。</td></tr>
+      <tr><td><b>LingBot-VA</b></td><td>LingBot Video-Action</td><td>对照用的自回归视频-动作模型（<a class="pl" href="https://arxiv.org/abs/2601.21998" target="_blank" rel="noreferrer">arXiv 2601.21998</a>）。LingBot 是系列名，VA = Video-Action。</td></tr>
+      <tr><td><b>DiT</b></td><td>Diffusion Transformer</td><td>用 Transformer 做去噪网络的扩散模型。视频专家和动作专家都是 DiT。</td></tr>
+      <tr><td><b>ActionDiT</b></td><td>Action Diffusion Transformer</td><td>代码里动作专家的名字：结构同视频 DiT，宽度缩到 1024。</td></tr>
+      <tr><td><b>MoT</b></td><td>Mixture-of-Transformers</td><td>每种 token 用自己那套权重，注意力却放在一起算。论文写作 Mixture-of-Transformer，代码文件是 <code>mot.py</code>。</td></tr>
+      <tr><td><b>MoE</b></td><td>Mixture of Experts</td><td>混合专家：由路由器给每个 token 挑专家。本文没有路由器，拿来作对比。</td></tr>
+      <tr><td><b>FFN</b></td><td>Feed-Forward Network</td><td>前馈网络：每层注意力后面那两层全连接。</td></tr>
+      <tr><td><b>Q / K / V</b></td><td>Query / Key / Value</td><td>注意力里的查询、键、值。“KV 缓存”（KV cache）就是把视频专家每层的 K、V 存下来给动作反复读。</td></tr>
+      <tr><td><b>VAE</b></td><td>Variational Autoencoder</td><td>变分自编码器。这里是 Wan2.2 自带的视频 VAE，把画面压成潜变量，训练时冻结。</td></tr>
+      <tr><td><b>T5</b></td><td>Text-to-Text Transfer Transformer</td><td>谷歌的文本模型。这里只用 Wan2.2 自带的 T5 编码器，把指令变成向量，冻结。</td></tr>
+      <tr><td><b>Wan2.2-5B</b></td><td>Wan 2.2（通义万相 2.2），5B = 5 billion</td><td>阿里开源的视频生成模型，约 50 亿参数，本文的视频骨干。</td></tr>
+      <tr><td><b>1B / 6B</b></td><td>1 / 6 billion parameters</td><td>10 亿 / 60 亿参数：动作专家约 1B，整模型约 6B。</td></tr>
+      <tr><td><b>FM</b>（ℒ<sub>FM</sub>）</td><td>Flow Matching</td><td>流匹配：学一个从数据指向噪声的速度场，推理时沿它走回数据。</td></tr>
+      <tr><td><b>CFG</b></td><td>Classifier-Free Guidance</td><td>无分类器引导：放大“有指令”和“无指令”预测的差。scale = 1.0 就是不放大，等于没开。</td></tr>
+      <tr><td><b>AdamW</b></td><td>Adam with decoupled Weight decay</td><td>把权重衰减从梯度更新里拆出来的 Adam 优化器。</td></tr>
+      <tr><td><b>lr / wd</b></td><td>learning rate / weight decay</td><td>学习率 / 权重衰减。</td></tr>
+      <tr><td><b>bf16</b></td><td>bfloat16（brain floating point, 16 bit）</td><td>Google Brain 提出的 16 位浮点格式，混合精度训练用。</td></tr>
+      <tr><td><b>U(0, 1) / N(0, I)</b></td><td>Uniform / Normal (Gaussian)</td><td>0 到 1 的均匀分布 / 标准正态分布。</td></tr>
+      <tr><td><b>LIBERO</b></td><td>LIfelong learning BEnchmark on RObot manipulation tasks</td><td>单臂仿真基准，四个套件 Spatial / Object / Goal / Long。大写字母拼出名字，原论文没有正式展开。</td></tr>
+      <tr><td><b>RoboTwin 2.0</b></td><td>Robot + (digital) Twin</td><td>双臂仿真基准，50 多个任务。不是严格缩写。</td></tr>
+      <tr><td><b>Clean / Rand.</b></td><td>clean / randomized</td><td>RoboTwin 的干净场景 / 强随机化场景。</td></tr>
+      <tr><td><b>Galaxea R1 Lite</b></td><td>Galaxea AI（星海图）R1 Lite</td><td>真机实验用的双臂机器人。R1 是型号名，不是缩写。</td></tr>
+      <tr><td><b>GPU</b></td><td>Graphics Processing Unit</td><td>显卡。</td></tr>
+      <tr><td><b>RTX 5090D V2 / 4090</b></td><td>NVIDIA GeForce RTX 系列</td><td>RTX 是英伟达显卡品牌，取自光线追踪（ray tracing），官方没有给出全称。D 是中国市场版，V2 是改版。</td></tr>
+      <tr><td><b>H20</b></td><td>NVIDIA H20</td><td>英伟达 Hopper 架构的数据中心 GPU，中国市场版。H 取自 Hopper。</td></tr>
+      <tr><td><b>ms / k</b></td><td>millisecond / kilo</td><td>毫秒 / 千（20k 步 = 2 万步）。</td></tr>
+      <tr><td><b>C / F / A</b></td><td>Current frame / Future frames / Action</td><td>本页给三组 token 起的记号：当前帧、未来帧、动作。</td></tr>
+      <tr><td><b>H / T</b></td><td>Horizon / Time</td><td>公式里的动作步数 H（= 32）和未来帧数 T。</td></tr>
+      <tr><td><b>arXiv 2603.16666 v2</b></td><td>arXiv 预印本编号</td><td>2026 年 3 月的第 16666 篇，第 2 版。</td></tr>
+      <tr><td><b>FW-2603.16666</b></td><td>Fast-WAM + arXiv 编号</td><td>本页自己的记录编号，FW = Fast-WAM。</td></tr>
+      <tr><td><b>7faa711</b></td><td>git commit 短哈希</td><td>本页对照的官方代码版本。</td></tr>
+      <tr><td><b>Fig. / § / Q1–Q6</b></td><td>Figure / Section / Question</td><td>论文的图 / 节；本页开头的问题编号。</td></tr>
+      <tr><td><b>README / HTML / AI</b></td><td>read me / HyperText Markup Language / Artificial Intelligence</td><td>仓库说明文件 / 网页格式 / 人工智能。</td></tr>
+    </tbody>
+  </table></div>
 </section>
 
 <section class="chapter" id="s1">
