@@ -30,6 +30,7 @@
         { t: 'VLA 强化学习方法全景对比', h: 'VLA-RL-方法全景对比.html' },
         { t: 'Diffusion Policy：扩散动作策略', h: 'DiffusionPolicy-论文解读.html' },
         { t: 'FastWAM：训练时想象，执行时直达动作', h: 'FastWAM-论文解读.html' },
+        { t: 'RoboTrack：机器人视频点跟踪的考卷与练习册', h: 'RoboTrack-论文解读.html' },
         { t: 'ACT 动作分块 Transformer · LeRobot 全图解', h: 'LeRobot-ACT-算法详解.html' },
         { t: 'DAgger 数据聚合 · 论文算法与 LeRobot 实现', h: 'DAgger-算法详解.html' },
         { t: 'HIL-SERL 人在环真机强化学习 · 论文与 LeRobot 实现', h: 'HIL-SERL-算法详解.html' },
