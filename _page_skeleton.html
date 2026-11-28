@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<!-- 新页面骨架。复制后改名；配色、字体、版式每页自己设计，下面的类名和结构保留。
+     功能来自 assets/kb-editor.js，不要再把编辑 / 保存脚本抄进页面。
+     样板 DAgger-算法详解.html 只在需要对照细节时再看。 -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>标题</title>
+<link rel="stylesheet" href="concepts.css">
+<link rel="stylesheet" href="assets/katex/katex.min.css"><!-- 公式先用 \( \) \[ \] 写，提交前预渲染 -->
+<style>
+/* 每页自己设计。必需的类：
+   a.cl 代码芯片 · a.pl 论文芯片 · .ans 橙色答案框 · .qs 开头问题 · .quiz + details 结尾题
+   .dg 架构图容器（相对定位）· .nd 框（绝对定位 div）· svg.wires 连线 · .wl 连线标签
+   .kb-tools 右下角工具栏 · body.editing 编辑态 */
+.ans{margin:14px 0;padding:10px 14px;border-radius:10px;background:#fff1e3;border:1px solid #f2c08f;border-left:4px solid #e07a1f}
+.dg{position:relative;width:1100px;height:700px;margin:0 auto}
+.dg svg.wires{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.nd{position:absolute}
+</style>
+</head>
+<body>
+<div id="doc">
+
+<header>
+  <h1>标题</h1>
+  <p>论文 <a class="pl" href="https://arxiv.org/abs/XXXX.XXXXX">arXiv</a>
+     代码 <a class="cl" href="https://github.com/OWNER/REPO/blob/SHA/path/file.py#L1" data-path="path/file.py" data-line="1">file.py:1</a></p>
+</header>
+
+<h2 id="s0">带着问题读</h2>
+<ol class="qs">
+  <li>问题一 <a href="#a1">→ 答案</a></li>
+  <!-- 共 4–6 个 -->
+</ol>
+
+<h2 id="s1">正文</h2>
+<p>先小数字例子，再打比方，再公式；缩写写全称。</p>
+<div class="ans" id="a1"><b>Q1 答</b>……</div>
+
+<h2 id="s-dg">架构图</h2>
+<div class="dg" id="main-diagram">
+  <svg class="wires" viewBox="0 0 1100 700" aria-hidden="true"><!-- path 连线 --></svg>
+  <div class="nd" style="left:20px;top:20px;width:180px">
+    <div class="nt">框标题</div>
+    <a class="cl" href="https://github.com/OWNER/REPO/blob/SHA/path/file.py#L1" data-path="path/file.py" data-line="1">file.py:1</a>
+  </div>
+</div>
+
+<h2 id="s-quiz">读完做几道题</h2>
+<ol class="quiz">
+  <li><p>题目</p><details><summary>看答案</summary><div>答案 <a href="#s1">回到正文</a></div></details></li>
+  <!-- 共 5–8 道 -->
+</ol>
+
+</div><!-- /doc -->
+<script src="assets/kb-editor.js" data-repo="OWNER/REPO" data-commit="完整SHA" data-db="页面唯一名"></script>
+<script src="nav.js"></script>
+</body>
+</html>
