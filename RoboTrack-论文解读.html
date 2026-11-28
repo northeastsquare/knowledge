@@ -180,6 +180,7 @@ footer{margin-top:64px;font-size:13px;color:var(--ink-3)}
 <li>RoboTrack-15M 的 1500 万条轨迹没人标，真值从哪来？<a class="go" href="#a4">→ 答案</a></li>
 <li>第一版仿真数据为什么一点用都没有？后来改了哪两处？<a class="go" href="#a5">→ 答案</a></li>
 <li>RoboTracker 和 AllTracker 比，改了模型、损失还是数据？<a class="go" href="#a6">→ 答案</a></li>
+<li>拿到 RoboTracker，输入什么、输出什么？在机械臂上怎么用？<a class="go" href="#s7x">→ 07+ 节</a></li>
 </ol>
 
 <h3 id="s0-abbr">缩写和名字</h3>
@@ -492,6 +493,62 @@ footer{margin-top:64px;font-size:13px;color:var(--ink-3)}
 <div class="box warn"><h4>局限</h4>
 <p style="margin:0">长时间遮挡、点重新露出时认回来、杂乱背景上的小物体，这三类仍是难点。练习册只有“抓起日常物体”，还没有移液这种精细动作。README 也提醒：用点轨迹驱动真机时（比如视觉伺服），先校验轨迹，限制它能下发的运动幅度，并保留人监护和急停。</p></div>
 <p class="hint">来源：<a class="pl" href="https://allenai.org/blog/robotrack" target="_blank" rel="noreferrer">官方博客 · Application 与 Limitations</a>；<a class="cl" href="https://github.com/allenai/robotrack/blob/fc5cd87f60fad57c7cbc48c3d09e9aa7b45061a3/README.md?plain=1#L1" target="_blank" rel="noreferrer" data-path="README.md" data-line="1">README.md</a>。内容为转述。</p>
+
+<h2 id="s7x"><span class="no">07+</span>拿到手怎么用：输入输出与机械臂上的用法</h2>
+<p>RoboTrack 是数据和考卷。真正拿来跑的是跟踪模型 RoboTracker。下面先说它吃什么、吐什么，再说放到真机任务里怎么接。</p>
+
+<h3 id="s7x-1">① 输入和输出</h3>
+<p>接口就是评测脚本里的 <code>track(model, frames, query_xy, query_frames)</code>。<a class="cl" href="https://github.com/allenai/robotrack/blob/fc5cd87f60fad57c7cbc48c3d09e9aa7b45061a3/robotrack/eval_alltracker.py#L38" target="_blank" rel="noreferrer" data-path="robotrack/eval_alltracker.py" data-line="38">eval_alltracker.py:38</a></p>
+<table>
+<tr><th></th><th>名字</th><th>形状</th><th>是什么</th></tr>
+<tr><td rowspan="3">输入</td><td><code>frames</code></td><td><code>[T, H, W, 3]</code> uint8</td><td>一段视频的 RGB 帧，评测时缩放到 384×512</td></tr>
+<tr><td><code>query_xy</code></td><td><code>[N, 2]</code></td><td>每个点从哪个像素 (x, y) 开始跟</td></tr>
+<tr><td><code>query_frames</code></td><td><code>[N]</code></td><td>每个点从第几帧开始跟</td></tr>
+<tr><td rowspan="2">输出</td><td><code>tracks</code></td><td><code>[T, N, 2]</code></td><td>每帧每个点的像素坐标，被挡住时也给</td></tr>
+<tr><td><code>vis_prob</code></td><td><code>[T, N]</code></td><td>每帧每个点“看得见”的概率，等于 vis × conf；起点帧之前为 0</td></tr>
+</table>
+<div class="eg"><div class="t">小例子</div>
+<p style="margin:4px 0">输入 100 帧视频，在第 0 帧杯把上点一个点 (100, 200)。输出 100 行坐标，每行带一个可见概率。夹爪挡住杯把的那几帧，概率低于 0.6，就当“看不见”（<a class="cl" href="https://github.com/allenai/robotrack/blob/fc5cd87f60fad57c7cbc48c3d09e9aa7b45061a3/robotrack/evaluate.py#L13" target="_blank" rel="noreferrer" data-path="robotrack/evaluate.py" data-line="13">evaluate.py:13</a>）。</p></div>
+
+<h3 id="s7x-2">② 在机器人上能做什么</h3>
+<table>
+<tr><th>用法</th><th>怎么用</th><th>例子</th></tr>
+<tr><td>对齐示教</td><td>示教画面上的点和实时画面配对，算出物体挪了多远</td><td>论文里的移液，17 / 20</td></tr>
+<tr><td>视觉伺服</td><td>每帧跟住目标点，用它和目标位置的差驱动机械臂</td><td>末端对准孔、对准格子</td></tr>
+<tr><td>判断抓没抓住</td><td>物体上的点跟着末端一起动，就是抓住了</td><td>抓起、搬运</td></tr>
+<tr><td>给示教数据打标签</td><td>自动生成点轨迹，当策略的输入或训练目标</td><td>点轨迹条件策略</td></tr>
+<tr><td>遮挡后找回</td><td>被挡时继续估位置，露出来接着跟</td><td>夹爪里拿着的物体</td></tr>
+</table>
+
+<h3 id="s7x-3">③ 照移液实验的做法，分步</h3>
+<ol class="steps">
+<li>遥操作录一次示教，切成几段，比如“靠近、对准、插入”。</li>
+<li>在示教的关键帧上，挑目标物体上的几个点，比如瓶口一圈。</li>
+<li>执行时，把示教关键帧和相机当前画面拼成一段短视频。</li>
+<li>交给 RoboTracker，得到这些点在当前画面里的位置。</li>
+<li>两组点的位置差就是物体挪动的量，换算成机械臂位移。</li>
+<li>按这个位移修改示教轨迹，执行这一段。</li>
+<li>下一段重复第 3–6 步。</li>
+</ol>
+<p>论文每段只估一次，然后不看画面走完（开环）。所以这一次估计必须准。</p>
+
+<h3 id="s7x-4">④ 用在吸盘取料、放托盘上</h3>
+<table>
+<tr><th>环节</th><th>用法</th></tr>
+<tr><td>抓起后</td><td>跟住零件上的点。点不跟着吸盘走，说明没吸住或掉了</td></tr>
+<tr><td>放进格子</td><td>跟住格子的四个角，和示教时比，算出偏移再放</td></tr>
+<tr><td>翻面换手</td><td>跟住零件上的点，看翻转后朝向对不对</td></tr>
+</table>
+
+<h3 id="s7x-5">⑤ 选哪个模型</h3>
+<table>
+<tr><th></th><th>RoboTracker</th><th>RoboTracker-Warp</th></tr>
+<tr><td>大小</td><td>约 1700 万参数</td><td>约 10 亿参数</td></tr>
+<tr><td>显存</td><td>小，RTX 3090 能跑</td><td>评测约 47 GB，3090 跑不了</td></tr>
+<tr><td>商用</td><td>可以（Apache 2.0）</td><td>不行（CC-BY-NC 4.0）</td></tr>
+</table>
+<div class="box warn"><h4>上真机前</h4>
+<p style="margin:0">点轨迹会错，长时间遮挡和没纹理的表面最容易错。用它驱动机械臂前先检查轨迹，限制每次能动的幅度，保留人监护和急停（README 第 8 节）。</p></div>
 
 <h2 id="s8"><span class="no">08</span>架构图：一张图串起造数据、训练、评测</h2>
 <p class="hint">图里文字可选中、复制。点右下角「✎ 编辑」后可直接改字，按「保存」或 ⌘/Ctrl+S 写回这个 HTML 文件（Chrome / Edge 第一次保存时选中本文件即可覆盖；其他浏览器会下载一份新文件）。编辑模式下点击 ⌗ 代码芯片可改它指向的文件和行号。代码链接都指向 GitHub 上固定 commit <code>fc5cd87</code> 的源码。</p>
